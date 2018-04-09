@@ -18,6 +18,7 @@ set(BUILD_THIRDPARTY ON CACHE BOOL "")
 add_subdirectory(openjpeg)
 
 set(COLORIST_EXT_INCLUDES
+    "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/liblcms2/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libz"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libpng"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/src/lib/openjp2"
@@ -28,6 +29,7 @@ set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} PARENT_SCOPE)
 set(COLORIST_EXT_LIBS
     z
     png
+    lcms2
     openjp2
 )
 set(COLORIST_EXT_LIBS ${COLORIST_EXT_LIBS} PARENT_SCOPE)
