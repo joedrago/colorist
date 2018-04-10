@@ -46,14 +46,16 @@ typedef struct Args
     clBool help;                 // -h
     int luminance;               // -l
     float primaries[8];          // -p
-    int rect[4];                 // -r
+    int quality;                 // -q
+    int rate;                    // -r
     clBool verbose;              // -v
+    int rect[4];                 // -z
     const char * inputFilename;  // index 0
     const char * outputFilename; // index 1
 } Args;
 
 clImage * readImage(const char * filename, Format * outFormat);
-clBool writeImage(clImage * image, const char * filename, Format format);
+clBool writeImage(clImage * image, const char * filename, Format format, int quality, int rate);
 
 int actionConvert(Args * args);
 int actionIdentify(Args * args);

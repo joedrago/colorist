@@ -45,12 +45,10 @@ clImage * clImageReadJP2(const char * filename)
     opj_set_info_handler(opjCodec, info_callback, 00);
     opj_set_warning_handler(opjCodec, warning_callback, 00);
     opj_set_error_handler(opjCodec, error_callback, 00);
-
     opj_set_default_decoder_parameters(&parameters);
 
     opjStream = opj_stream_create_file_stream(filename, 1 * 1024 * 1024, OPJ_TRUE);
 
-    /* Setup the decoder decoding parameters using user parameters */
     if (!opj_setup_decoder(opjCodec, &parameters) ) {
         fprintf(stderr, "ERROR: Failed to setup JP2 decoder\n");
         opj_stream_destroy(opjStream);
@@ -58,7 +56,6 @@ clImage * clImageReadJP2(const char * filename)
         return NULL;
     }
 
-    /* Read the main header of the codestream and if necessary the JP2 boxes*/
     if (!opj_read_header(opjStream, opjCodec, &opjImage)) {
         fprintf(stderr, "ERROR: Failed to read JP2 header\n");
         opj_stream_destroy(opjStream);
@@ -67,7 +64,6 @@ clImage * clImageReadJP2(const char * filename)
         return NULL;
     }
 
-    /* decode the image */
     if (!opj_decode(opjCodec, opjStream, opjImage)) {
         fprintf(stderr, "ERROR: Failed to decode JP2!\n");
         opj_destroy_codec(opjCodec);
@@ -90,7 +86,7 @@ clImage * clImageReadJP2(const char * filename)
             char * description = clProfileGetMLU(profile, "desc", "en", "US");
             COLORIST_ASSERT(!profile->description);
             if (description) {
-                profile->description = strdup(description);
+                profile->description = description; // take ownership
             } else {
                 profile->description = strdup("Unknown");
             }

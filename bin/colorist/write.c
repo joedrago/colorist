@@ -9,7 +9,7 @@
 
 #include "colorist/image.h"
 
-clBool writeImage(clImage * image, const char * filename, Format format)
+clBool writeImage(clImage * image, const char * filename, Format format, int quality, int rate)
 {
     if (format == FORMAT_AUTO) {
         format = detectFormat(filename);
@@ -20,7 +20,7 @@ clBool writeImage(clImage * image, const char * filename, Format format)
     }
     switch (format) {
         case FORMAT_JP2:
-            return clImageWriteJP2(image, filename, 60, 60);
+            return clImageWriteJP2(image, filename, quality, rate);
             break;
         case FORMAT_PNG:
             return clImageWritePNG(image, filename);

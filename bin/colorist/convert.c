@@ -15,7 +15,16 @@ int actionConvert(Args * args)
     clImage * srcImage = NULL;
     clProfile * dstProfile = NULL;
     clImage * dstImage = NULL;
+    Format outputFileFormat;
     clBool writeSuccess;
+
+    outputFileFormat = args->format;
+    if (outputFileFormat == FORMAT_AUTO)
+        outputFileFormat = detectFormat(args->outputFilename);
+    if (outputFileFormat == FORMAT_ERROR) {
+        fprintf(stderr, "ERROR: Unknown output file format: %s\n", args->outputFilename);
+        return 1;
+    }
 
     printf("Colorist [convert]: %s -> %s\n", args->inputFilename, args->outputFilename);
     timerStart(&overall);
@@ -73,18 +82,63 @@ int actionConvert(Args * args)
                 description = strdup(args->description);
             } else {
                 // TODO: Come up with a good description
-                description = strdup("Generated");
+                description = strdup(srcImage->profile->description);
             }
 
-            printf("Creating new destination ICC profile: '%s'\n", description);
+            printf("Creating new destination ICC profile: \"%s\"\n", description);
             dstProfile = clProfileCreate(&primaries, &curve, luminance, description);
             free(description);
+
+            if (args->copyright) {
+                printf("Setting copyright: \"%s\"\n", args->copyright);
+                clProfileSetMLU(dstProfile, "cprt", "en", "US", args->copyright);
+            }
         } else {
             // just clone the source one
 
-            printf("Using source ICC profile: '%s'\n", srcImage->profile->description);
+            printf("Using source ICC profile: \"%s\"\n", srcImage->profile->description);
             dstProfile = clProfileClone(srcImage->profile);
         }
+    }
+
+    if (outputFileFormat == FORMAT_ICC) {
+        // Just dump out the profile to disk and bail out
+
+        clRaw rawProfile;
+        FILE * f;
+        int itemsWritten;
+
+        printf("Writing ICC: %s\n", args->outputFilename);
+        clProfileDebugDump(dstProfile);
+        f = fopen(args->outputFilename, "wb");
+        if (!f) {
+            fprintf(stderr, "ERROR: Can't open file for write: %s\n", args->outputFilename);
+            clImageDestroy(srcImage);
+            clProfileDestroy(dstProfile);
+            return 1;
+        }
+        memset(&rawProfile, 0, sizeof(rawProfile));
+        if (!clProfilePack(dstProfile, &rawProfile)) {
+            fprintf(stderr, "ERROR: Can't pack ICC profile\n");
+            fclose(f);
+            clImageDestroy(srcImage);
+            clProfileDestroy(dstProfile);
+            return clFalse;
+        }
+        itemsWritten = fwrite(rawProfile.ptr, rawProfile.size, 1, f);
+        if (itemsWritten != 1) {
+            fprintf(stderr, "ERROR: Failed to write ICC profile\n");
+            fclose(f);
+            clImageDestroy(srcImage);
+            clProfileDestroy(dstProfile);
+            return clFalse;
+        }
+        fclose(f);
+        clRawFree(&rawProfile);
+        clImageDestroy(srcImage);
+        clProfileDestroy(dstProfile);
+        printf("\nConversion complete (%g sec).\n", timerElapsedSeconds(&overall));
+        return 0;
     }
 
     // Create dstImage
@@ -193,9 +247,19 @@ int actionConvert(Args * args)
         }
     }
 
-    printf("Writing: %s\n", args->outputFilename);
+    switch (outputFileFormat) {
+        case FORMAT_JP2:
+            printf("Writing JP2 [q:%d, rate:%dx]: %s\n", args->quality, args->rate, args->outputFilename);
+            break;
+        case FORMAT_JPG:
+            printf("Writing JPG [q:%d]: %s\n", args->quality, args->outputFilename);
+            break;
+        default:
+            printf("Writing: %s\n", args->outputFilename);
+            break;
+    }
     timerStart(&t);
-    writeSuccess = writeImage(dstImage, args->outputFilename, FORMAT_AUTO);
+    writeSuccess = writeImage(dstImage, args->outputFilename, outputFileFormat, args->quality, args->rate);
     printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
     clImageDestroy(srcImage);
     clImageDestroy(dstImage);

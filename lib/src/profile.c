@@ -114,6 +114,9 @@ clProfile * clProfileCreate(clProfilePrimaries * primaries, clProfileCurve * cur
     cmsWriteTag(profile->handle, cmsSigLuminanceTag, &lumi);
 
     profile->description = description ? strdup(description) : NULL;
+    if (profile->description) {
+        clProfileSetMLU(profile, "desc", "en", "US", profile->description);
+    }
     return profile;
 }
 
@@ -256,6 +259,37 @@ clBool clProfileQuery(clProfile * profile, clProfilePrimaries * primaries, clPro
 
 char * clProfileGetMLU(clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3])
 {
-    // TODO: implement
-    return strdup("lele description");
+    cmsTagSignature tagSignature;
+    cmsUInt32Number bytes;
+    char * ascii;
+    uint8_t * rawTagPtr = (uint8_t *)&tagSignature;
+    rawTagPtr[0] = tag[3];
+    rawTagPtr[1] = tag[2];
+    rawTagPtr[2] = tag[1];
+    rawTagPtr[3] = tag[0];
+    cmsMLU * mlu = cmsReadTag(profile->handle, tagSignature);
+    if (!mlu) {
+        return NULL;
+    }
+    bytes = cmsMLUgetASCII(mlu, languageCode, countryCode, NULL, 0);
+    if (!bytes) {
+        return NULL;
+    }
+    ascii = calloc(1, bytes);
+    cmsMLUgetASCII(mlu, languageCode, countryCode, ascii, bytes);
+    return ascii;
+}
+
+clBool clProfileSetMLU(clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3], const char * ascii)
+{
+    cmsTagSignature tagSignature;
+    uint8_t * rawTagPtr = (uint8_t *)&tagSignature;
+    rawTagPtr[0] = tag[3];
+    rawTagPtr[1] = tag[2];
+    rawTagPtr[2] = tag[1];
+    rawTagPtr[3] = tag[0];
+    cmsMLU * mlu = cmsMLUalloc(NULL, 1);
+    cmsMLUsetASCII(mlu, languageCode, countryCode, ascii);
+    cmsWriteTag(profile->handle, tagSignature, mlu);
+    return clTrue;
 }

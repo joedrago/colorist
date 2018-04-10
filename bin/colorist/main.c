@@ -34,11 +34,13 @@ static void setDefaults(Args * args)
     args->help = clFalse;
     args->luminance = 0;
     memset(args->primaries, 0, sizeof(float) * 8);
+    args->quality = 60; // ?
+    args->rate = 200;   // ?
+    args->verbose = clFalse;
     args->rect[0] = 0;
     args->rect[1] = 0;
     args->rect[2] = 3;
     args->rect[3] = 3;
-    args->verbose = clFalse;
     args->inputFilename = NULL;
     args->outputFilename = NULL;
 }
@@ -206,13 +208,21 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
                     if (!parsePrimaries(args->primaries, arg))
                         return clFalse;
                     break;
+                case 'q':
+                    NEXTARG();
+                    args->quality = atoi(arg);
+                    break;
                 case 'r':
                     NEXTARG();
-                    if (!parseRect(args->rect, arg))
-                        return clFalse;
+                    args->rate = atoi(arg);
                     break;
                 case 'v':
                     args->verbose = clTrue;
+                    break;
+                case 'z':
+                    NEXTARG();
+                    if (!parseRect(args->rect, arg))
+                        return clFalse;
                     break;
             }
         } else {
@@ -337,7 +347,10 @@ static void printSyntax()
     printf("    -h             : Display this help\n");
     printf("    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default)\n");
     printf("    -p PRIMARIES   : ICC profile primaries (8 floats, comma separated). rx,ry,gx,gy,bx,by,wx,wy\n");
+    printf("    -q QUALITY     : Output quality for JPG/JP2\n");
+    printf("    -r RATE        : Output rate for JP2\n");
     printf("    -v             : Verbose mode.\n");
+    printf("    -z x,y,w,h     : Pixels to dump in identify mode. x,y,w,h\n");
     printf("\n");
     clDumpVersions();
 }
@@ -373,58 +386,3 @@ int main(int argc, char * argv[])
     }
     return 1;
 }
-
-// {
-//     clImage * image = clImageCreate(2, 2, 8, NULL);
-//     clImageSetPixel(image, 0, 0, 255, 128, 238, 0);
-//     clImageDebugDump(image);
-//     clImageChangeDepth(image, 16);
-//     clImageDebugDump(image);
-//     clImageChangeDepth(image, 8);
-//     clImageDebugDump(image);
-//     clImageDestroy(image);
-// }
-// {
-//     clImage * image;
-//     clProfile * profile;
-//     profile = clProfileParse((const uint8_t *)"foo", 3);
-//     clProfileDestroy(profile);
-// }
-// {
-//     cmsHPROFILE srcProfile = cmsOpenProfileFromFile("f:\\work\\hdr10.icc", "r");
-//     cmsHPROFILE dstProfile = cmsOpenProfileFromFile("f:\\work\\srgb.icc", "r");
-//     cmsHPROFILE dstProfileLin = createDstLinearProfile(dstProfile);
-//     cmsHTRANSFORM toLinear = cmsCreateTransform(srcProfile, TYPE_RGBA_8, dstProfileLin, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA);
-//     cmsHTRANSFORM fromLinear = cmsCreateTransform(dstProfileLin, TYPE_RGBA_FLT, dstProfile, TYPE_RGBA_8, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA);
-//     uint8_t srcPixel[4] = { 224, 145, 72, 255 };
-//     float dstPixelLin[4];
-//     uint8_t dstPixel[4];
-//     cmsDoTransform(toLinear, srcPixel, dstPixelLin, 1);
-//     cmsDoTransform(fromLinear, dstPixelLin, dstPixel, 1);
-//     cmsCloseProfile(srcProfile);
-//     cmsCloseProfile(dstProfile);
-//     cmsCloseProfile(toLinear);
-// }
-
-// cmsHPROFILE createDstLinearProfile(cmsHPROFILE srcProfile)
-// {
-//     cmsHPROFILE outProfile;
-//     cmsCIEXYZ * dstRXYZ = (cmsCIEXYZ *)cmsReadTag(srcProfile, cmsSigRedColorantTag);
-//     cmsCIEXYZ * dstGXYZ = (cmsCIEXYZ *)cmsReadTag(srcProfile, cmsSigGreenColorantTag);
-//     cmsCIEXYZ * dstBXYZ = (cmsCIEXYZ *)cmsReadTag(srcProfile, cmsSigBlueColorantTag);
-//     cmsCIEXYZ * dstWXYZ = (cmsCIEXYZ *)cmsReadTag(srcProfile, cmsSigMediaWhitePointTag);
-//     cmsToneCurve * gamma1 = cmsBuildGamma(NULL, 1.0);
-//     cmsToneCurve * curves[3];
-//     cmsCIExyYTRIPLE dstPrimaries;
-//     cmsCIExyY dstWhitePoint;
-//     cmsXYZ2xyY(&dstPrimaries.Red, dstRXYZ);
-//     cmsXYZ2xyY(&dstPrimaries.Green, dstGXYZ);
-//     cmsXYZ2xyY(&dstPrimaries.Blue, dstBXYZ);
-//     cmsXYZ2xyY(&dstWhitePoint, dstWXYZ);
-//     curves[0] = gamma1;
-//     curves[1] = gamma1;
-//     curves[2] = gamma1;
-//     outProfile = cmsCreateRGBProfile(&dstWhitePoint, &dstPrimaries, curves);
-//     cmsFreeToneCurve(gamma1);
-//     return outProfile;
-// }
