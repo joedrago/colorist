@@ -38,6 +38,10 @@ typedef struct clRaw
     uint32_t size;
 } clRaw;
 
+typedef int clBool;
+#define clFalse 0
+#define clTrue 1
+
 void clRawRealloc(clRaw * raw, uint32_t newSize);
 void clRawFill(clRaw * raw, uint8_t fill);
 void clRawClone(clRaw * dst, const clRaw * src);

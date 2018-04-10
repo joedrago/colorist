@@ -8,9 +8,12 @@
 #ifndef COLORIST_COLORIST_H
 #define COLORIST_COLORIST_H
 
+#define COLORIST_VERSION_STRING "0.0.1"
+#define COLORIST_VERSION 0x00000001
+
 #include "colorist/image.h"
 #include "colorist/profile.h"
 
-const char * clVersion();
+void clDumpVersions();
 
 #endif

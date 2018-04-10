@@ -7,8 +7,18 @@
 
 #include "colorist/colorist.h"
 
-const char * clVersion()
+#include "zlib.h"
+#include "png.h"
+#include "openjpeg.h"
+#include "lcms2.h"
+
+void clDumpVersions()
 {
-    // TODO: Something better than this.
-    return "0.0.1";
+    printf("Versions:\n");
+    printf(" * colorist: %s\n", COLORIST_VERSION_STRING);
+    printf(" * zlib    : %s\n", ZLIB_VERSION);
+    printf(" * libpng  : %s\n", PNG_LIBPNG_VER_STRING);
+    printf(" * openjpeg: %s\n", opj_version());
+    printf(" * lcms2   : %d\n", LCMS_VERSION);
+    printf("\n");
 }
