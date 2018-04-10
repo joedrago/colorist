@@ -23,6 +23,7 @@ typedef struct clImage
 } clImage;
 
 clImage * clImageCreate(int width, int height, int depth, clProfile * profile);
+clImage * clImageLoadPNG(const char * filename);
 void clImageResize(clImage * image, int width, int height, int depth);
 void clImageChangeDepth(clImage * image, int depth);
 void clImageSetPixel(clImage * image, int x, int y, int r, int g, int b, int a);

@@ -5,48 +5,10 @@
 //                  http://www.boost.org/LICENSE_1_0.txt)
 // ---------------------------------------------------------------------------
 
-#include "colorist/colorist.h"
-
-#include "lcms2.h"
+#include "main.h"
 
 #include <stdio.h>
 #include <string.h>
-
-typedef enum Action
-{
-    ACTION_NONE = 0,
-    ACTION_IDENTIFY,
-    ACTION_CONVERT,
-
-    ACTION_ERROR
-} Action;
-
-typedef enum Format
-{
-    FORMAT_AUTO = 0,
-    FORMAT_PNG,
-    FORMAT_JPG,
-    FORMAT_JP2,
-    FORMAT_ICC,
-
-    FORMAT_ERROR
-} Format;
-
-typedef struct Args
-{
-    Action action;
-    int bpp;                     // -b
-    const char * copyright;      // -c
-    const char * description;    // -d
-    Format format;               // -f
-    float gamma;                 // -g
-    clBool help;                 // -h
-    int luminance;               // -l
-    float primaries[8];          // -p
-    clBool verbose;              // -v
-    const char * inputFilename;  // index 0
-    const char * outputFilename; // index 1
-} Args;
 
 static void setDefaults(Args * args)
 {
@@ -67,6 +29,9 @@ static void setDefaults(Args * args)
 static Action stringToAction(const char * str)
 {
     if (!strcmp(str, "identify")) return ACTION_IDENTIFY;
+    if (!strcmp(str, "id"))       return ACTION_IDENTIFY;
+    if (!strcmp(str, "generate")) return ACTION_GENERATE;
+    if (!strcmp(str, "gen"))      return ACTION_GENERATE;
     if (!strcmp(str, "convert"))  return ACTION_CONVERT;
     return ACTION_ERROR;
 }
@@ -76,6 +41,7 @@ static const char * actionToString(Action action)
     switch (action) {
         case ACTION_NONE:     return "--";
         case ACTION_IDENTIFY: return "identify";
+        case ACTION_GENERATE: return "generate";
         case ACTION_CONVERT:  return "convert";
         case ACTION_ERROR:
         default:
@@ -84,7 +50,7 @@ static const char * actionToString(Action action)
     return "Unknown";
 }
 
-static Format stringToFormat(const char * str)
+Format stringToFormat(const char * str)
 {
     if (!strcmp(str, "auto")) return FORMAT_AUTO;
     if (!strcmp(str, "png"))  return FORMAT_PNG;
@@ -94,7 +60,7 @@ static Format stringToFormat(const char * str)
     return FORMAT_ERROR;
 }
 
-static const char * formatToString(Format format)
+const char * formatToString(Format format)
 {
     switch (format) {
         case FORMAT_AUTO: return "Auto";
@@ -107,6 +73,21 @@ static const char * formatToString(Format format)
             break;
     }
     return "Unknown";
+}
+
+Format detectFormat(const char * filename)
+{
+    const char * dot = strrchr(filename, '.');
+    if (dot == NULL) {
+        fprintf(stderr, "ERROR: Unable to guess format\n");
+        return FORMAT_ERROR;
+    }
+    if (!strcmp(dot + 1, "png")) return FORMAT_PNG;
+    if (!strcmp(dot + 1, "jpg")) return FORMAT_JPG;
+    if (!strcmp(dot + 1, "jp2")) return FORMAT_JP2;
+    if (!strcmp(dot + 1, "icc")) return FORMAT_ICC;
+    fprintf(stderr, "ERROR: Unknown file extension '%s'\n", dot + 1);
+    return FORMAT_ERROR;
 }
 
 #define NEXTARG()                                                      \
@@ -139,6 +120,7 @@ static clBool parsePrimaries(float primaries[8], const char * arg)
 static clBool parseArgs(Args * args, int argc, char * argv[])
 {
     int argIndex = 1;
+    const char * filenames[2] = { NULL, NULL };
     while (argIndex < argc) {
         const char * arg = argv[argIndex];
         if ((arg[0] == '-')) {
@@ -190,10 +172,10 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
                     fprintf(stderr, "ERROR: unknown action '%s', expecting identify or convert\n", arg);
                     return clFalse;
                 }
-            } else if (args->inputFilename == NULL) {
-                args->inputFilename = arg;
-            } else if (args->outputFilename == NULL) {
-                args->outputFilename = arg;
+            } else if (filenames[0] == NULL) {
+                filenames[0] = arg;
+            } else if (filenames[1] == NULL) {
+                filenames[1] = arg;
             } else {
                 fprintf(stderr, "ERROR: Too many positional arguments.\n");
                 return clFalse;
@@ -201,36 +183,51 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
         }
         ++argIndex;
     }
+
+    switch (args->action) {
+        case ACTION_IDENTIFY:
+            args->inputFilename = filenames[0];
+            if (!args->inputFilename) {
+                printf("ERROR: identify requires an input filename.\n");
+                return clFalse;
+            }
+            if (filenames[1]) {
+                printf("ERROR: identify does not accept an output filename.\n");
+                return clFalse;
+            }
+            break;
+        case ACTION_GENERATE:
+            args->outputFilename = filenames[0];
+            if (!args->outputFilename) {
+                printf("ERROR: generate requires an output filename.\n");
+                return clFalse;
+            }
+            if (filenames[1]) {
+                printf("ERROR: generate does not accept both an input and output filename.\n");
+                return clFalse;
+            }
+            break;
+        case ACTION_CONVERT:
+            args->inputFilename = filenames[0];
+            if (!args->inputFilename) {
+                printf("ERROR: convert requires an input filename.\n");
+                return clFalse;
+            }
+            args->outputFilename = filenames[1];
+            if (!args->outputFilename) {
+                printf("ERROR: convert requires an output filename.\n");
+                return clFalse;
+            }
+            break;
+        default:
+            break;
+    }
     return clTrue;
 }
 
 static clBool validateArgs(Args * args)
 {
     clBool valid = clTrue;
-    switch (args->action) {
-        case ACTION_IDENTIFY:
-            if (!args->inputFilename) {
-                printf("ERROR: identify requires an input filename.\n");
-                valid = clFalse;
-            }
-            if (args->outputFilename) {
-                printf("ERROR: identify does not accept an output filename.\n");
-                valid = clFalse;
-            }
-            break;
-        case ACTION_CONVERT:
-            if (!args->inputFilename) {
-                printf("ERROR: convert requires an input filename.\n");
-                valid = clFalse;
-            }
-            if (!args->outputFilename) {
-                printf("ERROR: convert requires an output filename.\n");
-                valid = clFalse;
-            }
-            break;
-        default:
-            break;
-    }
     if ((args->bpp != 0) && (args->bpp != 8) && (args->bpp != 16)) {
         printf("ERROR: Unknown bpp: %d\n", args->bpp);
         valid = clFalse;
@@ -277,7 +274,9 @@ static void dumpArgs(Args * args)
 
 static void printSyntax()
 {
-    printf("Syntax : colorist [identify|convert] [input] [output] [OPTIONS]\n");
+    printf("         colorist convert  [input] [output] [OPTIONS]\n");
+    printf("Syntax : colorist identify [input]          [OPTIONS]\n");
+    printf("         colorist generate         [output] [OPTIONS]\n");
     printf("Options:\n");
     printf("    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)\n");
     printf("    -c COPYRIGHT   : ICC profile copyright string.\n");
@@ -290,29 +289,6 @@ static void printSyntax()
     printf("    -v             : Verbose mode.\n");
     printf("\n");
     clDumpVersions();
-}
-
-cmsHPROFILE createDstLinearProfile(cmsHPROFILE srcProfile)
-{
-    cmsHPROFILE outProfile;
-    cmsCIEXYZ * dstRXYZ = (cmsCIEXYZ *)cmsReadTag(srcProfile, cmsSigRedColorantTag);
-    cmsCIEXYZ * dstGXYZ = (cmsCIEXYZ *)cmsReadTag(srcProfile, cmsSigGreenColorantTag);
-    cmsCIEXYZ * dstBXYZ = (cmsCIEXYZ *)cmsReadTag(srcProfile, cmsSigBlueColorantTag);
-    cmsCIEXYZ * dstWXYZ = (cmsCIEXYZ *)cmsReadTag(srcProfile, cmsSigMediaWhitePointTag);
-    cmsToneCurve * gamma1 = cmsBuildGamma(NULL, 1.0);
-    cmsToneCurve * curves[3];
-    cmsCIExyYTRIPLE dstPrimaries;
-    cmsCIExyY dstWhitePoint;
-    cmsXYZ2xyY(&dstPrimaries.Red, dstRXYZ);
-    cmsXYZ2xyY(&dstPrimaries.Green, dstGXYZ);
-    cmsXYZ2xyY(&dstPrimaries.Blue, dstBXYZ);
-    cmsXYZ2xyY(&dstWhitePoint, dstWXYZ);
-    curves[0] = gamma1;
-    curves[1] = gamma1;
-    curves[2] = gamma1;
-    outProfile = cmsCreateRGBProfile(&dstWhitePoint, &dstPrimaries, curves);
-    cmsFreeToneCurve(gamma1);
-    return outProfile;
 }
 
 int main(int argc, char * argv[])
@@ -333,36 +309,68 @@ int main(int argc, char * argv[])
     if (args->verbose)
         dumpArgs(args);
 
-    // {
-    //     clImage * image = clImageCreate(2, 2, 8, NULL);
-    //     clImageSetPixel(image, 0, 0, 255, 128, 238, 0);
-    //     clImageDebugDump(image);
-    //     clImageChangeDepth(image, 16);
-    //     clImageDebugDump(image);
-    //     clImageChangeDepth(image, 8);
-    //     clImageDebugDump(image);
-    //     clImageDestroy(image);
-    // }
-    // {
-    //     clImage * image;
-    //     clProfile * profile;
-    //     profile = clProfileParse((const uint8_t *)"foo", 3);
-    //     clProfileDestroy(profile);
-    // }
-    // {
-    //     cmsHPROFILE srcProfile = cmsOpenProfileFromFile("f:\\work\\hdr10.icc", "r");
-    //     cmsHPROFILE dstProfile = cmsOpenProfileFromFile("f:\\work\\srgb.icc", "r");
-    //     cmsHPROFILE dstProfileLin = createDstLinearProfile(dstProfile);
-    //     cmsHTRANSFORM toLinear = cmsCreateTransform(srcProfile, TYPE_RGBA_8, dstProfileLin, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA);
-    //     cmsHTRANSFORM fromLinear = cmsCreateTransform(dstProfileLin, TYPE_RGBA_FLT, dstProfile, TYPE_RGBA_8, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA);
-    //     uint8_t srcPixel[4] = { 224, 145, 72, 255 };
-    //     float dstPixelLin[4];
-    //     uint8_t dstPixel[4];
-    //     cmsDoTransform(toLinear, srcPixel, dstPixelLin, 1);
-    //     cmsDoTransform(fromLinear, dstPixelLin, dstPixel, 1);
-    //     cmsCloseProfile(srcProfile);
-    //     cmsCloseProfile(dstProfile);
-    //     cmsCloseProfile(toLinear);
-    // }
-    return 0;
+    switch (args->action) {
+        case ACTION_IDENTIFY:
+            return actionIdentify(args);
+            break;
+        default:
+            fprintf(stderr, "ERROR: Unimplemented action: %s\n", actionToString(args->action));
+            break;
+    }
+    return 1;
 }
+
+// {
+//     clImage * image = clImageCreate(2, 2, 8, NULL);
+//     clImageSetPixel(image, 0, 0, 255, 128, 238, 0);
+//     clImageDebugDump(image);
+//     clImageChangeDepth(image, 16);
+//     clImageDebugDump(image);
+//     clImageChangeDepth(image, 8);
+//     clImageDebugDump(image);
+//     clImageDestroy(image);
+// }
+// {
+//     clImage * image;
+//     clProfile * profile;
+//     profile = clProfileParse((const uint8_t *)"foo", 3);
+//     clProfileDestroy(profile);
+// }
+// {
+//     cmsHPROFILE srcProfile = cmsOpenProfileFromFile("f:\\work\\hdr10.icc", "r");
+//     cmsHPROFILE dstProfile = cmsOpenProfileFromFile("f:\\work\\srgb.icc", "r");
+//     cmsHPROFILE dstProfileLin = createDstLinearProfile(dstProfile);
+//     cmsHTRANSFORM toLinear = cmsCreateTransform(srcProfile, TYPE_RGBA_8, dstProfileLin, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA);
+//     cmsHTRANSFORM fromLinear = cmsCreateTransform(dstProfileLin, TYPE_RGBA_FLT, dstProfile, TYPE_RGBA_8, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA);
+//     uint8_t srcPixel[4] = { 224, 145, 72, 255 };
+//     float dstPixelLin[4];
+//     uint8_t dstPixel[4];
+//     cmsDoTransform(toLinear, srcPixel, dstPixelLin, 1);
+//     cmsDoTransform(fromLinear, dstPixelLin, dstPixel, 1);
+//     cmsCloseProfile(srcProfile);
+//     cmsCloseProfile(dstProfile);
+//     cmsCloseProfile(toLinear);
+// }
+
+// cmsHPROFILE createDstLinearProfile(cmsHPROFILE srcProfile)
+// {
+//     cmsHPROFILE outProfile;
+//     cmsCIEXYZ * dstRXYZ = (cmsCIEXYZ *)cmsReadTag(srcProfile, cmsSigRedColorantTag);
+//     cmsCIEXYZ * dstGXYZ = (cmsCIEXYZ *)cmsReadTag(srcProfile, cmsSigGreenColorantTag);
+//     cmsCIEXYZ * dstBXYZ = (cmsCIEXYZ *)cmsReadTag(srcProfile, cmsSigBlueColorantTag);
+//     cmsCIEXYZ * dstWXYZ = (cmsCIEXYZ *)cmsReadTag(srcProfile, cmsSigMediaWhitePointTag);
+//     cmsToneCurve * gamma1 = cmsBuildGamma(NULL, 1.0);
+//     cmsToneCurve * curves[3];
+//     cmsCIExyYTRIPLE dstPrimaries;
+//     cmsCIExyY dstWhitePoint;
+//     cmsXYZ2xyY(&dstPrimaries.Red, dstRXYZ);
+//     cmsXYZ2xyY(&dstPrimaries.Green, dstGXYZ);
+//     cmsXYZ2xyY(&dstPrimaries.Blue, dstBXYZ);
+//     cmsXYZ2xyY(&dstWhitePoint, dstWXYZ);
+//     curves[0] = gamma1;
+//     curves[1] = gamma1;
+//     curves[2] = gamma1;
+//     outProfile = cmsCreateRGBProfile(&dstWhitePoint, &dstPrimaries, curves);
+//     cmsFreeToneCurve(gamma1);
+//     return outProfile;
+// }

@@ -6,7 +6,9 @@
 # ---------------------------------------------------------------------------
 
 set(COLORIST_BIN_SRCS
+    identify.c
     main.c
+    main.h
 )
 
 add_executable(colorist-bin
