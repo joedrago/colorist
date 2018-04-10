@@ -21,6 +21,10 @@ static void setDefaults(Args * args)
     args->help = clFalse;
     args->luminance = 0;
     memset(args->primaries, 0, sizeof(float) * 8);
+    args->rect[0] = 0;
+    args->rect[1] = 0;
+    args->rect[2] = 3;
+    args->rect[3] = 3;
     args->verbose = clFalse;
     args->inputFilename = NULL;
     args->outputFilename = NULL;
@@ -107,11 +111,31 @@ static clBool parsePrimaries(float primaries[8], const char * arg)
             fprintf(stderr, "ERROR: Too many primaries: (expecting: rx,ry,gx,gy,bx,by,wx,wy)\n");
             return clFalse;
         }
-        primaries[priIndex] = strtod(token, NULL);
+        primaries[priIndex] = (float)strtod(token, NULL);
         ++priIndex;
     }
     if (priIndex < 8) {
         fprintf(stderr, "ERROR: Too few primaries: (expecting: rx,ry,gx,gy,bx,by,wx,wy)\n");
+        return clFalse;
+    }
+    return clTrue;
+}
+
+static clBool parseRect(int rect[4], const char * arg)
+{
+    char * buffer = strdup(arg);
+    char * token;
+    int index = 0;
+    for (token = strtok(buffer, ","); token != NULL; token = strtok(NULL, ",")) {
+        if (index >= 8) {
+            fprintf(stderr, "ERROR: Too many values for rect: (expecting: x,y,w,h)\n");
+            return clFalse;
+        }
+        rect[index] = atoi(token);
+        ++index;
+    }
+    if (index < 4) {
+        fprintf(stderr, "ERROR: Too few values for rect: (expecting: x,y,w,h)\n");
         return clFalse;
     }
     return clTrue;
@@ -147,7 +171,7 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
                     break;
                 case 'g':
                     NEXTARG();
-                    args->gamma = strtod(arg, NULL);
+                    args->gamma = (float)strtod(arg, NULL);
                     break;
                 case 'h':
                     args->help = clTrue;
@@ -159,6 +183,11 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
                 case 'p':
                     NEXTARG();
                     if (!parsePrimaries(args->primaries, arg))
+                        return clFalse;
+                    break;
+                case 'r':
+                    NEXTARG();
+                    if (!parseRect(args->rect, arg))
                         return clFalse;
                     break;
                 case 'v':
@@ -267,6 +296,7 @@ static void dumpArgs(Args * args)
             args->primaries[6], args->primaries[7]);
     else
         printf(" * primaries  : auto\n");
+    printf(" * rect       : (%d,%d) %dx%d\n", args->rect[0], args->rect[1], args->rect[2], args->rect[3]);
     printf(" * verbose    : %s\n", args->verbose ? "enabled" : "disabled");
     printf(" * input      : %s\n", args->inputFilename ? args->inputFilename : "--");
     printf(" * output     : %s\n", args->outputFilename ? args->outputFilename : "--");
@@ -312,6 +342,9 @@ int main(int argc, char * argv[])
     switch (args->action) {
         case ACTION_IDENTIFY:
             return actionIdentify(args);
+            break;
+        case ACTION_CONVERT:
+            return actionConvert(args);
             break;
         default:
             fprintf(stderr, "ERROR: Unimplemented action: %s\n", actionToString(args->action));

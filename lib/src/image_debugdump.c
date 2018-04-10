@@ -15,16 +15,18 @@
 
 static void dumpPixel(clImage * image, int x, int y);
 
-void clImageDebugDump(clImage * image)
+void clImageDebugDump(clImage * image, int x, int y, int w, int h)
 {
     int i, j;
-    int dumpW = (image->width < COLORIST_DUMP_DIM) ? image->width : COLORIST_DUMP_DIM;
-    int dumpH = (image->height < COLORIST_DUMP_DIM) ? image->height : COLORIST_DUMP_DIM;
+    int dumpEndW = x + w;
+    int dumpEndH = y + h;
+    dumpEndW = (dumpEndW < image->width) ? dumpEndW : image->width;
+    dumpEndH = (dumpEndH < image->height) ? dumpEndH : image->height;
 
     printf("Image[%p] %dx%d %d-bit\n", image, image->width, image->height, image->depth);
     clProfileDebugDump(image->profile);
-    for (j = 0; j < dumpH; ++j) {
-        for (i = 0; i < dumpW; ++i) {
+    for (j = y; j < dumpEndH; ++j) {
+        for (i = x; i < dumpEndW; ++i) {
             dumpPixel(image, i, j);
         }
         printf("\n");

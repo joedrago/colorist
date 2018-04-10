@@ -5,6 +5,18 @@
 //                  http://www.boost.org/LICENSE_1_0.txt)
 // ---------------------------------------------------------------------------
 
-#include "colorist/profile.h"
+#include "main.h"
 
 #include <string.h>
+
+int actionConvert(Args * args)
+{
+    clImage * image = NULL;
+    printf("Colorist [convert]: %s -> %s\n", args->inputFilename, args->outputFilename);
+    image = readImage(args->inputFilename, NULL);
+    if (image != NULL) {
+        writeImage(image, args->outputFilename, FORMAT_AUTO);
+        clImageDestroy(image);
+    }
+    return 0;
+}

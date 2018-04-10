@@ -11,7 +11,7 @@
 
 #include "png.h"
 
-clImage * clImageLoadPNG(const char * filename)
+clImage * clImageReadPNG(const char * filename)
 {
     clImage * image;
     clProfile * profile = NULL;
@@ -30,7 +30,7 @@ clImage * clImageLoadPNG(const char * filename)
     png_byte rawBitDepth;
 
     int imgBitDepth = 8;
-    int imgBytesPerPixel = 1;
+    int imgBytesPerChannel = 1;
 
     png_bytep * rowPointers;
     int y;
@@ -91,7 +91,7 @@ clImage * clImageLoadPNG(const char * filename)
 
     if (rawBitDepth == 16) {
         imgBitDepth = 16;
-        imgBytesPerPixel = 2;
+        imgBytesPerChannel = 2;
     }
 
     png_read_update_info(png, info);
@@ -102,7 +102,7 @@ clImage * clImageLoadPNG(const char * filename)
         clProfileDestroy(profile);
     }
     rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rawHeight);
-    if (imgBytesPerPixel == 1) {
+    if (imgBytesPerChannel == 1) {
         uint8_t * pixels = (uint8_t *)image->pixels;
         for (y = 0; y < rawHeight; ++y) {
             rowPointers[y] = &pixels[4 * y * rawWidth];
@@ -114,7 +114,67 @@ clImage * clImageLoadPNG(const char * filename)
         }
     }
     png_read_image(png, rowPointers);
+    png_destroy_read_struct(&png, &info, NULL);
     free(rowPointers);
     fclose(fp);
     return image;
+}
+
+clBool clImageWritePNG(clImage * image, const char * filename)
+{
+    int y;
+    png_bytep * rowPointers;
+    int imgBytesPerChannel = (image->depth == 16) ? 2 : 1;
+    clRaw rawProfile;
+    png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    png_infop info = png_create_info_struct(png);
+
+    FILE * fp = fopen(filename, "wb");
+    if (!fp) {
+        return clFalse;
+    }
+
+    memset(&rawProfile, 0, sizeof(rawProfile));
+    if (!clProfilePack(image->profile, &rawProfile)) {
+        fclose(fp);
+        return clFalse;
+    }
+
+    COLORIST_ASSERT(png && info);
+    setjmp(png_jmpbuf(png));
+    png_init_io(png, fp);
+
+    png_set_IHDR(
+        png,
+        info,
+        image->width, image->height,
+        image->depth,
+        PNG_COLOR_TYPE_RGBA,
+        PNG_INTERLACE_NONE,
+        PNG_COMPRESSION_TYPE_DEFAULT,
+        PNG_FILTER_TYPE_DEFAULT
+        );
+    png_set_iCCP(png, info, image->profile->description, 0, rawProfile.ptr, rawProfile.size);
+    png_write_info(png, info);
+
+    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * image->height);
+    if (imgBytesPerChannel == 1) {
+        uint8_t * pixels = (uint8_t *)image->pixels;
+        for (y = 0; y < image->height; ++y) {
+            rowPointers[y] = &pixels[4 * y * image->width];
+        }
+    } else {
+        uint16_t * pixels = (uint16_t *)image->pixels;
+        for (y = 0; y < image->height; ++y) {
+            rowPointers[y] = (png_byte *)&pixels[4 * y * image->width];
+        }
+    }
+
+    png_write_image(png, rowPointers);
+    png_write_end(png, NULL);
+
+    free(rowPointers);
+    fclose(fp);
+    clRawFree(&rawProfile);
+    return clTrue;
 }

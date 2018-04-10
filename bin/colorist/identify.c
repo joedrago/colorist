@@ -12,22 +12,13 @@
 int actionIdentify(Args * args)
 {
     clImage * image = NULL;
+    Format format;
     printf("Colorist [identify]: %s\n", args->inputFilename);
-    Format format = detectFormat(args->inputFilename);
-    if (format == FORMAT_ERROR) {
-        return 1;
-    }
-    printf("Format: %s\n", formatToString(format));
-    switch (format) {
-        case FORMAT_PNG:
-            image = clImageLoadPNG(args->inputFilename);
-            break;
-        default:
-            fprintf(stderr, "ERROR: Unimplemented file loader '%s'\n", formatToString(format));
-            break;
-    }
+    image = readImage(args->inputFilename, &format);
     if (image != NULL) {
-        clImageDebugDump(image);
+        printf("Format: %s\n", formatToString(format));
+        clImageDebugDump(image, args->rect[0], args->rect[1], args->rect[2], args->rect[3]);
+        clImageDestroy(image);
     }
     return 0;
 }
