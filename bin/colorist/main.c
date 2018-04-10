@@ -10,6 +10,19 @@
 #include <stdio.h>
 #include <string.h>
 
+typedef struct StockPrimaries
+{
+    const char * name;
+    float primaries[8];
+} StockPrimaries;
+
+static StockPrimaries stockPrimaries[] = {
+    { "bt709", { 0.64f, 0.33f, 0.30f, 0.60f, 0.15f, 0.06f, 0.3127f, 0.3290f } },
+    { "bt2020", { 0.708f, 0.292f, 0.170f, 0.797f, 0.131f, 0.046f, 0.3127f, 0.3290f } },
+    { "p3", { 0.68f, 0.32f, 0.265f, 0.690f, 0.150f, 0.060f, 0.3127f, 0.3290f } }
+};
+static const unsigned int stockPrimariesCount = sizeof(stockPrimaries) / sizeof(stockPrimaries[0]);
+
 static void setDefaults(Args * args)
 {
     args->action = ACTION_NONE;
@@ -103,18 +116,26 @@ Format detectFormat(const char * filename)
 
 static clBool parsePrimaries(float primaries[8], const char * arg)
 {
-    char * buffer = strdup(arg);
+    char * buffer;
     char * token;
-    int priIndex = 0;
+    unsigned int index;
+    for (index = 0; index < stockPrimariesCount; ++index) {
+        if (!strcmp(arg, stockPrimaries[index].name)) {
+            memcpy(primaries, stockPrimaries[index].primaries, sizeof(float) * 8);
+            return clTrue;
+        }
+    }
+    buffer = strdup(arg);
+    index = 0;
     for (token = strtok(buffer, ","); token != NULL; token = strtok(NULL, ",")) {
-        if (priIndex >= 8) {
+        if (index >= 8) {
             fprintf(stderr, "ERROR: Too many primaries: (expecting: rx,ry,gx,gy,bx,by,wx,wy)\n");
             return clFalse;
         }
-        primaries[priIndex] = (float)strtod(token, NULL);
-        ++priIndex;
+        primaries[index] = (float)strtod(token, NULL);
+        ++index;
     }
-    if (priIndex < 8) {
+    if (index < 8) {
         fprintf(stderr, "ERROR: Too few primaries: (expecting: rx,ry,gx,gy,bx,by,wx,wy)\n");
         return clFalse;
     }
@@ -258,11 +279,11 @@ static clBool validateArgs(Args * args)
 {
     clBool valid = clTrue;
     if ((args->bpp != 0) && (args->bpp != 8) && (args->bpp != 16)) {
-        printf("ERROR: Unknown bpp: %d\n", args->bpp);
+        fprintf(stderr, "ERROR: Unknown bpp: %d\n", args->bpp);
         valid = clFalse;
     }
     if ((args->gamma < 0.0f)) {
-        printf("ERROR: gamma too small: %g\n", args->gamma);
+        fprintf(stderr, "ERROR: gamma too small: %g\n", args->gamma);
         valid = clFalse;
     }
     return valid;

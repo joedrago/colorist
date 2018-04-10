@@ -8,8 +8,9 @@
 #include "colorist/image.h"
 
 #include "colorist/profile.h"
-
 #include "png.h"
+
+#include <string.h>
 
 clImage * clImageReadPNG(const char * filename)
 {
@@ -90,6 +91,7 @@ clImage * clImageReadPNG(const char * filename)
     }
 
     if (rawBitDepth == 16) {
+        png_set_swap(png);
         imgBitDepth = 16;
         imgBytesPerChannel = 2;
     }
@@ -168,6 +170,7 @@ clBool clImageWritePNG(clImage * image, const char * filename)
         for (y = 0; y < image->height; ++y) {
             rowPointers[y] = (png_byte *)&pixels[4 * y * image->width];
         }
+        png_set_swap(png);
     }
 
     png_write_image(png, rowPointers);

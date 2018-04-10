@@ -43,3 +43,25 @@ void clRawFree(clRaw * raw)
     raw->ptr = NULL;
     raw->size = 0;
 }
+
+static double now();
+
+void timerStart(Timer * timer)
+{
+    timer->start = now();
+}
+
+double timerElapsedSeconds(Timer * timer)
+{
+    return now() - timer->start;
+}
+
+#ifdef WIN32
+#include <windows.h>
+static double now()
+{
+    return (double)GetTickCount() / 1000.0;
+}
+#else
+#error "implement for POSIX"
+#endif

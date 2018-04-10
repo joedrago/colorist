@@ -11,6 +11,9 @@
 #define COLORIST_VERSION_STRING "0.0.1"
 #define COLORIST_VERSION 0x00000001
 
+// Output luminance colorist uses for basic profiles (sRGB, P3, etc)
+#define COLORIST_DEFAULT_LUMINANCE 300
+
 #include "colorist/image.h"
 #include "colorist/profile.h"
 

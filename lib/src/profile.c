@@ -83,6 +83,7 @@ clProfile * clProfileCreate(clProfilePrimaries * primaries, clProfileCurve * cur
     cmsToneCurve * curves[3];
     cmsCIExyYTRIPLE dstPrimaries;
     cmsCIExyY dstWhitePoint;
+    cmsCIEXYZ lumi;
 
     dstPrimaries.Red.x = primaries->red[0];
     dstPrimaries.Red.y = primaries->red[1];
@@ -106,6 +107,12 @@ clProfile * clProfileCreate(clProfilePrimaries * primaries, clProfileCurve * cur
         free(profile);
         return NULL;
     }
+
+    lumi.X = 0.0f;
+    lumi.Y = (cmsFloat64Number)maxLuminance;
+    lumi.Z = 0.0f;
+    cmsWriteTag(profile->handle, cmsSigLuminanceTag, &lumi);
+
     profile->description = description ? strdup(description) : NULL;
     return profile;
 }
@@ -159,47 +166,47 @@ void clProfileDestroy(clProfile * profile)
 
 clBool clProfileQuery(clProfile * profile, clProfilePrimaries * primaries, clProfileCurve * curve, int * luminance)
 {
-    cmsMAT3 * chad;
-    cmsMAT3 invChad;
-    cmsMAT3 tmpColorants;
-    cmsMAT3 colorants;
-    cmsCIEXYZ src;
-    cmsCIExyY dst;
-    cmsCIEXYZ adaptedWhiteXYZ;
-    cmsCIEXYZ * redXYZ   = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigRedColorantTag);
-    cmsCIEXYZ * greenXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigGreenColorantTag);
-    cmsCIEXYZ * blueXYZ  = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigBlueColorantTag);
-    cmsCIEXYZ * whiteXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigMediaWhitePointTag);
-    if ((redXYZ == NULL) || (greenXYZ == NULL) || (blueXYZ == NULL) || (whiteXYZ == NULL))
-        return clFalse;
-
-    _cmsVEC3init(&tmpColorants.v[0], redXYZ->X, greenXYZ->X, blueXYZ->X);
-    _cmsVEC3init(&tmpColorants.v[1], redXYZ->Y, greenXYZ->Y, blueXYZ->Y);
-    _cmsVEC3init(&tmpColorants.v[2], redXYZ->Z, greenXYZ->Z, blueXYZ->Z);
-
-    chad = (cmsMAT3 *)cmsReadTag(profile->handle, cmsSigChromaticAdaptationTag);
-    if ((chad != NULL) && _cmsMAT3inverse(chad, &invChad)) {
-        cmsFloat64Number K;
-        cmsCIExyY whiteXYY;
-        cmsXYZ2xyY(&whiteXYY, whiteXYZ);
-        if (cmsTempFromWhitePoint(&K, &whiteXYY) && (fabsf((float)K - 5000.0f) < 1.0f)) {
-            // It's D50 in a profile with a chad tag, adapt it
-            cmsVEC3 srcWP, dstWP;
-            srcWP.n[VX] = whiteXYZ->X;
-            srcWP.n[VY] = whiteXYZ->Y;
-            srcWP.n[VZ] = whiteXYZ->Z;
-            _cmsMAT3eval(&dstWP, &invChad, &srcWP);
-            adaptedWhiteXYZ.X = dstWP.n[VX];
-            adaptedWhiteXYZ.Y = dstWP.n[VY];
-            adaptedWhiteXYZ.Z = dstWP.n[VZ];
-        }
-        _cmsMAT3per(&colorants, &invChad, &tmpColorants);
-    } else {
-        colorants = tmpColorants;
-        adaptedWhiteXYZ = *whiteXYZ;
-    }
-
     if (primaries) {
+        cmsMAT3 * chad;
+        cmsMAT3 invChad;
+        cmsMAT3 tmpColorants;
+        cmsMAT3 colorants;
+        cmsCIEXYZ src;
+        cmsCIExyY dst;
+        cmsCIEXYZ adaptedWhiteXYZ;
+        cmsCIEXYZ * redXYZ   = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigRedColorantTag);
+        cmsCIEXYZ * greenXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigGreenColorantTag);
+        cmsCIEXYZ * blueXYZ  = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigBlueColorantTag);
+        cmsCIEXYZ * whiteXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigMediaWhitePointTag);
+        if ((redXYZ == NULL) || (greenXYZ == NULL) || (blueXYZ == NULL) || (whiteXYZ == NULL))
+            return clFalse;
+
+        _cmsVEC3init(&tmpColorants.v[0], redXYZ->X, greenXYZ->X, blueXYZ->X);
+        _cmsVEC3init(&tmpColorants.v[1], redXYZ->Y, greenXYZ->Y, blueXYZ->Y);
+        _cmsVEC3init(&tmpColorants.v[2], redXYZ->Z, greenXYZ->Z, blueXYZ->Z);
+
+        chad = (cmsMAT3 *)cmsReadTag(profile->handle, cmsSigChromaticAdaptationTag);
+        if ((chad != NULL) && _cmsMAT3inverse(chad, &invChad)) {
+            cmsFloat64Number K;
+            cmsCIExyY whiteXYY;
+            cmsXYZ2xyY(&whiteXYY, whiteXYZ);
+            if (cmsTempFromWhitePoint(&K, &whiteXYY) && (fabsf((float)K - 5000.0f) < 1.0f)) {
+                // It's D50 in a profile with a chad tag, adapt it
+                cmsVEC3 srcWP, dstWP;
+                srcWP.n[VX] = whiteXYZ->X;
+                srcWP.n[VY] = whiteXYZ->Y;
+                srcWP.n[VZ] = whiteXYZ->Z;
+                _cmsMAT3eval(&dstWP, &invChad, &srcWP);
+                adaptedWhiteXYZ.X = dstWP.n[VX];
+                adaptedWhiteXYZ.Y = dstWP.n[VY];
+                adaptedWhiteXYZ.Z = dstWP.n[VZ];
+            }
+            _cmsMAT3per(&colorants, &invChad, &tmpColorants);
+        } else {
+            colorants = tmpColorants;
+            adaptedWhiteXYZ = *whiteXYZ;
+        }
+
         src.X = colorants.v[0].n[VX];
         src.Y = colorants.v[1].n[VX];
         src.Z = colorants.v[2].n[VX];
