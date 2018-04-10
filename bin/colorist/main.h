@@ -57,7 +57,10 @@ typedef struct Args
 clImage * readImage(const char * filename, Format * outFormat);
 clBool writeImage(clImage * image, const char * filename, Format format, int quality, int rate);
 
+char * generateDescription(clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance);
+
 int actionConvert(Args * args);
+int actionGenerate(Args * args);
 int actionIdentify(Args * args);
 
 #endif // ifndef MAIN_H

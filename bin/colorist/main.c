@@ -374,11 +374,14 @@ int main(int argc, char * argv[])
         dumpArgs(args);
 
     switch (args->action) {
-        case ACTION_IDENTIFY:
-            return actionIdentify(args);
-            break;
         case ACTION_CONVERT:
             return actionConvert(args);
+            break;
+        case ACTION_GENERATE:
+            return actionGenerate(args);
+            break;
+        case ACTION_IDENTIFY:
+            return actionIdentify(args);
             break;
         default:
             fprintf(stderr, "ERROR: Unimplemented action: %s\n", actionToString(args->action));

@@ -104,37 +104,12 @@ int actionConvert(Args * args)
     if (outputFileFormat == FORMAT_ICC) {
         // Just dump out the profile to disk and bail out
 
-        clRaw rawProfile;
-        FILE * f;
-        int itemsWritten;
-
         printf("Writing ICC: %s\n", args->outputFilename);
         clProfileDebugDump(dstProfile);
-        f = fopen(args->outputFilename, "wb");
-        if (!f) {
-            fprintf(stderr, "ERROR: Can't open file for write: %s\n", args->outputFilename);
-            clImageDestroy(srcImage);
-            clProfileDestroy(dstProfile);
+
+        if (!clProfileWrite(dstProfile, args->outputFilename)) {
             return 1;
         }
-        memset(&rawProfile, 0, sizeof(rawProfile));
-        if (!clProfilePack(dstProfile, &rawProfile)) {
-            fprintf(stderr, "ERROR: Can't pack ICC profile\n");
-            fclose(f);
-            clImageDestroy(srcImage);
-            clProfileDestroy(dstProfile);
-            return clFalse;
-        }
-        itemsWritten = fwrite(rawProfile.ptr, rawProfile.size, 1, f);
-        if (itemsWritten != 1) {
-            fprintf(stderr, "ERROR: Failed to write ICC profile\n");
-            fclose(f);
-            clImageDestroy(srcImage);
-            clProfileDestroy(dstProfile);
-            return clFalse;
-        }
-        fclose(f);
-        clRawFree(&rawProfile);
         clImageDestroy(srcImage);
         clProfileDestroy(dstProfile);
         printf("\nConversion complete (%g sec).\n", timerElapsedSeconds(&overall));

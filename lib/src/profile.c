@@ -160,6 +160,34 @@ clBool clProfilePack(clProfile * profile, clRaw * out)
     return clTrue;
 }
 
+clBool clProfileWrite(clProfile * profile, const char * filename)
+{
+    clRaw rawProfile;
+    FILE * f;
+    int itemsWritten;
+
+    f = fopen(filename, "wb");
+    if (!f) {
+        fprintf(stderr, "ERROR: Can't open file for write: %s\n", filename);
+        return 1;
+    }
+    memset(&rawProfile, 0, sizeof(rawProfile));
+    if (!clProfilePack(profile, &rawProfile)) {
+        fprintf(stderr, "ERROR: Can't pack ICC profile\n");
+        fclose(f);
+        return clFalse;
+    }
+    itemsWritten = fwrite(rawProfile.ptr, rawProfile.size, 1, f);
+    if (itemsWritten != 1) {
+        fprintf(stderr, "ERROR: Failed to write ICC profile\n");
+        fclose(f);
+        return clFalse;
+    }
+    fclose(f);
+    clRawFree(&rawProfile);
+    return clTrue;
+}
+
 void clProfileDestroy(clProfile * profile)
 {
     free(profile->description);

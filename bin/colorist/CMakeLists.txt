@@ -7,6 +7,7 @@
 
 set(COLORIST_BIN_SRCS
     convert.c
+    generate.c
     identify.c
     main.c
     main.h
