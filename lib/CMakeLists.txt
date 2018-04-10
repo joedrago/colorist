@@ -19,7 +19,6 @@ set(COLORIST_LIB_SRCS
     src/image_png.c
     src/profile.c
     src/profile_debugdump.c
-    src/profile_icc.c
     src/types.c
 )
 

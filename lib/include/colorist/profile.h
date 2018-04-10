@@ -10,6 +10,8 @@
 
 #include "colorist/types.h"
 
+#include "lcms2.h"
+
 typedef struct clProfilePrimaries
 {
     float red[2];
@@ -20,8 +22,9 @@ typedef struct clProfilePrimaries
 
 typedef enum clProfileCurveType
 {
-    CL_PCT_NONE = 0,
-    CL_PCT_GAMMA
+    CL_PCT_UNKNOWN = 0,
+    CL_PCT_GAMMA,
+    CL_PCT_COMPLEX
 } clProfileCurveType;
 
 typedef struct clProfileCurve
@@ -32,11 +35,8 @@ typedef struct clProfileCurve
 
 typedef struct clProfile
 {
-    clProfilePrimaries primaries;
-    clProfileCurve curve;
-    int maxLuminance;
     char * description;
-    clRaw icc;
+    cmsHPROFILE handle;
 } clProfile;
 
 typedef enum clProfileStock
@@ -49,7 +49,8 @@ typedef enum clProfileStock
 clProfile * clProfileCreateStock(clProfileStock stock);
 clProfile * clProfileClone(clProfile * profile);
 clProfile * clProfileCreate(clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance, const char * description);
-clProfile * clProfileParse(const uint8_t * icc, int iccLen);
+clProfile * clProfileParse(const uint8_t * icc, int iccLen, const char * description);
+clBool clProfileQuery(clProfile * profile, clProfilePrimaries * primaries, clProfileCurve * curve, int * maxLuminance);
 void clProfileDebugDump(clProfile * profile);
 void clProfileDestroy(clProfile * profile);
 

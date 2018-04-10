@@ -56,7 +56,7 @@ clImage * clImageLoadPNG(const char * filename)
     png_read_info(png, info);
 
     if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
-        profile = clProfileParse(iccpData, iccpDataLen);
+        profile = clProfileParse(iccpData, iccpDataLen, iccpProfileName);
     }
 
     rawWidth = png_get_image_width(png, info);
