@@ -32,4 +32,7 @@ void clImageDestroy(clImage * image);
 clImage * clImageReadPNG(const char * filename);
 clBool clImageWritePNG(clImage * image, const char * filename);
 
+clImage * clImageReadJP2(const char * filename);
+clBool clImageWriteJP2(clImage * image, const char * filename, int quality, int rate);
+
 #endif

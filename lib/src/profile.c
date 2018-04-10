@@ -253,3 +253,9 @@ clBool clProfileQuery(clProfile * profile, clProfilePrimaries * primaries, clPro
     }
     return clTrue;
 }
+
+char * clProfileGetMLU(clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3])
+{
+    // TODO: implement
+    return strdup("lele description");
+}

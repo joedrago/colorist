@@ -19,6 +19,9 @@ clBool writeImage(clImage * image, const char * filename, Format format)
         }
     }
     switch (format) {
+        case FORMAT_JP2:
+            return clImageWriteJP2(image, filename, 60, 60);
+            break;
         case FORMAT_PNG:
             return clImageWritePNG(image, filename);
             break;

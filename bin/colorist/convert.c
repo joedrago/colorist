@@ -140,7 +140,6 @@ int actionConvert(Args * args)
 
             pixelCount = dstImage->width * dstImage->height;
             floatPixels = malloc(4 * sizeof(float) * pixelCount);
-
             toLinear = cmsCreateTransform(srcImage->profile->handle, srcFormat, dstLinear->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA);
             fromLinear = cmsCreateTransform(dstLinear->handle, TYPE_RGBA_FLT, dstImage->profile->handle, dstFormat, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA);
 

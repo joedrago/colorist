@@ -19,6 +19,9 @@ clImage * readImage(const char * filename, Format * outFormat)
         return NULL;
     }
     switch (format) {
+        case FORMAT_JP2:
+            image = clImageReadJP2(filename);
+            break;
         case FORMAT_PNG:
             image = clImageReadPNG(filename);
             break;
