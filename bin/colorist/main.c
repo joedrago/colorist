@@ -109,13 +109,6 @@ Format detectFormat(const char * filename)
     return FORMAT_ERROR;
 }
 
-#define NEXTARG()                                                      \
-    if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) {  \
-        fprintf(stderr, "ERROR: -%c requires an argument.\n", arg[1]); \
-        return clFalse;                                                \
-    }                                                                  \
-    arg = argv[++argIndex]
-
 static clBool parsePrimaries(float primaries[8], const char * arg)
 {
     char * buffer;
@@ -163,6 +156,13 @@ static clBool parseRect(int rect[4], const char * arg)
     }
     return clTrue;
 }
+
+#define NEXTARG()                                                      \
+    if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) {  \
+        fprintf(stderr, "ERROR: -%c requires an argument.\n", arg[1]); \
+        return clFalse;                                                \
+    }                                                                  \
+    arg = argv[++argIndex]
 
 static clBool parseArgs(Args * args, int argc, char * argv[])
 {
