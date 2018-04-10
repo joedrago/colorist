@@ -24,6 +24,8 @@ set(COLORIST_LIB_SRCS
 
 include_directories(include)
 
+add_definitions(-DOPJ_STATIC)
+
 add_library(colorist
      ${COLORIST_LIB_INCLUDES}
      ${COLORIST_LIB_SRCS}

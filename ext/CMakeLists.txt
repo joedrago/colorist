@@ -29,6 +29,7 @@ set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libz"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libpng"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/src/lib/openjp2"
+    "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/include"
     "${OPENJPEG_BINARY_DIR}/src/lib/openjp2"
 )
 set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} PARENT_SCOPE)
