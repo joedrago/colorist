@@ -81,8 +81,7 @@ int actionConvert(Args * args)
             if (args->description) {
                 description = strdup(args->description);
             } else {
-                // TODO: Come up with a good description
-                description = strdup(srcImage->profile->description);
+                description = generateDescription(&primaries, &curve, luminance);
             }
 
             printf("Creating new destination ICC profile: \"%s\"\n", description);
