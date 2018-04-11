@@ -63,5 +63,11 @@ static double now()
     return (double)GetTickCount() / 1000.0;
 }
 #else
-#error "implement for POSIX"
+#include <sys/time.h>
+static double now()
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (double)tv.tv_sec + ((double)tv.tv_usec / 1000000.0f);
+}
 #endif
