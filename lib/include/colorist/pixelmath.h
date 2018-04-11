@@ -11,7 +11,7 @@
 #include "colorist/types.h"
 
 // Yes, clamp macros are nasty. Do not use them.
-#define CL_PIXEL_CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+#define CL_CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
 void clPixelMathScaleLuminance(float * pixels, int pixelCount, float luminanceScale, clBool tonemap);
 clBool clPixelMathColorGrade(float * pixels, int pixelCount, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma);
