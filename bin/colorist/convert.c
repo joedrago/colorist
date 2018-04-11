@@ -121,6 +121,10 @@ int actionConvert(Args * args)
         if (depth == 0) {
             depth = srcImage->depth;
         }
+        if ((depth != 8) && (outputFileFormat == FORMAT_JPG)) {
+            printf("Forcing output to 8-bit (JPEG limitations)\n");
+            depth = 8;
+        }
         dstImage = clImageCreate(srcImage->width, srcImage->height, depth, dstProfile);
     }
 
