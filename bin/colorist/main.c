@@ -72,10 +72,10 @@ static const char * actionToString(Action action)
 Format stringToFormat(const char * str)
 {
     if (!strcmp(str, "auto")) return FORMAT_AUTO;
-    if (!strcmp(str, "png"))  return FORMAT_PNG;
-    if (!strcmp(str, "jpg"))  return FORMAT_JPG;
-    if (!strcmp(str, "jp2"))  return FORMAT_JP2;
     if (!strcmp(str, "icc"))  return FORMAT_ICC;
+    if (!strcmp(str, "jp2"))  return FORMAT_JP2;
+    if (!strcmp(str, "jpg"))  return FORMAT_JPG;
+    if (!strcmp(str, "png"))  return FORMAT_PNG;
     return FORMAT_ERROR;
 }
 
@@ -83,10 +83,10 @@ const char * formatToString(Format format)
 {
     switch (format) {
         case FORMAT_AUTO: return "Auto";
-        case FORMAT_PNG:  return "PNG";
-        case FORMAT_JPG:  return "JPG";
-        case FORMAT_JP2:  return "JP2";
         case FORMAT_ICC:  return "ICC";
+        case FORMAT_JP2:  return "JP2";
+        case FORMAT_JPG:  return "JPG";
+        case FORMAT_PNG:  return "PNG";
         case FORMAT_ERROR:
         default:
             break;
@@ -101,10 +101,10 @@ Format detectFormat(const char * filename)
         fprintf(stderr, "ERROR: Unable to guess format\n");
         return FORMAT_ERROR;
     }
-    if (!strcmp(dot + 1, "png")) return FORMAT_PNG;
-    if (!strcmp(dot + 1, "jpg")) return FORMAT_JPG;
-    if (!strcmp(dot + 1, "jp2")) return FORMAT_JP2;
     if (!strcmp(dot + 1, "icc")) return FORMAT_ICC;
+    if (!strcmp(dot + 1, "jp2")) return FORMAT_JP2;
+    if (!strcmp(dot + 1, "jpg")) return FORMAT_JPG;
+    if (!strcmp(dot + 1, "png")) return FORMAT_PNG;
     fprintf(stderr, "ERROR: Unknown file extension '%s'\n", dot + 1);
     return FORMAT_ERROR;
 }
@@ -342,7 +342,7 @@ static void printSyntax()
     printf("    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)\n");
     printf("    -c COPYRIGHT   : ICC profile copyright string.\n");
     printf("    -d DESCRIPTION : ICC profile description.\n");
-    printf("    -f FORMAT      : Output format. auto (default), jpg, png, jp2\n");
+    printf("    -f FORMAT      : Output format. auto (default), icc, jp2, jpg, png\n");
     printf("    -g GAMMA       : Output gamma. 0 for auto (default)\n");
     printf("    -h             : Display this help\n");
     printf("    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default)\n");

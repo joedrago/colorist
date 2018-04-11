@@ -82,15 +82,6 @@ clImage * clImageReadJP2(const char * filename)
 
     if (opjImage->icc_profile_buf && (opjImage->icc_profile_len > 0)) {
         profile = clProfileParse(opjImage->icc_profile_buf, opjImage->icc_profile_len, NULL);
-        if (profile) {
-            char * description = clProfileGetMLU(profile, "desc", "en", "US");
-            COLORIST_ASSERT(!profile->description);
-            if (description) {
-                profile->description = description; // take ownership
-            } else {
-                profile->description = strdup("Unknown");
-            }
-        }
     }
 
     image = clImageCreate(opjImage->x1, opjImage->y1, opjImage->comps[0].prec, profile);

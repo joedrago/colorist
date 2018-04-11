@@ -13,9 +13,9 @@
 typedef enum Action
 {
     ACTION_NONE = 0,
-    ACTION_IDENTIFY,
-    ACTION_GENERATE,
     ACTION_CONVERT,
+    ACTION_GENERATE,
+    ACTION_IDENTIFY,
 
     ACTION_ERROR
 } Action;
@@ -23,10 +23,10 @@ typedef enum Action
 typedef enum Format
 {
     FORMAT_AUTO = 0,
-    FORMAT_PNG,
-    FORMAT_JPG,
-    FORMAT_JP2,
     FORMAT_ICC,
+    FORMAT_JP2,
+    FORMAT_JPG,
+    FORMAT_PNG,
 
     FORMAT_ERROR
 } Format;

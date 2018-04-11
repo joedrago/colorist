@@ -73,7 +73,17 @@ clProfile * clProfileParse(const uint8_t * icc, int iccLen, const char * descrip
         free(profile);
         return NULL;
     }
-    profile->description = description ? strdup(description) : NULL;
+    if (description) {
+        profile->description = strdup(description);
+    } else {
+        char * embeddedDescription = clProfileGetMLU(profile, "desc", "en", "US");
+        COLORIST_ASSERT(!profile->description);
+        if (embeddedDescription) {
+            profile->description = embeddedDescription; // take ownership
+        } else {
+            profile->description = strdup("Unknown");
+        }
+    }
     return profile;
 }
 
@@ -158,6 +168,29 @@ clBool clProfilePack(clProfile * profile, clRaw * out)
         return clFalse;
     }
     return clTrue;
+}
+
+clProfile * clProfileRead(const char * filename)
+{
+    clProfile * profile;
+    clRaw rawProfile;
+    int bytes;
+    FILE * f;
+    f = fopen(filename, "rb");
+    if (!f) {
+        fprintf(stderr, "ERROR: Can't open ICC file for read: %s\n", filename);
+        return NULL;
+    }
+    fseek(f, 0, SEEK_END);
+    bytes = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    memset(&rawProfile, 0, sizeof(rawProfile));
+    clRawRealloc(&rawProfile, bytes);
+    fread(rawProfile.ptr, bytes, 1, f);
+    fclose(f);
+    profile = clProfileParse(rawProfile.ptr, rawProfile.size, NULL);
+    clRawFree(&rawProfile);
+    return profile;
 }
 
 clBool clProfileWrite(clProfile * profile, const char * filename)
