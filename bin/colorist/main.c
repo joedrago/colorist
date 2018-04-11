@@ -96,16 +96,17 @@ const char * formatToString(Format format)
 
 Format detectFormat(const char * filename)
 {
-    const char * dot = strrchr(filename, '.');
-    if (dot == NULL) {
+    const char * ext = strrchr(filename, '.');
+    if (ext == NULL) {
         fprintf(stderr, "ERROR: Unable to guess format\n");
         return FORMAT_ERROR;
     }
-    if (!strcmp(dot + 1, "icc")) return FORMAT_ICC;
-    if (!strcmp(dot + 1, "jp2")) return FORMAT_JP2;
-    if (!strcmp(dot + 1, "jpg")) return FORMAT_JPG;
-    if (!strcmp(dot + 1, "png")) return FORMAT_PNG;
-    fprintf(stderr, "ERROR: Unknown file extension '%s'\n", dot + 1);
+    ++ext; // skip past the period
+    if (!strcmp(ext, "icc")) return FORMAT_ICC;
+    if (!strcmp(ext, "jp2")) return FORMAT_JP2;
+    if (!strcmp(ext, "jpg")) return FORMAT_JPG;
+    if (!strcmp(ext, "png")) return FORMAT_PNG;
+    fprintf(stderr, "ERROR: Unknown file extension '%s'\n", ext);
     return FORMAT_ERROR;
 }
 
@@ -256,6 +257,7 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
                 return clFalse;
             }
             break;
+
         case ACTION_GENERATE:
             args->outputFilename = filenames[0];
             if (!args->outputFilename) {
@@ -267,6 +269,7 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
                 return clFalse;
             }
             break;
+
         case ACTION_CONVERT:
             args->inputFilename = filenames[0];
             if (!args->inputFilename) {
@@ -279,6 +282,7 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
                 return clFalse;
             }
             break;
+
         default:
             break;
     }
