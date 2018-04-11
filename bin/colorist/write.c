@@ -22,6 +22,9 @@ clBool writeImage(clImage * image, const char * filename, Format format, int qua
         case FORMAT_JP2:
             return clImageWriteJP2(image, filename, quality, rate);
             break;
+        case FORMAT_JPG:
+            return clImageWriteJPG(image, filename, quality);
+            break;
         case FORMAT_PNG:
             return clImageWritePNG(image, filename);
             break;

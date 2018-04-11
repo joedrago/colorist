@@ -22,6 +22,9 @@ clImage * readImage(const char * filename, Format * outFormat)
         case FORMAT_JP2:
             image = clImageReadJP2(filename);
             break;
+        case FORMAT_JPG:
+            image = clImageReadJPG(filename);
+            break;
         case FORMAT_PNG:
             image = clImageReadPNG(filename);
             break;
