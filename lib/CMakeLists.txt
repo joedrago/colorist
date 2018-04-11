@@ -8,6 +8,7 @@
 set(COLORIST_LIB_INCLUDES
     include/colorist/colorist.h
     include/colorist/image.h
+    include/colorist/pixelmath.h
     include/colorist/profile.h
     include/colorist/types.h
 )
@@ -19,6 +20,8 @@ set(COLORIST_LIB_SRCS
     src/image_jp2.c
     src/image_jpg.c
     src/image_png.c
+    src/pixelmath_grade.c
+    src/pixelmath_scale.c
     src/profile.c
     src/profile_debugdump.c
     src/types.c

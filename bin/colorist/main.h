@@ -38,6 +38,7 @@ Format detectFormat(const char * filename);
 typedef struct Args
 {
     Action action;
+    clBool autoGrade;            // -a
     int bpp;                     // -b
     const char * copyright;      // -c
     const char * description;    // -d

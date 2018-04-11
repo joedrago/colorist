@@ -26,6 +26,7 @@ static const unsigned int stockPrimariesCount = sizeof(stockPrimaries) / sizeof(
 static void setDefaults(Args * args)
 {
     args->action = ACTION_NONE;
+    args->autoGrade = clFalse;
     args->bpp = 0;
     args->copyright = NULL;
     args->description = NULL;
@@ -173,6 +174,9 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
         const char * arg = argv[argIndex];
         if ((arg[0] == '-')) {
             switch (arg[1]) {
+                case 'a':
+                    args->autoGrade = clTrue;
+                    break;
                 case 'b':
                     NEXTARG();
                     args->bpp = atoi(arg);
@@ -300,6 +304,10 @@ static clBool validateArgs(Args * args)
         fprintf(stderr, "ERROR: gamma too small: %g\n", args->gamma);
         valid = clFalse;
     }
+    if (args->autoGrade && ((args->gamma > 0.0f) || (args->luminance > 0))) {
+        fprintf(stderr, "WARNING: auto color grading mode (-a) is incompatible with -g and -l, disabling auto color grading\n");
+        args->autoGrade = clFalse;
+    }
     return valid;
 }
 
@@ -343,6 +351,7 @@ static void printSyntax()
     printf("Syntax : colorist identify [input]          [OPTIONS]\n");
     printf("         colorist generate         [output] [OPTIONS]\n");
     printf("Options:\n");
+    printf("    -a             : Enable automatic color grading of max luminance and gamma (disabled by default)\n");
     printf("    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)\n");
     printf("    -c COPYRIGHT   : ICC profile copyright string.\n");
     printf("    -d DESCRIPTION : ICC profile description.\n");

@@ -49,7 +49,6 @@ typedef enum clProfileStock
 clProfile * clProfileCreateStock(clProfileStock stock);
 clProfile * clProfileClone(clProfile * profile);
 clProfile * clProfileCreate(clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance, const char * description);
-clProfile * clProfileCreateLinear(clProfile * origProfile);
 clProfile * clProfileParse(const uint8_t * icc, int iccLen, const char * description);
 clProfile * clProfileRead(const char * filename);
 clBool clProfileWrite(clProfile * profile, const char * filename);
