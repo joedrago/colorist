@@ -124,7 +124,7 @@ int actionConvert(Args * args)
 
         floatPixelsCount = srcImage->width * srcImage->height;
         floatPixels = malloc(4 * sizeof(float) * floatPixelsCount);
-        toLinear = cmsCreateTransform(srcImage->profile->handle, srcFormat, dstLinear->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA);
+        toLinear = cmsCreateTransform(srcImage->profile->handle, srcFormat, dstLinear->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
 
         printf("Converting to floating point...\n");
         timerStart(&t);
@@ -258,11 +258,11 @@ int actionConvert(Args * args)
 
             printf("Converting directly (no custom color profile settings)...\n");
             timerStart(&t);
-            directTransform = cmsCreateTransform(srcImage->profile->handle, srcFormat, dstImage->profile->handle, dstFormat, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA);
+            directTransform = cmsCreateTransform(srcImage->profile->handle, srcFormat, dstImage->profile->handle, dstFormat, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
             cmsDoTransform(directTransform, srcImage->pixels, dstImage->pixels, dstImage->width * dstImage->height);
             printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
         } else {
-            cmsHTRANSFORM fromLinear = cmsCreateTransform(dstLinear->handle, TYPE_RGBA_FLT, dstImage->profile->handle, dstFormat, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA);
+            cmsHTRANSFORM fromLinear = cmsCreateTransform(dstLinear->handle, TYPE_RGBA_FLT, dstImage->profile->handle, dstFormat, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
 
             printf("Scaling luminance (%s)...\n", tonemap ? "tonemap" : "clip");
             timerStart(&t);
