@@ -42,8 +42,8 @@ static void dumpPixel(clImage * image, int x, int y)
         printf("    Pixel(%d, %d): (%u, %u, %u, %u)\n", x, y,
             (unsigned int)pixel[0], (unsigned int)pixel[1], (unsigned int)pixel[2], (unsigned int)pixel[3]);
     } else {
-        COLORIST_ASSERT(image->depth == 8);
         uint8_t * pixel = &image->pixels[4 * (x + (y * image->width))];
+        COLORIST_ASSERT(image->depth == 8);
         printf("    Pixel(%d, %d): (%u, %u, %u, %u)\n", x, y,
             (unsigned int)pixel[0], (unsigned int)pixel[1], (unsigned int)pixel[2], (unsigned int)pixel[3]);
     }

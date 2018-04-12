@@ -322,13 +322,14 @@ char * clProfileGetMLU(clProfile * profile, const char tag[5], const char langua
 {
     cmsTagSignature tagSignature;
     cmsUInt32Number bytes;
+    cmsMLU * mlu;
     char * ascii;
     uint8_t * rawTagPtr = (uint8_t *)&tagSignature;
     rawTagPtr[0] = tag[3];
     rawTagPtr[1] = tag[2];
     rawTagPtr[2] = tag[1];
     rawTagPtr[3] = tag[0];
-    cmsMLU * mlu = cmsReadTag(profile->handle, tagSignature);
+    mlu = cmsReadTag(profile->handle, tagSignature);
     if (!mlu) {
         return NULL;
     }
@@ -344,12 +345,13 @@ char * clProfileGetMLU(clProfile * profile, const char tag[5], const char langua
 clBool clProfileSetMLU(clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3], const char * ascii)
 {
     cmsTagSignature tagSignature;
+    cmsMLU * mlu;
     uint8_t * rawTagPtr = (uint8_t *)&tagSignature;
     rawTagPtr[0] = tag[3];
     rawTagPtr[1] = tag[2];
     rawTagPtr[2] = tag[1];
     rawTagPtr[3] = tag[0];
-    cmsMLU * mlu = cmsMLUalloc(NULL, 1);
+    mlu = cmsMLUalloc(NULL, 1);
     cmsMLUsetASCII(mlu, languageCode, countryCode, ascii);
     cmsWriteTag(profile->handle, tagSignature, mlu);
     return clTrue;
