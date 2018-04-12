@@ -42,6 +42,7 @@ static void setDefaults(Args * args)
     args->rect[1] = 0;
     args->rect[2] = 3;
     args->rect[3] = 3;
+    args->tonemap = TONEMAP_AUTO;
     args->inputFilename = NULL;
     args->outputFilename = NULL;
 }
@@ -430,3 +431,60 @@ int main(int argc, char * argv[])
     }
     return 1;
 }
+
+#if 0
+#include <math.h>
+
+int main(int argc, char * argv[])
+{
+    clProfile * srcProfile = clProfileRead("c:\\work\\webroot\\chad.icc");
+    clProfilePrimaries srcPrimaries;
+    clProfileCurve srcCurve;
+    uint16_t srcPixel[4] = { 636, 724, 680, 65535 };
+    float srcFloats[4];
+
+    clProfile * floatProfile;
+    clProfileCurve floatGamma;
+    float floatPixel[4] = { 0, 0, 0, 0 };
+    cmsHTRANSFORM toLinear;
+    cmsHTRANSFORM fromLinear;
+
+    uint16_t dstPixel[4] = { 0, 0, 0, 0 };
+
+    printf("%d, %d, %d, %d\n", (int)srcPixel[0], (int)srcPixel[1], (int)srcPixel[2], (int)srcPixel[3]);
+
+    srcFloats[0] = (float)srcPixel[0] / 65535.0f;
+    srcFloats[1] = (float)srcPixel[1] / 65535.0f;
+    srcFloats[2] = (float)srcPixel[2] / 65535.0f;
+    srcFloats[3] = (float)srcPixel[3] / 65535.0f;
+
+    clProfileQuery(srcProfile, &srcPrimaries, &srcCurve, NULL);
+
+    floatGamma.type = CL_PCT_GAMMA;
+    floatGamma.gamma = 1.0f;
+    floatProfile = clProfileCreate(&srcPrimaries, &floatGamma, 0, NULL);
+
+    toLinear = cmsCreateTransform(srcProfile->handle, TYPE_RGBA_FLT, floatProfile->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+    fromLinear = cmsCreateTransform(floatProfile->handle, TYPE_RGBA_FLT, srcProfile->handle, TYPE_RGBA_16, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+
+    cmsDoTransform(toLinear, srcFloats, floatPixel, 1);
+    printf("%f, %f, %f, %f\n", floatPixel[0], floatPixel[1], floatPixel[2], floatPixel[3]);
+
+    {
+        float f = (float)srcPixel[0] / 65535.0f;
+        uint16_t u;
+        printf("f: %g\n", f);
+        f = powf(f, 2.4f);
+        printf("f: %g\n", f);
+        f = powf(f, 1.0f / 2.4f);
+        printf("f: %g\n", f);
+        u = (unsigned int)roundf(f * 65535.0f);
+        printf("out: %u\n", u);
+    }
+
+    cmsDoTransform(fromLinear, floatPixel, dstPixel, 1);
+    printf("got       %d, %d, %d, %d\n", (int)dstPixel[0], (int)dstPixel[1], (int)dstPixel[2], (int)dstPixel[3]);
+    printf("should be %d, %d, %d, %d\n", (int)(floatPixel[0] * 65535.0f), (int)(floatPixel[1] * 65535.0f), (int)(floatPixel[2] * 65535.0f), (int)(floatPixel[3] * 65535.0f));
+    return 0;
+}
+#endif /* if 0 */

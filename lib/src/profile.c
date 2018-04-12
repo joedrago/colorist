@@ -109,8 +109,8 @@ clProfile * clProfileCreate(clProfilePrimaries * primaries, clProfileCurve * cur
     dstWhitePoint.Y = 1.0f;
 
     curves[0] = cmsBuildGamma(NULL, curve->gamma);
-    curves[1] = curves[0];
-    curves[2] = curves[0];
+    curves[1] = cmsBuildGamma(NULL, curve->gamma);
+    curves[2] = cmsBuildGamma(NULL, curve->gamma);
     profile->handle = cmsCreateRGBProfile(&dstWhitePoint, &dstPrimaries, curves);
     cmsFreeToneCurve(curves[0]);
     if (!profile->handle) {

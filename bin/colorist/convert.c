@@ -21,7 +21,6 @@ int actionConvert(Args * args)
     clImage * srcImage = NULL;
     float srcGamma = 0.0f;
     int srcLuminance = 0;
-    cmsUInt32Number srcFormat;
 
     clProfilePrimaries dstPrimaries;
     float dstGamma = 0.0f;
@@ -32,8 +31,8 @@ int actionConvert(Args * args)
 
     // Variables used in luminance scaling
     clProfile * dstLinear = NULL;
-    int floatPixelsCount = 0;
-    float * floatPixels = NULL;
+    int linearPixelsCount = 0;
+    float * linearPixels = NULL;
     float luminanceScale = 0.0f;
     clBool tonemap = clFalse;
 
@@ -55,8 +54,6 @@ int actionConvert(Args * args)
         return 1;
     }
     printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
-
-    srcFormat = (srcImage->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
 
     // Parse source image and args for early pipeline decisions
     {
@@ -114,28 +111,32 @@ int actionConvert(Args * args)
     }
 
     // Create intermediate 1.0 gamma float32 pixel array if we're going to need it later.
-    if (1) { //(outputFileFormat != FORMAT_ICC) && ((srcLuminance != dstLuminance))) {
+    if ((outputFileFormat != FORMAT_ICC) && ((srcLuminance != dstLuminance))) {
         cmsHTRANSFORM toLinear;
+        float * srcFloats; // original values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
 
         clProfileCurve gamma1;
         gamma1.type = CL_PCT_GAMMA;
         gamma1.gamma = 1.0f;
         dstLinear = clProfileCreate(&dstPrimaries, &gamma1, 0, NULL);
 
-        floatPixelsCount = srcImage->width * srcImage->height;
-        floatPixels = malloc(4 * sizeof(float) * floatPixelsCount);
-        toLinear = cmsCreateTransform(srcImage->profile->handle, srcFormat, dstLinear->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+        linearPixelsCount = srcImage->width * srcImage->height;
+        linearPixels = malloc(4 * sizeof(float) * linearPixelsCount);
+        toLinear = cmsCreateTransform(srcImage->profile->handle, TYPE_RGBA_FLT, dstLinear->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
 
         printf("Converting to floating point...\n");
         timerStart(&t);
-        cmsDoTransform(toLinear, srcImage->pixels, floatPixels, floatPixelsCount);
+        srcFloats = malloc(4 * sizeof(float) * linearPixelsCount);
+        clPixelMathUNormToFloat(srcImage->pixels, srcImage->depth, srcFloats, linearPixelsCount);
+        cmsDoTransform(toLinear, srcFloats, linearPixels, linearPixelsCount);
+        free(srcFloats);
         printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
     }
 
     if (args->autoGrade) {
         printf("Color grading...\n");
         timerStart(&t);
-        if (!clPixelMathColorGrade(floatPixels, floatPixelsCount, srcLuminance, dstDepth, &dstLuminance, &dstGamma, args->verbose)) {
+        if (!clPixelMathColorGrade(linearPixels, linearPixelsCount, srcLuminance, dstDepth, &dstLuminance, &dstGamma, args->verbose)) {
             FAIL();
         }
         printf("    done (%g sec). (maxLum:%d, gamma:%g)\n\n", timerElapsedSeconds(&t), dstLuminance, dstGamma);
@@ -167,7 +168,7 @@ int actionConvert(Args * args)
     {
         if (
             (args->primaries[0] > 0.0f) ||    // Custom primaries
-            (dstGamma > 0.0f) ||              // Custom gamma
+            (srcGamma != dstGamma) ||         // Custom gamma
             (srcLuminance != dstLuminance) || // Custom luminance
             (args->description) ||            // Custom description
             (args->copyright)                 // custom copyright
@@ -251,10 +252,10 @@ int actionConvert(Args * args)
 
     // Convert srcImage -> dstImage
     {
-        cmsUInt32Number srcFormat = (srcImage->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
-        cmsUInt32Number dstFormat = (dstImage->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
-        if (floatPixels == NULL) {
+        if (linearPixels == NULL) {
             cmsHTRANSFORM directTransform;
+            cmsUInt32Number srcFormat = (srcImage->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
+            cmsUInt32Number dstFormat = (dstImage->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
 
             printf("Converting directly (no custom color profile settings)...\n");
             timerStart(&t);
@@ -262,16 +263,20 @@ int actionConvert(Args * args)
             cmsDoTransform(directTransform, srcImage->pixels, dstImage->pixels, dstImage->width * dstImage->height);
             printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
         } else {
-            cmsHTRANSFORM fromLinear = cmsCreateTransform(dstLinear->handle, TYPE_RGBA_FLT, dstImage->profile->handle, dstFormat, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+            cmsHTRANSFORM fromLinear = cmsCreateTransform(dstLinear->handle, TYPE_RGBA_FLT, dstImage->profile->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+            float * dstFloats; // final values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
 
             printf("Scaling luminance (%s)...\n", tonemap ? "tonemap" : "clip");
             timerStart(&t);
-            clPixelMathScaleLuminance(floatPixels, floatPixelsCount, luminanceScale, tonemap);
+            clPixelMathScaleLuminance(linearPixels, linearPixelsCount, luminanceScale, tonemap);
             printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
 
             printf("Converting from floating point...\n");
             timerStart(&t);
-            cmsDoTransform(fromLinear, floatPixels, dstImage->pixels, floatPixelsCount);
+            dstFloats = malloc(4 * sizeof(float) * linearPixelsCount);
+            cmsDoTransform(fromLinear, linearPixels, dstFloats, linearPixelsCount);
+            clPixelMathFloatToUNorm(dstFloats, dstImage->pixels, dstImage->depth, linearPixelsCount);
+            free(dstFloats);
             printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
         }
     }
@@ -302,8 +307,8 @@ convertCleanup:
         clImageDestroy(dstImage);
     if (dstLinear)
         clProfileDestroy(dstLinear);
-    if (floatPixels)
-        free(floatPixels);
+    if (linearPixels)
+        free(linearPixels);
 
     if (returnCode == 0) {
         printf("\nConversion complete (%g sec).\n", timerElapsedSeconds(&overall));

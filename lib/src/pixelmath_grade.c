@@ -5,9 +5,9 @@
 // NOTE: This is a work in progress. There are probably lots of problems with this.
 
 // roundf() doesn't exist until C99
-static float clRoundf(float val)
+float clPixelMathRoundf(float val)
 {
-    return floor(val + 0.5);
+    return floorf(val + 0.5f);
 }
 
 clBool clPixelMathColorGrade(float * pixels, int pixelCount, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose)
@@ -55,15 +55,15 @@ clBool clPixelMathColorGrade(float * pixels, int pixelCount, int srcLuminance, i
             for (i = 0; i < pixelCount; ++i) {
                 scaledChannel = pixel[0] * luminanceScale;
                 scaledChannel = CL_CLAMP(scaledChannel, 0.0f, 1.0f);
-                errorTerm += fabsf(scaledChannel - powf(clRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gammaAttempt));
+                errorTerm += fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gammaAttempt));
 
                 scaledChannel = pixel[1] * luminanceScale;
                 scaledChannel = CL_CLAMP(scaledChannel, 0.0f, 1.0f);
-                errorTerm += fabsf(scaledChannel - powf(clRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gammaAttempt));
+                errorTerm += fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gammaAttempt));
 
                 scaledChannel = pixel[2] * luminanceScale;
                 scaledChannel = CL_CLAMP(scaledChannel, 0.0f, 1.0f);
-                errorTerm += fabsf(scaledChannel - powf(clRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gammaAttempt));
+                errorTerm += fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gammaAttempt));
 
                 pixel += 4;
             }

@@ -1,5 +1,47 @@
 #include "colorist/pixelmath.h"
 
+void clPixelMathUNormToFloat(uint8_t * inPixels, int inDepth, float * outPixels, int pixelCount)
+{
+    int channelCount = pixelCount * 4;
+    int i;
+
+    if (inDepth == 16) {
+        uint16_t * inChannel = (uint16_t *)inPixels;
+        float * outChannel = outPixels;
+        for (i = 0; i < channelCount; ++i) {
+            outChannel[i] = inChannel[i] / 65535.0f;
+        }
+    } else {
+        uint8_t * inChannel = inPixels;
+        float * outChannel = outPixels;
+        COLORIST_ASSERT(inDepth == 8);
+        for (i = 0; i < channelCount; ++i) {
+            outChannel[i] = inChannel[i] / 255.0f;
+        }
+    }
+}
+
+void clPixelMathFloatToUNorm(float * inPixels, uint8_t * outPixels, int outDepth, int pixelCount)
+{
+    int channelCount = pixelCount * 4;
+    int i;
+
+    if (outDepth == 16) {
+        float * inChannel = inPixels;
+        uint16_t * outChannel = (uint16_t *)outPixels;
+        for (i = 0; i < channelCount; ++i) {
+            outChannel[i] = (uint16_t)clPixelMathRoundf(inChannel[i] * 65535.0f);
+        }
+    } else {
+        float * inChannel = inPixels;
+        uint8_t * outChannel = outPixels;
+        COLORIST_ASSERT(outDepth == 8);
+        for (i = 0; i < channelCount; ++i) {
+            outChannel[i] = (uint8_t)clPixelMathRoundf(inChannel[i] * 255.0f);
+        }
+    }
+}
+
 void clPixelMathScaleLuminance(float * pixels, int pixelCount, float luminanceScale, clBool tonemap)
 {
     float * pixel;
