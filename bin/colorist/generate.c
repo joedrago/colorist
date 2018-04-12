@@ -25,7 +25,7 @@ int actionGenerate(Args * args)
     printf("Colorist [generate]: %s\n", args->outputFilename);
     timerStart(&overall);
 
-    if ((args->primaries[0] <= 0.0f) || (args->gamma <= 0.0f) || (args->luminance == 0)) {
+    if ((args->primaries[0] <= 0.0f) || (args->gamma <= 0.0f) || (args->luminance <= 0)) {
         fprintf(stderr, "ERROR: generate requires -p, -g, and -l.\n");
         return 1;
     }

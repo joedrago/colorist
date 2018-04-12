@@ -28,7 +28,7 @@ void clProfileDebugDump(clProfile * profile)
     int luminance;
 
     if (clProfileQuery(profile, &primaries, &curve, &luminance)) {
-        printf("  Profile \"%s\" pri:(r:%4.4g,%4.4g g:%4.4g,%4.4g b:%4.4g,%4.4g w:%4.4g,%4.4g) maxLum:%d curve:%s(%2.2g)\n",
+        printf("  Profile \"%s\" pri:(r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g) maxLum:%d curve:%s(%.2g)\n",
             profile->description,
             primaries.red[0], primaries.red[1],
             primaries.green[0], primaries.green[1],

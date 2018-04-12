@@ -199,14 +199,22 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
                     break;
                 case 'g':
                     NEXTARG();
-                    args->gamma = (float)strtod(arg, NULL);
+                    if (arg[0] == 's') {
+                        args->gamma = -1.0f; // Use source gamma
+                    } else {
+                        args->gamma = (float)strtod(arg, NULL);
+                    }
                     break;
                 case 'h':
                     args->help = clTrue;
                     break;
                 case 'l':
                     NEXTARG();
-                    args->luminance = atoi(arg);
+                    if (arg[0] == 's') {
+                        args->luminance = -1; // Use source luminance
+                    } else {
+                        args->luminance = atoi(arg);
+                    }
                     break;
                 case 'p':
                     NEXTARG();
@@ -220,6 +228,24 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
                 case 'r':
                     NEXTARG();
                     args->rate = atoi(arg);
+                    break;
+                case 't':
+                    NEXTARG();
+                    if (!strcmp(arg, "auto")) {
+                        args->tonemap = TONEMAP_AUTO;
+                    } else if (!strcmp(arg, "off")) {
+                        args->tonemap = TONEMAP_OFF;
+                    } else if (!strcmp(arg, "0")) {
+                        args->tonemap = TONEMAP_OFF;
+                    } else if (!strcmp(arg, "disabled")) {
+                        args->tonemap = TONEMAP_OFF;
+                    } else if (!strcmp(arg, "on")) {
+                        args->tonemap = TONEMAP_ON;
+                    } else if (!strcmp(arg, "1")) {
+                        args->tonemap = TONEMAP_ON;
+                    } else if (!strcmp(arg, "enabled")) {
+                        args->tonemap = TONEMAP_ON;
+                    }
                     break;
                 case 'v':
                     args->verbose = clTrue;
@@ -300,12 +326,8 @@ static clBool validateArgs(Args * args)
         fprintf(stderr, "ERROR: Unknown bpp: %d\n", args->bpp);
         valid = clFalse;
     }
-    if ((args->gamma < 0.0f)) {
-        fprintf(stderr, "ERROR: gamma too small: %g\n", args->gamma);
-        valid = clFalse;
-    }
-    if (args->autoGrade && ((args->gamma > 0.0f) || (args->luminance > 0))) {
-        fprintf(stderr, "WARNING: auto color grading mode (-a) is incompatible with -g and -l, disabling auto color grading\n");
+    if (args->autoGrade && (args->gamma != 0.0f) && (args->luminance != 0)) {
+        fprintf(stderr, "WARNING: auto color grading mode (-a) is useless with both -g and -l specified, disabling auto color grading\n");
         args->autoGrade = clFalse;
     }
     return valid;
@@ -322,15 +344,20 @@ static void dumpArgs(Args * args)
     printf(" * copyright  : %s\n", args->copyright ? args->copyright : "--");
     printf(" * description: %s\n", args->description ? args->description : "--");
     printf(" * format     : %s\n", formatToString(args->format));
-    if (args->gamma > 0.0f)
+    if (args->gamma < 0.0f) {
+        printf(" * gamma      : source gamma (forced)\n");
+    } else if (args->gamma > 0.0f)
         printf(" * gamma      : %g\n", args->gamma);
     else
         printf(" * gamma      : auto\n");
     printf(" * help       : %s\n", args->help ? "enabled" : "disabled");
-    if (args->luminance)
+    if (args->luminance < 0) {
+        printf(" * luminance  : source luminance (forced)\n");
+    } else if (args->luminance) {
         printf(" * luminance  : %d\n", args->luminance);
-    else
+    } else {
         printf(" * luminance  : auto\n");
+    }
     if (args->primaries[0] > 0.0f)
         printf(" * primaries  : r:(%.4g,%.4g) g:(%.4g,%.4g) b:(%.4g,%.4g) w:(%.4g,%.4g)\n",
             args->primaries[0], args->primaries[1],
@@ -356,12 +383,13 @@ static void printSyntax()
     printf("    -c COPYRIGHT   : ICC profile copyright string.\n");
     printf("    -d DESCRIPTION : ICC profile description.\n");
     printf("    -f FORMAT      : Output format. auto (default), icc, jp2, jpg, png\n");
-    printf("    -g GAMMA       : Output gamma. 0 for auto (default)\n");
+    printf("    -g GAMMA       : Output gamma. 0 for auto (default), or \"source\" to force source gamma\n");
     printf("    -h             : Display this help\n");
-    printf("    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default)\n");
+    printf("    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default), or \"source\" to force source luminance\n");
     printf("    -p PRIMARIES   : ICC profile primaries (8 floats, comma separated). rx,ry,gx,gy,bx,by,wx,wy\n");
     printf("    -q QUALITY     : Output quality for JPG/JP2\n");
     printf("    -r RATE        : Output rate for JP2\n");
+    printf("    -t TONEMAP     : Set tonemapping. auto (default), on, or off\n");
     printf("    -v             : Verbose mode.\n");
     printf("    -z x,y,w,h     : Pixels to dump in identify mode. x,y,w,h\n");
     printf("\n");

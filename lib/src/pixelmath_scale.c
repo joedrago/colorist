@@ -30,7 +30,7 @@ void clPixelMathScaleLuminance(float * pixels, int pixelCount, float luminanceSc
             pixel[1] *= luminanceScale;                // scale
             pixel[1] = CL_CLAMP(pixel[1], 0.0f, 1.0f); // clamp
             pixel[2] *= luminanceScale;                // scale
-            pixel[2] = CL_CLAMP(pixel[1], 0.0f, 1.0f); // clamp
+            pixel[2] = CL_CLAMP(pixel[2], 0.0f, 1.0f); // clamp
             pixel += 4;
         }
     }

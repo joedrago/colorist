@@ -34,6 +34,8 @@ int actionConvert(Args * args)
     clProfile * dstLinear = NULL;
     int floatPixelsCount = 0;
     float * floatPixels = NULL;
+    float luminanceScale = 0.0f;
+    clBool tonemap = clFalse;
 
     Format outputFileFormat = args->format;
     if (outputFileFormat == FORMAT_AUTO)
@@ -75,7 +77,9 @@ int actionConvert(Args * args)
 
         // Luminance
         srcLuminance = (srcLuminance != 0) ? srcLuminance : COLORIST_DEFAULT_LUMINANCE;
-        if (args->luminance != 0) {
+        if (args->luminance < 0) {
+            dstLuminance = srcLuminance;
+        } else if (args->luminance != 0) {
             dstLuminance = args->luminance;
         }
 
@@ -83,7 +87,9 @@ int actionConvert(Args * args)
         if (curve.type == CL_PCT_GAMMA) {
             srcGamma = curve.gamma;
         }
-        if (args->gamma > 0.0f) {
+        if (args->gamma < 0.0f) {
+            dstGamma = srcGamma;
+        } else if (args->gamma > 0.0f) {
             dstGamma = args->gamma;
         }
 
@@ -108,7 +114,7 @@ int actionConvert(Args * args)
     }
 
     // Create intermediate 1.0 gamma float32 pixel array if we're going to need it later.
-    if ((outputFileFormat != FORMAT_ICC) && ((srcLuminance != dstLuminance))) {
+    if (1) { //(outputFileFormat != FORMAT_ICC) && ((srcLuminance != dstLuminance))) {
         cmsHTRANSFORM toLinear;
 
         clProfileCurve gamma1;
@@ -127,15 +133,34 @@ int actionConvert(Args * args)
     }
 
     if (args->autoGrade) {
-        if (!clPixelMathColorGrade(floatPixels, floatPixelsCount, srcLuminance, dstDepth, &dstLuminance, &dstGamma)) {
+        printf("Color grading...\n");
+        timerStart(&t);
+        if (!clPixelMathColorGrade(floatPixels, floatPixelsCount, srcLuminance, dstDepth, &dstLuminance, &dstGamma, args->verbose)) {
             FAIL();
         }
+        printf("    done (%g sec). (maxLum:%d, gamma:%g)\n\n", timerElapsedSeconds(&t), dstLuminance, dstGamma);
     }
 
     // If we survive arg parsing and autoGrade mode and still don't have a reasonable luminance and gamma, bail out.
     if ((dstLuminance == 0) || (dstGamma == 0.0f)) {
         fprintf(stderr, "ERROR: Can't create destination profile, luminance(%d) and/or gamma(%g) values are invalid\n", dstLuminance, dstGamma);
         FAIL();
+    }
+
+    // Calculate luminance scale and tonemapping
+    COLORIST_ASSERT(srcLuminance > 0);
+    COLORIST_ASSERT(dstLuminance > 0);
+    luminanceScale = (float)srcLuminance / (float)dstLuminance;
+    if (args->autoGrade) {
+        // autoGrade ensures we're never scaling a pixel lower than the brighest
+        // pixel in the source image, tonemapping is unnecessary.
+        tonemap = clFalse;
+    } else {
+        // tonemap if we're scaling from a larger luminance range to a smaller range
+        tonemap = (luminanceScale > 1.0f) ? clTrue : clFalse;
+    }
+    if (args->tonemap != TONEMAP_AUTO) {
+        tonemap = (args->tonemap == TONEMAP_ON) ? clTrue : clFalse;
     }
 
     // Create the destination profile, or clone the source one
@@ -239,15 +264,10 @@ int actionConvert(Args * args)
         } else {
             cmsHTRANSFORM fromLinear = cmsCreateTransform(dstLinear->handle, TYPE_RGBA_FLT, dstImage->profile->handle, dstFormat, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA);
 
-            // Luminance scaling / tonemapping
-            {
-                float luminanceScale = (float)srcLuminance / (float)dstLuminance;
-                clBool tonemap = (luminanceScale > 1.0f) ? clTrue : clFalse;
-                printf("Scaling luminance (%s)...\n", tonemap ? "tonemapping" : "basic");
-                timerStart(&t);
-                clPixelMathScaleLuminance(floatPixels, floatPixelsCount, luminanceScale, tonemap);
-                printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
-            }
+            printf("Scaling luminance (%s)...\n", tonemap ? "tonemap" : "clip");
+            timerStart(&t);
+            clPixelMathScaleLuminance(floatPixels, floatPixelsCount, luminanceScale, tonemap);
+            printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
 
             printf("Converting from floating point...\n");
             timerStart(&t);

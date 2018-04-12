@@ -14,6 +14,6 @@
 #define CL_CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
 void clPixelMathScaleLuminance(float * pixels, int pixelCount, float luminanceScale, clBool tonemap);
-clBool clPixelMathColorGrade(float * pixels, int pixelCount, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma);
+clBool clPixelMathColorGrade(float * pixels, int pixelCount, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose);
 
 #endif

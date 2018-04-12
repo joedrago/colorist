@@ -31,6 +31,13 @@ typedef enum Format
     FORMAT_ERROR
 } Format;
 
+typedef enum Tonemap
+{
+    TONEMAP_AUTO = 0,
+    TONEMAP_ON,
+    TONEMAP_OFF
+} Tonemap;
+
 Format stringToFormat(const char * str);
 const char * formatToString(Format format);
 Format detectFormat(const char * filename);
@@ -49,6 +56,7 @@ typedef struct Args
     float primaries[8];          // -p
     int quality;                 // -q
     int rate;                    // -r
+    Tonemap tonemap;             // -t
     clBool verbose;              // -v
     int rect[4];                 // -z
     const char * inputFilename;  // index 0
