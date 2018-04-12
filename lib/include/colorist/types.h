@@ -30,6 +30,9 @@
 #define COLORIST_FAILURE1(FMT, A)
 #endif
 
+// Yes, clamp macros are nasty. Do not use them.
+#define CL_CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+
 #define clAllocate(T) (T *)calloc(1, sizeof(T))
 
 typedef int clBool;
