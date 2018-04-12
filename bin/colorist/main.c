@@ -7,6 +7,8 @@
 
 #include "main.h"
 
+#include "colorist/task.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -33,7 +35,7 @@ static void setDefaults(Args * args)
     args->format = FORMAT_AUTO;
     args->gamma = 0;
     args->help = clFalse;
-    args->jobs = 0;
+    args->jobs = clTaskLimit();
     args->luminance = 0;
     memset(args->primaries, 0, sizeof(float) * 8);
     args->quality = 60; // ?
@@ -172,6 +174,7 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
 {
     int argIndex = 1;
     const char * filenames[2] = { NULL, NULL };
+    int taskLimit = clTaskLimit();
     while (argIndex < argc) {
         const char * arg = argv[argIndex];
         if ((arg[0] == '-')) {
@@ -213,6 +216,9 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
                 case 'j':
                     NEXTARG();
                     args->jobs = atoi(arg);
+                    if (args->jobs == 0)
+                        args->jobs = taskLimit;
+                    args->jobs = CL_CLAMP(args->jobs, 1, taskLimit);
                     break;
                 case 'l':
                     NEXTARG();

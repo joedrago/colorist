@@ -92,13 +92,8 @@ void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int sr
         float maxChannel = (dstColorDepth == 16) ? 65535.0f : 255.0f;
         clTask ** tasks;
         clGammaErrorTermTask * infos;
-        int taskLimit = clTaskLimit();
         int tasksInFlight = 0;
-        if (taskCount == 0) {
-            taskCount = taskLimit;
-        } else {
-            taskCount = CL_CLAMP(taskCount, 1, taskLimit);
-        }
+        COLORIST_ASSERT(taskCount);
 
         printf("Using %d thread%s to find best gamma.\n", taskCount, (taskCount == 1) ? "" : "s");
 
