@@ -109,7 +109,7 @@ void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int sr
             infos[tasksInFlight].maxChannel = maxChannel;
             infos[tasksInFlight].luminanceScale = luminanceScale;
             infos[tasksInFlight].outErrorTerm = 0;
-            tasks[tasksInFlight] = clTaskCreate(gammaErrorTermTaskFunc, &infos[tasksInFlight]);
+            tasks[tasksInFlight] = clTaskCreate((clTaskFunc)gammaErrorTermTaskFunc, &infos[tasksInFlight]);
             ++tasksInFlight;
 
             if ((tasksInFlight == taskCount) || (gammaInt == 50)) {

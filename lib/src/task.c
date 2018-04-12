@@ -79,5 +79,63 @@ static void nativeTaskJoin(clTask * task)
 }
 
 #else /* ifdef _WIN32 */
-#error implement pthreads
+
+#ifdef __APPLE__
+
+#include <sys/sysctl.h>
+
+int clTaskLimit()
+{
+    int mib[4];
+    int numCPU;
+    size_t len = sizeof(numCPU);
+
+    /* set the mib for hw.ncpu */
+    mib[0] = CTL_HW;
+    mib[1] = HW_AVAILCPU; // alternatively, try HW_NCPU;
+
+    /* get the number of CPUs from the system */
+    sysctl(mib, 2, &numCPU, &len, NULL, 0);
+
+    if (numCPU < 1) {
+        mib[1] = HW_NCPU;
+        sysctl(mib, 2, &numCPU, &len, NULL, 0);
+        if (numCPU < 1)
+            numCPU = 1;
+    }
+    return numCPU;
+}
+#else
+#error implement clTaskLimit for Linux
+#endif
+
+#include <pthread.h>
+
+typedef struct clNativeTask
+{
+    pthread_t pthread;
+} clNativeTask;
+
+static void * taskThreadProc(void * userData)
+{
+    clTask * task = (clTask *)userData;
+    task->func(task->userData);
+    return 0;
+}
+
+static void nativeTaskStart(clTask * task)
+{
+    clNativeTask * nativeTask = clAllocate(clNativeTask);
+    task->nativeData = nativeTask;
+    pthread_create(&nativeTask->pthread, NULL, taskThreadProc, task);
+}
+
+static void nativeTaskJoin(clTask * task)
+{
+    clNativeTask * nativeTask = (clNativeTask *)task->nativeData;
+    pthread_join(nativeTask->pthread, NULL);
+    free(task->nativeData);
+    task->nativeData = NULL;
+}
+
 #endif /* ifdef _WIN32 */

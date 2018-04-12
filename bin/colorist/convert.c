@@ -370,7 +370,7 @@ static void doMultithreadedTransform(int taskCount, cmsHTRANSFORM transform, uin
         infos[i].inPixels = &srcPixels[i * pixelsPerTask * srcPixelBytes];
         infos[i].outPixels = &dstPixels[i * pixelsPerTask * dstPixelBytes];
         infos[i].pixelCount = (i == (taskCount - 1)) ? lastTaskPixelCount : pixelsPerTask;
-        tasks[i] = clTaskCreate(transformTaskFunc, &infos[i]);
+        tasks[i] = clTaskCreate((clTaskFunc)transformTaskFunc, &infos[i]);
     }
 
     for (i = 0; i < taskCount; ++i) {
