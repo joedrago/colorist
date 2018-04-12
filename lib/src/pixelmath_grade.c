@@ -49,9 +49,9 @@ typedef struct clGammaErrorTermTask
     float outErrorTerm;
 } clGammaErrorTermTask;
 
-static void gammaErrorTermTaskFunc(clGammaErrorTermTask * ett)
+static void gammaErrorTermTaskFunc(clGammaErrorTermTask * info)
 {
-    ett->outErrorTerm = gammaErrorTerm(ett->gamma, ett->pixels, ett->pixelCount, ett->maxChannel, ett->luminanceScale);
+    info->outErrorTerm = gammaErrorTerm(info->gamma, info->pixels, info->pixelCount, info->maxChannel, info->luminanceScale);
 }
 
 void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma)
