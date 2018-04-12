@@ -33,6 +33,7 @@ static void setDefaults(Args * args)
     args->format = FORMAT_AUTO;
     args->gamma = 0;
     args->help = clFalse;
+    args->jobs = 0;
     args->luminance = 0;
     memset(args->primaries, 0, sizeof(float) * 8);
     args->quality = 60; // ?
@@ -208,6 +209,10 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
                     break;
                 case 'h':
                     args->help = clTrue;
+                    break;
+                case 'j':
+                    NEXTARG();
+                    args->jobs = atoi(arg);
                     break;
                 case 'l':
                     NEXTARG();
@@ -386,6 +391,7 @@ static void printSyntax()
     printf("    -f FORMAT      : Output format. auto (default), icc, jp2, jpg, png\n");
     printf("    -g GAMMA       : Output gamma. 0 for auto (default), or \"source\" to force source gamma\n");
     printf("    -h             : Display this help\n");
+    printf("    -j JOBS        : Number of jobs to use when color grading. 0 for as many as possible (default)\n");
     printf("    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default), or \"source\" to force source luminance\n");
     printf("    -p PRIMARIES   : ICC profile primaries (8 floats, comma separated). rx,ry,gx,gy,bx,by,wx,wy\n");
     printf("    -q QUALITY     : Output quality for JPG/JP2\n");

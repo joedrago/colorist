@@ -52,6 +52,7 @@ typedef struct Args
     Format format;               // -f
     float gamma;                 // -g
     clBool help;                 // -h
+    int jobs;                    // -j
     int luminance;               // -l
     float primaries[8];          // -p
     int quality;                 // -q

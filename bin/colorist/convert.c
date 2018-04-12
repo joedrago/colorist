@@ -138,9 +138,7 @@ int actionConvert(Args * args)
     if (args->autoGrade) {
         printf("Color grading...\n");
         timerStart(&t);
-        if (!clPixelMathColorGrade(linearPixels, linearPixelsCount, srcLuminance, dstDepth, &dstLuminance, &dstGamma, args->verbose)) {
-            FAIL();
-        }
+        clPixelMathColorGrade(args->jobs, linearPixels, linearPixelsCount, srcLuminance, dstDepth, &dstLuminance, &dstGamma);
         printf("    done (%g sec). (maxLum:%d, gamma:%g)\n\n", timerElapsedSeconds(&t), dstLuminance, dstGamma);
     }
 
