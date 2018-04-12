@@ -13,6 +13,8 @@
 
 #define FAIL() { returnCode = 1; goto convertCleanup; }
 
+static int fileSize(const char * filename);
+
 int actionConvert(Args * args)
 {
     Timer overall, t;
@@ -47,7 +49,7 @@ int actionConvert(Args * args)
     printf("Colorist [convert]: %s -> %s\n", args->inputFilename, args->outputFilename);
     timerStart(&overall);
 
-    printf("Reading: %s\n", args->inputFilename);
+    printf("Reading: %s (%d bytes)\n", args->inputFilename, fileSize(args->inputFilename));
     timerStart(&t);
     srcImage = readImage(args->inputFilename, NULL);
     if (srcImage == NULL) {
@@ -296,7 +298,7 @@ int actionConvert(Args * args)
     if (!writeImage(dstImage, args->outputFilename, outputFileFormat, args->quality, args->rate)) {
         FAIL();
     }
-    printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
+    printf("    done (%g sec). (%d bytes)\n\n", timerElapsedSeconds(&t), fileSize(args->outputFilename));
 
 convertCleanup:
     if (srcImage)
@@ -314,4 +316,21 @@ convertCleanup:
         printf("\nConversion complete (%g sec).\n", timerElapsedSeconds(&overall));
     }
     return returnCode;
+}
+
+static int fileSize(const char * filename)
+{
+    // TODO: reimplement as fstat()
+    int bytes;
+
+    FILE * f;
+    f = fopen(filename, "rb");
+    if (!f) {
+        return -1;
+    }
+    fseek(f, 0, SEEK_END);
+    bytes = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    fclose(f);
+    return bytes;
 }

@@ -74,8 +74,7 @@ clBool clPixelMathColorGrade(float * pixels, int pixelCount, int srcLuminance, i
                 minErrorTerm = errorTerm;
                 minGammaInt = gammaInt;
             }
-            if (verbose)
-                printf(" * [grading] gamma attempt (%g) error term: %g (best gamma is %g at error term %g)\n", gammaAttempt, errorTerm, (float)minGammaInt / 10.0f, minErrorTerm);
+            printf(" * [grading] gamma attempt (%g) error term: %g (best gamma is %g at error term %g)\n", gammaAttempt, errorTerm, (float)minGammaInt / 10.0f, minErrorTerm);
         }
         bestGamma = (float)minGammaInt / 10.0f;
         printf(" * [grading] Found best gamma: %g\n", bestGamma);
