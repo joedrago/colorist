@@ -7,15 +7,23 @@
 
 set(COLORIST_LIB_INCLUDES
     include/colorist/colorist.h
+    include/colorist/context.h
     include/colorist/image.h
     include/colorist/pixelmath.h
     include/colorist/profile.h
     include/colorist/task.h
     include/colorist/types.h
+    include/colorist/version.h
 )
 
 set(COLORIST_LIB_SRCS
-    src/colorist.c
+    src/context.c
+    src/context_convert.c
+    src/context_generate.c
+    src/context_identify.c
+    src/context_log.c
+    src/context_rw.c
+    src/context_version.c
     src/image.c
     src/image_debugdump.c
     src/image_jp2.c

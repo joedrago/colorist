@@ -7,26 +7,27 @@
 
 #include "colorist/image.h"
 
+#include "colorist/context.h"
 #include "colorist/profile.h"
 
 #include <string.h>
 
-static int depthToBytes(int depth);
+static int depthToBytes(clContext * C, int depth);
 
-clImage * clImageCreate(int width, int height, int depth, clProfile * profile)
+clImage * clImageCreate(clContext * C, int width, int height, int depth, clProfile * profile)
 {
-    clImage * image = clAllocate(clImage);
+    clImage * image = clAllocateStruct(clImage);
     image->profile = profile;
     if (image->profile) {
-        image->profile = clProfileClone(profile);
+        image->profile = clProfileClone(C, profile);
     } else {
-        image->profile = clProfileCreateStock(CL_PS_SRGB);
+        image->profile = clProfileCreateStock(C, CL_PS_SRGB);
     }
-    clImageResize(image, width, height, depth);
+    clImageResize(C, image, width, height, depth);
     return image;
 }
 
-void clImageResize(clImage * image, int width, int height, int depth)
+void clImageResize(clContext * C, clImage * image, int width, int height, int depth)
 {
     uint8_t * prevPixels = NULL;
     if ((image->width == width) && (image->height == height) && (image->depth == depth)) {
@@ -36,7 +37,7 @@ void clImageResize(clImage * image, int width, int height, int depth)
     if (image->pixels) {
         if ((image->width != width) || (image->height != height)) {
             COLORIST_WARNING("Image resize is unsupported, throwing out pixel data");
-            free(image->pixels);
+            clFree(image->pixels);
             image->pixels = NULL;
         } else {
             prevPixels = image->pixels;
@@ -46,8 +47,8 @@ void clImageResize(clImage * image, int width, int height, int depth)
     image->width = width;
     image->height = height;
     image->depth = depth;
-    image->size = 4 * image->width * image->height * depthToBytes(image->depth);
-    image->pixels = (uint8_t *)malloc(image->size);
+    image->size = 4 * image->width * image->height * depthToBytes(C, image->depth);
+    image->pixels = (uint8_t *)clAllocate(image->size);
 
     if (prevPixels) {
         // If we get here, we're trying to depth shift
@@ -67,18 +68,18 @@ void clImageResize(clImage * image, int width, int height, int depth)
                 dst[i] = src[i] >> 8;
             }
         }
-        free(prevPixels);
+        clFree(prevPixels);
     } else {
         memset(image->pixels, 0xff, image->size);
     }
 }
 
-void clImageChangeDepth(clImage * image, int depth)
+void clImageChangeDepth(clContext * C, clImage * image, int depth)
 {
-    clImageResize(image, image->width, image->height, depth);
+    clImageResize(C, image, image->width, image->height, depth);
 }
 
-void clImageSetPixel(clImage * image, int x, int y, int r, int g, int b, int a)
+void clImageSetPixel(clContext * C, clImage * image, int x, int y, int r, int g, int b, int a)
 {
     if (image->depth == 16) {
         uint16_t * pixels = (uint16_t *)image->pixels;
@@ -98,15 +99,15 @@ void clImageSetPixel(clImage * image, int x, int y, int r, int g, int b, int a)
     }
 }
 
-void clImageDestroy(clImage * image)
+void clImageDestroy(clContext * C, clImage * image)
 {
     if (image->pixels) {
-        free(image->pixels);
+        clFree(image->pixels);
     }
-    free(image);
+    clFree(image);
 }
 
-static int depthToBytes(int depth)
+static int depthToBytes(clContext * C, int depth)
 {
     switch (depth) {
         case  8: return 1;

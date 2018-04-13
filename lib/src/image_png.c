@@ -7,12 +7,14 @@
 
 #include "colorist/image.h"
 
+#include "colorist/context.h"
 #include "colorist/profile.h"
+
 #include "png.h"
 
 #include <string.h>
 
-clImage * clImageReadPNG(const char * filename)
+clImage * clImageReadPNG(struct clContext * C, const char * filename)
 {
     clImage * image;
     clProfile * profile = NULL;
@@ -38,14 +40,14 @@ clImage * clImageReadPNG(const char * filename)
 
     FILE * fp = fopen(filename, "rb");
     if (!fp) {
-        clLogError("cannot open PNG: '%s'", filename);
+        clContextLogError(C, "cannot open PNG: '%s'", filename);
         return NULL;
     }
 
     fread(header, 1, 8, fp);
     if (png_sig_cmp(header, 0, 8)) {
         fclose(fp);
-        clLogError("not a PNG: '%s'", filename);
+        clContextLogError(C, "not a PNG: '%s'", filename);
         return NULL;
     }
 
@@ -57,7 +59,7 @@ clImage * clImageReadPNG(const char * filename)
     png_read_info(png, info);
 
     if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
-        profile = clProfileParse(iccpData, iccpDataLen, iccpProfileName);
+        profile = clProfileParse(C, iccpData, iccpDataLen, iccpProfileName);
     }
 
     rawWidth = png_get_image_width(png, info);
@@ -99,11 +101,11 @@ clImage * clImageReadPNG(const char * filename)
     png_read_update_info(png, info);
     setjmp(png_jmpbuf(png));
 
-    image = clImageCreate(rawWidth, rawHeight, imgBitDepth, profile);
+    image = clImageCreate(C, rawWidth, rawHeight, imgBitDepth, profile);
     if (profile) {
-        clProfileDestroy(profile);
+        clProfileDestroy(C, profile);
     }
-    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * rawHeight);
+    rowPointers = (png_bytep *)clAllocate(sizeof(png_bytep) * rawHeight);
     if (imgBytesPerChannel == 1) {
         uint8_t * pixels = (uint8_t *)image->pixels;
         for (y = 0; y < rawHeight; ++y) {
@@ -117,12 +119,12 @@ clImage * clImageReadPNG(const char * filename)
     }
     png_read_image(png, rowPointers);
     png_destroy_read_struct(&png, &info, NULL);
-    free(rowPointers);
+    clFree(rowPointers);
     fclose(fp);
     return image;
 }
 
-clBool clImageWritePNG(clImage * image, const char * filename)
+clBool clImageWritePNG(struct clContext * C, clImage * image, const char * filename)
 {
     int y;
     png_bytep * rowPointers;
@@ -137,7 +139,7 @@ clBool clImageWritePNG(clImage * image, const char * filename)
     }
 
     memset(&rawProfile, 0, sizeof(rawProfile));
-    if (!clProfilePack(image->profile, &rawProfile)) {
+    if (!clProfilePack(C, image->profile, &rawProfile)) {
         fclose(fp);
         return clFalse;
     }
@@ -159,7 +161,7 @@ clBool clImageWritePNG(clImage * image, const char * filename)
     png_set_iCCP(png, info, image->profile->description, 0, rawProfile.ptr, rawProfile.size);
     png_write_info(png, info);
 
-    rowPointers = (png_bytep *)malloc(sizeof(png_bytep) * image->height);
+    rowPointers = (png_bytep *)clAllocate(sizeof(png_bytep) * image->height);
     if (imgBytesPerChannel == 1) {
         uint8_t * pixels = (uint8_t *)image->pixels;
         for (y = 0; y < image->height; ++y) {
@@ -176,8 +178,8 @@ clBool clImageWritePNG(clImage * image, const char * filename)
     png_write_image(png, rowPointers);
     png_write_end(png, NULL);
 
-    free(rowPointers);
+    clFree(rowPointers);
     fclose(fp);
-    clRawFree(&rawProfile);
+    clRawFree(C, &rawProfile);
     return clTrue;
 }

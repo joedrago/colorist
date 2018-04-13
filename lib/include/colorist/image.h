@@ -10,7 +10,8 @@
 
 #include "colorist/types.h"
 
-typedef struct clProfile clProfile;
+struct clContext;
+struct clProfile;
 
 typedef struct clImage
 {
@@ -19,23 +20,23 @@ typedef struct clImage
     int depth;
     int size;
     uint8_t * pixels;
-    clProfile * profile;
+    struct clProfile * profile;
 } clImage;
 
-clImage * clImageCreate(int width, int height, int depth, clProfile * profile);
-void clImageResize(clImage * image, int width, int height, int depth);
-void clImageChangeDepth(clImage * image, int depth);
-void clImageSetPixel(clImage * image, int x, int y, int r, int g, int b, int a);
-void clImageDebugDump(clImage * image, int x, int y, int w, int h, int extraIndent);
-void clImageDestroy(clImage * image);
+clImage * clImageCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
+void clImageResize(struct clContext * C, clImage * image, int width, int height, int depth);
+void clImageChangeDepth(struct clContext * C, clImage * image, int depth);
+void clImageSetPixel(struct clContext * C, clImage * image, int x, int y, int r, int g, int b, int a);
+void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent);
+void clImageDestroy(struct clContext * C, clImage * image);
 
-clImage * clImageReadPNG(const char * filename);
-clBool clImageWritePNG(clImage * image, const char * filename);
+clImage * clImageReadPNG(struct clContext * C, const char * filename);
+clBool clImageWritePNG(struct clContext * C, clImage * image, const char * filename);
 
-clImage * clImageReadJP2(const char * filename);
-clBool clImageWriteJP2(clImage * image, const char * filename, int quality, int rate);
+clImage * clImageReadJP2(struct clContext * C, const char * filename);
+clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filename, int quality, int rate);
 
-clImage * clImageReadJPG(const char * filename);
-clBool clImageWriteJPG(clImage * image, const char * filename, int quality);
+clImage * clImageReadJPG(struct clContext * C, const char * filename);
+clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filename, int quality);
 
 #endif // ifndef COLORIST_IMAGE_H

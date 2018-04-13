@@ -7,7 +7,9 @@
 
 #include "colorist/profile.h"
 
-const char * curveTypeToString(clProfileCurveType curveType)
+#include "colorist/context.h"
+
+static const char * curveTypeToString(clProfileCurveType curveType)
 {
     switch (curveType) {
         case CL_PCT_GAMMA:   return "Gamma";
@@ -19,20 +21,20 @@ const char * curveTypeToString(clProfileCurveType curveType)
     return "Unknown";
 }
 
-void clProfileDebugDump(clProfile * profile, int extraIndent)
+void clProfileDebugDump(struct clContext * C, clProfile * profile, int extraIndent)
 {
     clProfilePrimaries primaries;
     clProfileCurve curve;
     int luminance;
 
-    if (clProfileQuery(profile, &primaries, &curve, &luminance)) {
-        clLog("profile", 0 + extraIndent, "Profile \"%s\"", profile->description);
-        clLog("profile", 1 + extraIndent, "primaries: (r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g)",
+    if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
+        clContextLog(C, "profile", 0 + extraIndent, "Profile \"%s\"", profile->description);
+        clContextLog(C, "profile", 1 + extraIndent, "primaries: (r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g)",
             primaries.red[0], primaries.red[1],
             primaries.green[0], primaries.green[1],
             primaries.blue[0], primaries.blue[1],
             primaries.white[0], primaries.white[1]);
-        clLog("profile", 1 + extraIndent, "Max Luminance: %d", luminance);
-        clLog("profile", 1 + extraIndent, "Curve: %s(%.3g)", curveTypeToString(curve.type), curve.gamma);
+        clContextLog(C, "profile", 1 + extraIndent, "Max Luminance: %d", luminance);
+        clContextLog(C, "profile", 1 + extraIndent, "Curve: %s(%.3g)", curveTypeToString(curve.type), curve.gamma);
     }
 }

@@ -10,6 +10,8 @@
 
 #include "colorist/types.h"
 
+struct clContext;
+
 typedef void (* clTaskFunc)(void * userData);
 
 typedef struct clTask
@@ -20,9 +22,9 @@ typedef struct clTask
     clBool joined;
 } clTask;
 
-clTask * clTaskCreate(clTaskFunc func, void * userData);
-void clTaskJoin(clTask * task);
-void clTaskDestroy(clTask * task);
+clTask * clTaskCreate(struct clContext * C, clTaskFunc func, void * userData);
+void clTaskJoin(struct clContext * C, clTask * task);
+void clTaskDestroy(struct clContext * C, clTask * task);
 int clTaskLimit();
 
 #endif // ifndef COLORIST_TASK_H

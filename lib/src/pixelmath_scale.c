@@ -1,6 +1,8 @@
 #include "colorist/pixelmath.h"
 
-void clPixelMathUNormToFloat(uint8_t * inPixels, int inDepth, float * outPixels, int pixelCount)
+#include "colorist/context.h"
+
+void clPixelMathUNormToFloat(struct clContext * C, uint8_t * inPixels, int inDepth, float * outPixels, int pixelCount)
 {
     int channelCount = pixelCount * 4;
     int i;
@@ -21,7 +23,7 @@ void clPixelMathUNormToFloat(uint8_t * inPixels, int inDepth, float * outPixels,
     }
 }
 
-void clPixelMathFloatToUNorm(float * inPixels, uint8_t * outPixels, int outDepth, int pixelCount)
+void clPixelMathFloatToUNorm(struct clContext * C, float * inPixels, uint8_t * outPixels, int outDepth, int pixelCount)
 {
     int channelCount = pixelCount * 4;
     int i;
@@ -42,7 +44,7 @@ void clPixelMathFloatToUNorm(float * inPixels, uint8_t * outPixels, int outDepth
     }
 }
 
-void clPixelMathScaleLuminance(float * pixels, int pixelCount, float luminanceScale, clBool tonemap)
+void clPixelMathScaleLuminance(struct clContext * C, float * pixels, int pixelCount, float luminanceScale, clBool tonemap)
 {
     float * pixel;
     int i;

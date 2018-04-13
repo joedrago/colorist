@@ -7,12 +7,14 @@
 
 #include "colorist/task.h"
 
+#include "colorist/context.h"
+
 static void nativeTaskStart(clTask * task);
 static void nativeTaskJoin(clTask * task);
 
-clTask * clTaskCreate(clTaskFunc func, void * userData)
+clTask * clTaskCreate(struct clContext * C, clTaskFunc func, void * userData)
 {
-    clTask * task = clAllocate(clTask);
+    clTask * task = clAllocateStruct(clTask);
     task->func = func;
     task->nativeData = NULL;
     task->userData = userData;
@@ -21,7 +23,7 @@ clTask * clTaskCreate(clTaskFunc func, void * userData)
     return task;
 }
 
-void clTaskJoin(clTask * task)
+void clTaskJoin(struct clContext * C, clTask * task)
 {
     if (!task->joined) {
         nativeTaskJoin(task);
@@ -29,12 +31,12 @@ void clTaskJoin(clTask * task)
     }
 }
 
-void clTaskDestroy(clTask * task)
+void clTaskDestroy(struct clContext * C, clTask * task)
 {
-    clTaskJoin(task);
+    clTaskJoin(C, task);
     COLORIST_ASSERT(task->joined);
     COLORIST_ASSERT(task->nativeData == NULL);
-    free(task);
+    clFree(task);
 }
 
 #ifdef _WIN32
@@ -65,7 +67,7 @@ static DWORD WINAPI taskThreadProc(LPVOID lpParameter)
 static void nativeTaskStart(clTask * task)
 {
     DWORD threadId;
-    clNativeTask * nativeTask = clAllocate(clNativeTask);
+    clNativeTask * nativeTask = clAllocateStruct(clNativeTask);
     task->nativeData = nativeTask;
     nativeTask->hThread = CreateThread(NULL, 0, taskThreadProc, task, 0, &threadId);
 }
@@ -75,7 +77,7 @@ static void nativeTaskJoin(clTask * task)
     clNativeTask * nativeTask = (clNativeTask *)task->nativeData;
     WaitForSingleObject(nativeTask->hThread, INFINITE);
     CloseHandle(nativeTask->hThread);
-    free(task->nativeData);
+    clFree(task->nativeData);
     task->nativeData = NULL;
 }
 
@@ -134,7 +136,7 @@ static void * taskThreadProc(void * userData)
 
 static void nativeTaskStart(clTask * task)
 {
-    clNativeTask * nativeTask = clAllocate(clNativeTask);
+    clNativeTask * nativeTask = clAllocateStruct(clNativeTask);
     task->nativeData = nativeTask;
     pthread_create(&nativeTask->pthread, NULL, taskThreadProc, task);
 }
@@ -143,7 +145,7 @@ static void nativeTaskJoin(clTask * task)
 {
     clNativeTask * nativeTask = (clNativeTask *)task->nativeData;
     pthread_join(nativeTask->pthread, NULL);
-    free(task->nativeData);
+    clFree(task->nativeData);
     task->nativeData = NULL;
 }
 

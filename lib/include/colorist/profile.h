@@ -12,6 +12,8 @@
 
 #include "lcms2.h"
 
+struct clContext;
+
 typedef struct clProfilePrimaries
 {
     float red[2];
@@ -46,17 +48,20 @@ typedef enum clProfileStock
     CL_PS_COUNT
 } clProfileStock;
 
-clProfile * clProfileCreateStock(clProfileStock stock);
-clProfile * clProfileClone(clProfile * profile);
-clProfile * clProfileCreate(clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance, const char * description);
-clProfile * clProfileParse(const uint8_t * icc, int iccLen, const char * description);
-clProfile * clProfileRead(const char * filename);
-clBool clProfileWrite(clProfile * profile, const char * filename);
-clBool clProfileQuery(clProfile * profile, clProfilePrimaries * primaries, clProfileCurve * curve, int * maxLuminance);
-char * clProfileGetMLU(clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3]);
-clBool clProfileSetMLU(clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3], const char * ascii);
-clBool clProfilePack(clProfile * profile, clRaw * out);
-void clProfileDebugDump(clProfile * profile, int extraIndent);
-void clProfileDestroy(clProfile * profile);
+clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock);
+clProfile * clProfileClone(struct clContext * C, clProfile * profile);
+clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance, const char * description);
+clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, int iccLen, const char * description);
+clProfile * clProfileRead(struct clContext * C, const char * filename);
+clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * filename);
+clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries, clProfileCurve * curve, int * maxLuminance);
+char * clProfileGetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3]);
+clBool clProfileSetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3], const char * ascii);
+clBool clProfilePack(struct clContext * C, clProfile * profile, clRaw * out);
+void clProfileDebugDump(struct clContext * C, clProfile * profile, int extraIndent);
+void clProfileDestroy(struct clContext * C, clProfile * profile);
+
+// TODO: this needs a better name
+char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance);
 
 #endif // ifndef COLORIST_PROFILE_H

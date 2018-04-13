@@ -7,6 +7,7 @@
 
 #include "colorist/image.h"
 
+#include "colorist/context.h"
 #include "colorist/profile.h"
 
 #include "jpeglib.h"
@@ -31,7 +32,7 @@ static void setup_read_icc_profile(j_decompress_ptr cinfo);
 static boolean read_icc_profile(j_decompress_ptr cinfo, JOCTET ** icc_data_ptr, unsigned int * icc_data_len);
 static void write_icc_profile(j_compress_ptr cinfo, const JOCTET * icc_data_ptr, unsigned int icc_data_len);
 
-clImage * clImageReadJPG(const char * filename)
+clImage * clImageReadJPG(struct clContext * C, const char * filename)
 {
     clImage * image = NULL;
     clProfile * profile = NULL;
@@ -46,7 +47,7 @@ clImage * clImageReadJPG(const char * filename)
     unsigned int iccDataLen;
 
     if ((infile = fopen(filename, "rb")) == NULL) {
-        clLogError("can't open %s", filename);
+        clContextLogError(C, "can't open %s", filename);
         return 0;
     }
 
@@ -68,25 +69,25 @@ clImage * clImageReadJPG(const char * filename)
     buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr) & cinfo, JPOOL_IMAGE, row_stride, 1);
 
     if (read_icc_profile(&cinfo, &iccData, &iccDataLen)) {
-        profile = clProfileParse(iccData, iccDataLen, NULL);
+        profile = clProfileParse(C, iccData, iccDataLen, NULL);
         if (profile) {
-            char * description = clProfileGetMLU(profile, "desc", "en", "US");
+            char * description = clProfileGetMLU(C, profile, "desc", "en", "US");
             COLORIST_ASSERT(!profile->description);
             if (description) {
                 profile->description = description; // take ownership
             } else {
-                profile->description = strdup("Unknown");
+                profile->description = clContextStrdup(C, "Unknown");
             }
         } else {
-            clLogError("ERROR: can't parse JPEG embedded ICC profile: %s", filename);
+            clContextLogError(C, "ERROR: can't parse JPEG embedded ICC profile: %s", filename);
             fclose(infile);
             jpeg_destroy_decompress(&cinfo);
             return NULL;
         }
-        free(iccData);
+        clFree(iccData);
     }
 
-    image = clImageCreate(cinfo.output_width, cinfo.output_height, 8, profile);
+    image = clImageCreate(C, cinfo.output_width, cinfo.output_height, 8, profile);
 
     row = 0;
     while (cinfo.output_scanline < cinfo.output_height) {
@@ -109,11 +110,10 @@ clImage * clImageReadJPG(const char * filename)
     jpeg_finish_decompress(&cinfo);
     jpeg_destroy_decompress(&cinfo);
     fclose(infile);
-
     return image;
 }
 
-clBool clImageWriteJPG(clImage * image, const char * filename, int quality)
+clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filename, int quality)
 {
     cmsUInt32Number srcFormat = (image->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
     cmsHTRANSFORM rgbTransform;
@@ -131,12 +131,12 @@ clBool clImageWriteJPG(clImage * image, const char * filename, int quality)
     jpeg_create_compress(&cinfo);
 
     if ((outfile = fopen(filename, "wb")) == NULL) {
-        clLogError("ERROR: can't open JPG for write: %s", filename);
+        clContextLogError(C, "ERROR: can't open JPG for write: %s", filename);
         return clFalse;
     }
     jpeg_stdio_dest(&cinfo, outfile);
 
-    jpegPixels = malloc(3 * image->width * image->height);
+    jpegPixels = clAllocate(3 * image->width * image->height);
     rgbTransform = cmsCreateTransform(image->profile->handle, srcFormat, image->profile->handle, TYPE_RGB_8, INTENT_PERCEPTUAL, 0);
     COLORIST_ASSERT(rgbTransform);
     cmsDoTransform(rgbTransform, image->pixels, jpegPixels, image->width * image->height);
@@ -150,7 +150,7 @@ clBool clImageWriteJPG(clImage * image, const char * filename, int quality)
     jpeg_start_compress(&cinfo, TRUE);
 
     memset(&rawProfile, 0, sizeof(rawProfile));
-    if (!clProfilePack(image->profile, &rawProfile)) {
+    if (!clProfilePack(C, image->profile, &rawProfile)) {
         return clFalse;
     }
     write_icc_profile(&cinfo, rawProfile.ptr, rawProfile.size);
@@ -164,8 +164,8 @@ clBool clImageWriteJPG(clImage * image, const char * filename, int quality)
     jpeg_finish_compress(&cinfo);
     fclose(outfile);
     jpeg_destroy_compress(&cinfo);
-    free(jpegPixels);
-    clRawFree(&rawProfile);
+    clFree(jpegPixels);
+    clRawFree(C, &rawProfile);
     return clTrue;
 }
 
@@ -315,7 +315,7 @@ static boolean marker_is_icc(jpeg_saved_marker_ptr marker)
  * returned data, and *icc_data_len is set to its length.
  *
  * IMPORTANT: the data at **icc_data_ptr has been allocated with malloc()
- * and must be freed by the caller with free() when the caller no longer
+ * and must be freed by the caller with clFree() when the caller no longer
  * needs it.  (Alternatively, we could write this routine to use the
  * IJG library's memory allocator, so that the data would be freed implicitly
  * at jpeg_finish_decompress() time.  But it seems likely that many apps
@@ -384,7 +384,7 @@ static boolean read_icc_profile(j_decompress_ptr cinfo,
         return FALSE; /* found only empty markers? */
 
     /* Allocate space for assembled data */
-    icc_data = (JOCTET *)malloc(total_length * sizeof(JOCTET));
+    icc_data = (JOCTET *)clAllocate(total_length * sizeof(JOCTET));
     if (icc_data == NULL)
         return FALSE; /* oops, out of memory */
 

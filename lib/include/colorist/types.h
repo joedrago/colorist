@@ -14,17 +14,18 @@
 // for uint*_t
 #include <stdint.h>
 
-void clLog(const char * section, int indent, const char * format, ...);
-void clLogError(const char * format, ...);
+// Output luminance colorist uses for basic profiles (sRGB, P3, etc)
+#define COLORIST_DEFAULT_LUMINANCE 300
+
 int clFileSize(const char * filename);
 
-#define COLORIST_WARNING(MSG) { clLogError("WARNING: %s\n", MSG); }
+#define COLORIST_WARNING(MSG) { clContextLogError(C, "WARNING: %s\n", MSG); }
 
 #ifdef COLORIST_DEBUG
 #include <assert.h>
 #define COLORIST_ASSERT assert
-#define COLORIST_FAILURE(MSG) { clLogError("FAILURE: %s\n", MSG); assert(0); }
-#define COLORIST_FAILURE1(FMT, A) { clLogError("FAILURE: " FMT "\n", A); assert(0); }
+#define COLORIST_FAILURE(MSG) { clContextLogError(C, "FAILURE: %s\n", MSG); assert(0); }
+#define COLORIST_FAILURE1(FMT, A) { clContextLogError(C, "FAILURE: " FMT "\n", A); assert(0); }
 #else
 #define COLORIST_ASSERT(A)
 #define COLORIST_FAILURE(MSG)
@@ -33,8 +34,6 @@ int clFileSize(const char * filename);
 
 // Yes, clamp macros are nasty. Do not use them.
 #define CL_CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
-
-#define clAllocate(T) (T *)calloc(1, sizeof(T))
 
 typedef int clBool;
 #define clFalse 0
@@ -46,11 +45,13 @@ typedef struct clRaw
     uint32_t size;
 } clRaw;
 
-void clRawRealloc(clRaw * raw, uint32_t newSize);
-void clRawFill(clRaw * raw, uint8_t fill);
-void clRawClone(clRaw * dst, const clRaw * src);
-void clRawSet(clRaw * raw, const uint8_t * data, uint32_t len);
-void clRawFree(clRaw * raw);
+struct clContext;
+
+void clRawRealloc(struct clContext * C, clRaw * raw, uint32_t newSize);
+void clRawFill(struct clContext * C, clRaw * raw, uint8_t fill);
+void clRawClone(struct clContext * C, clRaw * dst, const clRaw * src);
+void clRawSet(struct clContext * C, clRaw * raw, const uint8_t * data, uint32_t len);
+void clRawFree(struct clContext * C, clRaw * raw);
 
 typedef struct Timer
 {

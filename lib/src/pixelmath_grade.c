@@ -1,5 +1,6 @@
 #include "colorist/pixelmath.h"
 
+#include "colorist/context.h"
 #include "colorist/task.h"
 
 #include <math.h>
@@ -54,7 +55,7 @@ static void gammaErrorTermTaskFunc(clGammaErrorTermTask * info)
     info->outErrorTerm = gammaErrorTerm(info->gamma, info->pixels, info->pixelCount, info->maxChannel, info->luminanceScale);
 }
 
-void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose)
+void clPixelMathColorGrade(struct clContext * C, int taskCount, float * pixels, int pixelCount, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose)
 {
     int maxLuminance = 0;
     float bestGamma = 0.0f;
@@ -77,10 +78,10 @@ void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int sr
 
         maxLuminance = (int)(maxChannel * srcLuminance);
         maxLuminance = CL_CLAMP(maxLuminance, 0, srcLuminance);
-        clLog("grading", 1, "Found max luminance: %d nits", maxLuminance);
+        clContextLog(C, "grading", 1, "Found max luminance: %d nits", maxLuminance);
     } else {
         maxLuminance = *outLuminance;
-        clLog("grading", 1, "Using requested max luminance: %d nits", maxLuminance);
+        clContextLog(C, "grading", 1, "Using requested max luminance: %d nits", maxLuminance);
     }
 
     // Find best gamma
@@ -95,10 +96,10 @@ void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int sr
         int tasksInFlight = 0;
         COLORIST_ASSERT(taskCount);
 
-        clLog("grading", 1, "Using %d thread%s to find best gamma.", taskCount, (taskCount == 1) ? "" : "s");
+        clContextLog(C, "grading", 1, "Using %d thread%s to find best gamma.", taskCount, (taskCount == 1) ? "" : "s");
 
-        tasks = calloc(taskCount, sizeof(clTask *));
-        infos = calloc(taskCount, sizeof(clGammaErrorTermTask));
+        tasks = clAllocate(taskCount * sizeof(clTask *));
+        infos = clAllocate(taskCount * sizeof(clGammaErrorTermTask));
         for (gammaInt = 20; gammaInt <= 80; ++gammaInt) { // (2.0 - 4.0) by 0.05
             float gammaAttempt = (float)gammaInt / 20.0f;
 
@@ -109,12 +110,12 @@ void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int sr
             infos[tasksInFlight].maxChannel = maxChannel;
             infos[tasksInFlight].luminanceScale = luminanceScale;
             infos[tasksInFlight].outErrorTerm = 0;
-            tasks[tasksInFlight] = clTaskCreate((clTaskFunc)gammaErrorTermTaskFunc, &infos[tasksInFlight]);
+            tasks[tasksInFlight] = clTaskCreate(C, (clTaskFunc)gammaErrorTermTaskFunc, &infos[tasksInFlight]);
             ++tasksInFlight;
 
             if ((tasksInFlight == taskCount) || (gammaInt == 50)) {
                 for (i = 0; i < tasksInFlight; ++i) {
-                    clTaskJoin(tasks[i]);
+                    clTaskJoin(C, tasks[i]);
                     if (minErrorTerm < 0.0f) {
                         minErrorTerm = infos[i].outErrorTerm;
                         minGammaInt = infos[i].gammaInt;
@@ -123,19 +124,19 @@ void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int sr
                         minGammaInt = infos[i].gammaInt;
                     }
                     if (verbose)
-                        clLog("grading", 2, "attempt: gamma %.3g, err: %g     best -> gamma: %g, err: %g", infos[i].gamma, infos[i].outErrorTerm, (float)minGammaInt / 20.0f, minErrorTerm);
-                    clTaskDestroy(tasks[i]);
+                        clContextLog(C, "grading", 2, "attempt: gamma %.3g, err: %g     best -> gamma: %g, err: %g", infos[i].gamma, infos[i].outErrorTerm, (float)minGammaInt / 20.0f, minErrorTerm);
+                    clTaskDestroy(C, tasks[i]);
                 }
                 tasksInFlight = 0;
             }
         }
         bestGamma = (float)minGammaInt / 20.0f;
-        clLog("grading", 1, "Found best gamma: %g", bestGamma);
-        free(tasks);
-        free(infos);
+        clContextLog(C, "grading", 1, "Found best gamma: %g", bestGamma);
+        clFree(tasks);
+        clFree(infos);
     } else {
         bestGamma = *outGamma;
-        clLog("grading", 1, "Using requested gamma: %g", bestGamma);
+        clContextLog(C, "grading", 1, "Using requested gamma: %g", bestGamma);
     }
 
     *outLuminance = maxLuminance;
