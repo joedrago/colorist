@@ -350,8 +350,8 @@ static void transformTaskFunc(clTransformTask * info)
 
 static void doMultithreadedTransform(int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
 {
-    int pixelsPerTask = pixelCount / taskCount;
-    int lastTaskPixelCount = pixelCount - (pixelsPerTask * (taskCount - 1));
+    int pixelsPerTask;
+    int lastTaskPixelCount;
     clTask ** tasks;
     clTransformTask * infos;
     int i;
@@ -360,6 +360,8 @@ static void doMultithreadedTransform(int taskCount, cmsHTRANSFORM transform, uin
         // This is a dumb corner case I'm not too worried about.
         taskCount = pixelCount;
     }
+    pixelsPerTask = pixelCount / taskCount;
+    lastTaskPixelCount = pixelCount - (pixelsPerTask * (taskCount - 1));
 
     printf("Using %d thread%s to CMS transform.\n", taskCount, (taskCount == 1) ? "" : "s");
 
