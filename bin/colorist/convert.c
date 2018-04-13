@@ -333,35 +333,38 @@ static void transformTaskFunc(clTransformTask * info)
 
 static void doMultithreadedTransform(int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
 {
-    int pixelsPerTask;
-    int lastTaskPixelCount;
-    clTask ** tasks;
-    clTransformTask * infos;
-    int i;
-
     if (taskCount > pixelCount) {
         // This is a dumb corner case I'm not too worried about.
         taskCount = pixelCount;
     }
-    pixelsPerTask = pixelCount / taskCount;
-    lastTaskPixelCount = pixelCount - (pixelsPerTask * (taskCount - 1));
 
-    clLog("convert", 1, "Using %d thread%s to pixel transform.", taskCount, (taskCount == 1) ? "" : "s");
+    if (taskCount == 1) {
+        // Don't bother making any new threads
+        cmsDoTransform(transform, srcPixels, dstPixels, pixelCount);
+    } else {
+        int pixelsPerTask = pixelCount / taskCount;
+        int lastTaskPixelCount = pixelCount - (pixelsPerTask * (taskCount - 1));
+        clTask ** tasks;
+        clTransformTask * infos;
+        int i;
 
-    tasks = calloc(taskCount, sizeof(clTask *));
-    infos = calloc(taskCount, sizeof(clTransformTask));
-    for (i = 0; i < taskCount; ++i) {
-        infos[i].transform = transform;
-        infos[i].inPixels = &srcPixels[i * pixelsPerTask * srcPixelBytes];
-        infos[i].outPixels = &dstPixels[i * pixelsPerTask * dstPixelBytes];
-        infos[i].pixelCount = (i == (taskCount - 1)) ? lastTaskPixelCount : pixelsPerTask;
-        tasks[i] = clTaskCreate((clTaskFunc)transformTaskFunc, &infos[i]);
+        clLog("convert", 1, "Using %d thread%s to pixel transform.", taskCount, (taskCount == 1) ? "" : "s");
+
+        tasks = calloc(taskCount, sizeof(clTask *));
+        infos = calloc(taskCount, sizeof(clTransformTask));
+        for (i = 0; i < taskCount; ++i) {
+            infos[i].transform = transform;
+            infos[i].inPixels = &srcPixels[i * pixelsPerTask * srcPixelBytes];
+            infos[i].outPixels = &dstPixels[i * pixelsPerTask * dstPixelBytes];
+            infos[i].pixelCount = (i == (taskCount - 1)) ? lastTaskPixelCount : pixelsPerTask;
+            tasks[i] = clTaskCreate((clTaskFunc)transformTaskFunc, &infos[i]);
+        }
+
+        for (i = 0; i < taskCount; ++i) {
+            clTaskDestroy(tasks[i]);
+        }
+
+        free(tasks);
+        free(infos);
     }
-
-    for (i = 0; i < taskCount; ++i) {
-        clTaskDestroy(tasks[i]);
-    }
-
-    free(tasks);
-    free(infos);
 }
