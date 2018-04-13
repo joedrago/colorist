@@ -10,6 +10,10 @@
 
 #include "colorist/types.h"
 
+// for cmsContext
+#include "lcms2.h"
+
+// for va_list
 #include <stdarg.h>
 
 struct clContext;
@@ -74,6 +78,8 @@ typedef struct clContextSystem
 typedef struct clContext
 {
     clContextSystem system;
+
+    cmsContext lcms;
 
     clAction action;
     clBool autoGrade;            // -a

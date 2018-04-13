@@ -85,7 +85,9 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
     }
 
     image = clImageCreate(C, opjImage->x1, opjImage->y1, opjImage->comps[0].prec, profile);
-    clProfileDestroy(C, profile);
+    if (profile) {
+        clProfileDestroy(C, profile);
+    }
 
     pixelCount = image->width * image->height;
 

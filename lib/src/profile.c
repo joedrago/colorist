@@ -55,7 +55,7 @@ clProfile * clProfileClone(struct clContext * C, clProfile * profile)
         return NULL;
     }
     clone = clAllocateStruct(clProfile);
-    clone->handle = cmsOpenProfileFromMem(bytes, bytesNeeded);
+    clone->handle = cmsOpenProfileFromMemTHR(C->lcms, bytes, bytesNeeded);
     clFree(bytes);
     if (!clone->handle) {
         clFree(clone);
@@ -68,7 +68,7 @@ clProfile * clProfileClone(struct clContext * C, clProfile * profile)
 clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, int iccLen, const char * description)
 {
     clProfile * profile = clAllocateStruct(clProfile);
-    profile->handle = cmsOpenProfileFromMem(icc, iccLen);
+    profile->handle = cmsOpenProfileFromMemTHR(C->lcms, icc, iccLen);
     if (!profile->handle) {
         clFree(profile);
         return NULL;
@@ -108,10 +108,10 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
     dstWhitePoint.y = primaries->white[1];
     dstWhitePoint.Y = 1.0f;
 
-    curves[0] = cmsBuildGamma(NULL, curve->gamma);
-    curves[1] = cmsBuildGamma(NULL, curve->gamma);
-    curves[2] = cmsBuildGamma(NULL, curve->gamma);
-    profile->handle = cmsCreateRGBProfile(&dstWhitePoint, &dstPrimaries, curves);
+    curves[0] = cmsBuildGamma(C->lcms, curve->gamma);
+    curves[1] = curves[0];
+    curves[2] = curves[0];
+    profile->handle = cmsCreateRGBProfileTHR(C->lcms, &dstWhitePoint, &dstPrimaries, curves);
     cmsFreeToneCurve(curves[0]);
     if (!profile->handle) {
         clFree(profile);
@@ -351,9 +351,10 @@ clBool clProfileSetMLU(struct clContext * C, clProfile * profile, const char tag
     rawTagPtr[1] = tag[2];
     rawTagPtr[2] = tag[1];
     rawTagPtr[3] = tag[0];
-    mlu = cmsMLUalloc(NULL, 1);
+    mlu = cmsMLUalloc(C->lcms, 1);
     cmsMLUsetASCII(mlu, languageCode, countryCode, ascii);
     cmsWriteTag(profile->handle, tagSignature, mlu);
+    cmsMLUfree(mlu);
     return clTrue;
 }
 

@@ -5,6 +5,10 @@
 
 #include <math.h>
 
+#define GAMMA_RANGE_START 20
+#define GAMMA_RANGE_END 80
+#define GAMMA_INT_DIVISOR 20.0f
+
 // NOTE: This is a work in progress. There are probably lots of problems with this.
 
 // roundf() doesn't exist until C99
@@ -100,8 +104,8 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, float * pixels, 
 
         tasks = clAllocate(taskCount * sizeof(clTask *));
         infos = clAllocate(taskCount * sizeof(clGammaErrorTermTask));
-        for (gammaInt = 20; gammaInt <= 80; ++gammaInt) { // (2.0 - 4.0) by 0.05
-            float gammaAttempt = (float)gammaInt / 20.0f;
+        for (gammaInt = GAMMA_RANGE_START; gammaInt <= GAMMA_RANGE_END; ++gammaInt) { // (2.0 - 4.0) by 0.05
+            float gammaAttempt = (float)gammaInt / GAMMA_INT_DIVISOR;
 
             infos[tasksInFlight].gammaInt = gammaInt;
             infos[tasksInFlight].gamma = gammaAttempt;
@@ -113,7 +117,7 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, float * pixels, 
             tasks[tasksInFlight] = clTaskCreate(C, (clTaskFunc)gammaErrorTermTaskFunc, &infos[tasksInFlight]);
             ++tasksInFlight;
 
-            if ((tasksInFlight == taskCount) || (gammaInt == 50)) {
+            if ((tasksInFlight == taskCount) || (gammaInt == GAMMA_RANGE_END)) {
                 for (i = 0; i < tasksInFlight; ++i) {
                     clTaskJoin(C, tasks[i]);
                     if (minErrorTerm < 0.0f) {
@@ -124,13 +128,13 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, float * pixels, 
                         minGammaInt = infos[i].gammaInt;
                     }
                     if (verbose)
-                        clContextLog(C, "grading", 2, "attempt: gamma %.3g, err: %g     best -> gamma: %g, err: %g", infos[i].gamma, infos[i].outErrorTerm, (float)minGammaInt / 20.0f, minErrorTerm);
+                        clContextLog(C, "grading", 2, "attempt: gamma %.3g, err: %g     best -> gamma: %g, err: %g", infos[i].gamma, infos[i].outErrorTerm, (float)minGammaInt / GAMMA_INT_DIVISOR, minErrorTerm);
                     clTaskDestroy(C, tasks[i]);
                 }
                 tasksInFlight = 0;
             }
         }
-        bestGamma = (float)minGammaInt / 20.0f;
+        bestGamma = (float)minGammaInt / GAMMA_INT_DIVISOR;
         clContextLog(C, "grading", 1, "Found best gamma: %g", bestGamma);
         clFree(tasks);
         clFree(infos);

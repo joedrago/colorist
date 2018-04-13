@@ -177,6 +177,7 @@ clBool clImageWritePNG(struct clContext * C, clImage * image, const char * filen
 
     png_write_image(png, rowPointers);
     png_write_end(png, NULL);
+    png_destroy_write_struct(&png, &info);
 
     clFree(rowPointers);
     fclose(fp);

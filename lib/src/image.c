@@ -101,6 +101,7 @@ void clImageSetPixel(clContext * C, clImage * image, int x, int y, int r, int g,
 
 void clImageDestroy(clContext * C, clImage * image)
 {
+    clProfileDestroy(C, image->profile);
     if (image->pixels) {
         clFree(image->pixels);
     }

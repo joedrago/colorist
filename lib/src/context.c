@@ -10,6 +10,7 @@
 #include "colorist/task.h"
 
 #include <string.h>
+#include <stdlib.h>
 
 // ------------------------------------------------------------------------------------------------
 // Stock Primaries
@@ -154,6 +155,9 @@ clContext * clContextCreate(clContextSystem * system)
             C->system.error = system->error;
     }
 
+    // TODO: hook up memory management plugin to route through C->system.alloc
+    C->lcms = cmsCreateContext(NULL, NULL);
+
     // Default args
     C->action = CL_ACTION_NONE;
     C->autoGrade = clFalse;
@@ -182,6 +186,7 @@ clContext * clContextCreate(clContextSystem * system)
 
 void clContextDestroy(clContext * C)
 {
+    cmsDeleteContext(C->lcms);
     clFree(C);
 }
 

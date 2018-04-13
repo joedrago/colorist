@@ -128,13 +128,14 @@ int clContextConvert(clContext * C)
 
         linearPixelsCount = srcImage->width * srcImage->height;
         linearPixels = clAllocate(4 * sizeof(float) * linearPixelsCount);
-        toLinear = cmsCreateTransform(srcImage->profile->handle, TYPE_RGBA_FLT, dstLinear->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+        toLinear = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, TYPE_RGBA_FLT, dstLinear->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
 
         clContextLog(C, "convert", 0, "Calculating linear pixels...");
         timerStart(&t);
         srcFloats = clAllocate(4 * sizeof(float) * linearPixelsCount);
         clPixelMathUNormToFloat(C, srcImage->pixels, srcImage->depth, srcFloats, linearPixelsCount);
         doMultithreadedTransform(C, C->jobs, toLinear, (uint8_t *)srcFloats, 4 * sizeof(float), (uint8_t *)linearPixels, 4 * sizeof(float), linearPixelsCount);
+        cmsDeleteTransform(toLinear);
         clFree(srcFloats);
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
@@ -261,11 +262,12 @@ int clContextConvert(clContext * C)
 
             clContextLog(C, "convert", 0, "Converting directly...");
             timerStart(&t);
-            directTransform = cmsCreateTransform(srcImage->profile->handle, srcFormat, dstImage->profile->handle, dstFormat, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+            directTransform = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, srcFormat, dstImage->profile->handle, dstFormat, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
             doMultithreadedTransform(C, C->jobs, directTransform, srcImage->pixels, (srcImage->depth == 16) ? 8 : 4, dstImage->pixels, (dstImage->depth == 16) ? 8 : 4, dstImage->width * dstImage->height);
+            cmsDeleteTransform(directTransform);
             clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
         } else {
-            cmsHTRANSFORM fromLinear = cmsCreateTransform(dstLinear->handle, TYPE_RGBA_FLT, dstImage->profile->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+            cmsHTRANSFORM fromLinear = cmsCreateTransformTHR(C->lcms, dstLinear->handle, TYPE_RGBA_FLT, dstImage->profile->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
             float * dstFloats; // final values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
 
             clContextLog(C, "luminance", 0, "Scaling luminance (%s)...", tonemap ? "tonemap" : "clip");
@@ -277,6 +279,7 @@ int clContextConvert(clContext * C)
             timerStart(&t);
             dstFloats = clAllocate(4 * sizeof(float) * linearPixelsCount);
             doMultithreadedTransform(C, C->jobs, fromLinear, (uint8_t *)linearPixels, 4 * sizeof(float), (uint8_t *)dstFloats, 4 * sizeof(float), linearPixelsCount);
+            cmsDeleteTransform(fromLinear);
             clPixelMathFloatToUNorm(C, dstFloats, dstImage->pixels, dstImage->depth, linearPixelsCount);
             clFree(dstFloats);
             clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));

@@ -70,15 +70,7 @@ clImage * clImageReadJPG(struct clContext * C, const char * filename)
 
     if (read_icc_profile(C, &cinfo, &iccData, &iccDataLen)) {
         profile = clProfileParse(C, iccData, iccDataLen, NULL);
-        if (profile) {
-            char * description = clProfileGetMLU(C, profile, "desc", "en", "US");
-            COLORIST_ASSERT(!profile->description);
-            if (description) {
-                profile->description = description; // take ownership
-            } else {
-                profile->description = clContextStrdup(C, "Unknown");
-            }
-        } else {
+        if (!profile) {
             clContextLogError(C, "ERROR: can't parse JPEG embedded ICC profile: %s", filename);
             fclose(infile);
             jpeg_destroy_decompress(&cinfo);
@@ -88,6 +80,9 @@ clImage * clImageReadJPG(struct clContext * C, const char * filename)
     }
 
     image = clImageCreate(C, cinfo.output_width, cinfo.output_height, 8, profile);
+    if (profile) {
+        clProfileDestroy(C, profile);
+    }
 
     row = 0;
     while (cinfo.output_scanline < cinfo.output_height) {
@@ -137,9 +132,10 @@ clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filen
     jpeg_stdio_dest(&cinfo, outfile);
 
     jpegPixels = clAllocate(3 * image->width * image->height);
-    rgbTransform = cmsCreateTransform(image->profile->handle, srcFormat, image->profile->handle, TYPE_RGB_8, INTENT_PERCEPTUAL, 0);
+    rgbTransform = cmsCreateTransformTHR(C->lcms, image->profile->handle, srcFormat, image->profile->handle, TYPE_RGB_8, INTENT_PERCEPTUAL, 0);
     COLORIST_ASSERT(rgbTransform);
     cmsDoTransform(rgbTransform, image->pixels, jpegPixels, image->width * image->height);
+    cmsDeleteTransform(rgbTransform);
 
     cinfo.image_width = image->width;
     cinfo.image_height = image->height;
