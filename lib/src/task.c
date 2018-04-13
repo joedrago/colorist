@@ -128,7 +128,8 @@ static void * taskThreadProc(void * userData)
 {
     clTask * task = (clTask *)userData;
     task->func(task->userData);
-    return 0;
+    pthread_exit(NULL);
+    return 0; // never reached
 }
 
 static void nativeTaskStart(clTask * task)
