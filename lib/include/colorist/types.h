@@ -8,9 +8,6 @@
 #ifndef COLORIST_TYPES_H
 #define COLORIST_TYPES_H
 
-// for calloc
-#include <stdlib.h>
-
 // for uint*_t
 #include <stdint.h>
 

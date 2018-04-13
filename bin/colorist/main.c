@@ -9,6 +9,7 @@
 
 int main(int argc, char * argv[])
 {
+    int ret = 1;
     clContext * C = clContextCreate(NULL);
 
     if (!clContextParseArgs(C, argc, argv)) {
@@ -24,17 +25,18 @@ int main(int argc, char * argv[])
 
     switch (C->action) {
         case CL_ACTION_CONVERT:
-            return clContextConvert(C);
+            ret = clContextConvert(C);
             break;
         case CL_ACTION_GENERATE:
-            return clContextGenerate(C);
+            ret = clContextGenerate(C);
             break;
         case CL_ACTION_IDENTIFY:
-            return clContextIdentify(C);
+            ret = clContextIdentify(C);
             break;
         default:
             clContextLogError(C, "Unimplemented action: %s", clActionToString(C, C->action));
             break;
     }
-    return 1;
+    clContextDestroy(C);
+    return ret;
 }

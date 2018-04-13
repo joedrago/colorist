@@ -128,16 +128,6 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
 // ------------------------------------------------------------------------------------------------
 // clContext
 
-static void * clContextDefaultAlloc(int bytes)
-{
-    return calloc(1, bytes);
-}
-
-static void clContextDefaultFree(void * ptr)
-{
-    free(ptr);
-}
-
 clContext * clContextCreate(clContextSystem * system)
 {
     clContextAllocFunc alloc;
@@ -147,7 +137,7 @@ clContext * clContextCreate(clContextSystem * system)
     alloc = clContextDefaultAlloc;
     if (system && system->alloc)
         alloc = system->alloc;
-    C = (clContext *)alloc(sizeof(clContext));
+    C = (clContext *)alloc(NULL, sizeof(clContext));
 
     C->system.alloc = clContextDefaultAlloc;
     C->system.free = clContextDefaultFree;

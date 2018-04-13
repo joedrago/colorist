@@ -52,12 +52,14 @@ typedef enum clTonemap
 clTonemap clTonemapFromString(struct clContext * C, const char * str);
 const char * clTonemapToString(struct clContext * C, clTonemap tonemap);
 
-typedef void *(* clContextAllocFunc)(int bytes);
-typedef void (* clContextFreeFunc)(void * ptr);
+typedef void *(* clContextAllocFunc)(struct clContext * C, int bytes); // C will be NULL when allocating the clContext itself
+typedef void (* clContextFreeFunc)(struct clContext * C, void * ptr);
 typedef void (* clContextLogFunc)(struct clContext * C, const char * section, int indent, const char * format, va_list args);
 typedef void (* clContextLogErrorFunc)(struct clContext * C, const char * format, va_list args);
 
-// Internal defaults for clContextSystem, use clContextLog*() below
+// Internal defaults for clContextSystem, use clContextLog*() / clAllocate / clFree below
+void * clContextDefaultAlloc(struct clContext * C, int bytes);
+void clContextDefaultFree(struct clContext * C, void * ptr);
 void clContextDefaultLog(struct clContext * C, const char * section, int indent, const char * format, va_list args);
 void clContextDefaultLogError(struct clContext * C, const char * format, va_list args);
 
@@ -95,9 +97,9 @@ typedef struct clContext
 
 struct clImage;
 
-#define clAllocate(BYTES) C->system.alloc(BYTES)
-#define clAllocateStruct(T) (T *)C->system.alloc(sizeof(T))
-#define clFree(P) C->system.free(P)
+#define clAllocate(BYTES) C->system.alloc(C, BYTES)
+#define clAllocateStruct(T) (T *)C->system.alloc(C, sizeof(T))
+#define clFree(P) C->system.free(C, P)
 char * clContextStrdup(clContext * C, const char * str);
 
 // Any/all of the clContextSystem struct can be NULL, including the struct itself. Any NULL values will use the default.
