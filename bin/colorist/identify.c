@@ -15,23 +15,25 @@ int actionIdentify(Args * args)
     if (format == FORMAT_AUTO)
         format = detectFormat(args->inputFilename);
     if (format == FORMAT_ERROR) {
-        fprintf(stderr, "ERROR: Unknown output file format: %s\n", args->outputFilename);
+        clLogError("Unknown file format: %s", args->inputFilename);
         return 1;
     }
 
-    printf("Colorist [identify]: %s\n", args->inputFilename);
+    clLog("action", 0, "Identify: %s", args->inputFilename);
     if (format == FORMAT_ICC) {
         clProfile * profile = clProfileRead(args->inputFilename);
         if (profile) {
-            printf("Format: %s\n", formatToString(format));
-            clProfileDebugDump(profile);
+            clLog("identify", 1, "Format: %s", formatToString(format));
+            clProfileDebugDump(profile, 1);
             clProfileDestroy(profile);
         }
     } else {
-        clImage * image = readImage(args->inputFilename, &format);
+        clImage * image;
+        clLog("decode", 0, "Reading: %s (%d bytes)", args->inputFilename, clFileSize(args->inputFilename));
+        image = readImage(args->inputFilename, &format);
         if (image) {
-            printf("Format: %s\n", formatToString(format));
-            clImageDebugDump(image, args->rect[0], args->rect[1], args->rect[2], args->rect[3]);
+            clLog("identify", 1, "Format: %s", formatToString(format));
+            clImageDebugDump(image, args->rect[0], args->rect[1], args->rect[2], args->rect[3], 1);
             clImageDestroy(image);
         }
     }

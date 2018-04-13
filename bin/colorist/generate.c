@@ -18,15 +18,15 @@ int actionGenerate(Args * args)
     if (outputFileFormat == FORMAT_AUTO)
         outputFileFormat = detectFormat(args->outputFilename);
     if (outputFileFormat != FORMAT_ICC) {
-        fprintf(stderr, "ERROR: generate can currently only make .icc files.\n");
+        clLogError("generate can currently only make .icc files.");
         return 1;
     }
 
-    printf("Colorist [generate]: %s\n", args->outputFilename);
+    clLog("action", 0, "Generating: %s", args->outputFilename);
     timerStart(&overall);
 
     if ((args->primaries[0] <= 0.0f) || (args->gamma <= 0.0f) || (args->luminance <= 0)) {
-        fprintf(stderr, "ERROR: generate requires -p, -g, and -l.\n");
+        clLogError("generate requires -p, -g, and -l.");
         return 1;
     }
 
@@ -54,25 +54,25 @@ int actionGenerate(Args * args)
             description = generateDescription(&primaries, &curve, luminance);
         }
 
-        printf("Generating ICC profile: \"%s\"\n", description);
+        clLog("generate", 1, "Generating ICC profile: \"%s\"", description);
         dstProfile = clProfileCreate(&primaries, &curve, luminance, description);
         free(description);
         if (args->copyright) {
-            printf("Setting copyright: \"%s\"\n", args->copyright);
+            clLog("generate", 1, "Setting copyright: \"%s\"", args->copyright);
             clProfileSetMLU(dstProfile, "cprt", "en", "US", args->copyright);
         }
     }
 
     // Dump out the profile to disk and bail out
-    printf("Writing ICC: %s\n", args->outputFilename);
-    clProfileDebugDump(dstProfile);
+    clLog("generate", 0, "Writing ICC: %s", args->outputFilename);
+    clProfileDebugDump(dstProfile, 0);
 
     if (!clProfileWrite(dstProfile, args->outputFilename)) {
         return 1;
     }
     clProfileDestroy(dstProfile);
 
-    printf("\nGeneration complete (%g sec).\n", timerElapsedSeconds(&overall));
+    clLog("action", 0, "\nGeneration complete (%g sec).", timerElapsedSeconds(&overall));
     return 0;
 }
 

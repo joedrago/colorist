@@ -46,7 +46,7 @@ clImage * clImageReadJPG(const char * filename)
     unsigned int iccDataLen;
 
     if ((infile = fopen(filename, "rb")) == NULL) {
-        fprintf(stderr, "can't open %s\n", filename);
+        clLogError("can't open %s", filename);
         return 0;
     }
 
@@ -78,7 +78,7 @@ clImage * clImageReadJPG(const char * filename)
                 profile->description = strdup("Unknown");
             }
         } else {
-            fprintf(stderr, "ERROR: can't parse JPEG embedded ICC profile: %s\n", filename);
+            clLogError("ERROR: can't parse JPEG embedded ICC profile: %s", filename);
             fclose(infile);
             jpeg_destroy_decompress(&cinfo);
             return NULL;
@@ -131,7 +131,7 @@ clBool clImageWriteJPG(clImage * image, const char * filename, int quality)
     jpeg_create_compress(&cinfo);
 
     if ((outfile = fopen(filename, "wb")) == NULL) {
-        fprintf(stderr, "ERROR: can't open JPG for write: %s\n", filename);
+        clLogError("ERROR: can't open JPG for write: %s", filename);
         return clFalse;
     }
     jpeg_stdio_dest(&cinfo, outfile);

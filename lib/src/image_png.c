@@ -38,14 +38,14 @@ clImage * clImageReadPNG(const char * filename)
 
     FILE * fp = fopen(filename, "rb");
     if (!fp) {
-        fprintf(stderr, "ERROR: cannot open PNG: '%s'\n", filename);
+        clLogError("cannot open PNG: '%s'", filename);
         return NULL;
     }
 
     fread(header, 1, 8, fp);
     if (png_sig_cmp(header, 0, 8)) {
         fclose(fp);
-        fprintf(stderr, "ERROR: not a PNG: '%s'\n", filename);
+        clLogError("not a PNG: '%s'", filename);
         return NULL;
     }
 

@@ -9,7 +9,6 @@
 
 #include "colorist/task.h"
 
-#include <stdio.h>
 #include <string.h>
 
 typedef struct StockPrimaries
@@ -103,7 +102,7 @@ Format detectFormat(const char * filename)
 {
     const char * ext = strrchr(filename, '.');
     if (ext == NULL) {
-        fprintf(stderr, "ERROR: Unable to guess format\n");
+        clLogError("Unable to guess format");
         return FORMAT_ERROR;
     }
     ++ext; // skip past the period
@@ -111,7 +110,7 @@ Format detectFormat(const char * filename)
     if (!strcmp(ext, "jp2")) return FORMAT_JP2;
     if (!strcmp(ext, "jpg")) return FORMAT_JPG;
     if (!strcmp(ext, "png")) return FORMAT_PNG;
-    fprintf(stderr, "ERROR: Unknown file extension '%s'\n", ext);
+    clLogError("Unknown file extension '%s'", ext);
     return FORMAT_ERROR;
 }
 
@@ -130,14 +129,14 @@ static clBool parsePrimaries(float primaries[8], const char * arg)
     index = 0;
     for (token = strtok(buffer, ","); token != NULL; token = strtok(NULL, ",")) {
         if (index >= 8) {
-            fprintf(stderr, "ERROR: Too many primaries: (expecting: rx,ry,gx,gy,bx,by,wx,wy)\n");
+            clLogError("Too many primaries: (expecting: rx,ry,gx,gy,bx,by,wx,wy)");
             return clFalse;
         }
         primaries[index] = (float)strtod(token, NULL);
         ++index;
     }
     if (index < 8) {
-        fprintf(stderr, "ERROR: Too few primaries: (expecting: rx,ry,gx,gy,bx,by,wx,wy)\n");
+        clLogError("Too few primaries: (expecting: rx,ry,gx,gy,bx,by,wx,wy)");
         return clFalse;
     }
     return clTrue;
@@ -150,24 +149,24 @@ static clBool parseRect(int rect[4], const char * arg)
     int index = 0;
     for (token = strtok(buffer, ","); token != NULL; token = strtok(NULL, ",")) {
         if (index >= 8) {
-            fprintf(stderr, "ERROR: Too many values for rect: (expecting: x,y,w,h)\n");
+            clLogError("Too many values for rect: (expecting: x,y,w,h)");
             return clFalse;
         }
         rect[index] = atoi(token);
         ++index;
     }
     if (index < 4) {
-        fprintf(stderr, "ERROR: Too few values for rect: (expecting: x,y,w,h)\n");
+        clLogError("Too few values for rect: (expecting: x,y,w,h)");
         return clFalse;
     }
     return clTrue;
 }
 
-#define NEXTARG()                                                      \
-    if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) {  \
-        fprintf(stderr, "ERROR: -%c requires an argument.\n", arg[1]); \
-        return clFalse;                                                \
-    }                                                                  \
+#define NEXTARG()                                                     \
+    if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
+        clLogError("-%c requires an argument.", arg[1]);              \
+        return clFalse;                                               \
+    }                                                                 \
     arg = argv[++argIndex]
 
 static clBool parseArgs(Args * args, int argc, char * argv[])
@@ -198,7 +197,7 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
                     NEXTARG();
                     args->format = stringToFormat(arg);
                     if (args->format == FORMAT_ERROR) {
-                        printf("ERROR: Unknown format: %s\n", arg);
+                        clLogError("Unknown format: %s", arg);
                         return clFalse;
                     }
                     break;
@@ -272,7 +271,7 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
             if (args->action == ACTION_NONE) {
                 args->action = stringToAction(arg);
                 if (args->action == ACTION_ERROR) {
-                    fprintf(stderr, "ERROR: unknown action '%s', expecting identify or convert\n", arg);
+                    clLogError("unknown action '%s', expecting identify or convert", arg);
                     return clFalse;
                 }
             } else if (filenames[0] == NULL) {
@@ -280,7 +279,7 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
             } else if (filenames[1] == NULL) {
                 filenames[1] = arg;
             } else {
-                fprintf(stderr, "ERROR: Too many positional arguments.\n");
+                clLogError("Too many positional arguments.");
                 return clFalse;
             }
         }
@@ -291,11 +290,11 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
         case ACTION_IDENTIFY:
             args->inputFilename = filenames[0];
             if (!args->inputFilename) {
-                printf("ERROR: identify requires an input filename.\n");
+                clLogError("identify requires an input filename.");
                 return clFalse;
             }
             if (filenames[1]) {
-                printf("ERROR: identify does not accept an output filename.\n");
+                clLogError("identify does not accept an output filename.");
                 return clFalse;
             }
             break;
@@ -303,11 +302,11 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
         case ACTION_GENERATE:
             args->outputFilename = filenames[0];
             if (!args->outputFilename) {
-                printf("ERROR: generate requires an output filename.\n");
+                clLogError("generate requires an output filename.");
                 return clFalse;
             }
             if (filenames[1]) {
-                printf("ERROR: generate does not accept both an input and output filename.\n");
+                clLogError("generate does not accept both an input and output filename.");
                 return clFalse;
             }
             break;
@@ -315,12 +314,12 @@ static clBool parseArgs(Args * args, int argc, char * argv[])
         case ACTION_CONVERT:
             args->inputFilename = filenames[0];
             if (!args->inputFilename) {
-                printf("ERROR: convert requires an input filename.\n");
+                clLogError("convert requires an input filename.");
                 return clFalse;
             }
             args->outputFilename = filenames[1];
             if (!args->outputFilename) {
-                printf("ERROR: convert requires an output filename.\n");
+                clLogError("convert requires an output filename.");
                 return clFalse;
             }
             break;
@@ -335,11 +334,11 @@ static clBool validateArgs(Args * args)
 {
     clBool valid = clTrue;
     if ((args->bpp != 0) && (args->bpp != 8) && (args->bpp != 16)) {
-        fprintf(stderr, "ERROR: Unknown bpp: %d\n", args->bpp);
+        clLogError("Unknown bpp: %d", args->bpp);
         valid = clFalse;
     }
     if (args->autoGrade && (args->gamma != 0.0f) && (args->luminance != 0)) {
-        fprintf(stderr, "WARNING: auto color grading mode (-a) is useless with both -g and -l specified, disabling auto color grading\n");
+        clLog("syntax", 0, "WARNING: auto color grading mode (-a) is useless with both -g and -l specified, disabling auto color grading");
         args->autoGrade = clFalse;
     }
     return valid;
@@ -347,67 +346,67 @@ static clBool validateArgs(Args * args)
 
 static void dumpArgs(Args * args)
 {
-    printf("Args:\n");
-    printf(" * Action     : %s\n", actionToString(args->action));
+    clLog("syntax", 0, "Args:");
+    clLog("syntax", 1, "Action     : %s", actionToString(args->action));
     if (args->bpp)
-        printf(" * bpp        : %d\n", args->bpp);
+        clLog("syntax", 1, "bpp        : %d", args->bpp);
     else
-        printf(" * bpp        : auto\n");
-    printf(" * copyright  : %s\n", args->copyright ? args->copyright : "--");
-    printf(" * description: %s\n", args->description ? args->description : "--");
-    printf(" * format     : %s\n", formatToString(args->format));
+        clLog("syntax", 1, "bpp        : auto");
+    clLog("syntax", 1, "copyright  : %s", args->copyright ? args->copyright : "--");
+    clLog("syntax", 1, "description: %s", args->description ? args->description : "--");
+    clLog("syntax", 1, "format     : %s", formatToString(args->format));
     if (args->gamma < 0.0f) {
-        printf(" * gamma      : source gamma (forced)\n");
+        clLog("syntax", 1, "gamma      : source gamma (forced)");
     } else if (args->gamma > 0.0f)
-        printf(" * gamma      : %g\n", args->gamma);
+        clLog("syntax", 1, "gamma      : %g", args->gamma);
     else
-        printf(" * gamma      : auto\n");
-    printf(" * help       : %s\n", args->help ? "enabled" : "disabled");
+        clLog("syntax", 1, "gamma      : auto");
+    clLog("syntax", 1, "help       : %s", args->help ? "enabled" : "disabled");
     if (args->luminance < 0) {
-        printf(" * luminance  : source luminance (forced)\n");
+        clLog("syntax", 1, "luminance  : source luminance (forced)");
     } else if (args->luminance) {
-        printf(" * luminance  : %d\n", args->luminance);
+        clLog("syntax", 1, "luminance  : %d", args->luminance);
     } else {
-        printf(" * luminance  : auto\n");
+        clLog("syntax", 1, "luminance  : auto");
     }
     if (args->primaries[0] > 0.0f)
-        printf(" * primaries  : r:(%.4g,%.4g) g:(%.4g,%.4g) b:(%.4g,%.4g) w:(%.4g,%.4g)\n",
+        clLog("syntax", 1, "primaries  : r:(%.4g,%.4g) g:(%.4g,%.4g) b:(%.4g,%.4g) w:(%.4g,%.4g)",
             args->primaries[0], args->primaries[1],
             args->primaries[2], args->primaries[3],
             args->primaries[4], args->primaries[5],
             args->primaries[6], args->primaries[7]);
     else
-        printf(" * primaries  : auto\n");
-    printf(" * rect       : (%d,%d) %dx%d\n", args->rect[0], args->rect[1], args->rect[2], args->rect[3]);
-    printf(" * verbose    : %s\n", args->verbose ? "enabled" : "disabled");
-    printf(" * input      : %s\n", args->inputFilename ? args->inputFilename : "--");
-    printf(" * output     : %s\n", args->outputFilename ? args->outputFilename : "--");
+        clLog("syntax", 1, "primaries  : auto");
+    clLog("syntax", 1, "rect       : (%d,%d) %dx%d", args->rect[0], args->rect[1], args->rect[2], args->rect[3]);
+    clLog("syntax", 1, "verbose    : %s", args->verbose ? "enabled" : "disabled");
+    clLog("syntax", 1, "input      : %s", args->inputFilename ? args->inputFilename : "--");
+    clLog("syntax", 1, "output     : %s", args->outputFilename ? args->outputFilename : "--");
 }
 
 static void printSyntax()
 {
-    printf("         colorist convert  [input] [output] [OPTIONS]\n");
-    printf("Syntax : colorist identify [input]          [OPTIONS]\n");
-    printf("         colorist generate         [output] [OPTIONS]\n");
-    printf("Options:\n");
-    printf("    -a             : Enable automatic color grading of max luminance and gamma (disabled by default)\n");
-    printf("    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)\n");
-    printf("    -c COPYRIGHT   : ICC profile copyright string.\n");
-    printf("    -d DESCRIPTION : ICC profile description.\n");
-    printf("    -f FORMAT      : Output format. auto (default), icc, jp2, jpg, png\n");
-    printf("    -g GAMMA       : Output gamma. 0 for auto (default), or \"source\" to force source gamma\n");
-    printf("    -h             : Display this help\n");
-    printf("    -j JOBS        : Number of jobs to use when color grading. 0 for as many as possible (default)\n");
-    printf("    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default), or \"source\" to force source luminance\n");
-    printf("    -p PRIMARIES   : ICC profile primaries (8 floats, comma separated). rx,ry,gx,gy,bx,by,wx,wy\n");
-    printf("    -q QUALITY     : Output quality for JPG. JP2 can also use it (see -r below). (default: 90)\n");
-    printf("    -r RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)\n");
-    printf("    -t TONEMAP     : Set tonemapping. auto (default), on, or off\n");
-    printf("    -v             : Verbose mode.\n");
-    printf("    -z x,y,w,h     : Pixels to dump in identify mode. x,y,w,h\n");
-    printf("\n");
-    printf("CPUs Available: %d\n", clTaskLimit());
-    printf("\n");
+    clLog(NULL, 0, "         colorist convert  [input] [output] [OPTIONS]");
+    clLog(NULL, 0, "Syntax : colorist identify [input]          [OPTIONS]");
+    clLog(NULL, 0, "         colorist generate         [output] [OPTIONS]");
+    clLog(NULL, 0, "Options:");
+    clLog(NULL, 0, "    -a             : Enable automatic color grading of max luminance and gamma (disabled by default)");
+    clLog(NULL, 0, "    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)");
+    clLog(NULL, 0, "    -c COPYRIGHT   : ICC profile copyright string.");
+    clLog(NULL, 0, "    -d DESCRIPTION : ICC profile description.");
+    clLog(NULL, 0, "    -f FORMAT      : Output format. auto (default), icc, jp2, jpg, png");
+    clLog(NULL, 0, "    -g GAMMA       : Output gamma. 0 for auto (default), or \"source\" to force source gamma");
+    clLog(NULL, 0, "    -h             : Display this help");
+    clLog(NULL, 0, "    -j JOBS        : Number of jobs to use when color grading. 0 for as many as possible (default)");
+    clLog(NULL, 0, "    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default), or \"source\" to force source luminance");
+    clLog(NULL, 0, "    -p PRIMARIES   : ICC profile primaries (8 floats, comma separated). rx,ry,gx,gy,bx,by,wx,wy");
+    clLog(NULL, 0, "    -q QUALITY     : Output quality for JPG. JP2 can also use it (see -r below). (default: 90)");
+    clLog(NULL, 0, "    -r RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)");
+    clLog(NULL, 0, "    -t TONEMAP     : Set tonemapping. auto (default), on, or off");
+    clLog(NULL, 0, "    -v             : Verbose mode.");
+    clLog(NULL, 0, "    -z x,y,w,h     : Pixels to dump in identify mode. x,y,w,h");
+    clLog(NULL, 0, "");
+    clLog(NULL, 0, "CPUs Available: %d", clTaskLimit());
+    clLog(NULL, 0, "");
     clDumpVersions();
 }
 
@@ -440,65 +439,8 @@ int main(int argc, char * argv[])
             return actionIdentify(args);
             break;
         default:
-            fprintf(stderr, "ERROR: Unimplemented action: %s\n", actionToString(args->action));
+            clLogError("Unimplemented action: %s", actionToString(args->action));
             break;
     }
     return 1;
 }
-
-#if 0
-#include <math.h>
-
-int main(int argc, char * argv[])
-{
-    clProfile * srcProfile = clProfileRead("c:\\work\\webroot\\chad.icc");
-    clProfilePrimaries srcPrimaries;
-    clProfileCurve srcCurve;
-    uint16_t srcPixel[4] = { 636, 724, 680, 65535 };
-    float srcFloats[4];
-
-    clProfile * floatProfile;
-    clProfileCurve floatGamma;
-    float floatPixel[4] = { 0, 0, 0, 0 };
-    cmsHTRANSFORM toLinear;
-    cmsHTRANSFORM fromLinear;
-
-    uint16_t dstPixel[4] = { 0, 0, 0, 0 };
-
-    printf("%d, %d, %d, %d\n", (int)srcPixel[0], (int)srcPixel[1], (int)srcPixel[2], (int)srcPixel[3]);
-
-    srcFloats[0] = (float)srcPixel[0] / 65535.0f;
-    srcFloats[1] = (float)srcPixel[1] / 65535.0f;
-    srcFloats[2] = (float)srcPixel[2] / 65535.0f;
-    srcFloats[3] = (float)srcPixel[3] / 65535.0f;
-
-    clProfileQuery(srcProfile, &srcPrimaries, &srcCurve, NULL);
-
-    floatGamma.type = CL_PCT_GAMMA;
-    floatGamma.gamma = 1.0f;
-    floatProfile = clProfileCreate(&srcPrimaries, &floatGamma, 0, NULL);
-
-    toLinear = cmsCreateTransform(srcProfile->handle, TYPE_RGBA_FLT, floatProfile->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
-    fromLinear = cmsCreateTransform(floatProfile->handle, TYPE_RGBA_FLT, srcProfile->handle, TYPE_RGBA_16, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
-
-    cmsDoTransform(toLinear, srcFloats, floatPixel, 1);
-    printf("%f, %f, %f, %f\n", floatPixel[0], floatPixel[1], floatPixel[2], floatPixel[3]);
-
-    {
-        float f = (float)srcPixel[0] / 65535.0f;
-        uint16_t u;
-        printf("f: %g\n", f);
-        f = powf(f, 2.4f);
-        printf("f: %g\n", f);
-        f = powf(f, 1.0f / 2.4f);
-        printf("f: %g\n", f);
-        u = (unsigned int)roundf(f * 65535.0f);
-        printf("out: %u\n", u);
-    }
-
-    cmsDoTransform(fromLinear, floatPixel, dstPixel, 1);
-    printf("got       %d, %d, %d, %d\n", (int)dstPixel[0], (int)dstPixel[1], (int)dstPixel[2], (int)dstPixel[3]);
-    printf("should be %d, %d, %d, %d\n", (int)(floatPixel[0] * 65535.0f), (int)(floatPixel[1] * 65535.0f), (int)(floatPixel[2] * 65535.0f), (int)(floatPixel[3] * 65535.0f));
-    return 0;
-}
-#endif /* if 0 */

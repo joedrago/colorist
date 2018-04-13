@@ -178,7 +178,7 @@ clProfile * clProfileRead(const char * filename)
     FILE * f;
     f = fopen(filename, "rb");
     if (!f) {
-        fprintf(stderr, "ERROR: Can't open ICC file for read: %s\n", filename);
+        clLogError("Can't open ICC file for read: %s", filename);
         return NULL;
     }
     fseek(f, 0, SEEK_END);
@@ -201,18 +201,18 @@ clBool clProfileWrite(clProfile * profile, const char * filename)
 
     f = fopen(filename, "wb");
     if (!f) {
-        fprintf(stderr, "ERROR: Can't open file for write: %s\n", filename);
+        clLogError("Can't open file for write: %s", filename);
         return 1;
     }
     memset(&rawProfile, 0, sizeof(rawProfile));
     if (!clProfilePack(profile, &rawProfile)) {
-        fprintf(stderr, "ERROR: Can't pack ICC profile\n");
+        clLogError("Can't pack ICC profile");
         fclose(f);
         return clFalse;
     }
     itemsWritten = fwrite(rawProfile.ptr, rawProfile.size, 1, f);
     if (itemsWritten != 1) {
-        fprintf(stderr, "ERROR: Failed to write ICC profile\n");
+        clLogError("Failed to write ICC profile");
         fclose(f);
         return clFalse;
     }

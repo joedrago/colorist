@@ -7,8 +7,6 @@
 
 #include "colorist/profile.h"
 
-#include <stdio.h>
-
 const char * curveTypeToString(clProfileCurveType curveType)
 {
     switch (curveType) {
@@ -21,22 +19,20 @@ const char * curveTypeToString(clProfileCurveType curveType)
     return "Unknown";
 }
 
-void clProfileDebugDump(clProfile * profile)
+void clProfileDebugDump(clProfile * profile, int extraIndent)
 {
     clProfilePrimaries primaries;
     clProfileCurve curve;
     int luminance;
 
     if (clProfileQuery(profile, &primaries, &curve, &luminance)) {
-        printf("  Profile \"%s\" pri:(r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g) maxLum:%d curve:%s(%.3g)\n",
-            profile->description,
+        clLog("profile", 0 + extraIndent, "Profile \"%s\"", profile->description);
+        clLog("profile", 1 + extraIndent, "primaries: (r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g)",
             primaries.red[0], primaries.red[1],
             primaries.green[0], primaries.green[1],
             primaries.blue[0], primaries.blue[1],
-            primaries.white[0], primaries.white[1],
-            luminance,
-            curveTypeToString(curve.type),
-            curve.gamma
-            );
+            primaries.white[0], primaries.white[1]);
+        clLog("profile", 1 + extraIndent, "Max Luminance: %d", luminance);
+        clLog("profile", 1 + extraIndent, "Curve: %s(%.3g)", curveTypeToString(curve.type), curve.gamma);
     }
 }

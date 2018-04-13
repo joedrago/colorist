@@ -44,20 +44,20 @@ int actionConvert(Args * args)
     if (outputFileFormat == FORMAT_AUTO)
         outputFileFormat = detectFormat(args->outputFilename);
     if (outputFileFormat == FORMAT_ERROR) {
-        fprintf(stderr, "ERROR: Unknown output file format: %s\n", args->outputFilename);
+        clLogError("Unknown output file format: %s", args->outputFilename);
         FAIL();
     }
 
-    printf("Colorist [convert]: %s -> %s\n", args->inputFilename, args->outputFilename);
+    clLog("action", 0, "Convert: %s -> %s", args->inputFilename, args->outputFilename);
     timerStart(&overall);
 
-    printf("Reading: %s (%d bytes)\n", args->inputFilename, fileSize(args->inputFilename));
+    clLog("decode", 0, "Reading: %s (%d bytes)", args->inputFilename, clFileSize(args->inputFilename));
     timerStart(&t);
     srcImage = readImage(args->inputFilename, NULL);
     if (srcImage == NULL) {
         return 1;
     }
-    printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
+    clLog("timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
 
     // Parse source image and args for early pipeline decisions
     {
@@ -100,7 +100,7 @@ int actionConvert(Args * args)
             dstDepth = srcImage->depth;
         }
         if ((dstDepth != 8) && (outputFileFormat == FORMAT_JPG)) {
-            printf("Forcing output to 8-bit (JPEG limitations)\n");
+            clLog("validate", 0, "Forcing output to 8-bit (JPEG limitations)");
             dstDepth = 8;
         }
 
@@ -128,25 +128,26 @@ int actionConvert(Args * args)
         linearPixels = malloc(4 * sizeof(float) * linearPixelsCount);
         toLinear = cmsCreateTransform(srcImage->profile->handle, TYPE_RGBA_FLT, dstLinear->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
 
-        printf("Converting to floating point...\n");
+        clLog("convert", 0, "Calculating linear pixels...");
         timerStart(&t);
         srcFloats = malloc(4 * sizeof(float) * linearPixelsCount);
         clPixelMathUNormToFloat(srcImage->pixels, srcImage->depth, srcFloats, linearPixelsCount);
         doMultithreadedTransform(args->jobs, toLinear, (uint8_t *)srcFloats, 4 * sizeof(float), (uint8_t *)linearPixels, 4 * sizeof(float), linearPixelsCount);
         free(srcFloats);
-        printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
+        clLog("timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
 
     if (args->autoGrade) {
-        printf("Color grading...\n");
+        clLog("grading", 0, "Color grading...");
         timerStart(&t);
         clPixelMathColorGrade(args->jobs, linearPixels, linearPixelsCount, srcLuminance, dstDepth, &dstLuminance, &dstGamma, args->verbose);
-        printf("    done (%g sec). (maxLum:%d, gamma:%g)\n\n", timerElapsedSeconds(&t), dstLuminance, dstGamma);
+        clLog("grading", 0, "Using maxLum: %d, gamma: %g", dstLuminance, dstGamma);
+        clLog("timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
 
     // If we survive arg parsing and autoGrade mode and still don't have a reasonable luminance and gamma, bail out.
     if ((dstLuminance == 0) || (dstGamma == 0.0f)) {
-        fprintf(stderr, "ERROR: Can't create destination profile, luminance(%d) and/or gamma(%g) values are invalid\n", dstLuminance, dstGamma);
+        clLogError("Can't create destination profile, luminance(%d) and/or gamma(%g) values are invalid", dstLuminance, dstGamma);
         FAIL();
     }
 
@@ -185,14 +186,14 @@ int actionConvert(Args * args)
                 (dstPrimaries.blue[0] <= 0.0f) || (dstPrimaries.blue[1] <= 0.0f) ||
                 (dstPrimaries.white[0] <= 0.0f) || (dstPrimaries.white[1] <= 0.0f))
             {
-                fprintf(stderr, "ERROR: Can't create destination profile, destination primaries are invalid\n");
+                clLogError("Can't create destination profile, destination primaries are invalid");
                 FAIL();
             }
 
             // Gamma
             if (dstGamma == 0.0f) {
                 // TODO: Support/pass-through any source curve
-                fprintf(stderr, "ERROR: Can't create destination profile, source profile's curve cannot be re-created as it isn't just a simple gamma curve\n");
+                clLogError("Can't create destination profile, source profile's curve cannot be re-created as it isn't just a simple gamma curve");
                 FAIL();
             }
             dstCurve.type = CL_PCT_GAMMA;
@@ -210,18 +211,18 @@ int actionConvert(Args * args)
                 dstDescription = generateDescription(&dstPrimaries, &dstCurve, dstLuminance);
             }
 
-            printf("Creating new destination ICC profile: \"%s\"\n", dstDescription);
+            clLog("profile", 0, "Creating new destination ICC profile: \"%s\"", dstDescription);
             dstProfile = clProfileCreate(&dstPrimaries, &dstCurve, dstLuminance, dstDescription);
             free(dstDescription);
 
             // Copyright
             if (args->copyright) {
-                printf("Setting copyright: \"%s\"\n", args->copyright);
+                clLog("profile", 1, "Setting copyright: \"%s\"", args->copyright);
                 clProfileSetMLU(dstProfile, "cprt", "en", "US", args->copyright);
             }
         } else {
             // just clone the source one
-            printf("Using source ICC profile: \"%s\"\n", srcImage->profile->description);
+            clLog("profile", 0, "Using source ICC profile: \"%s\"", srcImage->profile->description);
             dstProfile = clProfileClone(srcImage->profile);
         }
     }
@@ -229,8 +230,8 @@ int actionConvert(Args * args)
     if (outputFileFormat == FORMAT_ICC) {
         // Just dump out the profile to disk and bail out
 
-        printf("Writing ICC: %s\n", args->outputFilename);
-        clProfileDebugDump(dstProfile);
+        clLog("encode", 0, "Writing ICC: %s", args->outputFilename);
+        clProfileDebugDump(dstProfile, 0);
 
         if (!clProfileWrite(dstProfile, args->outputFilename)) {
             FAIL();
@@ -243,13 +244,10 @@ int actionConvert(Args * args)
 
     // Show image details
     {
-        printf("\n");
-        printf("Src Image:\n");
-        clImageDebugDump(srcImage, 0, 0, 0, 0);
-        printf("\n");
-        printf("Dst Image:\n");
-        clImageDebugDump(dstImage, 0, 0, 0, 0);
-        printf("\n");
+        clLog("details", 0, "Source:");
+        clImageDebugDump(srcImage, 0, 0, 0, 0, 1);
+        clLog("details", 0, "Destination:");
+        clImageDebugDump(dstImage, 0, 0, 0, 0, 1);
     }
 
     // Convert srcImage -> dstImage
@@ -259,46 +257,47 @@ int actionConvert(Args * args)
             cmsUInt32Number srcFormat = (srcImage->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
             cmsUInt32Number dstFormat = (dstImage->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
 
-            printf("Converting directly (no custom color profile settings)...\n");
+            clLog("convert", 0, "Converting directly...");
             timerStart(&t);
             directTransform = cmsCreateTransform(srcImage->profile->handle, srcFormat, dstImage->profile->handle, dstFormat, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
             doMultithreadedTransform(args->jobs, directTransform, srcImage->pixels, (srcImage->depth == 16) ? 8 : 4, dstImage->pixels, (dstImage->depth == 16) ? 8 : 4, dstImage->width * dstImage->height);
-            printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
+            clLog("timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
         } else {
             cmsHTRANSFORM fromLinear = cmsCreateTransform(dstLinear->handle, TYPE_RGBA_FLT, dstImage->profile->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
             float * dstFloats; // final values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
 
-            printf("Scaling luminance (%s)...\n", tonemap ? "tonemap" : "clip");
+            clLog("luminance", 0, "Scaling luminance (%s)...", tonemap ? "tonemap" : "clip");
             timerStart(&t);
             clPixelMathScaleLuminance(linearPixels, linearPixelsCount, luminanceScale, tonemap);
-            printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
+            clLog("timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
 
-            printf("Converting from floating point...\n");
+            clLog("convert", 0, "Calculating final pixel values...");
             timerStart(&t);
             dstFloats = malloc(4 * sizeof(float) * linearPixelsCount);
             doMultithreadedTransform(args->jobs, fromLinear, (uint8_t *)linearPixels, 4 * sizeof(float), (uint8_t *)dstFloats, 4 * sizeof(float), linearPixelsCount);
             clPixelMathFloatToUNorm(dstFloats, dstImage->pixels, dstImage->depth, linearPixelsCount);
             free(dstFloats);
-            printf("    done (%g sec).\n\n", timerElapsedSeconds(&t));
+            clLog("timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
         }
     }
 
     switch (outputFileFormat) {
         case FORMAT_JP2:
-            printf("Writing JP2 [%s:%d]: %s\n", (args->rate) ? "R" : "Q", (args->rate) ? args->rate : args->quality, args->outputFilename);
+            clLog("encode", 0, "Writing JP2 [%s:%d]: %s", (args->rate) ? "R" : "Q", (args->rate) ? args->rate : args->quality, args->outputFilename);
             break;
         case FORMAT_JPG:
-            printf("Writing JPG [Q:%d]: %s\n", args->quality, args->outputFilename);
+            clLog("encode", 0, "Writing JPG [Q:%d]: %s", args->quality, args->outputFilename);
             break;
         default:
-            printf("Writing: %s\n", args->outputFilename);
+            clLog("encode", 0, "Writing: %s", args->outputFilename);
             break;
     }
     timerStart(&t);
     if (!writeImage(dstImage, args->outputFilename, outputFileFormat, args->quality, args->rate)) {
         FAIL();
     }
-    printf("    done (%g sec). (%d bytes)\n\n", timerElapsedSeconds(&t), fileSize(args->outputFilename));
+    clLog("encode", 1, "Wrote %d bytes.", clFileSize(args->outputFilename));
+    clLog("timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
 
 convertCleanup:
     if (srcImage)
@@ -313,26 +312,10 @@ convertCleanup:
         free(linearPixels);
 
     if (returnCode == 0) {
-        printf("\nConversion complete (%g sec).\n", timerElapsedSeconds(&overall));
+        clLog("action", 0, "Conversion complete.");
+        clLog("timing", -1, OVERALL_TIMING_FORMAT, timerElapsedSeconds(&overall));
     }
     return returnCode;
-}
-
-static int fileSize(const char * filename)
-{
-    // TODO: reimplement as fstat()
-    int bytes;
-
-    FILE * f;
-    f = fopen(filename, "rb");
-    if (!f) {
-        return -1;
-    }
-    fseek(f, 0, SEEK_END);
-    bytes = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    fclose(f);
-    return bytes;
 }
 
 typedef struct clTransformTask
@@ -363,7 +346,7 @@ static void doMultithreadedTransform(int taskCount, cmsHTRANSFORM transform, uin
     pixelsPerTask = pixelCount / taskCount;
     lastTaskPixelCount = pixelCount - (pixelsPerTask * (taskCount - 1));
 
-    printf("Using %d thread%s to CMS transform.\n", taskCount, (taskCount == 1) ? "" : "s");
+    clLog("convert", 1, "Using %d thread%s to pixel transform.", taskCount, (taskCount == 1) ? "" : "s");
 
     tasks = calloc(taskCount, sizeof(clTask *));
     infos = calloc(taskCount, sizeof(clTransformTask));

@@ -14,7 +14,7 @@ clBool writeImage(clImage * image, const char * filename, Format format, int qua
     if (format == FORMAT_AUTO) {
         format = detectFormat(filename);
         if (format == FORMAT_ERROR) {
-            fprintf(stderr, "ERROR: Unknown output file format '%s', please specify with -f\n", filename);
+            clLogError("Unknown output file format '%s', please specify with -f", filename);
             return clFalse;
         }
     }
@@ -29,7 +29,7 @@ clBool writeImage(clImage * image, const char * filename, Format format, int qua
             return clImageWritePNG(image, filename);
             break;
         default:
-            fprintf(stderr, "ERROR: Unimplemented file writer '%s'\n", formatToString(format));
+            clLogError("Unimplemented file writer '%s'", formatToString(format));
             break;
     }
     return clFalse;

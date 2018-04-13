@@ -44,6 +44,61 @@ void clRawFree(clRaw * raw)
     raw->size = 0;
 }
 
+#include <stdio.h>
+#include <stdarg.h>
+
+int clFileSize(const char * filename)
+{
+    // TODO: reimplement as fstat()
+    int bytes;
+
+    FILE * f;
+    f = fopen(filename, "rb");
+    if (!f) {
+        return -1;
+    }
+    fseek(f, 0, SEEK_END);
+    bytes = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    fclose(f);
+    return bytes;
+}
+
+void clLog(const char * section, int indent, const char * format, ...)
+{
+    va_list args;
+
+    if (section) {
+        char spaces[9] = "        ";
+        int spacesNeeded = 8 - strlen(section);
+        spacesNeeded = CL_CLAMP(spacesNeeded, 0, 8);
+        spaces[spacesNeeded] = 0;
+        fprintf(stdout, "[%s%s] ", spaces, section);
+    }
+    if (indent < 0)
+        indent = 17 + indent;
+    if (indent > 0) {
+        int i;
+        for (i = 0; i < indent; ++i) {
+            fprintf(stdout, "    ");
+        }
+    }
+    va_start(args, format);
+    vfprintf(stdout, format, args);
+    va_end(args);
+    fprintf(stdout, "\n");
+}
+
+void clLogError(const char * format, ...)
+{
+    va_list args;
+    fprintf(stderr, "** ERROR: ");
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end(args);
+    fprintf(stderr, "\n");
+}
+
 static double now();
 
 void timerStart(Timer * timer)

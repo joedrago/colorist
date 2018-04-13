@@ -16,17 +16,15 @@
 static void error_callback(const char * msg, void * client_data)
 {
     (void)client_data;
-    printf("[ERROR] %s", msg);
+    clLogError("%s", msg);
 }
 static void warning_callback(const char * msg, void * client_data)
 {
     (void)client_data;
-    // printf("[WARNING] %s", msg);
 }
 static void info_callback(const char * msg, void * client_data)
 {
     (void)client_data;
-    // printf("[INFO] %s", msg);
 }
 
 clImage * clImageReadJP2(const char * filename)
@@ -50,14 +48,14 @@ clImage * clImageReadJP2(const char * filename)
     opjStream = opj_stream_create_file_stream(filename, 1 * 1024 * 1024, OPJ_TRUE);
 
     if (!opj_setup_decoder(opjCodec, &parameters) ) {
-        fprintf(stderr, "ERROR: Failed to setup JP2 decoder\n");
+        clLogError("Failed to setup JP2 decoder");
         opj_stream_destroy(opjStream);
         opj_destroy_codec(opjCodec);
         return NULL;
     }
 
     if (!opj_read_header(opjStream, opjCodec, &opjImage)) {
-        fprintf(stderr, "ERROR: Failed to read JP2 header\n");
+        clLogError("Failed to read JP2 header");
         opj_stream_destroy(opjStream);
         opj_destroy_codec(opjCodec);
         opj_image_destroy(opjImage);
@@ -65,7 +63,7 @@ clImage * clImageReadJP2(const char * filename)
     }
 
     if (!opj_decode(opjCodec, opjStream, opjImage)) {
-        fprintf(stderr, "ERROR: Failed to decode JP2!\n");
+        clLogError("Failed to decode JP2!");
         opj_destroy_codec(opjCodec);
         opj_stream_destroy(opjStream);
         opj_image_destroy(opjImage);
@@ -73,7 +71,7 @@ clImage * clImageReadJP2(const char * filename)
     }
 
     if ((opjImage->numcomps != 3) && (opjImage->numcomps != 4)) {
-        fprintf(stderr, "ERROR: Unsupported JP2 component count: %d\n", opjImage->numcomps);
+        clLogError("Unsupported JP2 component count: %d", opjImage->numcomps);
         opj_destroy_codec(opjCodec);
         opj_stream_destroy(opjStream);
         opj_image_destroy(opjImage);

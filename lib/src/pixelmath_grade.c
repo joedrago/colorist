@@ -77,10 +77,10 @@ void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int sr
 
         maxLuminance = (int)(maxChannel * srcLuminance);
         maxLuminance = CL_CLAMP(maxLuminance, 0, srcLuminance);
-        printf(" * [grading] Found max luminance: %d nits\n", maxLuminance);
+        clLog("grading", 1, "Found max luminance: %d nits", maxLuminance);
     } else {
         maxLuminance = *outLuminance;
-        printf(" * [grading] Using requested max luminance: %d nits\n", maxLuminance);
+        clLog("grading", 1, "Using requested max luminance: %d nits", maxLuminance);
     }
 
     // Find best gamma
@@ -95,7 +95,7 @@ void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int sr
         int tasksInFlight = 0;
         COLORIST_ASSERT(taskCount);
 
-        printf("Using %d thread%s to find best gamma.\n", taskCount, (taskCount == 1) ? "" : "s");
+        clLog("grading", 1, "Using %d thread%s to find best gamma.", taskCount, (taskCount == 1) ? "" : "s");
 
         tasks = calloc(taskCount, sizeof(clTask *));
         infos = calloc(taskCount, sizeof(clGammaErrorTermTask));
@@ -123,19 +123,19 @@ void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int sr
                         minGammaInt = infos[i].gammaInt;
                     }
                     if (verbose)
-                        printf(" * [grading] gamma attempt (%g) error term: %g (best gamma is %g at error term %g)\n", infos[i].gamma, infos[i].outErrorTerm, (float)minGammaInt / 20.0f, minErrorTerm);
+                        clLog("grading", 2, "attempt: gamma %.3g, err: %g     best -> gamma: %g, err: %g", infos[i].gamma, infos[i].outErrorTerm, (float)minGammaInt / 20.0f, minErrorTerm);
                     clTaskDestroy(tasks[i]);
                 }
                 tasksInFlight = 0;
             }
         }
         bestGamma = (float)minGammaInt / 20.0f;
-        printf(" * [grading] Found best gamma: %g\n", bestGamma);
+        clLog("grading", 1, "Found best gamma: %g", bestGamma);
         free(tasks);
         free(infos);
     } else {
         bestGamma = *outGamma;
-        printf(" * [grading] Using requested gamma: %g\n", bestGamma);
+        clLog("grading", 1, "Using requested gamma: %g", bestGamma);
     }
 
     *outLuminance = maxLuminance;

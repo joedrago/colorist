@@ -15,12 +15,12 @@
 
 void clDumpVersions()
 {
-    printf("Versions:\n");
-    printf(" * colorist: %s\n", COLORIST_VERSION_STRING);
-    printf(" * jpeglib : %d\n", JPEG_LIB_VERSION);
-    printf(" * lcms2   : %d\n", LCMS_VERSION);
-    printf(" * libpng  : %s\n", PNG_LIBPNG_VER_STRING);
-    printf(" * openjpeg: %s\n", opj_version());
-    printf(" * zlib    : %s\n", ZLIB_VERSION);
-    printf("\n");
+    clLog(NULL, 0, "Versions:");
+    clLog(NULL, 1, "colorist: %s", COLORIST_VERSION_STRING);
+    clLog(NULL, 1, "jpeglib : %d", JPEG_LIB_VERSION);
+    clLog(NULL, 1, "lcms2   : %d", LCMS_VERSION);
+    clLog(NULL, 1, "libpng  : %s", PNG_LIBPNG_VER_STRING);
+    clLog(NULL, 1, "openjpeg: %s", opj_version());
+    clLog(NULL, 1, "zlib    : %s", ZLIB_VERSION);
+    clLog(NULL, 0, "");
 }

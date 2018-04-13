@@ -29,7 +29,7 @@ clImage * readImage(const char * filename, Format * outFormat)
             image = clImageReadPNG(filename);
             break;
         default:
-            fprintf(stderr, "ERROR: Unimplemented file reader '%s'\n", formatToString(format));
+            clLogError("Unimplemented file reader '%s'", formatToString(format));
             break;
     }
     return image;

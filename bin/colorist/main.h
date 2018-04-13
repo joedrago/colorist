@@ -73,4 +73,7 @@ int actionConvert(Args * args);
 int actionGenerate(Args * args);
 int actionIdentify(Args * args);
 
+#define TIMING_FORMAT "--> %g sec"
+#define OVERALL_TIMING_FORMAT "==> %g sec"
+
 #endif // ifndef MAIN_H

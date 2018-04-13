@@ -26,7 +26,7 @@ clImage * clImageCreate(int width, int height, int depth, clProfile * profile);
 void clImageResize(clImage * image, int width, int height, int depth);
 void clImageChangeDepth(clImage * image, int depth);
 void clImageSetPixel(clImage * image, int x, int y, int r, int g, int b, int a);
-void clImageDebugDump(clImage * image, int x, int y, int w, int h);
+void clImageDebugDump(clImage * image, int x, int y, int w, int h, int extraIndent);
 void clImageDestroy(clImage * image);
 
 clImage * clImageReadPNG(const char * filename);

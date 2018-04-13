@@ -56,7 +56,7 @@ clBool clProfileQuery(clProfile * profile, clProfilePrimaries * primaries, clPro
 char * clProfileGetMLU(clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3]);
 clBool clProfileSetMLU(clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3], const char * ascii);
 clBool clProfilePack(clProfile * profile, clRaw * out);
-void clProfileDebugDump(clProfile * profile);
+void clProfileDebugDump(clProfile * profile, int extraIndent);
 void clProfileDestroy(clProfile * profile);
 
 #endif // ifndef COLORIST_PROFILE_H
