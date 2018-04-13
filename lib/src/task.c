@@ -106,7 +106,14 @@ int clTaskLimit()
     return numCPU;
 }
 #else
-#error implement clTaskLimit for Linux
+
+#include <unistd.h>
+
+int clTaskLimit()
+{
+    int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
+    return CL_CLAMP(numCPU, 1, numCPU);
+}
 #endif
 
 #include <pthread.h>

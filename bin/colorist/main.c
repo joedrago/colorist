@@ -406,6 +406,8 @@ static void printSyntax()
     printf("    -v             : Verbose mode.\n");
     printf("    -z x,y,w,h     : Pixels to dump in identify mode. x,y,w,h\n");
     printf("\n");
+    printf("CPUs Available: %d\n", clTaskLimit());
+    printf("\n");
     clDumpVersions();
 }
 
