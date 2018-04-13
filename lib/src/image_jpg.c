@@ -29,7 +29,7 @@ static void my_error_exit(j_common_ptr cinfo)
 }
 
 static void setup_read_icc_profile(j_decompress_ptr cinfo);
-static boolean read_icc_profile(j_decompress_ptr cinfo, JOCTET ** icc_data_ptr, unsigned int * icc_data_len);
+static boolean read_icc_profile(struct clContext * C, j_decompress_ptr cinfo, JOCTET ** icc_data_ptr, unsigned int * icc_data_len);
 static void write_icc_profile(j_compress_ptr cinfo, const JOCTET * icc_data_ptr, unsigned int icc_data_len);
 
 clImage * clImageReadJPG(struct clContext * C, const char * filename)
@@ -68,7 +68,7 @@ clImage * clImageReadJPG(struct clContext * C, const char * filename)
     row_stride = cinfo.output_width * cinfo.output_components;
     buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr) & cinfo, JPOOL_IMAGE, row_stride, 1);
 
-    if (read_icc_profile(&cinfo, &iccData, &iccDataLen)) {
+    if (read_icc_profile(C, &cinfo, &iccData, &iccDataLen)) {
         profile = clProfileParse(C, iccData, iccDataLen, NULL);
         if (profile) {
             char * description = clProfileGetMLU(C, profile, "desc", "en", "US");
@@ -325,7 +325,8 @@ static boolean marker_is_icc(jpeg_saved_marker_ptr marker)
  * return FALSE.  You might want to issue an error message instead.
  */
 
-static boolean read_icc_profile(j_decompress_ptr cinfo,
+static boolean read_icc_profile(struct clContext * C,
+                                j_decompress_ptr cinfo,
                                 JOCTET ** icc_data_ptr,
                                 unsigned int * icc_data_len)
 {

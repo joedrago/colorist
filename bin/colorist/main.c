@@ -9,7 +9,7 @@
 
 int main(int argc, char * argv[])
 {
-    clContext * C = clContextCreate();
+    clContext * C = clContextCreate(NULL);
 
     if (!clContextParseArgs(C, argc, argv)) {
         return 1;

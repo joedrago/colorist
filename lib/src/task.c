@@ -9,8 +9,8 @@
 
 #include "colorist/context.h"
 
-static void nativeTaskStart(clTask * task);
-static void nativeTaskJoin(clTask * task);
+static void nativeTaskStart(clContext * C, clTask * task);
+static void nativeTaskJoin(clContext * C, clTask * task);
 
 clTask * clTaskCreate(struct clContext * C, clTaskFunc func, void * userData)
 {
@@ -19,14 +19,14 @@ clTask * clTaskCreate(struct clContext * C, clTaskFunc func, void * userData)
     task->nativeData = NULL;
     task->userData = userData;
     task->joined = clFalse;
-    nativeTaskStart(task);
+    nativeTaskStart(C, task);
     return task;
 }
 
 void clTaskJoin(struct clContext * C, clTask * task)
 {
     if (!task->joined) {
-        nativeTaskJoin(task);
+        nativeTaskJoin(C, task);
         task->joined = clTrue;
     }
 }
@@ -64,7 +64,7 @@ static DWORD WINAPI taskThreadProc(LPVOID lpParameter)
     return 0;
 }
 
-static void nativeTaskStart(clTask * task)
+static void nativeTaskStart(clContext * C, clTask * task)
 {
     DWORD threadId;
     clNativeTask * nativeTask = clAllocateStruct(clNativeTask);
@@ -72,7 +72,7 @@ static void nativeTaskStart(clTask * task)
     nativeTask->hThread = CreateThread(NULL, 0, taskThreadProc, task, 0, &threadId);
 }
 
-static void nativeTaskJoin(clTask * task)
+static void nativeTaskJoin(clContext * C, clTask * task)
 {
     clNativeTask * nativeTask = (clNativeTask *)task->nativeData;
     WaitForSingleObject(nativeTask->hThread, INFINITE);
@@ -134,14 +134,14 @@ static void * taskThreadProc(void * userData)
     return 0; // never reached
 }
 
-static void nativeTaskStart(clTask * task)
+static void nativeTaskStart(clContext * C, clTask * task)
 {
     clNativeTask * nativeTask = clAllocateStruct(clNativeTask);
     task->nativeData = nativeTask;
     pthread_create(&nativeTask->pthread, NULL, taskThreadProc, task);
 }
 
-static void nativeTaskJoin(clTask * task)
+static void nativeTaskJoin(clContext * C, clTask * task)
 {
     clNativeTask * nativeTask = (clNativeTask *)task->nativeData;
     pthread_join(nativeTask->pthread, NULL);

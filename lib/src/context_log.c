@@ -11,10 +11,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-void clContextLog(clContext * C, const char * section, int indent, const char * format, ...)
+void clContextDefaultLog(clContext * C, const char * section, int indent, const char * format, va_list args)
 {
-    va_list args;
-
     if (section) {
         char spaces[9] = "        ";
         int spacesNeeded = 8 - strlen(section);
@@ -30,18 +28,29 @@ void clContextLog(clContext * C, const char * section, int indent, const char * 
             fprintf(stdout, "    ");
         }
     }
-    va_start(args, format);
     vfprintf(stdout, format, args);
-    va_end(args);
     fprintf(stdout, "\n");
+}
+
+void clContextDefaultLogError(clContext * C, const char * format, va_list args)
+{
+    fprintf(stderr, "** ERROR: ");
+    vfprintf(stderr, format, args);
+    fprintf(stderr, "\n");
+}
+
+void clContextLog(clContext * C, const char * section, int indent, const char * format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    C->system.log(C, section, indent, format, args);
+    va_end(args);
 }
 
 void clContextLogError(clContext * C, const char * format, ...)
 {
     va_list args;
-    fprintf(stderr, "** ERROR: ");
     va_start(args, format);
-    vfprintf(stderr, format, args);
+    C->system.error(C, format, args);
     va_end(args);
-    fprintf(stderr, "\n");
 }

@@ -10,6 +10,8 @@
 
 #include "colorist/types.h"
 
+#include <stdarg.h>
+
 struct clContext;
 
 typedef enum clAction
@@ -50,8 +52,27 @@ typedef enum clTonemap
 clTonemap clTonemapFromString(struct clContext * C, const char * str);
 const char * clTonemapToString(struct clContext * C, clTonemap tonemap);
 
+typedef void *(* clContextAllocFunc)(int bytes);
+typedef void (* clContextFreeFunc)(void * ptr);
+typedef void (* clContextLogFunc)(struct clContext * C, const char * section, int indent, const char * format, va_list args);
+typedef void (* clContextLogErrorFunc)(struct clContext * C, const char * format, va_list args);
+
+// Internal defaults for clContextSystem, use clContextLog*() below
+void clContextDefaultLog(struct clContext * C, const char * section, int indent, const char * format, va_list args);
+void clContextDefaultLogError(struct clContext * C, const char * format, va_list args);
+
+typedef struct clContextSystem
+{
+    clContextAllocFunc alloc;
+    clContextFreeFunc free;
+    clContextLogFunc log;
+    clContextLogErrorFunc error;
+} clContextSystem;
+
 typedef struct clContext
 {
+    clContextSystem system;
+
     clAction action;
     clBool autoGrade;            // -a
     int bpp;                     // -b
@@ -74,12 +95,14 @@ typedef struct clContext
 
 struct clImage;
 
-#define clAllocate(BYTES) calloc(1, BYTES)
-#define clAllocateStruct(T) (T *)calloc(1, sizeof(T))
-#define clFree(P) free(P)
+#define clAllocate(BYTES) C->system.alloc(BYTES)
+#define clAllocateStruct(T) (T *)C->system.alloc(sizeof(T))
+#define clFree(P) C->system.free(P)
 char * clContextStrdup(clContext * C, const char * str);
 
-clContext * clContextCreate();
+// Any/all of the clContextSystem struct can be NULL, including the struct itself. Any NULL values will use the default.
+// No need to allocate this structure; just put it on the stack. Any values will be shallow copied.
+clContext * clContextCreate(clContextSystem * system);
 void clContextDestroy(clContext * C);
 
 void clContextLog(clContext * C, const char * section, int indent, const char * format, ...);

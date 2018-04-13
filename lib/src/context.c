@@ -128,11 +128,43 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
 // ------------------------------------------------------------------------------------------------
 // clContext
 
-clContext * clContextCreate()
+static void * clContextDefaultAlloc(int bytes)
 {
-    clContext * C = clAllocateStruct(clContext);
+    return calloc(1, bytes);
+}
 
-    // Defaults
+static void clContextDefaultFree(void * ptr)
+{
+    free(ptr);
+}
+
+clContext * clContextCreate(clContextSystem * system)
+{
+    clContextAllocFunc alloc;
+    clContext * C;
+
+    // bootstrap!
+    alloc = clContextDefaultAlloc;
+    if (system && system->alloc)
+        alloc = system->alloc;
+    C = (clContext *)alloc(sizeof(clContext));
+
+    C->system.alloc = clContextDefaultAlloc;
+    C->system.free = clContextDefaultFree;
+    C->system.log = clContextDefaultLog;
+    C->system.error = clContextDefaultLogError;
+    if (system) {
+        if (system->alloc)
+            C->system.alloc = system->alloc;
+        if (system->free)
+            C->system.free = system->free;
+        if (system->log)
+            C->system.log = system->log;
+        if (system->error)
+            C->system.error = system->error;
+    }
+
+    // Default args
     C->action = CL_ACTION_NONE;
     C->autoGrade = clFalse;
     C->bpp = 0;
