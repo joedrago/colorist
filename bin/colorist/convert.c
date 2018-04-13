@@ -140,7 +140,7 @@ int actionConvert(Args * args)
     if (args->autoGrade) {
         printf("Color grading...\n");
         timerStart(&t);
-        clPixelMathColorGrade(args->jobs, linearPixels, linearPixelsCount, srcLuminance, dstDepth, &dstLuminance, &dstGamma);
+        clPixelMathColorGrade(args->jobs, linearPixels, linearPixelsCount, srcLuminance, dstDepth, &dstLuminance, &dstGamma, args->verbose);
         printf("    done (%g sec). (maxLum:%d, gamma:%g)\n\n", timerElapsedSeconds(&t), dstLuminance, dstGamma);
     }
 
@@ -285,10 +285,10 @@ int actionConvert(Args * args)
 
     switch (outputFileFormat) {
         case FORMAT_JP2:
-            printf("Writing JP2 [q:%d, rate:%dx]: %s\n", args->quality, args->rate, args->outputFilename);
+            printf("Writing JP2 [%s:%d]: %s\n", (args->rate) ? "R" : "Q", (args->rate) ? args->rate : args->quality, args->outputFilename);
             break;
         case FORMAT_JPG:
-            printf("Writing JPG [q:%d]: %s\n", args->quality, args->outputFilename);
+            printf("Writing JPG [Q:%d]: %s\n", args->quality, args->outputFilename);
             break;
         default:
             printf("Writing: %s\n", args->outputFilename);

@@ -38,8 +38,8 @@ static void setDefaults(Args * args)
     args->jobs = clTaskLimit();
     args->luminance = 0;
     memset(args->primaries, 0, sizeof(float) * 8);
-    args->quality = 60; // ?
-    args->rate = 200;   // ?
+    args->quality = 90; // ?
+    args->rate = 150;   // ?
     args->verbose = clFalse;
     args->rect[0] = 0;
     args->rect[1] = 0;
@@ -400,8 +400,8 @@ static void printSyntax()
     printf("    -j JOBS        : Number of jobs to use when color grading. 0 for as many as possible (default)\n");
     printf("    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default), or \"source\" to force source luminance\n");
     printf("    -p PRIMARIES   : ICC profile primaries (8 floats, comma separated). rx,ry,gx,gy,bx,by,wx,wy\n");
-    printf("    -q QUALITY     : Output quality for JPG/JP2\n");
-    printf("    -r RATE        : Output rate for JP2\n");
+    printf("    -q QUALITY     : Output quality for JPG. JP2 can also use it (see -r below). (default: 90)\n");
+    printf("    -r RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)\n");
     printf("    -t TONEMAP     : Set tonemapping. auto (default), on, or off\n");
     printf("    -v             : Verbose mode.\n");
     printf("    -z x,y,w,h     : Pixels to dump in identify mode. x,y,w,h\n");

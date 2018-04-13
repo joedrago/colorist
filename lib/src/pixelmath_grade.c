@@ -54,7 +54,7 @@ static void gammaErrorTermTaskFunc(clGammaErrorTermTask * info)
     info->outErrorTerm = gammaErrorTerm(info->gamma, info->pixels, info->pixelCount, info->maxChannel, info->luminanceScale);
 }
 
-void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma)
+void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose)
 {
     int maxLuminance = 0;
     float bestGamma = 0.0f;
@@ -99,8 +99,8 @@ void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int sr
 
         tasks = calloc(taskCount, sizeof(clTask *));
         infos = calloc(taskCount, sizeof(clGammaErrorTermTask));
-        for (gammaInt = 20; gammaInt <= 50; ++gammaInt) { // (2.0 - 5.0) by 0.1
-            float gammaAttempt = (float)gammaInt / 10.0f;
+        for (gammaInt = 20; gammaInt <= 80; ++gammaInt) { // (2.0 - 4.0) by 0.05
+            float gammaAttempt = (float)gammaInt / 20.0f;
 
             infos[tasksInFlight].gammaInt = gammaInt;
             infos[tasksInFlight].gamma = gammaAttempt;
@@ -122,13 +122,14 @@ void clPixelMathColorGrade(int taskCount, float * pixels, int pixelCount, int sr
                         minErrorTerm = infos[i].outErrorTerm;
                         minGammaInt = infos[i].gammaInt;
                     }
-                    printf(" * [grading] gamma attempt (%g) error term: %g (best gamma is %g at error term %g)\n", infos[i].gamma, infos[i].outErrorTerm, (float)minGammaInt / 10.0f, minErrorTerm);
+                    if (verbose)
+                        printf(" * [grading] gamma attempt (%g) error term: %g (best gamma is %g at error term %g)\n", infos[i].gamma, infos[i].outErrorTerm, (float)minGammaInt / 20.0f, minErrorTerm);
                     clTaskDestroy(tasks[i]);
                 }
                 tasksInFlight = 0;
             }
         }
-        bestGamma = (float)minGammaInt / 10.0f;
+        bestGamma = (float)minGammaInt / 20.0f;
         printf(" * [grading] Found best gamma: %g\n", bestGamma);
         free(tasks);
         free(infos);

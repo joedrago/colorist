@@ -8,8 +8,8 @@
 #ifndef COLORIST_COLORIST_H
 #define COLORIST_COLORIST_H
 
-#define COLORIST_VERSION_STRING "0.0.1"
-#define COLORIST_VERSION 0x00000001
+#define COLORIST_VERSION_STRING "0.0.2"
+#define COLORIST_VERSION 0x00000002
 
 // Output luminance colorist uses for basic profiles (sRGB, P3, etc)
 #define COLORIST_DEFAULT_LUMINANCE 300
