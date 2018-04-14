@@ -264,8 +264,11 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
                 adaptedWhiteXYZ.X = dstWP.n[VX];
                 adaptedWhiteXYZ.Y = dstWP.n[VY];
                 adaptedWhiteXYZ.Z = dstWP.n[VZ];
+                _cmsMAT3per(&colorants, &invChad, &tmpColorants);
+            } else {
+                colorants = tmpColorants;
+                adaptedWhiteXYZ = *whiteXYZ;
             }
-            _cmsMAT3per(&colorants, &invChad, &tmpColorants);
         } else {
             colorants = tmpColorants;
             adaptedWhiteXYZ = *whiteXYZ;
