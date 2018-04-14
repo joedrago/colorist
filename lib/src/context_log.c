@@ -14,9 +14,9 @@
 void clContextDefaultLog(clContext * C, const char * section, int indent, const char * format, va_list args)
 {
     if (section) {
-        char spaces[9] = "        ";
-        int spacesNeeded = 8 - strlen(section);
-        spacesNeeded = CL_CLAMP(spacesNeeded, 0, 8);
+        char spaces[10] = "         ";
+        int spacesNeeded = 9 - strlen(section);
+        spacesNeeded = CL_CLAMP(spacesNeeded, 0, 9);
         spaces[spacesNeeded] = 0;
         fprintf(stdout, "[%s%s] ", spaces, section);
     }
