@@ -5,6 +5,7 @@
 
 #include <math.h>
 
+// (1.0 - 4.0) by 0.05
 #define GAMMA_RANGE_START 20
 #define GAMMA_RANGE_END 80
 #define GAMMA_INT_DIVISOR 20.0f
@@ -21,6 +22,7 @@ static float gammaErrorTerm(float gamma, float * pixels, int pixelCount, float m
 {
     float invGamma = 1.0f / gamma;
     float errorTerm = 0.0f;
+    float channelErrorTerm;
     float scaledChannel;
     float * pixel = pixels;
     int i;
@@ -28,15 +30,18 @@ static float gammaErrorTerm(float gamma, float * pixels, int pixelCount, float m
     for (i = 0; i < pixelCount; ++i) {
         scaledChannel = pixel[0] * luminanceScale;
         scaledChannel = CL_CLAMP(scaledChannel, 0.0f, 1.0f);
-        errorTerm += fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
+        channelErrorTerm = fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
+        errorTerm += channelErrorTerm * channelErrorTerm;
 
         scaledChannel = pixel[1] * luminanceScale;
         scaledChannel = CL_CLAMP(scaledChannel, 0.0f, 1.0f);
-        errorTerm += fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
+        channelErrorTerm = fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
+        errorTerm += channelErrorTerm * channelErrorTerm;
 
         scaledChannel = pixel[2] * luminanceScale;
         scaledChannel = CL_CLAMP(scaledChannel, 0.0f, 1.0f);
-        errorTerm += fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
+        channelErrorTerm = fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
+        errorTerm += channelErrorTerm * channelErrorTerm;
 
         pixel += 4;
     }
@@ -104,7 +109,7 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, float * pixels, 
 
         tasks = clAllocate(taskCount * sizeof(clTask *));
         infos = clAllocate(taskCount * sizeof(clGammaErrorTermTask));
-        for (gammaInt = GAMMA_RANGE_START; gammaInt <= GAMMA_RANGE_END; ++gammaInt) { // (2.0 - 4.0) by 0.05
+        for (gammaInt = GAMMA_RANGE_START; gammaInt <= GAMMA_RANGE_END; ++gammaInt) {
             float gammaAttempt = (float)gammaInt / GAMMA_INT_DIVISOR;
 
             infos[tasksInFlight].gammaInt = gammaInt;
