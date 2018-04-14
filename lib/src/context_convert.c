@@ -61,6 +61,11 @@ int clContextConvert(clContext * C)
     }
     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
 
+    if ((outputFileFormat == CL_FORMAT_JP2) && (C->rate > 0)) {
+        int estimatedFileSizeKB = (8 + ((srcImage->width * srcImage->height * ((srcImage->depth == 16) ? 8 : 4)) / C->rate)) / 1024;
+        clContextLog(C, "estimate", 0, "JP2 [R:%d] estimated filesize: %d KB", C->rate, estimatedFileSizeKB);
+    }
+
     // Parse source image and args for early pipeline decisions
     {
         clProfileCurve curve;
