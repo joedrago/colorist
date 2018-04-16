@@ -99,6 +99,50 @@ void clImageSetPixel(clContext * C, clImage * image, int x, int y, int r, int g,
     }
 }
 
+clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
+{
+    clImage * rotated;
+    int i, j;
+    int pixelBytes = depthToBytes(C, image->depth) * 4;
+    switch (cwTurns) {
+        case 0: // Not rotated
+            rotated = clImageCreate(C, image->width, image->height, image->depth, image->profile);
+            memcpy(rotated->pixels, image->pixels, rotated->size);
+            break;
+        case 1: // 270 degrees clockwise
+            rotated = clImageCreate(C, image->height, image->width, image->depth, image->profile);
+            for (j = 0; j < image->height; ++j) {
+                for (i = 0; i < image->width; ++i) {
+                    uint8_t * srcPixel = &image->pixels[pixelBytes * (i + (j * image->width))];
+                    uint8_t * dstPixel = &rotated->pixels[pixelBytes * ((rotated->width - 1 - j) + (i * rotated->width))];
+                    memcpy(dstPixel, srcPixel, pixelBytes);
+                }
+            }
+            break;
+        case 2: // 180 degrees clockwise
+            rotated = clImageCreate(C, image->width, image->height, image->depth, image->profile);
+            for (j = 0; j < image->height; ++j) {
+                for (i = 0; i < image->width; ++i) {
+                    uint8_t * srcPixel = &image->pixels[pixelBytes * (i + (j * image->width))];
+                    uint8_t * dstPixel = &rotated->pixels[pixelBytes * ((rotated->width - 1 - i) + ((rotated->height - 1 - j) * rotated->width))];
+                    memcpy(dstPixel, srcPixel, pixelBytes);
+                }
+            }
+            break;
+        case 3: // 270 degrees clockwise
+            rotated = clImageCreate(C, image->height, image->width, image->depth, image->profile);
+            for (j = 0; j < image->height; ++j) {
+                for (i = 0; i < image->width; ++i) {
+                    uint8_t * srcPixel = &image->pixels[pixelBytes * (i + (j * image->width))];
+                    uint8_t * dstPixel = &rotated->pixels[pixelBytes * (j + (i * rotated->width))];
+                    memcpy(dstPixel, srcPixel, pixelBytes);
+                }
+            }
+            break;
+    }
+    return rotated;
+}
+
 void clImageDestroy(clContext * C, clImage * image)
 {
     clProfileDestroy(C, image->profile);
@@ -111,7 +155,7 @@ void clImageDestroy(clContext * C, clImage * image)
 static int depthToBytes(clContext * C, int depth)
 {
     switch (depth) {
-        case  8: return 1;
+        case 8: return 1;
         case 16: return 2;
     }
     COLORIST_FAILURE1("unexpected depth: %d", depth);

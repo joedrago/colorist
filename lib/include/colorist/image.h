@@ -24,6 +24,7 @@ typedef struct clImage
 } clImage;
 
 clImage * clImageCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
+clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns);
 void clImageResize(struct clContext * C, clImage * image, int width, int height, int depth);
 void clImageChangeDepth(struct clContext * C, clImage * image, int depth);
 void clImageSetPixel(struct clContext * C, clImage * image, int x, int y, int r, int g, int b, int a);
@@ -38,5 +39,7 @@ clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filen
 
 clImage * clImageReadJPG(struct clContext * C, const char * filename);
 clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filename, int quality);
+
+clImage * clImageParseString(struct clContext * C, const char * str, int depth, struct clProfile * profile);
 
 #endif // ifndef COLORIST_IMAGE_H

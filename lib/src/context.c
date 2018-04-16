@@ -34,10 +34,10 @@ static const unsigned int stockPrimariesCount = sizeof(stockPrimaries) / sizeof(
 clAction clActionFromString(struct clContext * C, const char * str)
 {
     if (!strcmp(str, "identify")) return CL_ACTION_IDENTIFY;
-    if (!strcmp(str, "id"))       return CL_ACTION_IDENTIFY;
+    if (!strcmp(str, "id")) return CL_ACTION_IDENTIFY;
     if (!strcmp(str, "generate")) return CL_ACTION_GENERATE;
-    if (!strcmp(str, "gen"))      return CL_ACTION_GENERATE;
-    if (!strcmp(str, "convert"))  return CL_ACTION_CONVERT;
+    if (!strcmp(str, "gen")) return CL_ACTION_GENERATE;
+    if (!strcmp(str, "convert")) return CL_ACTION_CONVERT;
     return CL_ACTION_ERROR;
 }
 
@@ -61,10 +61,10 @@ const char * clActionToString(struct clContext * C, clAction action)
 clFormat clFormatFromString(struct clContext * C, const char * str)
 {
     if (!strcmp(str, "auto")) return CL_FORMAT_AUTO;
-    if (!strcmp(str, "icc"))  return CL_FORMAT_ICC;
-    if (!strcmp(str, "jp2"))  return CL_FORMAT_JP2;
-    if (!strcmp(str, "jpg"))  return CL_FORMAT_JPG;
-    if (!strcmp(str, "png"))  return CL_FORMAT_PNG;
+    if (!strcmp(str, "icc")) return CL_FORMAT_ICC;
+    if (!strcmp(str, "jp2")) return CL_FORMAT_JP2;
+    if (!strcmp(str, "jpg")) return CL_FORMAT_JPG;
+    if (!strcmp(str, "png")) return CL_FORMAT_PNG;
     return CL_FORMAT_ERROR;
 }
 
@@ -350,7 +350,7 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
             if (C->action == CL_ACTION_NONE) {
                 C->action = clActionFromString(C, arg);
                 if (C->action == CL_ACTION_ERROR) {
-                    clContextLogError(C, "unknown action '%s', expecting identify or convert", arg);
+                    clContextLogError(C, "unknown action '%s', expecting convert, identify, or generate", arg);
                     return clFalse;
                 }
             } else if (filenames[0] == NULL) {
@@ -379,13 +379,14 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
             break;
 
         case CL_ACTION_GENERATE:
-            C->outputFilename = filenames[0];
+            if (filenames[0] && filenames[1]) {
+                C->inputFilename = filenames[0];
+                C->outputFilename = filenames[1];
+            } else if (filenames[0]) {
+                C->outputFilename = filenames[0];
+            }
             if (!C->outputFilename) {
                 clContextLogError(C, "generate requires an output filename.");
-                return clFalse;
-            }
-            if (filenames[1]) {
-                clContextLogError(C, "generate does not accept both an input and output filename.");
                 return clFalse;
             }
             break;
@@ -465,9 +466,10 @@ void clContextPrintArgs(clContext * C)
 
 void clContextPrintSyntax(clContext * C)
 {
-    clContextLog(C, NULL, 0, "         colorist convert  [input] [output] [OPTIONS]");
-    clContextLog(C, NULL, 0, "Syntax : colorist identify [input]          [OPTIONS]");
-    clContextLog(C, NULL, 0, "         colorist generate         [output] [OPTIONS]");
+    clContextLog(C, NULL, 0, "Syntax: colorist convert  [input]        [output]       [OPTIONS]");
+    clContextLog(C, NULL, 0, "        colorist identify [input]                       [OPTIONS]");
+    clContextLog(C, NULL, 0, "        colorist generate                [output.icc]   [OPTIONS]");
+    clContextLog(C, NULL, 0, "        colorist generate [image string] [output image] [OPTIONS]");
     clContextLog(C, NULL, 0, "Options:");
     clContextLog(C, NULL, 0, "    -a             : Enable automatic color grading of max luminance and gamma (disabled by default)");
     clContextLog(C, NULL, 0, "    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)");
@@ -484,6 +486,8 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -t TONEMAP     : Set tonemapping. auto (default), on, or off");
     clContextLog(C, NULL, 0, "    -v             : Verbose mode.");
     clContextLog(C, NULL, 0, "    -z x,y,w,h     : Pixels to dump in identify mode. x,y,w,h");
+    clContextLog(C, NULL, 0, "");
+    clContextLog(C, NULL, 0, "See image string examples here: https://github.com/joedrago/colorist/blob/master/lib/src/image_string.c");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "CPUs Available: %d", clTaskLimit());
     clContextLog(C, NULL, 0, "");
