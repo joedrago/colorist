@@ -92,8 +92,9 @@ int clContextConvert(clContext * C)
         }
 
         // Gamma
-        if (curve.type == CL_PCT_GAMMA) {
-            srcGamma = curve.gamma;
+        srcGamma = curve.gamma;
+        if (curve.type != CL_PCT_GAMMA) {
+            clContextLog(C, "info", 0, "Estimated source gamma: %g", srcGamma);
         }
         if (C->gamma < 0.0f) {
             dstGamma = srcGamma;
@@ -230,7 +231,7 @@ int clContextConvert(clContext * C)
             }
         } else {
             // just clone the source one
-            clContextLog(C, "profile", 0, "Using source ICC profile: \"%s\"", srcImage->profile->description);
+            clContextLog(C, "profile", 0, "Using unmodified source ICC profile: \"%s\"", srcImage->profile->description);
             dstProfile = clProfileClone(C, srcImage->profile);
         }
     }
