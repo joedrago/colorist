@@ -17,6 +17,7 @@
 #include <stdarg.h>
 
 struct clContext;
+struct clProfilePrimaries;
 
 typedef enum clAction
 {
@@ -123,6 +124,8 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[]);
 
 struct clImage * clContextRead(clContext * C, const char * filename, clFormat * outFormat);
 clBool clContextWrite(clContext * C, struct clImage * image, const char * filename, clFormat format, int quality, int rate);
+
+clBool clContextGetStockPrimaries(struct clContext * C, const char * name, struct clProfilePrimaries * outPrimaries);
 
 int clContextConvert(clContext * C);
 int clContextGenerate(clContext * C);

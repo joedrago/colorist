@@ -15,6 +15,9 @@
 int clContextGenerate(clContext * C)
 {
     Timer overall;
+    clProfilePrimaries primaries;
+    clProfileCurve curve;
+    int luminance;
     clProfile * dstProfile = NULL;
     clImage * image = NULL;
 
@@ -24,6 +27,10 @@ int clContextGenerate(clContext * C)
     if (outputFileFormat == CL_FORMAT_ERROR) {
         return 1;
     }
+
+    clContextLog(C, "action", 0, "Generating: %s", C->outputFilename);
+    timerStart(&overall);
+
     if (outputFileFormat == CL_FORMAT_ICC) {
         if (C->inputFilename != NULL) {
             clContextLogError(C, "generate cannot accept an image string to generate a .icc file.");
@@ -36,20 +43,12 @@ int clContextGenerate(clContext * C)
         }
     }
 
-    if ((C->primaries[0] <= 0.0f) || (C->gamma <= 0.0f) || (C->luminance <= 0)) {
-        clContextLogError(C, "generate requires -p, -g, and -l.");
-        return 1;
-    }
-
-    clContextLog(C, "action", 0, "Generating: %s", C->outputFilename);
-    timerStart(&overall);
-
-    {
-        clProfilePrimaries primaries;
-        clProfileCurve curve;
-        int luminance;
-        char * description = NULL;
-
+    if (C->primaries[0] <= 0.0f) {
+        clBool ret = clContextGetStockPrimaries(C, "bt709", &primaries);
+        COLORIST_ASSERT(ret == clTrue);
+        (void)ret; // unused in Release
+        clContextLog(C, "generate", 1, "No primaries specified (-p). Using default sRGB (BT.709) primaries.");
+    } else {
         primaries.red[0] = C->primaries[0];
         primaries.red[1] = C->primaries[1];
         primaries.green[0] = C->primaries[2];
@@ -58,9 +57,25 @@ int clContextGenerate(clContext * C)
         primaries.blue[1] = C->primaries[5];
         primaries.white[0] = C->primaries[6];
         primaries.white[1] = C->primaries[7];
-        curve.type = CL_PCT_GAMMA;
+    }
+
+    curve.type = CL_PCT_GAMMA;
+    if (C->gamma <= 0.0f) {
+        clContextLog(C, "generate", 1, "No gamma specified (-g). Using default sRGB gamma.");
+        curve.gamma = 2.4f;
+    } else {
         curve.gamma = C->gamma;
+    }
+
+    if (C->luminance <= 0) {
+        clContextLog(C, "generate", 1, "No luminance specified (-l). Using default Colorist luminance.");
+        luminance = COLORIST_DEFAULT_LUMINANCE;
+    } else {
         luminance = C->luminance;
+    }
+
+    {
+        char * description = NULL;
 
         if (C->description) {
             description = clContextStrdup(C, C->description);
@@ -68,9 +83,10 @@ int clContextGenerate(clContext * C)
             description = clGenerateDescription(C, &primaries, &curve, luminance);
         }
 
-        clContextLog(C, "generate", 1, "Generating ICC profile: \"%s\"", description);
+        clContextLog(C, "generate", 0, "Generating ICC profile: \"%s\"", description);
         dstProfile = clProfileCreate(C, &primaries, &curve, luminance, description);
         clFree(description);
+
         if (C->copyright) {
             clContextLog(C, "generate", 1, "Setting copyright: \"%s\"", C->copyright);
             clProfileSetMLU(C, dstProfile, "cprt", "en", "US", C->copyright);
@@ -96,7 +112,7 @@ int clContextGenerate(clContext * C)
             return 1;
         } else {
             clContextLog(C, "generate", 0, "Writing Image: %s", C->outputFilename);
-            clImageDebugDump(C, image, 0, 0, 0, 0, 0);
+            clImageDebugDump(C, image, C->rect[0], C->rect[1], C->rect[2], C->rect[3], 0);
             if (!clContextWrite(C, image, C->outputFilename, outputFileFormat, C->quality, C->rate)) {
                 clImageDestroy(C, image);
                 clProfileDestroy(C, dstProfile);

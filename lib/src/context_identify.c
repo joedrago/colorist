@@ -35,8 +35,15 @@ int clContextIdentify(clContext * C)
         clContextLog(C, "decode", 0, "Reading: %s (%d bytes)", C->inputFilename, clFileSize(C->inputFilename));
         image = clContextRead(C, C->inputFilename, &format);
         if (image) {
+            int rect[4];
+            memcpy(rect, C->rect, sizeof(rect));
+            if ((rect[2] < 0) && (rect[3] < 0)) {
+                // Defaults for identify
+                rect[2] = 3;
+                rect[3] = 3;
+            }
             clContextLog(C, "identify", 1, "Format: %s", clFormatToString(C, format));
-            clImageDebugDump(C, image, C->rect[0], C->rect[1], C->rect[2], C->rect[3], 1);
+            clImageDebugDump(C, image, rect[0], rect[1], rect[2], rect[3], 1);
             clImageDestroy(C, image);
         }
     }

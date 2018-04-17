@@ -7,6 +7,7 @@
 
 #include "colorist/context.h"
 
+#include "colorist/profile.h"
 #include "colorist/task.h"
 
 #include <string.h>
@@ -18,13 +19,13 @@
 typedef struct StockPrimaries
 {
     const char * name;
-    float primaries[8];
+    clProfilePrimaries primaries;
 } StockPrimaries;
 
 static StockPrimaries stockPrimaries[] = {
-    { "bt709", { 0.64f, 0.33f, 0.30f, 0.60f, 0.15f, 0.06f, 0.3127f, 0.3290f } },
-    { "bt2020", { 0.708f, 0.292f, 0.170f, 0.797f, 0.131f, 0.046f, 0.3127f, 0.3290f } },
-    { "p3", { 0.68f, 0.32f, 0.265f, 0.690f, 0.150f, 0.060f, 0.3127f, 0.3290f } }
+    { "bt709", { { 0.64f, 0.33f }, { 0.30f, 0.60f }, { 0.15f, 0.06f }, { 0.3127f, 0.3290f } } },
+    { "bt2020", { { 0.708f, 0.292f }, { 0.170f, 0.797f }, { 0.131f, 0.046f }, { 0.3127f, 0.3290f } } },
+    { "p3", { { 0.68f, 0.32f }, { 0.265f, 0.690f }, { 0.150f, 0.060f }, { 0.3127f, 0.3290f } } }
 };
 static const unsigned int stockPrimariesCount = sizeof(stockPrimaries) / sizeof(stockPrimaries[0]);
 
@@ -175,8 +176,8 @@ clContext * clContextCreate(clContextSystem * system)
     C->verbose = clFalse;
     C->rect[0] = 0;
     C->rect[1] = 0;
-    C->rect[2] = 3;
-    C->rect[3] = 3;
+    C->rect[2] = -1;
+    C->rect[3] = -1;
     C->tonemap = CL_TONEMAP_AUTO;
     C->inputFilename = NULL;
     C->outputFilename = NULL;
@@ -188,6 +189,18 @@ void clContextDestroy(clContext * C)
 {
     cmsDeleteContext(C->lcms);
     clFree(C);
+}
+
+clBool clContextGetStockPrimaries(struct clContext * C, const char * name, struct clProfilePrimaries * outPrimaries)
+{
+    unsigned int index;
+    for (index = 0; index < stockPrimariesCount; ++index) {
+        if (!strcmp(name, stockPrimaries[index].name)) {
+            memcpy(outPrimaries, &stockPrimaries[index].primaries, sizeof(clProfilePrimaries));
+            return clTrue;
+        }
+    }
+    return clFalse;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -209,12 +222,18 @@ static clBool parsePrimaries(clContext * C, float primaries[8], const char * arg
 {
     char * buffer;
     char * token;
-    unsigned int index;
-    for (index = 0; index < stockPrimariesCount; ++index) {
-        if (!strcmp(arg, stockPrimaries[index].name)) {
-            memcpy(primaries, stockPrimaries[index].primaries, sizeof(float) * 8);
-            return clTrue;
-        }
+    int index;
+    clProfilePrimaries stockPrimaries;
+    if (clContextGetStockPrimaries(C, arg, &stockPrimaries)) {
+        primaries[0] = stockPrimaries.red[0];
+        primaries[1] = stockPrimaries.red[1];
+        primaries[2] = stockPrimaries.green[0];
+        primaries[3] = stockPrimaries.green[1];
+        primaries[4] = stockPrimaries.blue[0];
+        primaries[5] = stockPrimaries.blue[1];
+        primaries[6] = stockPrimaries.white[0];
+        primaries[7] = stockPrimaries.white[1];
+        return clTrue;
     }
     buffer = clContextStrdup(C, arg);
     index = 0;
