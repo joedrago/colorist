@@ -10,14 +10,6 @@
 #include "colorist/context.h"
 #include "colorist/profile.h"
 
-#include "lcms2_plugin.h"
-
-#define COLORIST_DUMP_DIM 4
-
-// From lcms2_internal.h
-#define MAX_ENCODEABLE_XYZ  (1.0 + 32767.0 / 32768.0)
-#define InpAdj   (1.0 / MAX_ENCODEABLE_XYZ) // (65536.0/(65535.0*2.0))
-
 static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, int x, int y, int extraIndent);
 
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent)
