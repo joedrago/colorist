@@ -27,7 +27,7 @@ void clContextPrintVersions(clContext * C)
     clContextLog(C, NULL, 0, "Versions   :");
     clContextLog(C, NULL, 1, "colorist   : %s", COLORIST_VERSION_STRING);
     clContextLog(C, NULL, 1, "jpeglib    : %d", JPEG_LIB_VERSION);
-    clContextLog(C, NULL, 1, "lcms2      : %d", LCMS_VERSION);
+    clContextLog(C, NULL, 1, "lcms2      : %d.%d", LCMS_VERSION / 1000, (LCMS_VERSION % 1000) / 10);
     clContextLog(C, NULL, 1, "libpng     : %s", PNG_LIBPNG_VER_STRING);
     clContextLog(C, NULL, 1, "openjpeg   : %s", opj_version());
     clContextLog(C, NULL, 1, "zlib       : %s", ZLIB_VERSION);
