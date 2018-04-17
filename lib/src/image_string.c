@@ -56,7 +56,7 @@
 typedef struct clColor
 {
     union {
-        struct { unsigned int r, g, b, a; };
+        struct { int r, g, b, a; };
         struct { float fr, fg, fb, fa; };
     };
     int depth; // 8 and 16 are unorm, 32 is float
@@ -246,6 +246,12 @@ static const char * parseColor(struct clContext * C, const char * s, clColor * p
 {
     if (*s == '#') {
         s = parseHashColor(C, s, parsedColor);
+        if (s != NULL) {
+            clampColor(C, parsedColor);
+        }
+        return s;
+    } else if (!strncmp(s, "(", 1)) {
+        s = parseParenColor(C, s, 8, parsedColor);
         if (s != NULL) {
             clampColor(C, parsedColor);
         }
