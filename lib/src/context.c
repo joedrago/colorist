@@ -66,17 +66,19 @@ clFormat clFormatFromString(struct clContext * C, const char * str)
     if (!strcmp(str, "jp2")) return CL_FORMAT_JP2;
     if (!strcmp(str, "jpg")) return CL_FORMAT_JPG;
     if (!strcmp(str, "png")) return CL_FORMAT_PNG;
+    if (!strcmp(str, "webp")) return CL_FORMAT_WEBP;
     return CL_FORMAT_ERROR;
 }
 
 const char * clFormatToString(struct clContext * C, clFormat format)
 {
     switch (format) {
-        case CL_FORMAT_AUTO: return "Auto";
-        case CL_FORMAT_ICC:  return "ICC";
-        case CL_FORMAT_JP2:  return "JP2";
-        case CL_FORMAT_JPG:  return "JPG";
-        case CL_FORMAT_PNG:  return "PNG";
+        case CL_FORMAT_AUTO:  return "Auto";
+        case CL_FORMAT_ICC:   return "ICC";
+        case CL_FORMAT_JP2:   return "JP2";
+        case CL_FORMAT_JPG:   return "JPG";
+        case CL_FORMAT_PNG:   return "PNG";
+        case CL_FORMAT_WEBP:  return "WebP";
         case CL_FORMAT_ERROR:
         default:
             break;
@@ -96,8 +98,23 @@ clFormat clFormatDetect(struct clContext * C, const char * filename)
     if (!strcmp(ext, "jp2")) return CL_FORMAT_JP2;
     if (!strcmp(ext, "jpg")) return CL_FORMAT_JPG;
     if (!strcmp(ext, "png")) return CL_FORMAT_PNG;
+    if (!strcmp(ext, "webp")) return CL_FORMAT_WEBP;
     clContextLogError(C, "Unknown file extension '%s'", ext);
     return CL_FORMAT_ERROR;
+}
+
+int clFormatMaxDepth(struct clContext * C, clFormat format)
+{
+    switch (format) {
+        case CL_FORMAT_JP2:   return 16;
+        case CL_FORMAT_JPG:   return 8;
+        case CL_FORMAT_PNG:   return 16;
+        case CL_FORMAT_WEBP:  return 8;
+        default:
+            break;
+    }
+    clContextLogError(C, "clFormatMaxDepth() called on unknown format");
+    return 8;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -494,13 +511,13 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)");
     clContextLog(C, NULL, 0, "    -c COPYRIGHT   : ICC profile copyright string.");
     clContextLog(C, NULL, 0, "    -d DESCRIPTION : ICC profile description.");
-    clContextLog(C, NULL, 0, "    -f FORMAT      : Output format. auto (default), icc, jp2, jpg, png");
+    clContextLog(C, NULL, 0, "    -f FORMAT      : Output format. auto (default), icc, jp2, jpg, png, webp");
     clContextLog(C, NULL, 0, "    -g GAMMA       : Output gamma. 0 for auto (default), or \"source\" to force source gamma");
     clContextLog(C, NULL, 0, "    -h             : Display this help");
     clContextLog(C, NULL, 0, "    -j JOBS        : Number of jobs to use when color grading. 0 for as many as possible (default)");
     clContextLog(C, NULL, 0, "    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default), or \"source\" to force source luminance");
     clContextLog(C, NULL, 0, "    -p PRIMARIES   : ICC profile primaries (8 floats, comma separated). rx,ry,gx,gy,bx,by,wx,wy");
-    clContextLog(C, NULL, 0, "    -q QUALITY     : Output quality for JPG. JP2 can also use it (see -r below). (default: 90)");
+    clContextLog(C, NULL, 0, "    -q QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -r below). (default: 90)");
     clContextLog(C, NULL, 0, "    -r RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)");
     clContextLog(C, NULL, 0, "    -t TONEMAP     : Set tonemapping. auto (default), on, or off");
     clContextLog(C, NULL, 0, "    -v             : Verbose mode.");

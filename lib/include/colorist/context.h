@@ -39,6 +39,7 @@ typedef enum clFormat
     CL_FORMAT_JP2,
     CL_FORMAT_JPG,
     CL_FORMAT_PNG,
+    CL_FORMAT_WEBP,
 
     CL_FORMAT_ERROR
 } clFormat;
@@ -46,6 +47,7 @@ typedef enum clFormat
 clFormat clFormatFromString(struct clContext * C, const char * str);
 const char * clFormatToString(struct clContext * C, clFormat format);
 clFormat clFormatDetect(struct clContext * C, const char * filename);
+int clFormatMaxDepth(struct clContext * C, clFormat format);
 
 typedef enum clTonemap
 {

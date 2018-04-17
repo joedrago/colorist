@@ -101,8 +101,8 @@ int clContextGenerate(clContext * C)
         if (depth == 0) {
             depth = 16;
         }
-        if ((depth != 8) && (outputFileFormat == CL_FORMAT_JPG)) {
-            clContextLog(C, "generate", 1, "Forcing output to 8-bit (JPEG limitations)");
+        if ((depth != 8) && (outputFileFormat != CL_FORMAT_ICC) && (clFormatMaxDepth(C, outputFileFormat) < depth)) {
+            clContextLog(C, "validate", 0, "Forcing output to 8-bit (format limitations)");
             depth = 8;
         }
 

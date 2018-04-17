@@ -31,14 +31,17 @@ void clImageSetPixel(struct clContext * C, clImage * image, int x, int y, int r,
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent);
 void clImageDestroy(struct clContext * C, clImage * image);
 
-clImage * clImageReadPNG(struct clContext * C, const char * filename);
-clBool clImageWritePNG(struct clContext * C, clImage * image, const char * filename);
-
 clImage * clImageReadJP2(struct clContext * C, const char * filename);
 clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filename, int quality, int rate);
 
 clImage * clImageReadJPG(struct clContext * C, const char * filename);
 clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filename, int quality);
+
+clImage * clImageReadPNG(struct clContext * C, const char * filename);
+clBool clImageWritePNG(struct clContext * C, clImage * image, const char * filename);
+
+clImage * clImageReadWebP(struct clContext * C, const char * filename);
+clBool clImageWriteWebP(struct clContext * C, clImage * image, const char * filename, int quality);
 
 clImage * clImageParseString(struct clContext * C, const char * str, int depth, struct clProfile * profile);
 

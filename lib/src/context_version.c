@@ -17,14 +17,23 @@
 #include "png.h"
 #include "zlib.h"
 
+// WebP
+#include "decode.h"
+#include "encode.h"
+
 void clContextPrintVersions(clContext * C)
 {
-    clContextLog(C, NULL, 0, "Versions:");
-    clContextLog(C, NULL, 1, "colorist: %s", COLORIST_VERSION_STRING);
-    clContextLog(C, NULL, 1, "jpeglib : %d", JPEG_LIB_VERSION);
-    clContextLog(C, NULL, 1, "lcms2   : %d", LCMS_VERSION);
-    clContextLog(C, NULL, 1, "libpng  : %s", PNG_LIBPNG_VER_STRING);
-    clContextLog(C, NULL, 1, "openjpeg: %s", opj_version());
-    clContextLog(C, NULL, 1, "zlib    : %s", ZLIB_VERSION);
+    int version;
+    clContextLog(C, NULL, 0, "Versions   :");
+    clContextLog(C, NULL, 1, "colorist   : %s", COLORIST_VERSION_STRING);
+    clContextLog(C, NULL, 1, "jpeglib    : %d", JPEG_LIB_VERSION);
+    clContextLog(C, NULL, 1, "lcms2      : %d", LCMS_VERSION);
+    clContextLog(C, NULL, 1, "libpng     : %s", PNG_LIBPNG_VER_STRING);
+    clContextLog(C, NULL, 1, "openjpeg   : %s", opj_version());
+    clContextLog(C, NULL, 1, "zlib       : %s", ZLIB_VERSION);
+    version = WebPGetDecoderVersion();
+    clContextLog(C, NULL, 1, "WebP Decode: %d.%d.%d", (version >> 16) & 0xFF, (version >> 8) & 0xFF, version & 0xFF);
+    version = WebPGetEncoderVersion();
+    clContextLog(C, NULL, 1, "WebP Encode: %d.%d.%d", (version >> 16) & 0xFF, (version >> 8) & 0xFF, version & 0xFF);
     clContextLog(C, NULL, 0, "");
 }

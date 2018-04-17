@@ -107,8 +107,8 @@ int clContextConvert(clContext * C)
         if (dstDepth == 0) {
             dstDepth = srcImage->depth;
         }
-        if ((dstDepth != 8) && (outputFileFormat == CL_FORMAT_JPG)) {
-            clContextLog(C, "validate", 0, "Forcing output to 8-bit (JPEG limitations)");
+        if ((dstDepth != 8) && (outputFileFormat != CL_FORMAT_ICC) && (clFormatMaxDepth(C, outputFileFormat) < dstDepth)) {
+            clContextLog(C, "validate", 0, "Forcing output to 8-bit (format limitations)");
             dstDepth = 8;
         }
 
