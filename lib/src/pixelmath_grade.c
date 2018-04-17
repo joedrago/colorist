@@ -31,17 +31,17 @@ static float gammaErrorTerm(float gamma, float * pixels, int pixelCount, float m
         scaledChannel = pixel[0] * luminanceScale;
         scaledChannel = CL_CLAMP(scaledChannel, 0.0f, 1.0f);
         channelErrorTerm = fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
-        errorTerm += channelErrorTerm * channelErrorTerm;
+        errorTerm += channelErrorTerm; // * channelErrorTerm;
 
         scaledChannel = pixel[1] * luminanceScale;
         scaledChannel = CL_CLAMP(scaledChannel, 0.0f, 1.0f);
         channelErrorTerm = fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
-        errorTerm += channelErrorTerm * channelErrorTerm;
+        errorTerm += channelErrorTerm; // * channelErrorTerm;
 
         scaledChannel = pixel[2] * luminanceScale;
         scaledChannel = CL_CLAMP(scaledChannel, 0.0f, 1.0f);
         channelErrorTerm = fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
-        errorTerm += channelErrorTerm * channelErrorTerm;
+        errorTerm += channelErrorTerm; // * channelErrorTerm;
 
         pixel += 4;
     }
