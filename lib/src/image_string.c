@@ -141,7 +141,7 @@ static const char * parseHashColor(struct clContext * C, const char * s, clColor
     return NULL;
 }
 
-static const char * parseParenColor(struct clContext * C, const char * s, int depth, clColor * parsedColor)
+static const char * parseParenColor(struct clContext * C, const char * s, int depth, clColor * parsedColor, cmsHTRANSFORM fromXYZ, clBool isXYY)
 {
     char * buffer;
     const char * end;
@@ -199,6 +199,29 @@ static const char * parseParenColor(struct clContext * C, const char * s, int de
             parsedColor->fb = floats[2];
         if (index > 3)
             parsedColor->fa = floats[3];
+
+        if (isXYY) {
+            cmsCIExyY src;
+            cmsCIEXYZ dst;
+            src.x = parsedColor->fr;
+            src.y = parsedColor->fg;
+            src.Y = parsedColor->fb;
+            cmsxyY2XYZ(&dst, &src);
+            parsedColor->fr = (float)dst.X;
+            parsedColor->fg = (float)dst.Y;
+            parsedColor->fb = (float)dst.Z;
+        }
+        if (fromXYZ) {
+            float src[3];
+            float dst[3];
+            src[0] = parsedColor->fr;
+            src[1] = parsedColor->fg;
+            src[2] = parsedColor->fb;
+            cmsDoTransform(fromXYZ, src, dst, 1);
+            parsedColor->fr = dst[0];
+            parsedColor->fg = dst[1];
+            parsedColor->fb = dst[2];
+        }
     } else {
         parsedColor->a = (depth == 16) ? 65535 : 255;
         if (index > 0)
@@ -242,7 +265,7 @@ static void clampColor(struct clContext * C, clColor * parsedColor)
     }
 }
 
-static const char * parseColor(struct clContext * C, const char * s, clColor * parsedColor)
+static const char * parseColor(struct clContext * C, const char * s, clColor * parsedColor, cmsHTRANSFORM fromXYZ)
 {
     if (*s == '#') {
         s = parseHashColor(C, s, parsedColor);
@@ -251,43 +274,55 @@ static const char * parseColor(struct clContext * C, const char * s, clColor * p
         }
         return s;
     } else if (!strncmp(s, "(", 1)) {
-        s = parseParenColor(C, s, 8, parsedColor);
+        s = parseParenColor(C, s, 8, parsedColor, NULL, clFalse);
         if (s != NULL) {
             clampColor(C, parsedColor);
         }
         return s;
     } else if (!strncmp(s, "rgb(", 4)) {
-        s = parseParenColor(C, s + 3, 8, parsedColor);
+        s = parseParenColor(C, s + 3, 8, parsedColor, NULL, clFalse);
         if (s != NULL) {
             clampColor(C, parsedColor);
         }
         return s;
     } else if (!strncmp(s, "rgba(", 5)) {
-        s = parseParenColor(C, s + 4, 8, parsedColor);
+        s = parseParenColor(C, s + 4, 8, parsedColor, NULL, clFalse);
         if (s != NULL) {
             clampColor(C, parsedColor);
         }
         return s;
     } else if (!strncmp(s, "rgb16(", 6)) {
-        s = parseParenColor(C, s + 5, 16, parsedColor);
+        s = parseParenColor(C, s + 5, 16, parsedColor, NULL, clFalse);
         if (s != NULL) {
             clampColor(C, parsedColor);
         }
         return s;
     } else if (!strncmp(s, "rgba16(", 7)) {
-        s = parseParenColor(C, s + 6, 16, parsedColor);
+        s = parseParenColor(C, s + 6, 16, parsedColor, NULL, clFalse);
         if (s != NULL) {
             clampColor(C, parsedColor);
         }
         return s;
     } else if (!strncmp(s, "f(", 2)) {
-        s = parseParenColor(C, s + 1, 32, parsedColor);
+        s = parseParenColor(C, s + 1, 32, parsedColor, NULL, clFalse);
         if (s != NULL) {
             clampColor(C, parsedColor);
         }
         return s;
     } else if (!strncmp(s, "float(", 6)) {
-        s = parseParenColor(C, s + 5, 32, parsedColor);
+        s = parseParenColor(C, s + 5, 32, parsedColor, NULL, clFalse);
+        if (s != NULL) {
+            clampColor(C, parsedColor);
+        }
+        return s;
+    } else if ((!strncmp(s, "xyz(", 4))) {
+        s = parseParenColor(C, s + 3, 32, parsedColor, fromXYZ, clFalse);
+        if (s != NULL) {
+            clampColor(C, parsedColor);
+        }
+        return s;
+    } else if ((!strncmp(s, "xyy(", 4))) {
+        s = parseParenColor(C, s + 3, 32, parsedColor, fromXYZ, clTrue);
         if (s != NULL) {
             clampColor(C, parsedColor);
         }
@@ -428,7 +463,7 @@ static const char * parseRepeat(struct clContext * C, const char * s, clToken * 
     token->repeat = atoi(buffer);
     return end;
 }
-static const char * parseNext(struct clContext * C, const char * s, clToken * token)
+static const char * parseNext(struct clContext * C, const char * s, clToken * token, cmsHTRANSFORM fromXYZ)
 {
     memset(token, 0, sizeof(clToken));
     if (!strncmp(s, "ccw", 3)) {
@@ -437,6 +472,7 @@ static const char * parseNext(struct clContext * C, const char * s, clToken * to
     } else if (!strncmp(s, "cw", 2)) {
         token->rotate = 1;
         s += 2;
+
     } else if ((*s == '#') ||
                (*s == '(') ||
                (!strncmp(s, "rgb(", 4)) ||
@@ -444,9 +480,11 @@ static const char * parseNext(struct clContext * C, const char * s, clToken * to
                (!strncmp(s, "rgb16(", 6)) ||
                (!strncmp(s, "rgba16(", 7)) ||
                (!strncmp(s, "f(", 2)) ||
-               (!strncmp(s, "float(", 6)))
+               (!strncmp(s, "float(", 6)) ||
+               (!strncmp(s, "xyz(", 4)) ||
+               (!strncmp(s, "xyy(", 4)))
     {
-        s = parseColor(C, s, &token->start);
+        s = parseColor(C, s, &token->start, fromXYZ);
         if (s == NULL) {
             return NULL;
         }
@@ -455,7 +493,7 @@ static const char * parseNext(struct clContext * C, const char * s, clToken * to
             if (s == NULL) {
                 return NULL;
             }
-            s = parseColor(C, s, &token->end);
+            s = parseColor(C, s, &token->end, fromXYZ);
             if (s == NULL) {
                 return NULL;
             }
@@ -483,20 +521,44 @@ static const char * parseNext(struct clContext * C, const char * s, clToken * to
     return s;
 }
 
+static char * sanitizeString(char * s)
+{
+    char * dst = s;
+    char * src = s;
+
+    // Remove whitespace
+    while (*src) {
+        if ((*src != ' ') && (*src != '\t')) {
+            *dst = tolower(*src);
+            ++dst;
+        }
+        ++src;
+    }
+    *dst = 0;
+    return s;
+}
+
 static clImage * interpretTokens(struct clContext * C, clToken * tokens, int depth, struct clProfile * profile);
 
 clImage * clImageParseString(struct clContext * C, const char * s, int depth, struct clProfile * profile)
 {
+    char * sanitizedString;
     clImage * image = NULL;
     clToken * tokens = NULL;
     clToken * lastToken = NULL;
     clToken * token;
 
+    cmsHPROFILE xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
+    cmsHTRANSFORM fromXYZ = cmsCreateTransformTHR(C->lcms, xyzProfile, TYPE_XYZ_FLT, profile->handle, TYPE_RGB_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
+
     clContextLog(C, "parse", 0, "Parsing image string...");
+
+    sanitizedString = sanitizeString(clContextStrdup(C, s));
+    s = sanitizedString;
 
     for (;;) {
         token = clAllocateStruct(clToken);
-        s = parseNext(C, s, token);
+        s = parseNext(C, s, token, fromXYZ);
         if (s == NULL) {
             clFree(token);
             goto parseCleanup;
@@ -538,6 +600,9 @@ clImage * clImageParseString(struct clContext * C, const char * s, int depth, st
     image = interpretTokens(C, tokens, depth, profile);
 
 parseCleanup:
+    cmsDeleteTransform(fromXYZ);
+    cmsCloseProfile(xyzProfile);
+    clFree(sanitizedString);
     if (tokens) {
         clToken * t = tokens;
         while (t->next != NULL) {
@@ -695,7 +760,7 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
         clContextLog(C, "parse", 1, "More pixels than colors. Spreading colors evenly.");
         every = pixelCount / colorCount;
     } else {
-        clContextLog(C, "parse", 1, "One color per pixel until we run out of pixels.");
+        clContextLog(C, "parse", 1, "One color per pixel until no pixels are left.");
         every = 1;
     }
 
