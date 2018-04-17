@@ -669,7 +669,7 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
     }
     rotate = rotate % 4;
 
-    clContextLog(C, "parse", 1, "Image string describes %d color%s.", colorCount, (colorCount > 1) ? "s" : 0);
+    clContextLog(C, "parse", 1, "Image string describes %d color%s.", colorCount, (colorCount > 1) ? "s" : "");
     if (imageWidth && imageHeight) {
         clContextLog(C, "parse", 1, "Image string requests a resolution of %dx%d", imageWidth, imageHeight);
     } else {
