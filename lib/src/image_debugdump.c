@@ -18,7 +18,7 @@
 #define MAX_ENCODEABLE_XYZ  (1.0 + 32767.0 / 32768.0)
 #define InpAdj   (1.0 / MAX_ENCODEABLE_XYZ) // (65536.0/(65535.0*2.0))
 
-static void dumpPixel(struct clContext * C, clImage * image, float gamma, cmsMAT3 * rgbToXYZ, int x, int y, int extraIndent);
+static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, int x, int y, int extraIndent);
 
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent)
 {
@@ -26,12 +26,8 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
     int dumpEndW;
     int dumpEndH;
 
-    cmsCIEXYZ * rTag;
-    cmsCIEXYZ * gTag;
-    cmsCIEXYZ * bTag;
-    cmsMAT3 rgbToXYZ;
-    clProfileCurve curve;
-    float gamma;
+    cmsHPROFILE xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
+    cmsHTRANSFORM toXYZ = cmsCreateTransformTHR(C->lcms, image->profile->handle, TYPE_RGB_FLT, xyzProfile, TYPE_XYZ_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
 
     dumpEndW = x + w;
     dumpEndH = y + h;
@@ -44,86 +40,57 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
         clContextLog(C, "image", 1 + extraIndent, "Pixels:");
     }
 
-    // Borrowed/adapted from cmsio1.c
-    // This will be with respect to D50, but I just want the xy coordinate so I don't care
-    rTag = (cmsCIEXYZ *)cmsReadTag(image->profile->handle, cmsSigRedColorantTag);
-    gTag = (cmsCIEXYZ *)cmsReadTag(image->profile->handle, cmsSigGreenColorantTag);
-    bTag = (cmsCIEXYZ *)cmsReadTag(image->profile->handle, cmsSigBlueColorantTag);
-    if ((rTag == NULL) || (gTag == NULL) || (bTag == NULL)) {
-        clContextLogError(C, "Missing colorant tags in image profile!");
-        return;
-    }
-    _cmsVEC3init(&rgbToXYZ.v[0], rTag->X, gTag->X, bTag->X);
-    _cmsVEC3init(&rgbToXYZ.v[1], rTag->Y, gTag->Y, bTag->Y);
-    _cmsVEC3init(&rgbToXYZ.v[2], rTag->Z, gTag->Z, bTag->Z);
-    for (i=0; i < 3; i++)
-        for (j=0; j < 3; j++)
-            rgbToXYZ.v[i].n[j] *= InpAdj;
-
-    gamma = 0.0f;
-    if (clProfileQuery(C, image->profile, NULL, &curve, NULL)) {
-        if (curve.type == CL_PCT_GAMMA) {
-            gamma = curve.gamma;
-        }
-    }
-
     for (j = y; j < dumpEndH; ++j) {
         for (i = x; i < dumpEndW; ++i) {
-            dumpPixel(C, image, gamma, &rgbToXYZ, i, j, extraIndent);
+            dumpPixel(C, image, toXYZ, i, j, extraIndent);
         }
-        // clContextLog(C, "image", 0 + extraIndent, "");
     }
+
+    cmsDeleteTransform(toXYZ);
+    cmsCloseProfile(xyzProfile);
 }
 
-// TODO: rework this ugly function by distributing out copypasta, amongst other changes
-static void dumpPixel(struct clContext * C, clImage * image, float gamma, cmsMAT3 * rgbToXYZ, int x, int y, int extraIndent)
+static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, int x, int y, int extraIndent)
 {
     COLORIST_ASSERT(image->pixels);
-    cmsVEC3 rgbFloat;
-    cmsVEC3 xyzFloat;
+    int intRGB[4];
+    float maxChannel;
+    float floatRGB[4];
+    float floatXYZ[3];
     cmsCIEXYZ XYZ;
     cmsCIExyY xyY;
+
     if (image->depth == 16) {
         uint16_t * shorts = (uint16_t *)image->pixels;
         uint16_t * pixel = &shorts[4 * (x + (y * image->width))];
-        if (gamma > 0.0f) {
-            rgbFloat.n[VX] = powf((float)pixel[0] / 65535.0f, gamma);
-            rgbFloat.n[VY] = powf((float)pixel[1] / 65535.0f, gamma);
-            rgbFloat.n[VZ] = powf((float)pixel[2] / 65535.0f, gamma);
-            _cmsMAT3eval(&xyzFloat, rgbToXYZ, &rgbFloat);
-            XYZ.X = xyzFloat.n[VX];
-            XYZ.Y = xyzFloat.n[VY];
-            XYZ.Z = xyzFloat.n[VZ];
-            cmsXYZ2xyY(&xyY, &XYZ);
-        } else {
-            // Unsupported
-            memset(&xyY, 0, sizeof(xyY));
-        }
-        clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): (%u, %u, %u, %u) -> (%g, %g, %g, %g), xy(%g, %g)",
-            x, y,
-            (unsigned int)pixel[0], (unsigned int)pixel[1], (unsigned int)pixel[2], (unsigned int)pixel[3],
-            (float)pixel[0] / 65535.0f, (float)pixel[1] / 65535.0f, (float)pixel[2] / 65535.0f, (float)pixel[3] / 65535.0f,
-            xyY.x, xyY.y);
+        intRGB[0] = pixel[0];
+        intRGB[1] = pixel[1];
+        intRGB[2] = pixel[2];
+        intRGB[3] = pixel[3];
+        maxChannel = 65535.0f;
     } else {
         uint8_t * pixel = &image->pixels[4 * (x + (y * image->width))];
         COLORIST_ASSERT(image->depth == 8);
-        if (gamma > 0.0f) {
-            rgbFloat.n[VX] = powf((float)pixel[0] / 255.0f, gamma);
-            rgbFloat.n[VY] = powf((float)pixel[1] / 255.0f, gamma);
-            rgbFloat.n[VZ] = powf((float)pixel[2] / 255.0f, gamma);
-            _cmsMAT3eval(&xyzFloat, rgbToXYZ, &rgbFloat);
-            XYZ.X = xyzFloat.n[VX];
-            XYZ.Y = xyzFloat.n[VY];
-            XYZ.Z = xyzFloat.n[VZ];
-            cmsXYZ2xyY(&xyY, &XYZ);
-        } else {
-            // Unsupported
-            memset(&xyY, 0, sizeof(xyY));
-        }
-        clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): (%u, %u, %u, %u) -> (%g, %g, %g, %g), xy(%g, %g)",
-            x, y,
-            (unsigned int)pixel[0], (unsigned int)pixel[1], (unsigned int)pixel[2], (unsigned int)pixel[3],
-            (float)pixel[0] / 255.0f, (float)pixel[1] / 255.0f, (float)pixel[2] / 255.0f, (float)pixel[3] / 255.0f,
-            xyY.x, xyY.y);
+        intRGB[0] = pixel[0];
+        intRGB[1] = pixel[1];
+        intRGB[2] = pixel[2];
+        intRGB[3] = pixel[3];
+        maxChannel = 255.0f;
     }
+
+    floatRGB[0] = intRGB[0] / maxChannel;
+    floatRGB[1] = intRGB[1] / maxChannel;
+    floatRGB[2] = intRGB[2] / maxChannel;
+    floatRGB[3] = intRGB[3] / maxChannel;
+    cmsDoTransform(toXYZ, floatRGB, floatXYZ, 1);
+    XYZ.X = floatXYZ[0];
+    XYZ.Y = floatXYZ[1];
+    XYZ.Z = floatXYZ[2];
+    cmsXYZ2xyY(&xyY, &XYZ);
+
+    clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): rgba%d(%u, %u, %u, %u), XYZ(%g, %g, %g), xyY(%g, %g, %g)",
+        x, y, image->depth,
+        intRGB[0], intRGB[1], intRGB[2], intRGB[3],
+        XYZ.X, XYZ.Y, XYZ.Z,
+        xyY.x, xyY.y, xyY.Y);
 }
