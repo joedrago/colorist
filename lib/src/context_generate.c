@@ -130,6 +130,7 @@ int clContextGenerate(clContext * C)
     }
 
     clProfileDestroy(C, dstProfile);
+    clContextLog(C, "encode", 1, "Wrote %d bytes.", clFileSize(C->outputFilename));
     clContextLog(C, "action", 0, "Generation complete (%g sec).", timerElapsedSeconds(&overall));
     return 0;
 }

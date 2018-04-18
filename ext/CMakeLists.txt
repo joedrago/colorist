@@ -27,7 +27,7 @@ add_subdirectory(openjpeg)
 set(WEBP_BUILD_CWEBP OFF CACHE BOOL "")
 set(WEBP_BUILD_DWEBP OFF CACHE BOOL "")
 set(WEBP_BUILD_GIF2WEBP OFF CACHE BOOL "")
-set(WEBP_BUILD_IMG2WEBP OFF CACHE BOOL "")
+set(WEBP_BUILD_IMG2WEBP ON CACHE BOOL "")
 set(WEBP_BUILD_WEBPINFO OFF CACHE BOOL "")
 add_subdirectory(libwebp)
 
@@ -115,6 +115,7 @@ set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/include"
     "${OPENJPEG_BINARY_DIR}/src/lib/openjp2"
     "${CMAKE_CURRENT_SOURCE_DIR}/jpeg"
+    "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/imageio"
     "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/src/webp"
 )
 set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} PARENT_SCOPE)
@@ -126,24 +127,36 @@ set(COLORIST_EXT_LIBS
     jpeg
     z
     webp
+    webpmux
+    webpdemux
 )
 set(COLORIST_EXT_LIBS ${COLORIST_EXT_LIBS} PARENT_SCOPE)
 
 # For VS users
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_target_properties(jpeg PROPERTIES FOLDER "ext")
 set_target_properties(lcms2 PROPERTIES FOLDER "ext")
-set_target_properties(openjp2 PROPERTIES FOLDER "ext")
-set_target_properties(opj_compress PROPERTIES FOLDER "ext")
-set_target_properties(opj_decompress PROPERTIES FOLDER "ext")
-set_target_properties(opj_dump PROPERTIES FOLDER "ext")
+set_target_properties(openjp2 PROPERTIES FOLDER "ext/openjpeg")
+set_target_properties(opj_compress PROPERTIES FOLDER "ext/openjpeg")
+set_target_properties(opj_decompress PROPERTIES FOLDER "ext/openjpeg")
+set_target_properties(opj_dump PROPERTIES FOLDER "ext/openjpeg")
 set_target_properties(png PROPERTIES FOLDER "ext")
-set_target_properties(tiff PROPERTIES FOLDER "ext")
-set_target_properties(webp PROPERTIES FOLDER "ext")
-set_target_properties(webpdecode PROPERTIES FOLDER "ext")
-set_target_properties(webpdecoder PROPERTIES FOLDER "ext")
-set_target_properties(webpdsp PROPERTIES FOLDER "ext")
-set_target_properties(webpdspdecode PROPERTIES FOLDER "ext")
-set_target_properties(webpencode PROPERTIES FOLDER "ext")
-set_target_properties(webputils PROPERTIES FOLDER "ext")
-set_target_properties(webputilsdecode PROPERTIES FOLDER "ext")
+set_target_properties(tiff PROPERTIES FOLDER "ext/openjpeg")
+set_target_properties(webp PROPERTIES FOLDER "ext/webp")
+set_target_properties(webpdecode PROPERTIES FOLDER "ext/webp")
+set_target_properties(webpdecoder PROPERTIES FOLDER "ext/webp")
+set_target_properties(webpdemux PROPERTIES FOLDER "ext/webp")
+set_target_properties(webpdsp PROPERTIES FOLDER "ext/webp")
+set_target_properties(webpdspdecode PROPERTIES FOLDER "ext/webp")
+set_target_properties(webpencode PROPERTIES FOLDER "ext/webp")
+set_target_properties(webpmux PROPERTIES FOLDER "ext/webp")
+set_target_properties(webputils PROPERTIES FOLDER "ext/webp")
+set_target_properties(webputilsdecode PROPERTIES FOLDER "ext/webp")
 set_target_properties(z PROPERTIES FOLDER "ext")
+
+# TODO: figure out how to make these go away without losing libwebpmux
+set_target_properties(exampleutil PROPERTIES FOLDER "ext/webp")
+set_target_properties(imagedec PROPERTIES FOLDER "ext/webp")
+set_target_properties(imageenc PROPERTIES FOLDER "ext/webp")
+set_target_properties(imageioutil PROPERTIES FOLDER "ext/webp")
+set_target_properties(img2webp PROPERTIES FOLDER "ext/webp")
