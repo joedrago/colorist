@@ -123,6 +123,7 @@ clBool clImageWriteWebP(struct clContext * C, clImage * image, const char * file
 
     config.lossless = (C->quality >= 100) ? 1 : 0;
     config.quality = (float)C->quality;
+    config.method = 6; // always go for the best output, encoding speed be damned
 
     picture.writer = WebPMemoryWrite;
     picture.custom_ptr = (void *)&memoryWriter;
