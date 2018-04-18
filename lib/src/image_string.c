@@ -618,8 +618,8 @@ static void getColorFromRange(struct clContext * C, clToken * t, int reqIndex, c
 {
     float p;
     int diff;
-    if (t->repeat)
-        reqIndex = reqIndex % t->repeat;
+
+    reqIndex = reqIndex % t->count;
     p = (float)reqIndex / (t->count - 1);
 
     diff = t->end.r - t->start.r;
