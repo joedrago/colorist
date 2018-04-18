@@ -1,3 +1,5 @@
 /build
 /go
 .DS_Store
+/_site
+Gemfile.lock
