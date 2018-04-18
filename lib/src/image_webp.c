@@ -30,6 +30,8 @@ clImage * clImageReadWebP(struct clContext * C, const char * filename)
     int width, height;
     uint8_t * readPixels = NULL;
 
+    memset(&frameInfo, 0, sizeof(frameInfo));
+
     memset(&fileContents, 0, sizeof(fileContents));
     if (!clRawReadFile(C, &fileContents, filename)) {
         goto readCleanup;
@@ -67,15 +69,16 @@ clImage * clImageReadWebP(struct clContext * C, const char * filename)
     memcpy(image->pixels, readPixels, 4 * width * height);
 
 readCleanup:
-    if (profile) {
-        clProfileDestroy(C, profile);
+    clRawFree(C, &fileContents);
+    WebPDataClear(&frameInfo.bitstream);
+    if (readPixels) {
+        WebPFree(readPixels);
     }
     if (mux) {
         WebPMuxDelete(mux);
     }
-    clRawFree(C, &fileContents);
-    if (readPixels) {
-        WebPFree(readPixels);
+    if (profile) {
+        clProfileDestroy(C, profile);
     }
     return image;
 }

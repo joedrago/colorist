@@ -136,4 +136,7 @@ int clContextIdentify(clContext * C);
 #define TIMING_FORMAT "--> %g sec"
 #define OVERALL_TIMING_FORMAT "==> %g sec"
 
+// Enable on VS builds to dump memory leaks at the end of a debug session
+// #define WIN32_MEMORY_LEAK_DETECTION
+
 #endif // ifndef MAIN_H

@@ -7,11 +7,23 @@
 
 #include "colorist/colorist.h"
 
+#ifdef WIN32_MEMORY_LEAK_DETECTION
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+#endif
+
 int main(int argc, char * argv[])
 {
     int ret = 1;
-    clContext * C = clContextCreate(NULL);
+    clContext * C;
 
+#ifdef WIN32_MEMORY_LEAK_DETECTION
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+    // _CrtSetBreakAlloc(116);
+#endif
+
+    C = clContextCreate(NULL);
     if (!clContextParseArgs(C, argc, argv)) {
         return 1;
     }
