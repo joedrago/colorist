@@ -290,4 +290,4 @@ xyY(0.321181, 0.597874, 0.716909)     // 32-bit, can't be used in a gradient
 
 ---
 
-Still want more? Read the [Cookbook](./docs/Cookbook.md)!
+Still want more? Read the [Cookbook](./Cookbook.md)!
