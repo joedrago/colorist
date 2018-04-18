@@ -37,6 +37,10 @@ if(GIT_FOUND)
     add_definitions(-DGIT_COMMIT="${GIT_COMMIT}")
 endif()
 
+if(HOMEBREW_BUILD)
+    add_definitions(-DHOMEBREW_BUILD=1)
+endif()
+
 add_subdirectory(ext)
 include_directories(${COLORIST_EXT_INCLUDES})
 

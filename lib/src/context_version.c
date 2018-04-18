@@ -28,7 +28,7 @@
 void clContextPrintVersions(clContext * C)
 {
     int version;
-    clContextLog(C, NULL, 0, "Versions   :");
+    clContextLog(C, NULL, 0, "Versions:");
     clContextLog(C, NULL, 1, "colorist   : %s", COLORIST_VERSION_STRING);
     clContextLog(C, NULL, 1, "jpeglib    : %d", JPEG_LIB_VERSION);
     clContextLog(C, NULL, 1, "lcms2      : %d.%d", LCMS_VERSION / 1000, (LCMS_VERSION % 1000) / 10);
@@ -40,6 +40,11 @@ void clContextPrintVersions(clContext * C)
     version = WebPGetEncoderVersion();
     clContextLog(C, NULL, 1, "WebP Encode: %d.%d.%d", (version >> 16) & 0xFF, (version >> 8) & 0xFF, version & 0xFF);
     clContextLog(C, NULL, 0, "");
+#if defined(HOMEBREW_BUILD)
+    clContextLog(C, NULL, 0, "Built with Homebrew.");
+    clContextLog(C, NULL, 0, "");
+#else
     clContextLog(C, NULL, 0, "Git Commit : %s", GIT_COMMIT);
     clContextLog(C, NULL, 0, "");
+#endif
 }
