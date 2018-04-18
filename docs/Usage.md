@@ -102,7 +102,9 @@ color space conversion to occur.
 
 There are a handful of builtin primaries for convenience:
 
-* bt709 - [BT. 709](https://en.wikipedia.org/wiki/Rec._709#Primary_chromaticities)
+* `bt709`  - [BT. 709](https://en.wikipedia.org/wiki/Rec._709#Primary_chromaticities)
+* `bt2020` - [BT. 2020](https://en.wikipedia.org/wiki/Rec._2020#System_colorimetry)
+* `p3`     - [DCI-P3](https://en.wikipedia.org/wiki/DCI-P3#System_colorimetry)
 
 ### -q QUALITY
 
