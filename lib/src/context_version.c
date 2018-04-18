@@ -21,6 +21,10 @@
 #include "decode.h"
 #include "encode.h"
 
+#if !defined(GIT_COMMIT)
+#define GIT_COMMIT "Unknown"
+#endif
+
 void clContextPrintVersions(clContext * C)
 {
     int version;
@@ -35,5 +39,7 @@ void clContextPrintVersions(clContext * C)
     clContextLog(C, NULL, 1, "WebP Decode: %d.%d.%d", (version >> 16) & 0xFF, (version >> 8) & 0xFF, version & 0xFF);
     version = WebPGetEncoderVersion();
     clContextLog(C, NULL, 1, "WebP Encode: %d.%d.%d", (version >> 16) & 0xFF, (version >> 8) & 0xFF, version & 0xFF);
+    clContextLog(C, NULL, 0, "");
+    clContextLog(C, NULL, 0, "Git Commit : %s", GIT_COMMIT);
     clContextLog(C, NULL, 0, "");
 }

@@ -23,6 +23,20 @@ if(WIN32)
     add_definitions(/wd4996)
 endif()
 
+find_package(Git)
+if(GIT_FOUND)
+    execute_process(
+      COMMAND git log -1 --format=%h
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      OUTPUT_VARIABLE GIT_COMMIT
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(NOT GIT_COMMIT)
+        set(GIT_COMMIT "Unknown")
+    endif()
+    add_definitions(-DGIT_COMMIT="${GIT_COMMIT}")
+endif()
+
 add_subdirectory(ext)
 include_directories(${COLORIST_EXT_INCLUDES})
 
