@@ -13,9 +13,9 @@ Options:
     -f FORMAT      : Output format. auto (default), icc, jp2, jpg, png, webp
     -g GAMMA       : Output gamma. 0 for auto (default), or "source" to force source gamma
     -h             : Display this help
-    -j JOBS        : Number of jobs to use when color grading. 0 for as many as possible (default)
+    -j JOBS        : Number of jobs to use when working. 0 for as many as possible (default)
     -l LUMINANCE   : ICC profile max luminance. 0 for auto (default), or "source" to force source luminance
-    -p PRIMARIES   : ICC profile primaries (8 floats, comma separated). rx,ry,gx,gy,bx,by,wx,wy
+    -p PRIMARIES   : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy
     -q QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -r below). (default: 90)
     -r RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)
     -t TONEMAP     : Set tonemapping. auto (default), on, or off
