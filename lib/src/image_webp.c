@@ -122,6 +122,7 @@ clBool clImageWriteWebP(struct clContext * C, clImage * image, const char * file
     }
 
     config.lossless = (C->quality >= 100) ? 1 : 0;
+    config.emulate_jpeg_size = 1; // consistency across export quality values
     config.quality = (float)C->quality;
     config.method = 6; // always go for the best output, encoding speed be damned
 

@@ -299,6 +299,9 @@ int clContextConvert(clContext * C)
         case CL_FORMAT_JPG:
             clContextLog(C, "encode", 0, "Writing JPG [Q:%d]: %s", C->quality, C->outputFilename);
             break;
+        case CL_FORMAT_WEBP:
+            clContextLog(C, "encode", 0, "Writing WebP [Q:%d]: %s", C->quality, C->outputFilename);
+            break;
         default:
             clContextLog(C, "encode", 0, "Writing: %s", C->outputFilename);
             break;
