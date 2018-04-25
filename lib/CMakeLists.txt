@@ -37,7 +37,7 @@ set(COLORIST_LIB_INCLUDES
     include/colorist/version.h
 )
 generate_headers(COLORIST_LIB_INCLUDES
-    js/reportTemplate.js
+    templates/reportTemplate.html
 )
 
 set(COLORIST_LIB_SRCS
