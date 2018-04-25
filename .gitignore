@@ -2,4 +2,6 @@
 /go
 .DS_Store
 /_site
+/lib/templates/node_modules
+/lib/templates/*.js
 Gemfile.lock

@@ -1,0 +1,23 @@
+{
+  "name": "templates",
+  "version": "0.0.1",
+  "description": "colorist templates",
+  "scripts": {
+    "build": "cake build"
+  },
+  "devDependencies": {
+    "browserify": "^14.5.0",
+    "coffeeify": "^3.0.0",
+    "coffeescript": "^2.0.2",
+    "jquery": "^3.2.1",
+    "jquery-mousewheel": "^3.1.13",
+    "material-ui": "^0.19.4",
+    "minimist": "^1.2.0",
+    "pako": "^1.0.6",
+    "react": "^16.0.0",
+    "react-dimensions": "^1.3.1",
+    "react-dom": "^16.0.0",
+    "react-sizer": "^1.0.1",
+    "uglifyify": "^4.0.4"
+  }
+}
