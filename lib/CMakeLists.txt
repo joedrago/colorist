@@ -5,6 +5,27 @@
 #                  http://www.boost.org/LICENSE_1_0.txt)
 # ---------------------------------------------------------------------------
 
+MACRO(generate_headers _sources )
+    FOREACH (_current_FILE ${ARGN})
+      GET_FILENAME_COMPONENT(_in ${_current_FILE} ABSOLUTE)
+      GET_FILENAME_COMPONENT(_basename ${_current_FILE} NAME_WE)
+
+      set(_out ${CMAKE_CURRENT_BINARY_DIR}/${_basename}Binary.h)
+
+      ADD_CUSTOM_COMMAND(
+         OUTPUT ${_out}
+         COMMAND genHeader
+         ARGS
+         -i ${_in}
+         -o ${_out}
+         -p ${_basename}
+         DEPENDS ${_in}
+      )
+
+      SET(${_sources} ${${_sources}} ${_out})
+   ENDFOREACH (_current_FILE)
+ENDMACRO(generate_headers)
+
 set(COLORIST_LIB_INCLUDES
     include/colorist/colorist.h
     include/colorist/context.h
@@ -14,6 +35,9 @@ set(COLORIST_LIB_INCLUDES
     include/colorist/task.h
     include/colorist/types.h
     include/colorist/version.h
+)
+generate_headers(COLORIST_LIB_INCLUDES
+    js/reportTemplate.js
 )
 
 set(COLORIST_LIB_SRCS
@@ -40,7 +64,10 @@ set(COLORIST_LIB_SRCS
     src/types.c
 )
 
-include_directories(include)
+include_directories(
+    include
+    ${CMAKE_CURRENT_BINARY_DIR}
+)
 
 add_definitions(-DOPJ_STATIC)
 

@@ -19,6 +19,8 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
 #  set(PNG_TESTS OFF CACHE BOOL "")
 #  add_subdirectory(libpng)
 
+add_subdirectory(genHeader)
+
 set(EXECUTABLE_OUTPUT_PATH "" CACHE PATH "Unset OpenJPEG shenanigans")
 set(LIBRARY_OUTPUT_PATH "" CACHE PATH "Unset OpenJPEG shenanigans")
 set(BUILD_THIRDPARTY ON CACHE BOOL "")
@@ -141,6 +143,7 @@ macro(set_folder_safe target folder)
     endif()
 endmacro()
 
+set_folder_safe(genHeader "ext")
 set_folder_safe(jpeg "ext")
 set_folder_safe(lcms2 "ext")
 set_folder_safe(openjp2 "ext/openjpeg")
