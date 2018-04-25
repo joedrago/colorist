@@ -19,6 +19,12 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
 #  set(PNG_TESTS OFF CACHE BOOL "")
 #  add_subdirectory(libpng)
 
+include_directories(cJSON)
+add_library(cjson
+    cJSON/cJSON.c
+    cJSON/cJSON.h
+)
+
 add_subdirectory(genHeader)
 
 set(EXECUTABLE_OUTPUT_PATH "" CACHE PATH "Unset OpenJPEG shenanigans")
@@ -110,6 +116,7 @@ add_library(jpeg
 )
 
 set(COLORIST_EXT_INCLUDES
+    "${CMAKE_CURRENT_SOURCE_DIR}/cJSON"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/liblcms2/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libz"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libpng"
@@ -123,6 +130,7 @@ set(COLORIST_EXT_INCLUDES
 set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} PARENT_SCOPE)
 
 set(COLORIST_EXT_LIBS
+    cjson
     png
     lcms2
     openjp2
@@ -143,6 +151,7 @@ macro(set_folder_safe target folder)
     endif()
 endmacro()
 
+set_folder_safe(cjson "ext")
 set_folder_safe(genHeader "ext")
 set_folder_safe(jpeg "ext")
 set_folder_safe(lcms2 "ext")

@@ -29,7 +29,7 @@ void genHeader(FILE * inputFile, FILE * outputFile, const char * namespaceName)
         if ((i % 15) == 14)
             fprintf(outputFile, "\n");
     }
-    fprintf(outputFile, "\n};\n");
+    fprintf(outputFile, "\n, 0 /* convenient NULL terminator afterwards */};\n");
     free(bytes);
 }
 
