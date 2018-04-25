@@ -39,6 +39,7 @@ clAction clActionFromString(struct clContext * C, const char * str)
     if (!strcmp(str, "generate")) return CL_ACTION_GENERATE;
     if (!strcmp(str, "gen")) return CL_ACTION_GENERATE;
     if (!strcmp(str, "convert")) return CL_ACTION_CONVERT;
+    if (!strcmp(str, "report")) return CL_ACTION_REPORT;
     return CL_ACTION_ERROR;
 }
 
@@ -49,6 +50,7 @@ const char * clActionToString(struct clContext * C, clAction action)
         case CL_ACTION_IDENTIFY: return "identify";
         case CL_ACTION_GENERATE: return "generate";
         case CL_ACTION_CONVERT:  return "convert";
+        case CL_ACTION_REPORT:   return "report";
         case CL_ACTION_ERROR:
         default:
             break;
@@ -386,7 +388,7 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
             if (C->action == CL_ACTION_NONE) {
                 C->action = clActionFromString(C, arg);
                 if (C->action == CL_ACTION_ERROR) {
-                    clContextLogError(C, "unknown action '%s', expecting convert, identify, or generate", arg);
+                    clContextLogError(C, "unknown action '%s', expecting convert, identify, generate, or report", arg);
                     return clFalse;
                 }
             } else if (filenames[0] == NULL) {
@@ -436,6 +438,19 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
             C->outputFilename = filenames[1];
             if (!C->outputFilename) {
                 clContextLogError(C, "convert requires an output filename.");
+                return clFalse;
+            }
+            break;
+
+        case CL_ACTION_REPORT:
+            C->inputFilename = filenames[0];
+            if (!C->inputFilename) {
+                clContextLogError(C, "report requires an input filename.");
+                return clFalse;
+            }
+            C->outputFilename = filenames[1];
+            if (!C->outputFilename) {
+                clContextLogError(C, "report requires an output filename.");
                 return clFalse;
             }
             break;
@@ -506,6 +521,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "        colorist identify [input]                       [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist generate                [output.icc]   [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist generate [image string] [output image] [OPTIONS]");
+    clContextLog(C, NULL, 0, "        colorist report   [input]        [output.html]  [OPTIONS]");
     clContextLog(C, NULL, 0, "Options:");
     clContextLog(C, NULL, 0, "    -a             : Enable automatic color grading of max luminance and gamma (disabled by default)");
     clContextLog(C, NULL, 0, "    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)");

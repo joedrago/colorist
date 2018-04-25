@@ -47,6 +47,7 @@ set(COLORIST_LIB_SRCS
     src/context_identify.c
     src/context_log.c
     src/context_memory.c
+    src/context_report.c
     src/context_rw.c
     src/context_version.c
     src/image.c

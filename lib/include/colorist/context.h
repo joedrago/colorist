@@ -25,6 +25,7 @@ typedef enum clAction
     CL_ACTION_CONVERT,
     CL_ACTION_GENERATE,
     CL_ACTION_IDENTIFY,
+    CL_ACTION_REPORT,
 
     CL_ACTION_ERROR
 } clAction;
@@ -132,6 +133,7 @@ clBool clContextGetStockPrimaries(struct clContext * C, const char * name, struc
 int clContextConvert(clContext * C);
 int clContextGenerate(clContext * C);
 int clContextIdentify(clContext * C);
+int clContextReport(clContext * C);
 
 #define TIMING_FORMAT "--> %g sec"
 #define OVERALL_TIMING_FORMAT "==> %g sec"
