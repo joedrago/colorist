@@ -13,6 +13,9 @@
 #include <string.h>
 #include <stdlib.h>
 
+// "report" isn't really ready yet. Don't advertise its existence yet..
+// #define ADVERTISE_REPORT
+
 // ------------------------------------------------------------------------------------------------
 // Stock Primaries
 
@@ -388,7 +391,11 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
             if (C->action == CL_ACTION_NONE) {
                 C->action = clActionFromString(C, arg);
                 if (C->action == CL_ACTION_ERROR) {
+#ifdef ADVERTISE_REPORT
                     clContextLogError(C, "unknown action '%s', expecting convert, identify, generate, or report", arg);
+#else
+                    clContextLogError(C, "unknown action '%s', expecting convert, identify, or generate", arg);
+#endif
                     return clFalse;
                 }
             } else if (filenames[0] == NULL) {
@@ -521,7 +528,9 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "        colorist identify [input]                       [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist generate                [output.icc]   [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist generate [image string] [output image] [OPTIONS]");
+#ifdef ADVERTISE_REPORT
     clContextLog(C, NULL, 0, "        colorist report   [input]        [output.html]  [OPTIONS]");
+#endif
     clContextLog(C, NULL, 0, "Options:");
     clContextLog(C, NULL, 0, "    -a             : Enable automatic color grading of max luminance and gamma (disabled by default)");
     clContextLog(C, NULL, 0, "    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)");
