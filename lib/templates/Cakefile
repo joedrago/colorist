@@ -77,8 +77,8 @@ mimicColorist = (callback) ->
   callback?()
 
 buildEverything = (callback) ->
-  makeBundle false, './src/report.coffee', "reportTemplate.js", ->
-    makeTemplateHTML "src/report.html", "reportTemplate.html", ->
+  makeBundle false, './src/coffee/report.coffee', "reportTemplate.js", ->
+    makeTemplateHTML "src/raw/report.html", "reportTemplate.html", ->
       mimicColorist ->
         callback?()
 

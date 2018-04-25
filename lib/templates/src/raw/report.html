@@ -1,0 +1,39 @@
+<html>
+<head>
+<style>
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+#appcontainer {
+    width: 100%;
+    height: 100%;
+}
+
+.content {
+    overflow: auto;
+    width: 100%;
+    height: 100%;
+}
+
+</style>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+
+#include{src/raw/cie.html}
+#include{src/raw/crosshairs.html}
+
+<div id="appcontainer"></div>
+
+<script>
+__COLORIST_DATA__
+</script>
+<script>
+#include{reportTemplate.js}
+</script>
+
+</body>
+</html>
