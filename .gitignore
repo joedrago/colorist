@@ -4,4 +4,6 @@
 /_site
 /lib/templates/node_modules
 /lib/templates/*.js
+/lib/templates/test.payload
+/lib/templates/index.html
 Gemfile.lock

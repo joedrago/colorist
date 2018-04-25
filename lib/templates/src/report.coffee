@@ -5,3 +5,9 @@
 #                  http://www.boost.org/LICENSE_1_0.txt)
 # ---------------------------------------------------------------------------
 
+console.log "Hello, World!"
+console.log "Hello, World!"
+console.log "Hello, World!"
+console.log "Hello, World!"
+console.log "Hello, World!"
+console.log "Hello, World!"
