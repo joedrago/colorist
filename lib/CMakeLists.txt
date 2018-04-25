@@ -20,6 +20,7 @@ MACRO(generate_headers _sources )
          -o ${_out}
          -p ${_basename}
          DEPENDS ${_in}
+         DEPENDS genHeader
       )
 
       SET(${_sources} ${${_sources}} ${_out})
