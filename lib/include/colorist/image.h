@@ -12,6 +12,7 @@
 
 struct clContext;
 struct clProfile;
+struct clRaw;
 
 typedef struct clImage
 {
@@ -35,6 +36,7 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename);
 clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filename, int quality, int rate);
 
 clImage * clImageReadJPG(struct clContext * C, const char * filename);
+clBool clImageWriteJPGRaw(struct clContext * C, clImage * image, struct clRaw * dst, int quality);
 clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filename, int quality);
 
 clImage * clImageReadPNG(struct clContext * C, const char * filename);

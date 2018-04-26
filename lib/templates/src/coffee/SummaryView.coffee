@@ -75,6 +75,7 @@ class SummaryView extends React.Component
       heading "Basic info"
       pair 0, "Filename", D.filename
       pair 0, "Dimensions", "#{D.width}x#{D.height}"
+      pair 0, "Bit Depth", "#{D.depth}-bits per channel"
       pair 0, "ICC Profile", ""
       pair 1, "Description", D.icc.description
       pair 1, "Primaries", ""

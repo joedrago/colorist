@@ -21,46 +21,66 @@
 
 static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
 {
+    Timer t;
     clProfilePrimaries primaries;
     clProfileCurve curve;
     int maxLuminance;
     cJSON * jsonICC;
     cJSON * jsonPrimaries;
     char * text;
+    clRaw rawProfile;
+    char * rawProfileB64;
+
+    jsonICC = cJSON_CreateObject();
+    cJSON_AddItemToObject(payload, "icc", jsonICC);
 
     if (!clProfileQuery(C, image->profile, &primaries, &curve, &maxLuminance)) {
         return clFalse;
     }
 
+    memset(&rawProfile, 0, sizeof(rawProfile));
+    if (!clProfilePack(C, image->profile, &rawProfile)) {
+        return clFalse;
+    }
+    rawProfileB64 = clRawToBase64(C, &rawProfile);
+    if (!rawProfileB64) {
+        return clFalse;
+    }
+    cJSON_AddItemToObject(jsonICC, "raw", cJSON_CreateString(rawProfileB64));
+    clRawFree(C, &rawProfile);
+    clFree(rawProfileB64);
+
     cJSON_AddItemToObject(payload, "width", cJSON_CreateNumber(image->width));
     cJSON_AddItemToObject(payload, "height", cJSON_CreateNumber(image->height));
+    cJSON_AddItemToObject(payload, "depth", cJSON_CreateNumber(image->depth));
 
-    jsonICC = cJSON_CreateObject();
-    {
-        text = clProfileGetMLU(C, image->profile, "desc", "en", "US");
-        if (text == NULL) {
-            text = clContextStrdup(C, "Unknown");
-        }
-        cJSON_AddItemToObject(jsonICC, "description", cJSON_CreateString(text));
-        clFree(text);
+    // {
+    //     clContextLog(C, "encode", 0, "Creating JPEG view of : %s (%d bytes)", C->inputFilename, clFileSize(C->inputFilename));
+    //     timerStart(&t);
+    //     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+    // }
 
-        jsonPrimaries = cJSON_CreateArray();
-        {
-            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.red[0]));
-            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.red[1]));
-            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.green[0]));
-            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.green[1]));
-            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.blue[0]));
-            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.blue[1]));
-            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.white[0]));
-            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.white[1]));
-        }
-
-        cJSON_AddItemToObject(jsonICC, "primaries", jsonPrimaries);
-        cJSON_AddItemToObject(jsonICC, "luminance", cJSON_CreateNumber(maxLuminance));
+    text = clProfileGetMLU(C, image->profile, "desc", "en", "US");
+    if (text == NULL) {
+        text = clContextStrdup(C, "Unknown");
     }
-    cJSON_AddItemToObject(payload, "icc", jsonICC);
+    cJSON_AddItemToObject(jsonICC, "description", cJSON_CreateString(text));
+    clFree(text);
 
+    jsonPrimaries = cJSON_CreateArray();
+    {
+        cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.red[0]));
+        cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.red[1]));
+        cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.green[0]));
+        cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.green[1]));
+        cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.blue[0]));
+        cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.blue[1]));
+        cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.white[0]));
+        cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.white[1]));
+    }
+
+    cJSON_AddItemToObject(jsonICC, "primaries", jsonPrimaries);
+    cJSON_AddItemToObject(jsonICC, "luminance", cJSON_CreateNumber(maxLuminance));
     return clTrue;
 }
 

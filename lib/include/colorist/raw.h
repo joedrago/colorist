@@ -21,6 +21,8 @@ struct clContext;
 void clRawRealloc(struct clContext * C, clRaw * raw, uint32_t newSize);
 void clRawFill(struct clContext * C, clRaw * raw, uint8_t fill);
 void clRawClone(struct clContext * C, clRaw * dst, const clRaw * src);
+clBool clRawDeflate(struct clContext * C, clRaw * dst, const clRaw * src);
+char * clRawToBase64(struct clContext * C, clRaw * src);
 void clRawSet(struct clContext * C, clRaw * raw, const uint8_t * data, uint32_t len);
 void clRawFree(struct clContext * C, clRaw * raw);
 clBool clRawReadFile(struct clContext * C, clRaw * raw, const char * filename);

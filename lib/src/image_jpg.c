@@ -9,9 +9,11 @@
 
 #include "colorist/context.h"
 #include "colorist/profile.h"
+#include "colorist/raw.h"
 
 #include "jpeglib.h"
 
+#include <stdlib.h>
 #include <string.h>
 #include <setjmp.h>
 
@@ -108,7 +110,7 @@ clImage * clImageReadJPG(struct clContext * C, const char * filename)
     return image;
 }
 
-clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filename, int quality)
+clBool clImageWriteJPGRaw(struct clContext * C, clImage * image, clRaw * dst, int quality)
 {
     cmsUInt32Number srcFormat = (image->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
     cmsHTRANSFORM rgbTransform;
@@ -117,19 +119,15 @@ clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filen
     struct jpeg_compress_struct cinfo;
     struct jpeg_error_mgr jerr;
 
-    FILE * outfile;
     JSAMPROW row_pointer[1];
     int row_stride;
     uint8_t * jpegPixels;
+    unsigned char * outbuffer = NULL;
+    unsigned long outsize = 0;
 
     cinfo.err = jpeg_std_error(&jerr);
     jpeg_create_compress(&cinfo);
-
-    if ((outfile = fopen(filename, "wb")) == NULL) {
-        clContextLogError(C, "ERROR: can't open JPG for write: %s", filename);
-        return clFalse;
-    }
-    jpeg_stdio_dest(&cinfo, outfile);
+    jpeg_mem_dest(&cinfo, &outbuffer, &outsize);
 
     jpegPixels = clAllocate(3 * image->width * image->height);
     rgbTransform = cmsCreateTransformTHR(C->lcms, image->profile->handle, srcFormat, image->profile->handle, TYPE_RGB_8, INTENT_PERCEPTUAL, cmsFLAGS_NOOPTIMIZE);
@@ -158,10 +156,46 @@ clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filen
     }
 
     jpeg_finish_compress(&cinfo);
-    fclose(outfile);
+
+    if (outbuffer && outsize) {
+        clRawSet(C, dst, outbuffer, outsize);
+    } else {
+        clContextLogError(C, "ERROR: JPG compression failed");
+        clRawFree(C, dst);
+    }
+    free(outbuffer);
+
     jpeg_destroy_compress(&cinfo);
     clFree(jpegPixels);
     clRawFree(C, &rawProfile);
+    return (dst->size > 0) ? clTrue : clFalse;
+}
+
+clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filename, int quality)
+{
+    FILE * outfile = NULL;
+    clRaw dst;
+
+    memset(&dst, 0, sizeof(dst));
+    if (!clImageWriteJPGRaw(C, image, &dst, quality)) {
+        goto writeJPGCleanup;
+    }
+
+    outfile = fopen(filename, "wb");
+    if (!outfile) {
+        clContextLogError(C, "ERROR: can't open JPG for write: %s", filename);
+        goto writeJPGCleanup;
+    }
+
+    if (fwrite(dst.ptr, dst.size, 1, outfile) != 1) {
+        clContextLogError(C, "ERROR: can't write %d bytes to JPG: %s", dst.size, filename);
+        goto writeJPGCleanup;
+    }
+
+writeJPGCleanup:
+    if (outfile)
+        fclose(outfile);
+    clRawFree(C, &dst);
     return clTrue;
 }
 
