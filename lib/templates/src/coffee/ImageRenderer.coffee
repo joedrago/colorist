@@ -94,6 +94,7 @@ class ImageRenderer extends React.Component
     return
 
   onClick: (x, y) ->
+    @notifyImagePos(x, y)
 
   onRClick: (x, y) ->
     @notifyImagePos(x, y)

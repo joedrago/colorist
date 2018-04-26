@@ -44,6 +44,18 @@ class RawView extends React.Component
       url: COLORIST_DATA.uri
       listener: this
     }
+
+    sections = []
+    if (@state.x >= 0) and (@state.y >= 0)
+      sections.push {
+        name: "Raw"
+        rows: [
+          ["R", 100, 200, 300]
+          ["G", 100]
+          ["B", 100]
+        ]
+      }
+
     elements.push el InfoPanel, {
       title: "Raw Pixels"
       left: @props.width - infoPanelWidth
@@ -51,6 +63,7 @@ class RawView extends React.Component
       height: @props.height
 
       url: COLORIST_DATA.uri
+      sections: sections
 
       usesPixelPos: true
       x: @state.x
