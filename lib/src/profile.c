@@ -8,6 +8,7 @@
 #include "colorist/profile.h"
 
 #include "colorist/context.h"
+#include "colorist/raw.h"
 
 #include "lcms2_plugin.h"
 

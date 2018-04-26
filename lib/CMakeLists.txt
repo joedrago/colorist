@@ -33,6 +33,7 @@ set(COLORIST_LIB_INCLUDES
     include/colorist/image.h
     include/colorist/pixelmath.h
     include/colorist/profile.h
+    include/colorist/raw.h
     include/colorist/task.h
     include/colorist/types.h
     include/colorist/version.h
@@ -64,6 +65,7 @@ set(COLORIST_LIB_SRCS
     src/pixelmath_scale.c
     src/profile.c
     src/profile_debugdump.c
+    src/raw.c
     src/task.c
     src/types.c
 )

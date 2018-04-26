@@ -9,6 +9,7 @@
 #define COLORIST_PROFILE_H
 
 #include "colorist/types.h"
+#include "colorist/raw.h"
 
 #include "lcms2.h"
 
@@ -57,7 +58,7 @@ clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * fi
 clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries, clProfileCurve * curve, int * maxLuminance);
 char * clProfileGetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3]);
 clBool clProfileSetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3], const char * ascii);
-clBool clProfilePack(struct clContext * C, clProfile * profile, clRaw * out);
+clBool clProfilePack(struct clContext * C, clProfile * profile, struct clRaw * out);
 void clProfileDebugDump(struct clContext * C, clProfile * profile, int extraIndent);
 void clProfileDestroy(struct clContext * C, clProfile * profile);
 
