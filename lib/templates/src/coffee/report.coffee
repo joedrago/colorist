@@ -6,3 +6,10 @@
 # ---------------------------------------------------------------------------
 
 console.log "Hello, World: #{COLORIST_DATA.heatmap_example_number}"
+
+App = require './App'
+DOM = require 'react-dom'
+React = require 'react'
+MuiThemeProvider = require('material-ui/styles/MuiThemeProvider').default
+
+DOM.render(React.createElement(MuiThemeProvider, {}, React.createElement(App, { key: 'app' })), document.getElementById('appcontainer'))

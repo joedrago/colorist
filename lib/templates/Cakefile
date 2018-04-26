@@ -87,11 +87,9 @@ task 'build', 'build', (options) ->
 
 watchEverything = ->
   util.log "Watching for changes in src"
-  watch ['src','package.json'], (evt, filename) ->
-    coffeeFileRegex = /\.coffee$/
-    if coffeeFileRegex.test(filename) || (filename == 'package.json')
-      util.log "Source code #{filename} changed."
-      util.log "Regenerating bundle..."
+  watch ['src/raw', 'src/coffee', 'package.json'], (evt, filename) ->
+      util.log "Source file #{filename} changed."
+      util.log "Rebuilding..."
       buildEverything()
   buildEverything()
 
