@@ -41,14 +41,11 @@ add_subdirectory(libwebp)
 
 include_directories(jpeg)
 add_library(jpeg
-    #jpeg/ansi2knr.c
     jpeg/cdjpeg.c
-    #jpeg/cjpeg.c
-    #jpeg/ckconfig.c
-    #jpeg/djpeg.c
-    # jpeg/example.c
+    jpeg/jaricom.c
     jpeg/jcapimin.c
     jpeg/jcapistd.c
+    jpeg/jcarith.c
     jpeg/jccoefct.c
     jpeg/jccolor.c
     jpeg/jcdctmgr.c
@@ -59,12 +56,12 @@ add_library(jpeg
     jpeg/jcmaster.c
     jpeg/jcomapi.c
     jpeg/jcparam.c
-    jpeg/jcphuff.c
     jpeg/jcprepct.c
     jpeg/jcsample.c
     jpeg/jctrans.c
     jpeg/jdapimin.c
     jpeg/jdapistd.c
+    jpeg/jdarith.c
     jpeg/jdatadst.c
     jpeg/jdatasrc.c
     jpeg/jdcoefct.c
@@ -76,7 +73,6 @@ add_library(jpeg
     jpeg/jdmarker.c
     jpeg/jdmaster.c
     jpeg/jdmerge.c
-    jpeg/jdphuff.c
     jpeg/jdpostct.c
     jpeg/jdsample.c
     jpeg/jdtrans.c
@@ -87,21 +83,14 @@ add_library(jpeg
     jpeg/jidctflt.c
     jpeg/jidctfst.c
     jpeg/jidctint.c
-    jpeg/jidctred.c
-    #jpeg/jmemansi.c
-    #jpeg/jmemdos.c
-    #jpeg/jmemmac.c
     jpeg/jmemmgr.c
-    #jpeg/jmemname.c
     jpeg/jmemnobs.c
-    #jpeg/jpegtran.c
     jpeg/jquant1.c
     jpeg/jquant2.c
     jpeg/jutils.c
     jpeg/rdbmp.c
     jpeg/rdcolmap.c
     jpeg/rdgif.c
-    #jpeg/rdjpgcom.c
     jpeg/rdppm.c
     jpeg/rdrle.c
     jpeg/rdswitch.c
