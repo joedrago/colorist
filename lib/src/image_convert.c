@@ -82,7 +82,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         if (dstDepth == 0) {
             dstDepth = srcImage->depth;
         }
-        if ((dstDepth != 8) && (params->format != CL_FORMAT_ICC) && (clFormatMaxDepth(C, params->format) < dstDepth)) {
+        if ((dstDepth != 8) && (clFormatMaxDepth(C, params->format) < dstDepth)) {
             clContextLog(C, "validate", 0, "Forcing output to 8-bit (format limitations)");
             dstDepth = 8;
         }
@@ -98,7 +98,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     }
 
     // Create intermediate 1.0 gamma float32 pixel array if we're going to need it later.
-    if ((params->format != CL_FORMAT_ICC) && ((srcLuminance != dstLuminance))) {
+    if ((srcLuminance != dstLuminance)) {
         cmsHTRANSFORM toLinear;
         float * srcFloats; // original values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
 

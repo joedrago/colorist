@@ -136,6 +136,7 @@ struct clImage * clContextRead(clContext * C, const char * filename, clFormat * 
 clBool clContextWrite(clContext * C, struct clImage * image, const char * filename, clFormat format, int quality, int rate);
 
 clBool clContextGetStockPrimaries(struct clContext * C, const char * name, struct clProfilePrimaries * outPrimaries);
+clBool clContextGetRawStockPrimaries(struct clContext * C, const char * name, float outPrimaries[8]);
 
 int clContextConvert(clContext * C);
 int clContextGenerate(clContext * C);

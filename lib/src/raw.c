@@ -90,7 +90,7 @@ char * clRawToBase64(struct clContext * C, clRaw * src)
     unsigned char * out, * pos;
     const unsigned char * end, * in;
     size_t olen;
-    int line_len;
+    // int line_len;
 
     olen = src->size * 4 / 3 + 4; /* 3-byte blocks to 4-byte */
     // olen += olen / 72;            /* line feeds */

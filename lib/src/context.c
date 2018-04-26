@@ -230,6 +230,18 @@ clBool clContextGetStockPrimaries(struct clContext * C, const char * name, struc
     return clFalse;
 }
 
+clBool clContextGetRawStockPrimaries(struct clContext * C, const char * name, float outPrimaries[8])
+{
+    unsigned int index;
+    for (index = 0; index < stockPrimariesCount; ++index) {
+        if (!strcmp(name, stockPrimaries[index].name)) {
+            memcpy(outPrimaries, &stockPrimaries[index].primaries, sizeof(float) * 8);
+            return clTrue;
+        }
+    }
+    return clFalse;
+}
+
 // ------------------------------------------------------------------------------------------------
 // Memory management
 

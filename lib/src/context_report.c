@@ -56,11 +56,26 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
     cJSON_AddItemToObject(payload, "depth", cJSON_CreateNumber(image->depth));
 
     {
+        clConversionParams params;
+        clImage * visual;
         char * jpegB64;
-        clContextLog(C, "encode", 0, "Creating JPEG view of : %s (%d bytes)", C->inputFilename, clFileSize(C->inputFilename));
+        clContextLog(C, "encode", 0, "Creating raw pixels visual...");
         timerStart(&t);
-        jpegB64 = clImageWriteJPGURI(C, image, 90);
+        clConversionParamsSetDefaults(C, &params);
+        params.format = CL_FORMAT_JPG;
+        params.bpp = 8;
+        clContextGetRawStockPrimaries(C, "bt709", params.primaries);
+        params.gamma = 2.4f;
+        params.luminance = 300;
+        params.quality = 95;
+        params.jobs = C->params.jobs;
+        visual = clImageConvert(C, image, &params);
+        if (!visual) {
+            return clFalse;
+        }
+        jpegB64 = clImageWriteJPGURI(C, visual, 90);
         if (!jpegB64) {
+            clImageDestroy(C, visual);
             return clFalse;
         }
         cJSON_AddItemToObject(payload, "uri", cJSON_CreateString(jpegB64));
