@@ -15,9 +15,11 @@ uglifyify = require 'uglifyify'
 nodeStatic = require 'node-static'
 watch = require 'node-watch'
 
-makeBundle = (forNode, mainCoffee, bundleFilename, callback) ->
+makeBundle = (forNode, forceProduction, mainCoffee, bundleFilename, callback) ->
   # equal of command line $ "browserify --debug -t coffeeify ./src/main.coffee > bundle.js "
   productionBuild = (process.env.NODE_ENV == 'production')
+  if forceProduction
+    productionBuild = true
   opts = {
     extensions: ['.coffee']
   }
@@ -76,22 +78,25 @@ mimicColorist = (callback) ->
   util.log "mimicColorist: wrote index.html"
   callback?()
 
-buildEverything = (callback) ->
-  makeBundle false, './src/coffee/report.coffee', "reportTemplate.js", ->
+buildEverything = (forceProduction, callback) ->
+  makeBundle false, forceProduction, './src/coffee/report.coffee', "reportTemplate.js", ->
     makeTemplateHTML "src/raw/report.html", "reportTemplate.html", ->
       mimicColorist ->
         callback?()
 
 task 'build', 'build', (options) ->
-  buildEverything ->
+  buildEverything false, ->
+
+task 'prod', 'build', (options) ->
+  buildEverything true, ->
 
 watchEverything = ->
   util.log "Watching for changes in src"
   watch ['src/raw', 'src/coffee', 'package.json'], (evt, filename) ->
       util.log "Source file #{filename} changed."
       util.log "Rebuilding..."
-      buildEverything()
-  buildEverything()
+      buildEverything(false)
+  buildEverything(false)
 
 task 'serve', 'serve App and watch', (options) ->
   console.log "nodeStatic #{Object.keys(nodeStatic)}"

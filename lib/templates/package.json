@@ -4,6 +4,7 @@
   "description": "colorist templates",
   "scripts": {
     "build": "cake build",
+    "prod": "cake prod",
     "serve": "cake serve"
   },
   "devDependencies": {
