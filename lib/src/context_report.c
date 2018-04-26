@@ -79,6 +79,7 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
             return clFalse;
         }
         cJSON_AddItemToObject(payload, "uri", cJSON_CreateString(jpegB64));
+        clImageDestroy(C, visual);
         clFree(jpegB64);
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
