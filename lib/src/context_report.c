@@ -19,6 +19,51 @@
 
 #define FAIL() { returnCode = 1; goto reportCleanup; }
 
+static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
+{
+    clProfilePrimaries primaries;
+    clProfileCurve curve;
+    int maxLuminance;
+    cJSON * jsonICC;
+    cJSON * jsonPrimaries;
+    char * text;
+
+    if (!clProfileQuery(C, image->profile, &primaries, &curve, &maxLuminance)) {
+        return clFalse;
+    }
+
+    cJSON_AddItemToObject(payload, "width", cJSON_CreateNumber(image->width));
+    cJSON_AddItemToObject(payload, "height", cJSON_CreateNumber(image->height));
+
+    jsonICC = cJSON_CreateObject();
+    {
+        text = clProfileGetMLU(C, image->profile, "desc", "en", "US");
+        if (text == NULL) {
+            text = clContextStrdup(C, "Unknown");
+        }
+        cJSON_AddItemToObject(jsonICC, "description", cJSON_CreateString(text));
+        clFree(text);
+
+        jsonPrimaries = cJSON_CreateArray();
+        {
+            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.red[0]));
+            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.red[1]));
+            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.green[0]));
+            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.green[1]));
+            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.blue[0]));
+            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.blue[1]));
+            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.white[0]));
+            cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.white[1]));
+        }
+
+        cJSON_AddItemToObject(jsonICC, "primaries", jsonPrimaries);
+        cJSON_AddItemToObject(jsonICC, "luminance", cJSON_CreateNumber(maxLuminance));
+    }
+    cJSON_AddItemToObject(payload, "icc", jsonICC);
+
+    return clTrue;
+}
+
 static clBool reportHeatMap(clContext * C, clImage * image, cJSON * payload)
 {
     cJSON_AddItemToObject(payload, "heatmap_example_number", cJSON_CreateNumber(42));
@@ -45,6 +90,15 @@ int clContextReport(clContext * C)
         return 1;
     }
     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+
+    // Basic Info
+    {
+        timerStart(&t);
+        cJSON_AddItemToObject(payload, "filename", cJSON_CreateString(C->inputFilename));
+        if (!reportBasicInfo(C, image, payload)) {
+            FAIL();
+        }
+    }
 
     // if "create heat map report" ...
     {

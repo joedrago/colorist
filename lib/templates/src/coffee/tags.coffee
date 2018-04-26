@@ -1,7 +1,14 @@
+# ---------------------------------------------------------------------------
+#                         Copyright Joe Drago 2018.
+#         Distributed under the Boost Software License, Version 1.0.
+#            (See accompanying file LICENSE_1_0.txt or copy at
+#                  http://www.boost.org/LICENSE_1_0.txt)
+# ---------------------------------------------------------------------------
+
 React = require 'react'
 FontIcon = require('material-ui/FontIcon').default
 
-tags = ['a', 'div', 'hr', 'img', 'span', 'table', 'tr','td', 'canvas']
+tags = ['a', 'div', 'hr', 'img', 'span', 'table', 'tbody', 'tr', 'td', 'canvas']
 
 module.exports = {}
 

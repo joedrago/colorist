@@ -5,7 +5,6 @@
 html, body {
   margin: 0;
   padding: 0;
-  background-color: #000000;
 }
 
 #appcontainer {
@@ -24,17 +23,17 @@ html, body {
 </head>
 <body>
 
-#include{src/raw/cie.html}
-#include{src/raw/crosshairs.html}
-
-<div id="appcontainer"></div>
-
 <script>
 __COLORIST_DATA__
 </script>
+
+<div id="appcontainer"></div>
+
+#include{src/raw/cie.html}
+#include{src/raw/crosshairs.html}
+
 <script>
 #include{reportTemplate.js}
 </script>
-
 </body>
 </html>

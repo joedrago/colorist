@@ -1,10 +1,16 @@
+# ---------------------------------------------------------------------------
+#                         Copyright Joe Drago 2018.
+#         Distributed under the Boost Software License, Version 1.0.
+#            (See accompanying file LICENSE_1_0.txt or copy at
+#                  http://www.boost.org/LICENSE_1_0.txt)
+# ---------------------------------------------------------------------------
+
 DOM = require 'react-dom'
 React = require 'react'
 
 tags = require './tags'
 {el, div} = require './tags'
 Drawer = require('material-ui/Drawer').default
-IconButton = require('material-ui/IconButton').default
 MenuItem = require('material-ui/MenuItem').default
 
 SummaryView = require './SummaryView'
@@ -55,6 +61,9 @@ class App extends React.Component
     window.location.hash = newHash
     return
 
+  toggleNav: ->
+    @setState { navOpen: !@state.navOpen }
+
   render: ->
     if (@state.width == 0) or (@state.height == 0)
       return []
@@ -63,30 +72,11 @@ class App extends React.Component
 
     elements = []
 
-    # Top left navigation menu button
-    elements.push el IconButton, {
-      key: "opennavbutton"
-      iconClassName: 'material-icons'
-      touch: true
-      style:
-        opacity: 0.5
-        position: 'fixed'
-        left: 0
-        top: 0
-        zIndex: 2
-      iconStyle:
-        color: '#ffffff'
-      onClick: =>
-        setTimeout =>
-          @setState { navOpen: !@state.navOpen }
-        , 0
-    }, 'menu'
-
     # Left navigation panel
     navMenuItems = [
       el MenuItem, {
         key: "menu.title"
-        primaryText: "Colorist Reports"
+        primaryText: "Available Reports"
         disabled: true
       }
 

@@ -5,8 +5,6 @@
 #                  http://www.boost.org/LICENSE_1_0.txt)
 # ---------------------------------------------------------------------------
 
-console.log "Hello, World: #{COLORIST_DATA.heatmap_example_number}"
-
 App = require './App'
 DOM = require 'react-dom'
 React = require 'react'
