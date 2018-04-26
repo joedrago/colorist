@@ -36,6 +36,7 @@ set(COLORIST_LIB_INCLUDES
     include/colorist/task.h
     include/colorist/types.h
     include/colorist/version.h
+    include/colorist/embedded.h
 )
 generate_headers(COLORIST_LIB_INCLUDES
     templates/reportTemplate.html
@@ -51,6 +52,7 @@ set(COLORIST_LIB_SRCS
     src/context_report.c
     src/context_rw.c
     src/context_version.c
+    src/embedded.c
     src/image.c
     src/image_debugdump.c
     src/image_jp2.c

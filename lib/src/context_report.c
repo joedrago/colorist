@@ -7,13 +7,13 @@
 
 #include "colorist/context.h"
 
+#include "colorist/embedded.h"
 #include "colorist/image.h"
 #include "colorist/pixelmath.h"
 #include "colorist/profile.h"
 #include "colorist/task.h"
 
 #include "cJSON.h"
-#include "reportTemplateBinary.h"
 
 #include <string.h>
 
@@ -69,7 +69,7 @@ int clContextReport(clContext * C)
             FAIL();
         }
 
-        beforeLen = (int)(coloristDataInjectLoc - reportTemplateBinaryData);
+        beforeLen = (int)(coloristDataInjectLoc - (const char *)reportTemplateBinaryData);
         afterPtr = coloristDataInjectLoc + strlen(coloristDataMarker);
         afterLen = strlen(afterPtr);
 
