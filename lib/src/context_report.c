@@ -44,6 +44,7 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
     }
     rawProfileB64 = clRawToBase64(C, &rawProfile);
     if (!rawProfileB64) {
+        clRawFree(C, &rawProfile);
         return clFalse;
     }
     cJSON_AddItemToObject(jsonICC, "raw", cJSON_CreateString(rawProfileB64));
@@ -54,11 +55,18 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
     cJSON_AddItemToObject(payload, "height", cJSON_CreateNumber(image->height));
     cJSON_AddItemToObject(payload, "depth", cJSON_CreateNumber(image->depth));
 
-    // {
-    //     clContextLog(C, "encode", 0, "Creating JPEG view of : %s (%d bytes)", C->inputFilename, clFileSize(C->inputFilename));
-    //     timerStart(&t);
-    //     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
-    // }
+    {
+        char * jpegB64;
+        clContextLog(C, "encode", 0, "Creating JPEG view of : %s (%d bytes)", C->inputFilename, clFileSize(C->inputFilename));
+        timerStart(&t);
+        jpegB64 = clImageWriteJPGURI(C, image, 90);
+        if (!jpegB64) {
+            return clFalse;
+        }
+        cJSON_AddItemToObject(payload, "uri", cJSON_CreateString(jpegB64));
+        clFree(jpegB64);
+        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+    }
 
     text = clProfileGetMLU(C, image->profile, "desc", "en", "US");
     if (text == NULL) {

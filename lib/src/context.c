@@ -152,6 +152,26 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
 // ------------------------------------------------------------------------------------------------
 // clContext
 
+void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
+{
+    params->autoGrade = clFalse;
+    params->bpp = 0;
+    params->copyright = NULL;
+    params->description = NULL;
+    params->format = CL_FORMAT_AUTO;
+    params->gamma = 0;
+    params->jobs = clTaskLimit();
+    params->luminance = 0;
+    memset(params->primaries, 0, sizeof(float) * 8);
+    params->quality = 90; // ?
+    params->rate = 150;   // ?
+    params->rect[0] = 0;
+    params->rect[1] = 0;
+    params->rect[2] = -1;
+    params->rect[3] = -1;
+    params->tonemap = CL_TONEMAP_AUTO;
+}
+
 clContext * clContextCreate(clContextSystem * system)
 {
     clContextAllocFunc alloc;
@@ -183,24 +203,9 @@ clContext * clContextCreate(clContextSystem * system)
 
     // Default args
     C->action = CL_ACTION_NONE;
-    C->autoGrade = clFalse;
-    C->bpp = 0;
-    C->copyright = NULL;
-    C->description = NULL;
-    C->format = CL_FORMAT_AUTO;
-    C->gamma = 0;
+    clConversionParamsSetDefaults(C, &C->params);
     C->help = clFalse;
-    C->jobs = clTaskLimit();
-    C->luminance = 0;
-    memset(C->primaries, 0, sizeof(float) * 8);
-    C->quality = 90; // ?
-    C->rate = 150;   // ?
     C->verbose = clFalse;
-    C->rect[0] = 0;
-    C->rect[1] = 0;
-    C->rect[2] = -1;
-    C->rect[3] = -1;
-    C->tonemap = CL_TONEMAP_AUTO;
     C->inputFilename = NULL;
     C->outputFilename = NULL;
 
@@ -313,24 +318,24 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
         if ((arg[0] == '-')) {
             switch (arg[1]) {
                 case 'a':
-                    C->autoGrade = clTrue;
+                    C->params.autoGrade = clTrue;
                     break;
                 case 'b':
                     NEXTARG();
-                    C->bpp = atoi(arg);
+                    C->params.bpp = atoi(arg);
                     break;
                 case 'c':
                     NEXTARG();
-                    C->copyright = arg;
+                    C->params.copyright = arg;
                     break;
                 case 'd':
                     NEXTARG();
-                    C->description = arg;
+                    C->params.description = arg;
                     break;
                 case 'f':
                     NEXTARG();
-                    C->format = clFormatFromString(C, arg);
-                    if (C->format == CL_FORMAT_ERROR) {
+                    C->params.format = clFormatFromString(C, arg);
+                    if (C->params.format == CL_FORMAT_ERROR) {
                         clContextLogError(C, "Unknown format: %s", arg);
                         return clFalse;
                     }
@@ -338,9 +343,9 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
                 case 'g':
                     NEXTARG();
                     if (arg[0] == 's') {
-                        C->gamma = -1.0f; // Use source gamma
+                        C->params.gamma = -1.0f; // Use source gamma
                     } else {
-                        C->gamma = (float)strtod(arg, NULL);
+                        C->params.gamma = (float)strtod(arg, NULL);
                     }
                     break;
                 case 'h':
@@ -348,42 +353,42 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
                     break;
                 case 'j':
                     NEXTARG();
-                    C->jobs = atoi(arg);
-                    if (C->jobs == 0)
-                        C->jobs = taskLimit;
-                    C->jobs = CL_CLAMP(C->jobs, 1, taskLimit);
+                    C->params.jobs = atoi(arg);
+                    if (C->params.jobs == 0)
+                        C->params.jobs = taskLimit;
+                    C->params.jobs = CL_CLAMP(C->params.jobs, 1, taskLimit);
                     break;
                 case 'l':
                     NEXTARG();
                     if (arg[0] == 's') {
-                        C->luminance = -1; // Use source luminance
+                        C->params.luminance = -1; // Use source luminance
                     } else {
-                        C->luminance = atoi(arg);
+                        C->params.luminance = atoi(arg);
                     }
                     break;
                 case 'p':
                     NEXTARG();
-                    if (!parsePrimaries(C, C->primaries, arg))
+                    if (!parsePrimaries(C, C->params.primaries, arg))
                         return clFalse;
                     break;
                 case 'q':
                     NEXTARG();
-                    C->quality = atoi(arg);
+                    C->params.quality = atoi(arg);
                     break;
                 case 'r':
                     NEXTARG();
-                    C->rate = atoi(arg);
+                    C->params.rate = atoi(arg);
                     break;
                 case 't':
                     NEXTARG();
-                    C->tonemap = clTonemapFromString(C, arg);
+                    C->params.tonemap = clTonemapFromString(C, arg);
                     break;
                 case 'v':
                     C->verbose = clTrue;
                     break;
                 case 'z':
                     NEXTARG();
-                    if (!parseRect(C, C->rect, arg))
+                    if (!parseRect(C, C->params.rect, arg))
                         return clFalse;
                     break;
             }
@@ -471,13 +476,13 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
 static clBool validateArgs(clContext * C)
 {
     clBool valid = clTrue;
-    if ((C->bpp != 0) && (C->bpp != 8) && (C->bpp != 16)) {
-        clContextLogError(C, "Unknown bpp: %d", C->bpp);
+    if ((C->params.bpp != 0) && (C->params.bpp != 8) && (C->params.bpp != 16)) {
+        clContextLogError(C, "Unknown bpp: %d", C->params.bpp);
         valid = clFalse;
     }
-    if (C->autoGrade && (C->gamma != 0.0f) && (C->luminance != 0)) {
+    if (C->params.autoGrade && (C->params.gamma != 0.0f) && (C->params.luminance != 0)) {
         clContextLog(C, "syntax", 0, "WARNING: auto color grading mode (-a) is useless with both -g and -l specified, disabling auto color grading");
-        C->autoGrade = clFalse;
+        C->params.autoGrade = clFalse;
     }
     return valid;
 }
@@ -486,37 +491,37 @@ void clContextPrintArgs(clContext * C)
 {
     clContextLog(C, "syntax", 0, "Args:");
     clContextLog(C, "syntax", 1, "Action     : %s", clActionToString(C, C->action));
-    if (C->bpp)
-        clContextLog(C, "syntax", 1, "bpp        : %d", C->bpp);
+    if (C->params.bpp)
+        clContextLog(C, "syntax", 1, "bpp        : %d", C->params.bpp);
     else
         clContextLog(C, "syntax", 1, "bpp        : auto");
-    clContextLog(C, "syntax", 1, "copyright  : %s", C->copyright ? C->copyright : "--");
-    clContextLog(C, "syntax", 1, "description: %s", C->description ? C->description : "--");
-    clContextLog(C, "syntax", 1, "format     : %s", clFormatToString(C, C->format));
-    if (C->gamma < 0.0f) {
+    clContextLog(C, "syntax", 1, "copyright  : %s", C->params.copyright ? C->params.copyright : "--");
+    clContextLog(C, "syntax", 1, "description: %s", C->params.description ? C->params.description : "--");
+    clContextLog(C, "syntax", 1, "format     : %s", clFormatToString(C, C->params.format));
+    if (C->params.gamma < 0.0f) {
         clContextLog(C, "syntax", 1, "gamma      : source gamma (forced)");
-    } else if (C->gamma > 0.0f)
-        clContextLog(C, "syntax", 1, "gamma      : %g", C->gamma);
+    } else if (C->params.gamma > 0.0f)
+        clContextLog(C, "syntax", 1, "gamma      : %g", C->params.gamma);
     else
         clContextLog(C, "syntax", 1, "gamma      : auto");
     clContextLog(C, "syntax", 1, "help       : %s", C->help ? "enabled" : "disabled");
-    if (C->luminance < 0) {
+    if (C->params.luminance < 0) {
         clContextLog(C, "syntax", 1, "luminance  : source luminance (forced)");
-    } else if (C->luminance) {
-        clContextLog(C, "syntax", 1, "luminance  : %d", C->luminance);
+    } else if (C->params.luminance) {
+        clContextLog(C, "syntax", 1, "luminance  : %d", C->params.luminance);
     } else {
         clContextLog(C, "syntax", 1, "luminance  : auto");
     }
-    if (C->primaries[0] > 0.0f)
+    if (C->params.primaries[0] > 0.0f)
         clContextLog(C, "syntax", 1, "primaries  : r:(%.4g,%.4g) g:(%.4g,%.4g) b:(%.4g,%.4g) w:(%.4g,%.4g)",
-            C->primaries[0], C->primaries[1],
-            C->primaries[2], C->primaries[3],
-            C->primaries[4], C->primaries[5],
-            C->primaries[6], C->primaries[7]);
+            C->params.primaries[0], C->params.primaries[1],
+            C->params.primaries[2], C->params.primaries[3],
+            C->params.primaries[4], C->params.primaries[5],
+            C->params.primaries[6], C->params.primaries[7]);
     else
         clContextLog(C, "syntax", 1, "primaries  : auto");
-    clContextLog(C, "syntax", 1, "rect       : (%d,%d) %dx%d", C->rect[0], C->rect[1], C->rect[2], C->rect[3]);
-    clContextLog(C, "syntax", 1, "tonemap    : %s", clTonemapToString(C, C->tonemap));
+    clContextLog(C, "syntax", 1, "rect       : (%d,%d) %dx%d", C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3]);
+    clContextLog(C, "syntax", 1, "tonemap    : %s", clTonemapToString(C, C->params.tonemap));
     clContextLog(C, "syntax", 1, "verbose    : %s", C->verbose ? "enabled" : "disabled");
     clContextLog(C, "syntax", 1, "input      : %s", C->inputFilename ? C->inputFilename : "--");
     clContextLog(C, "syntax", 1, "output     : %s", C->outputFilename ? C->outputFilename : "--");

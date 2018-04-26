@@ -13,6 +13,7 @@ tags = require './tags'
 Drawer = require('material-ui/Drawer').default
 MenuItem = require('material-ui/MenuItem').default
 
+RawView = require './RawView'
 SummaryView = require './SummaryView'
 
 class App extends React.Component
@@ -27,6 +28,7 @@ class App extends React.Component
 
     @views =
       summary: SummaryView
+      raw: RawView
 
     @navigate(true)
     window.addEventListener('hashchange', (event) =>
@@ -87,6 +89,16 @@ class App extends React.Component
         onClick: (e) =>
           e.preventDefault()
           @redirect('#summary')
+          @setState { navOpen: false }
+      }
+
+      el MenuItem, {
+        key: "menu.raw"
+        primaryText: "Raw Pixels"
+        leftIcon: tags.icon 'event_note'
+        onClick: (e) =>
+          e.preventDefault()
+          @redirect('#raw')
           @setState { navOpen: false }
       }
     ]

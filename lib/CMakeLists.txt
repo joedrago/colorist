@@ -55,6 +55,7 @@ set(COLORIST_LIB_SRCS
     src/context_version.c
     src/embedded.c
     src/image.c
+    src/image_convert.c
     src/image_debugdump.c
     src/image_jp2.c
     src/image_jpg.c

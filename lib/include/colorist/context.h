@@ -79,6 +79,25 @@ typedef struct clContextSystem
     clContextLogErrorFunc error;
 } clContextSystem;
 
+typedef struct clConversionParams
+{
+    clBool autoGrade;         // -a
+    int bpp;                  // -b
+    const char * copyright;   // -c
+    const char * description; // -d
+    clFormat format;          // -f
+    float gamma;              // -g
+    int jobs;                 // -j
+    int luminance;            // -l
+    float primaries[8];       // -p
+    int quality;              // -q
+    int rate;                 // -r
+    clTonemap tonemap;        // -t
+    int rect[4];              // -z
+} clConversionParams;
+
+void clConversionParamsSetDefaults(struct clContext * C, clConversionParams * params);
+
 typedef struct clContext
 {
     clContextSystem system;
@@ -86,21 +105,9 @@ typedef struct clContext
     cmsContext lcms;
 
     clAction action;
-    clBool autoGrade;            // -a
-    int bpp;                     // -b
-    const char * copyright;      // -c
-    const char * description;    // -d
-    clFormat format;             // -f
-    float gamma;                 // -g
+    clConversionParams params;   // see above
     clBool help;                 // -h
-    int jobs;                    // -j
-    int luminance;               // -l
-    float primaries[8];          // -p
-    int quality;                 // -q
-    int rate;                    // -r
-    clTonemap tonemap;           // -t
     clBool verbose;              // -v
-    int rect[4];                 // -z
     const char * inputFilename;  // index 0
     const char * outputFilename; // index 1
 } clContext;

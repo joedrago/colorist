@@ -11,6 +11,7 @@
 #include "colorist/types.h"
 
 struct clContext;
+struct clConversionParams;
 struct clProfile;
 struct clRaw;
 
@@ -26,6 +27,7 @@ typedef struct clImage
 
 clImage * clImageCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
 clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns);
+clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConversionParams * params);
 void clImageResize(struct clContext * C, clImage * image, int width, int height, int depth);
 void clImageChangeDepth(struct clContext * C, clImage * image, int depth);
 void clImageSetPixel(struct clContext * C, clImage * image, int x, int y, int r, int g, int b, int a);
@@ -36,8 +38,9 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename);
 clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filename, int quality, int rate);
 
 clImage * clImageReadJPG(struct clContext * C, const char * filename);
-clBool clImageWriteJPGRaw(struct clContext * C, clImage * image, struct clRaw * dst, int quality);
 clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filename, int quality);
+clBool clImageWriteJPGRaw(struct clContext * C, clImage * image, struct clRaw * dst, int quality);
+char * clImageWriteJPGURI(struct clContext * C, clImage * image, int quality);
 
 clImage * clImageReadPNG(struct clContext * C, const char * filename);
 clBool clImageWritePNG(struct clContext * C, clImage * image, const char * filename);

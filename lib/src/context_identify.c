@@ -14,7 +14,7 @@
 
 int clContextIdentify(clContext * C)
 {
-    clFormat format = C->format;
+    clFormat format = C->params.format;
     if (format == CL_FORMAT_AUTO)
         format = clFormatDetect(C, C->inputFilename);
     if (format == CL_FORMAT_ERROR) {
@@ -36,7 +36,7 @@ int clContextIdentify(clContext * C)
         image = clContextRead(C, C->inputFilename, &format);
         if (image) {
             int rect[4];
-            memcpy(rect, C->rect, sizeof(rect));
+            memcpy(rect, C->params.rect, sizeof(rect));
             if ((rect[2] < 0) && (rect[3] < 0)) {
                 // Defaults for identify
                 rect[2] = 3;

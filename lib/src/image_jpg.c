@@ -171,6 +171,37 @@ clBool clImageWriteJPGRaw(struct clContext * C, clImage * image, clRaw * dst, in
     return (dst->size > 0) ? clTrue : clFalse;
 }
 
+char * clImageWriteJPGURI(struct clContext * C, clImage * image, int quality)
+{
+    clRaw dst;
+    char * b64;
+    int b64Len;
+    char * output;
+    static const char prefixURI[] = "data:image/jpeg;base64,";
+    static int prefixURILen = sizeof(prefixURI) - 1;
+
+    memset(&dst, 0, sizeof(dst));
+    if (!clImageWriteJPGRaw(C, image, &dst, quality)) {
+        return NULL;
+    }
+
+    b64 = clRawToBase64(C, &dst);
+    if (!b64) {
+        clRawFree(C, &dst);
+        return NULL;
+    }
+    b64Len = strlen(b64);
+
+    output = clAllocate(prefixURILen + b64Len + 1);
+    memcpy(output, prefixURI, prefixURILen);
+    memcpy(output + prefixURILen, b64, b64Len);
+    output[prefixURILen + b64Len] = 0;
+
+    clFree(b64);
+    clRawFree(C, &dst);
+    return output;
+}
+
 clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filename, int quality)
 {
     FILE * outfile = NULL;

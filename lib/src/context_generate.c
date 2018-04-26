@@ -21,7 +21,7 @@ int clContextGenerate(clContext * C)
     clProfile * dstProfile = NULL;
     clImage * image = NULL;
 
-    clFormat outputFileFormat = C->format;
+    clFormat outputFileFormat = C->params.format;
     if (outputFileFormat == CL_FORMAT_AUTO)
         outputFileFormat = clFormatDetect(C, C->outputFilename);
     if (outputFileFormat == CL_FORMAT_ERROR) {
@@ -43,42 +43,42 @@ int clContextGenerate(clContext * C)
         }
     }
 
-    if (C->primaries[0] <= 0.0f) {
+    if (C->params.primaries[0] <= 0.0f) {
         clBool ret = clContextGetStockPrimaries(C, "bt709", &primaries);
         COLORIST_ASSERT(ret == clTrue);
         (void)ret; // unused in Release
         clContextLog(C, "generate", 1, "No primaries specified (-p). Using default sRGB (BT.709) primaries.");
     } else {
-        primaries.red[0] = C->primaries[0];
-        primaries.red[1] = C->primaries[1];
-        primaries.green[0] = C->primaries[2];
-        primaries.green[1] = C->primaries[3];
-        primaries.blue[0] = C->primaries[4];
-        primaries.blue[1] = C->primaries[5];
-        primaries.white[0] = C->primaries[6];
-        primaries.white[1] = C->primaries[7];
+        primaries.red[0] = C->params.primaries[0];
+        primaries.red[1] = C->params.primaries[1];
+        primaries.green[0] = C->params.primaries[2];
+        primaries.green[1] = C->params.primaries[3];
+        primaries.blue[0] = C->params.primaries[4];
+        primaries.blue[1] = C->params.primaries[5];
+        primaries.white[0] = C->params.primaries[6];
+        primaries.white[1] = C->params.primaries[7];
     }
 
     curve.type = CL_PCT_GAMMA;
-    if (C->gamma <= 0.0f) {
+    if (C->params.gamma <= 0.0f) {
         clContextLog(C, "generate", 1, "No gamma specified (-g). Using default sRGB gamma.");
         curve.gamma = 2.4f;
     } else {
-        curve.gamma = C->gamma;
+        curve.gamma = C->params.gamma;
     }
 
-    if (C->luminance <= 0) {
+    if (C->params.luminance <= 0) {
         clContextLog(C, "generate", 1, "No luminance specified (-l). Using default Colorist luminance.");
         luminance = COLORIST_DEFAULT_LUMINANCE;
     } else {
-        luminance = C->luminance;
+        luminance = C->params.luminance;
     }
 
     {
         char * description = NULL;
 
-        if (C->description) {
-            description = clContextStrdup(C, C->description);
+        if (C->params.description) {
+            description = clContextStrdup(C, C->params.description);
         } else {
             description = clGenerateDescription(C, &primaries, &curve, luminance);
         }
@@ -87,9 +87,9 @@ int clContextGenerate(clContext * C)
         dstProfile = clProfileCreate(C, &primaries, &curve, luminance, description);
         clFree(description);
 
-        if (C->copyright) {
-            clContextLog(C, "generate", 1, "Setting copyright: \"%s\"", C->copyright);
-            clProfileSetMLU(C, dstProfile, "cprt", "en", "US", C->copyright);
+        if (C->params.copyright) {
+            clContextLog(C, "generate", 1, "Setting copyright: \"%s\"", C->params.copyright);
+            clProfileSetMLU(C, dstProfile, "cprt", "en", "US", C->params.copyright);
         }
     }
 
@@ -97,7 +97,7 @@ int clContextGenerate(clContext * C)
         clImage * image;
         int depth;
 
-        depth = C->bpp;
+        depth = C->params.bpp;
         if (depth == 0) {
             depth = 16;
         }
@@ -112,8 +112,8 @@ int clContextGenerate(clContext * C)
             return 1;
         } else {
             clContextLog(C, "generate", 0, "Writing Image: %s", C->outputFilename);
-            clImageDebugDump(C, image, C->rect[0], C->rect[1], C->rect[2], C->rect[3], 0);
-            if (!clContextWrite(C, image, C->outputFilename, outputFileFormat, C->quality, C->rate)) {
+            clImageDebugDump(C, image, C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3], 0);
+            if (!clContextWrite(C, image, C->outputFilename, outputFileFormat, C->params.quality, C->params.rate)) {
                 clImageDestroy(C, image);
                 clProfileDestroy(C, dstProfile);
                 return 1;
