@@ -120,7 +120,4 @@ class App extends React.Component
       }
     return elements
 
-Number.prototype.clamp = (min, max) ->
-  return Math.min(Math.max(this, min), max)
-
 module.exports = App

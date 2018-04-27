@@ -15,6 +15,7 @@ utils = require './utils'
 TopBar = require './TopBar'
 ImageRenderer = require './ImageRenderer'
 InfoPanel = require './InfoPanel'
+StructArray = require './StructArray'
 
 class RawView extends React.Component
   @defaultProps:
@@ -25,6 +26,8 @@ class RawView extends React.Component
     @state =
       x: -1
       y: -1
+
+    @rawPixels = new StructArray(COLORIST_DATA.raw)
 
   setPos: (x, y) ->
     @setState { x: x, y: y }
@@ -47,12 +50,14 @@ class RawView extends React.Component
 
     sections = []
     if (@state.x >= 0) and (@state.y >= 0)
+      pixel = @rawPixels.get(@state.x, @state.y)
       sections.push {
         name: "Raw"
         rows: [
-          ["R", 100, 200, 300]
-          ["G", 100]
-          ["B", 100]
+          ["R", pixel.r]
+          ["G", pixel.g]
+          ["B", pixel.b]
+          ["A", pixel.a]
         ]
       }
 

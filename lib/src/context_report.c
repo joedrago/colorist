@@ -56,6 +56,29 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
     cJSON_AddItemToObject(payload, "depth", cJSON_CreateNumber(image->depth));
 
     {
+        char * channelFormat = "u8";
+        clRaw rawPixels;
+        clStructArraySchema imageSchema[4];
+        if (image->depth == 16) {
+            channelFormat = "u16";
+        }
+        imageSchema[0].format = channelFormat;
+        imageSchema[0].name = "r";
+        imageSchema[1].format = channelFormat;
+        imageSchema[1].name = "g";
+        imageSchema[2].format = channelFormat;
+        imageSchema[2].name = "b";
+        imageSchema[3].format = channelFormat;
+        imageSchema[3].name = "a";
+        rawPixels.ptr = image->pixels;
+        rawPixels.size = image->size;
+        clContextLog(C, "encode", 0, "Packing raw pixels...");
+        timerStart(&t);
+        cJSON_AddItemToObject(payload, "raw", clRawToStructArray(C, &rawPixels, image->width, image->height, imageSchema, 4));
+        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+    }
+
+    {
         clConversionParams params;
         clImage * visual;
         char * jpegB64;
