@@ -13,7 +13,7 @@ tags = require './tags'
 Drawer = require('material-ui/Drawer').default
 MenuItem = require('material-ui/MenuItem').default
 
-RawView = require './RawView'
+PixelsView = require './PixelsView'
 SummaryView = require './SummaryView'
 
 class App extends React.Component
@@ -28,7 +28,7 @@ class App extends React.Component
 
     @views =
       summary: SummaryView
-      raw: RawView
+      pixels: PixelsView
 
     @navigate(true)
     window.addEventListener('hashchange', (event) =>
@@ -93,12 +93,12 @@ class App extends React.Component
       }
 
       el MenuItem, {
-        key: "menu.raw"
-        primaryText: "Raw Pixels"
+        key: "menu.pixels"
+        primaryText: "Pixels"
         leftIcon: tags.icon 'event_note'
         onClick: (e) =>
           e.preventDefault()
-          @redirect('#raw')
+          @redirect('#pixels')
           @setState { navOpen: false }
       }
     ]

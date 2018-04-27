@@ -11,7 +11,11 @@ Number.prototype.clamp = (min, max) ->
 module.exports =
   fr: (number, digits) ->
     s = number.toFixed(digits)
-    s = s.replace(/0$/g, "")
-    return s
+    pieces = s.split(".")
+    if pieces.length > 1
+      pieces[1] = pieces[1].replace(/0+$/, "")
+      if pieces[1].length == 0
+        pieces.pop()
+    return pieces.join('.')
   clamp: (v, min, max) ->
     return Math.min(Math.max(v, min), max)

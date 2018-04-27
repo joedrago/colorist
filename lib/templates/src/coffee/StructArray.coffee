@@ -17,7 +17,7 @@ class StructArray
     @elementSize = 0
     for s in @payload.schema
       @elementSize += formatToSize(s.format)
-    console.log "@elementSize #{@elementSize}"
+    # console.log "@elementSize #{@elementSize}"
 
   get: (x = 0, y = 0) ->
     e = {}

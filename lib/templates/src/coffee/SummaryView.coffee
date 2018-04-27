@@ -8,6 +8,8 @@
 React = require 'react'
 DOM = require 'react-dom'
 
+RaisedButton = require('material-ui/RaisedButton').default
+
 tags = require './tags'
 utils = require './utils'
 {el, div, table, tr, td, tbody} = require './tags'
@@ -85,6 +87,15 @@ class SummaryView extends React.Component
       pair 1, "White Point", "#{utils.fr(D.icc.primaries[6], 4)}, #{utils.fr(D.icc.primaries[7], 4)}"
       pair 1, "Max Luminance", "#{D.icc.luminance} nits"
     ]
+
+    elements.push el RaisedButton, {
+      style:
+        margin: 12
+      label: "View pixels"
+      primary: true
+      onClick: =>
+        @props.app.redirect('#pixels')
+    }
 
     outerElements = []
     outerElements.push el TopBar, {

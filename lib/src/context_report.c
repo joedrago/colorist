@@ -126,6 +126,7 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
     }
 
     cJSON_AddItemToObject(jsonICC, "primaries", jsonPrimaries);
+    cJSON_AddItemToObject(jsonICC, "gamma", cJSON_CreateNumber(curve.gamma));
     cJSON_AddItemToObject(jsonICC, "luminance", cJSON_CreateNumber(maxLuminance));
     return clTrue;
 }

@@ -8,28 +8,24 @@
 React = require 'react'
 DOM = require 'react-dom'
 
+utils = require './utils'
 tags = require './tags'
 {el, div} = require './tags'
 
+stockPrimaries =
+ "bt709":  [ 0.64, 0.33, 0.30, 0.60, 0.15, 0.06, 0.3127, 0.3290 ]
+ "bt2020": [ 0.708, 0.292, 0.170, 0.797, 0.131, 0.046, 0.3127, 0.3290 ]
+ "p3":     [ 0.68, 0.32, 0.265, 0.690, 0.150, 0.060, 0.3127, 0.3290 ]
+
 {BottomNavigation, BottomNavigationItem} = require('material-ui/BottomNavigation')
 Paper = require('material-ui/Paper').default
-
-fr = (value, decimals) ->
-  # This is insanity. Thanks StackOverflow!
-  return Number(Math.round(value+'e'+decimals)+'e-'+decimals)
-
-sigDigits = (value, sigDigits) ->
-  bigDigitCount = String(Math.trunc(value)).length
-  if bigDigitCount >= sigDigits
-    return value
-  return fr(value, sigDigits - bigDigitCount)
 
 horseshoeWidth = 250
 horseshoeHeight = 277
 horseshoeOrigin = [20, 255]
 horseshoeGraphScale = 277
-xyToHorseshoeCoord = (xy) ->
-  return [Color.clamp(horseshoeOrigin[0] + (xy[0] * horseshoeGraphScale), 0, horseshoeWidth), Color.clamp(horseshoeOrigin[1] - (xy[1] * horseshoeGraphScale), 0, horseshoeHeight)]
+xyToHorseshoeCoord = (x, y) ->
+  return [utils.clamp(horseshoeOrigin[0] + (x * horseshoeGraphScale), 0, horseshoeWidth), utils.clamp(horseshoeOrigin[1] - (y * horseshoeGraphScale), 0, horseshoeHeight)]
 
 drawPrimariesTriangle = (ctx, primaries, dashed = false) ->
   ctx.beginPath()
@@ -38,9 +34,9 @@ drawPrimariesTriangle = (ctx, primaries, dashed = false) ->
   else
     ctx.setLineDash([])
   triangle = [
-    xyToHorseshoeCoord(primaries.red)
-    xyToHorseshoeCoord(primaries.green)
-    xyToHorseshoeCoord(primaries.blue)
+    xyToHorseshoeCoord(primaries[0], primaries[1])
+    xyToHorseshoeCoord(primaries[2], primaries[3])
+    xyToHorseshoeCoord(primaries[4], primaries[5])
   ]
   ctx.moveTo(triangle[0][0], triangle[0][1])
   ctx.lineTo(triangle[1][0], triangle[1][1])
@@ -54,40 +50,12 @@ class InfoPanel extends React.Component
     usesPixelPos: false
     x: -1
     y: -1
+    horseshoeX: -1
+    horseshoeY: -1
     sections: []
 
   constructor: (props) ->
     super props
-
-  # makeImageInfo: (image, imageIndex, imageTitle = null) ->
-  #   imageFilename = window.filenames[imageIndex]
-  #   html = ""
-  #   if imageTitle != null
-  #     html += "#{imageTitle}:\n"
-  #   html += """
-  #     Filename:     #{imageFilename}
-  #     MaxLuminance: #{image.colorProfile.maxLuminance}
-  #     Primaries:
-  #       Red:        #{JSON.stringify(image.colorProfile.primaries.red)}
-  #       Green:      #{JSON.stringify(image.colorProfile.primaries.green)}
-  #       Blue:       #{JSON.stringify(image.colorProfile.primaries.blue)}
-  #       White:      #{JSON.stringify(image.colorProfile.primaries.white)}
-  #     Curve:
-  #       Type:       #{image.colorProfile.curve.type}
-  #       Gamma:      #{JSON.stringify(image.colorProfile.curve.gamma)}
-  #   """
-  #     # Dimensions: #{dump.width}x#{dump.height}
-  #     # ColorSpace: #{Color.colorSpaceName(dump.colorSpace)}
-
-  #   return div {
-  #     style:
-  #       fontSize: '0.8em'
-  #       fontFamily: 'monospace'
-  #       whiteSpace: 'pre'
-  #       borderLeft: '1px solid #aaaaaa'
-  #       borderBottom: '1px solid #aaaaaa'
-  #       marginBottom: '10px'
-  #   }, html
 
   makeTableRow: (data, cols = 0, align = 'right') ->
     if cols == 0
@@ -182,37 +150,36 @@ class InfoPanel extends React.Component
           width: '100%'
       }, rows
 
-    # if hasPixelPos
-    #   scrollElements.push tags.canvas {
-    #     id: "horseshoe"
-    #     width: horseshoeWidth
-    #     height: horseshoeHeight
-    #   }
-    #   canvas = document.getElementById("horseshoe")
-    #   if canvas?
-    #     ctx = canvas.getContext("2d")
-    #     cie = document.getElementById("cie")
-    #     crosshairs = document.getElementById("crosshairs")
-    #     ctx.clearRect(0, 0, 250, 277)
-    #     ctx.drawImage(cie, 0, 0)
+    if (@props.horseshoeX != -1) and (@props.horseshoeX != -1)
+      scrollElements.push tags.canvas {
+        id: "horseshoe"
+        width: horseshoeWidth
+        height: horseshoeHeight
+      }
+      canvas = document.getElementById("horseshoe")
+      if canvas?
+        ctx = canvas.getContext("2d")
+        cie = document.getElementById("cie")
+        crosshairs = document.getElementById("crosshairs")
+        ctx.clearRect(0, 0, 250, 277)
+        ctx.drawImage(cie, 0, 0)
 
-    #     # sRGB color gamut
-    #     drawPrimariesTriangle(ctx, ColorProfile.SRGB.primaries, true)
+        # Draw stock gamuts as dashed triangles
+        drawPrimariesTriangle(ctx, stockPrimaries.bt709, true)
+        drawPrimariesTriangle(ctx, stockPrimaries.p3, true)
+        drawPrimariesTriangle(ctx, stockPrimaries.bt2020, true)
 
-    #     # P3 color gamut
-    #     drawPrimariesTriangle(ctx, ColorProfile.P3.primaries, true)
+        # Fill in this image's gamut with a solid triangle
+        drawPrimariesTriangle(ctx, COLORIST_DATA.icc.primaries, false)
 
-    #     # color gamut
-    #     drawPrimariesTriangle(ctx, image.colorProfile.primaries, false)
+        # Draw the white point
+        ctx.beginPath()
+        whitePointCoord = xyToHorseshoeCoord(COLORIST_DATA.icc.primaries[6], COLORIST_DATA.icc.primaries[7])
+        ctx.arc(whitePointCoord[0], whitePointCoord[1], 4, 0, 2 * Math.PI)
+        ctx.fill()
 
-    #     # white point
-    #     ctx.beginPath()
-    #     whitePointCoord = xyToHorseshoeCoord(image.colorProfile.primaries.white)
-    #     ctx.arc(whitePointCoord[0], whitePointCoord[1], 4, 0, 2 * Math.PI)
-    #     ctx.fill()
-
-    #     crosshairCoord = xyToHorseshoeCoord(xyy)
-    #     ctx.drawImage(crosshairs, crosshairCoord[0] - 16, crosshairCoord[1] - 16)
+        crosshairCoord = xyToHorseshoeCoord(@props.horseshoeX, @props.horseshoeY)
+        ctx.drawImage(crosshairs, crosshairCoord[0] - 16, crosshairCoord[1] - 16)
 
     elements = []
 
