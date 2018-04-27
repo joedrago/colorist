@@ -201,6 +201,12 @@ clContext * clContextCreate(clContextSystem * system)
     // TODO: hook up memory management plugin to route through C->system.alloc
     C->lcms = cmsCreateContext(NULL, NULL);
 
+    // Clue in LittleCMS that we intend to do absolute colorimetric conversions
+    // on profiles that use white points other than D50 (profiles containing a
+    // chromatic adaptation tag). Setting this to 0 causes absolute conversions
+    // to fully honor the chad tags in the profiles (if any).
+    cmsSetAdaptationStateTHR(C->lcms, 0);
+
     // Default args
     C->action = CL_ACTION_NONE;
     clConversionParamsSetDefaults(C, &C->params);
