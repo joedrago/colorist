@@ -252,24 +252,17 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
 
         chad = (cmsMAT3 *)cmsReadTag(profile->handle, cmsSigChromaticAdaptationTag);
         if ((chad != NULL) && _cmsMAT3inverse(chad, &invChad)) {
-            cmsFloat64Number K;
+            cmsVEC3 srcWP, dstWP;
             cmsCIExyY whiteXYY;
             cmsXYZ2xyY(&whiteXYY, whiteXYZ);
-            if (cmsTempFromWhitePoint(&K, &whiteXYY) && (fabsf((float)K - 5000.0f) < 1.0f)) {
-                // It's D50 in a profile with a chad tag, adapt it
-                cmsVEC3 srcWP, dstWP;
-                srcWP.n[VX] = whiteXYZ->X;
-                srcWP.n[VY] = whiteXYZ->Y;
-                srcWP.n[VZ] = whiteXYZ->Z;
-                _cmsMAT3eval(&dstWP, &invChad, &srcWP);
-                adaptedWhiteXYZ.X = dstWP.n[VX];
-                adaptedWhiteXYZ.Y = dstWP.n[VY];
-                adaptedWhiteXYZ.Z = dstWP.n[VZ];
-                _cmsMAT3per(&colorants, &invChad, &tmpColorants);
-            } else {
-                colorants = tmpColorants;
-                adaptedWhiteXYZ = *whiteXYZ;
-            }
+            srcWP.n[VX] = whiteXYZ->X;
+            srcWP.n[VY] = whiteXYZ->Y;
+            srcWP.n[VZ] = whiteXYZ->Z;
+            _cmsMAT3eval(&dstWP, &invChad, &srcWP);
+            adaptedWhiteXYZ.X = dstWP.n[VX];
+            adaptedWhiteXYZ.Y = dstWP.n[VY];
+            adaptedWhiteXYZ.Z = dstWP.n[VZ];
+            _cmsMAT3per(&colorants, &invChad, &tmpColorants);
         } else {
             colorants = tmpColorants;
             adaptedWhiteXYZ = *whiteXYZ;
