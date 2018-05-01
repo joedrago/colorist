@@ -120,7 +120,7 @@ struct clImage;
 char * clContextStrdup(clContext * C, const char * str);
 
 // Any/all of the clContextSystem struct can be NULL, including the struct itself. Any NULL values will use the default.
-// No need to allocate this structure; just put it on the stack. Any values will be shallow copied.
+// No need to allocate the clContextSystem structure; just put it on the stack. Any values will be shallow copied.
 clContext * clContextCreate(clContextSystem * system);
 void clContextDestroy(clContext * C);
 
