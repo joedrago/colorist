@@ -100,6 +100,7 @@ clFormat clFormatDetect(struct clContext * C, const char * filename)
     }
     ++ext; // skip past the period
     if (!strcmp(ext, "icc")) return CL_FORMAT_ICC;
+    if (!strcmp(ext, "j2k")) return CL_FORMAT_J2K;
     if (!strcmp(ext, "jp2")) return CL_FORMAT_JP2;
     if (!strcmp(ext, "jpg")) return CL_FORMAT_JPG;
     if (!strcmp(ext, "png")) return CL_FORMAT_PNG;
@@ -111,6 +112,7 @@ clFormat clFormatDetect(struct clContext * C, const char * filename)
 int clFormatMaxDepth(struct clContext * C, clFormat format)
 {
     switch (format) {
+        case CL_FORMAT_J2K:   return 16;
         case CL_FORMAT_JP2:   return 16;
         case CL_FORMAT_JPG:   return 8;
         case CL_FORMAT_PNG:   return 16;
@@ -559,7 +561,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)");
     clContextLog(C, NULL, 0, "    -c COPYRIGHT   : ICC profile copyright string.");
     clContextLog(C, NULL, 0, "    -d DESCRIPTION : ICC profile description.");
-    clContextLog(C, NULL, 0, "    -f FORMAT      : Output format. auto (default), icc, jp2, jpg, png, webp");
+    clContextLog(C, NULL, 0, "    -f FORMAT      : Output format. auto (default), icc, j2k, jp2, jpg, png, webp");
     clContextLog(C, NULL, 0, "    -g GAMMA       : Output gamma. 0 for auto (default), or \"source\" to force source gamma");
     clContextLog(C, NULL, 0, "    -h             : Display this help");
     clContextLog(C, NULL, 0, "    -j JOBS        : Number of jobs to use when working. 0 for as many as possible (default)");

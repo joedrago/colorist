@@ -78,7 +78,12 @@ static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ
     XYZ.X = floatXYZ[0];
     XYZ.Y = floatXYZ[1];
     XYZ.Z = floatXYZ[2];
-    cmsXYZ2xyY(&xyY, &XYZ);
+    if (XYZ.Y > 0) {
+        cmsXYZ2xyY(&xyY, &XYZ);
+    } else {
+        // This is wrong, xy should be the white point
+        memset(&xyY, 0, sizeof(xyY));
+    }
 
     clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): rgba%d(%u, %u, %u, %u), XYZ(%g, %g, %g), xyY(%g, %g, %g)",
         x, y, image->depth,

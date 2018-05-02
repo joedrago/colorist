@@ -35,7 +35,7 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
 void clImageDestroy(struct clContext * C, clImage * image);
 
 clImage * clImageReadJP2(struct clContext * C, const char * filename);
-clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filename, int quality, int rate);
+clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filename, clBool isJ2K, int quality, int rate);
 
 clImage * clImageReadJPG(struct clContext * C, const char * filename);
 clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filename, int quality);

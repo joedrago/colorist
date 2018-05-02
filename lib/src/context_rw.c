@@ -19,6 +19,7 @@ struct clImage * clContextRead(clContext * C, const char * filename, clFormat * 
         return NULL;
     }
     switch (format) {
+        case CL_FORMAT_J2K:
         case CL_FORMAT_JP2:
             image = clImageReadJP2(C, filename);
             break;
@@ -48,8 +49,11 @@ clBool clContextWrite(clContext * C, struct clImage * image, const char * filena
         }
     }
     switch (format) {
+        case CL_FORMAT_J2K:
+            return clImageWriteJP2(C, image, filename, clTrue, quality, rate);
+            break;
         case CL_FORMAT_JP2:
-            return clImageWriteJP2(C, image, filename, quality, rate);
+            return clImageWriteJP2(C, image, filename, clFalse, quality, rate);
             break;
         case CL_FORMAT_JPG:
             return clImageWriteJPG(C, image, filename, quality);

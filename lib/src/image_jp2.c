@@ -33,15 +33,40 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
 {
     clImage * image = NULL;
     clProfile * profile = NULL;
-    int i, pixelCount;
+    int i, pixelCount, dstDepth;
 
     opj_dparameters_t parameters;
     opj_codec_t * opjCodec = NULL;
     opj_image_t * opjImage = NULL;
     opj_stream_t * opjStream = NULL;
+    int channelFactor[4] = { 1, 1, 1, 1 };
 
-    // TODO: detect J2K stream here?
-    opjCodec = opj_create_decompress(OPJ_CODEC_JP2);
+    const char * errorExtName = "JP2";
+    clBool isJ2K = clFalse;
+    {
+        static const unsigned char j2kHeader[4] = { 0xff, 0x4f, 0xff, 0x51 };
+        unsigned char fileHeader[4];
+        int itemsRead;
+
+        FILE * f = fopen(filename, "rb");
+        if (!f) {
+            clContextLogError(C, "Failed to open JP2/J2K to read header: %s", filename);
+            return NULL;
+        }
+
+        itemsRead = fread(fileHeader, 4, 1, f);
+        if (itemsRead != 1) {
+            clContextLogError(C, "Failed to read JP2/J2K header: %s", filename);
+            return NULL;
+        }
+        fclose(f);
+        if (!memcmp(fileHeader, j2kHeader, 4)) {
+            isJ2K = clTrue;
+            errorExtName = "J2K";
+        }
+    }
+
+    opjCodec = opj_create_decompress(isJ2K ? OPJ_CODEC_J2K : OPJ_CODEC_JP2);
     opj_set_info_handler(opjCodec, info_callback, C);
     opj_set_warning_handler(opjCodec, warning_callback, C);
     opj_set_error_handler(opjCodec, error_callback, C);
@@ -50,14 +75,14 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
     opjStream = opj_stream_create_file_stream(filename, 1 * 1024 * 1024, OPJ_TRUE);
 
     if (!opj_setup_decoder(opjCodec, &parameters) ) {
-        clContextLogError(C, "Failed to setup JP2 decoder");
+        clContextLogError(C, "Failed to setup %s decoder", errorExtName);
         opj_stream_destroy(opjStream);
         opj_destroy_codec(opjCodec);
         return NULL;
     }
 
     if (!opj_read_header(opjStream, opjCodec, &opjImage)) {
-        clContextLogError(C, "Failed to read JP2 header");
+        clContextLogError(C, "Failed to read %s header", errorExtName);
         opj_stream_destroy(opjStream);
         opj_destroy_codec(opjCodec);
         opj_image_destroy(opjImage);
@@ -65,7 +90,7 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
     }
 
     if (!opj_decode(opjCodec, opjStream, opjImage)) {
-        clContextLogError(C, "Failed to decode JP2!");
+        clContextLogError(C, "Failed to decode %s!", errorExtName);
         opj_destroy_codec(opjCodec);
         opj_stream_destroy(opjStream);
         opj_image_destroy(opjImage);
@@ -73,7 +98,7 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
     }
 
     if ((opjImage->numcomps != 3) && (opjImage->numcomps != 4)) {
-        clContextLogError(C, "Unsupported JP2 component count: %d", opjImage->numcomps);
+        clContextLogError(C, "Unsupported %s component count: %d", errorExtName, opjImage->numcomps);
         opj_destroy_codec(opjCodec);
         opj_stream_destroy(opjStream);
         opj_image_destroy(opjImage);
@@ -84,7 +109,22 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
         profile = clProfileParse(C, opjImage->icc_profile_buf, opjImage->icc_profile_len, NULL);
     }
 
-    image = clImageCreate(C, opjImage->x1, opjImage->y1, opjImage->comps[0].prec, profile);
+    dstDepth = 8;
+    for (i = 0; i < (int)opjImage->numcomps; ++i) {
+        // Find biggest component
+        dstDepth = (dstDepth > (int)opjImage->comps[i].prec) ? dstDepth : (int)opjImage->comps[i].prec;
+    }
+    if ((dstDepth != 8) && (dstDepth != 16)) {
+        int srcDepth = dstDepth;
+        dstDepth = (dstDepth > 8) ? 16 : 8; // round to nearest Colorist-supported depth
+        clContextLog(C, "JP2", 1, "Promoting %d-bit source to %d bits", srcDepth, dstDepth);
+    }
+    for (i = 0; i < (int)opjImage->numcomps; ++i) {
+        // Calculate scales for incoming components
+        channelFactor[i] = 1 << (dstDepth - opjImage->comps[i].prec);
+    }
+
+    image = clImageCreate(C, opjImage->x1, opjImage->y1, dstDepth, profile);
     if (profile) {
         clProfileDestroy(C, profile);
     }
@@ -97,9 +137,9 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
         if (opjImage->numcomps == 3) {
             // RGB, fill A
             for (i = 0; i < pixelCount; ++i) {
-                pixel[0] = opjImage->comps[0].data[i];
-                pixel[1] = opjImage->comps[1].data[i];
-                pixel[2] = opjImage->comps[2].data[i];
+                pixel[0] = opjImage->comps[0].data[i] * channelFactor[0];
+                pixel[1] = opjImage->comps[1].data[i] * channelFactor[1];
+                pixel[2] = opjImage->comps[2].data[i] * channelFactor[2];
                 pixel[3] = 65535;
                 pixel += 4;
             }
@@ -107,10 +147,10 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
             // RGBA
             COLORIST_ASSERT(opjImage->numcomps == 4);
             for (i = 0; i < pixelCount; ++i) {
-                pixel[0] = opjImage->comps[0].data[i];
-                pixel[1] = opjImage->comps[1].data[i];
-                pixel[2] = opjImage->comps[2].data[i];
-                pixel[3] = opjImage->comps[3].data[i];
+                pixel[0] = opjImage->comps[0].data[i] * channelFactor[0];
+                pixel[1] = opjImage->comps[1].data[i] * channelFactor[1];
+                pixel[2] = opjImage->comps[2].data[i] * channelFactor[2];
+                pixel[3] = opjImage->comps[3].data[i] * channelFactor[3];
                 pixel += 4;
             }
         }
@@ -120,9 +160,9 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
         if (opjImage->numcomps == 3) {
             // RGB, fill A
             for (i = 0; i < pixelCount; ++i) {
-                pixel[0] = opjImage->comps[0].data[i];
-                pixel[1] = opjImage->comps[1].data[i];
-                pixel[2] = opjImage->comps[2].data[i];
+                pixel[0] = opjImage->comps[0].data[i] * channelFactor[0];
+                pixel[1] = opjImage->comps[1].data[i] * channelFactor[1];
+                pixel[2] = opjImage->comps[2].data[i] * channelFactor[2];
                 pixel[3] = 255;
                 pixel += 4;
             }
@@ -130,10 +170,10 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
             // RGBA
             COLORIST_ASSERT(opjImage->numcomps == 4);
             for (i = 0; i < pixelCount; ++i) {
-                pixel[0] = opjImage->comps[0].data[i];
-                pixel[1] = opjImage->comps[1].data[i];
-                pixel[2] = opjImage->comps[2].data[i];
-                pixel[3] = opjImage->comps[3].data[i];
+                pixel[0] = opjImage->comps[0].data[i] * channelFactor[0];
+                pixel[1] = opjImage->comps[1].data[i] * channelFactor[1];
+                pixel[2] = opjImage->comps[2].data[i] * channelFactor[2];
+                pixel[3] = opjImage->comps[3].data[i] * channelFactor[3];
                 pixel += 4;
             }
         }
@@ -145,7 +185,7 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
     return image;
 }
 
-clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filename, int quality, int rate)
+clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filename, clBool isJ2K, int quality, int rate)
 {
     const OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_SRGB;
     int numcomps = 4;
@@ -237,7 +277,7 @@ clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filen
     opj_set_info_handler(opjCodec, info_callback, C);
     opj_set_warning_handler(opjCodec, warning_callback, C);
     opj_set_error_handler(opjCodec, error_callback, C);
-    opjCodec = opj_create_compress(OPJ_CODEC_JP2);
+    opjCodec = opj_create_compress(isJ2K ? OPJ_CODEC_J2K : OPJ_CODEC_JP2);
     opj_set_info_handler(opjCodec, info_callback, C);
     opj_set_warning_handler(opjCodec, warning_callback, C);
     opj_set_error_handler(opjCodec, error_callback, C);
