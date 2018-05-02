@@ -86,7 +86,6 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, float * pixels, 
         }
 
         maxLuminance = (int)(maxChannel * srcLuminance);
-        maxLuminance = CL_CLAMP(maxLuminance, 0, srcLuminance);
         clContextLog(C, "grading", 1, "Found max luminance: %d nits", maxLuminance);
     } else {
         maxLuminance = *outLuminance;
