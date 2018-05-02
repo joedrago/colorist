@@ -10,6 +10,8 @@
 #include "colorist/context.h"
 #include "colorist/profile.h"
 
+#include <string.h>
+
 static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, int x, int y, int extraIndent);
 
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent)
