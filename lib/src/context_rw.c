@@ -8,8 +8,9 @@
 #include "colorist/context.h"
 
 #include "colorist/image.h"
+#include "colorist/profile.h"
 
-struct clImage * clContextRead(clContext * C, const char * filename, clFormat * outFormat)
+struct clImage * clContextRead(clContext * C, const char * filename, const char * iccOverride, clFormat * outFormat)
 {
     clImage * image = NULL;
     clFormat format = clFormatDetect(C, filename);
@@ -35,6 +36,19 @@ struct clImage * clContextRead(clContext * C, const char * filename, clFormat * 
         default:
             clContextLogError(C, "Unimplemented file reader '%s'", clFormatToString(C, format));
             break;
+    }
+
+    if (image && iccOverride) {
+        clProfile * overrideProfile = clProfileRead(C, iccOverride);
+        if (overrideProfile) {
+            clContextLog(C, "profile", 1, "Overriding src profile with file: %s", iccOverride);
+            clProfileDestroy(C, image->profile);
+            image->profile = overrideProfile; // take ownership
+        } else {
+            clContextLogError(C, "Bad ICC override file [-i]: %s", iccOverride);
+            clImageDestroy(C, image);
+            image = NULL;
+        }
     }
     return image;
 }

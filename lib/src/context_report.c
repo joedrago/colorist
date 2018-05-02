@@ -152,7 +152,7 @@ int clContextReport(clContext * C)
 
     clContextLog(C, "decode", 0, "Reading: %s (%d bytes)", C->inputFilename, clFileSize(C->inputFilename));
     timerStart(&t);
-    image = clContextRead(C, C->inputFilename, NULL);
+    image = clContextRead(C, C->inputFilename, C->iccOverride, NULL);
     if (image == NULL) {
         return 1;
     }

@@ -243,12 +243,47 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
         cmsCIEXYZ * greenXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigGreenColorantTag);
         cmsCIEXYZ * blueXYZ  = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigBlueColorantTag);
         cmsCIEXYZ * whiteXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigMediaWhitePointTag);
-        if ((redXYZ == NULL) || (greenXYZ == NULL) || (blueXYZ == NULL) || (whiteXYZ == NULL))
+        if (whiteXYZ == NULL)
             return clFalse;
 
-        _cmsVEC3init(&tmpColorants.v[0], redXYZ->X, greenXYZ->X, blueXYZ->X);
-        _cmsVEC3init(&tmpColorants.v[1], redXYZ->Y, greenXYZ->Y, blueXYZ->Y);
-        _cmsVEC3init(&tmpColorants.v[2], redXYZ->Z, greenXYZ->Z, blueXYZ->Z);
+        if ((redXYZ == NULL) || (greenXYZ == NULL) || (blueXYZ == NULL)) {
+            // No colorant tags. See if we can harvest them (poorly) from the A2B0 tag. (yuck)
+            cmsUInt32Number aToBTagSize = cmsReadRawTag(profile->handle, cmsSigAToB0Tag, NULL, 0);
+            if (aToBTagSize >= 32) { // A2B0 tag is present. Allow it to override primaries and tone curves.
+                uint8_t * rawA2B0 = clAllocate(aToBTagSize);
+                cmsReadRawTag(profile->handle, cmsSigAToB0Tag, rawA2B0, aToBTagSize);
+
+                uint32_t matrixOffset = 0;
+                memcpy(&matrixOffset, rawA2B0 + 16, sizeof(matrixOffset));
+                matrixOffset = clNTOHL(matrixOffset);
+                if (matrixOffset == 0) {
+                    // No matrix present
+                    clFree(rawA2B0);
+                    return clFalse;
+                }
+                if ((matrixOffset + 18) > aToBTagSize) {
+                    // No room to read matrix
+                    clFree(rawA2B0);
+                    return clFalse;
+                }
+
+                float matrix[9];
+                for (int i = 0; i < 9; ++i) {
+                    cmsS15Fixed16Number e;
+                    memcpy(&e, &rawA2B0[matrixOffset + (i * 4)], 4);
+                    matrix[i] = (float)_cms15Fixed16toDouble(clNTOHL(e));
+                }
+                _cmsVEC3init(&tmpColorants.v[0], matrix[0], matrix[1], matrix[2]);
+                _cmsVEC3init(&tmpColorants.v[1], matrix[3], matrix[4], matrix[5]);
+                _cmsVEC3init(&tmpColorants.v[2], matrix[6], matrix[7], matrix[8]);
+                clFree(rawA2B0);
+            }
+        } else {
+            // Found rXYZ, gXYZ, bXYZ. Pull out the colorants from them.
+            _cmsVEC3init(&tmpColorants.v[0], redXYZ->X, greenXYZ->X, blueXYZ->X);
+            _cmsVEC3init(&tmpColorants.v[1], redXYZ->Y, greenXYZ->Y, blueXYZ->Y);
+            _cmsVEC3init(&tmpColorants.v[2], redXYZ->Z, greenXYZ->Z, blueXYZ->Z);
+        }
 
         chad = (cmsMAT3 *)cmsReadTag(profile->handle, cmsSigChromaticAdaptationTag);
         if ((chad != NULL) && _cmsMAT3inverse(chad, &invChad)) {
@@ -299,8 +334,13 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
             curve->type = (curveType == 1) ? CL_PCT_GAMMA : CL_PCT_COMPLEX;
             curve->gamma = gamma;
         } else {
-            curve->type = CL_PCT_UNKNOWN;
-            curve->gamma = 0.0f;
+            if (cmsReadRawTag(profile->handle, cmsSigAToB0Tag, NULL, 0) > 0) {
+                curve->type = CL_PCT_COMPLEX;
+                curve->gamma = -1.0f;
+            } else {
+                curve->type = CL_PCT_UNKNOWN;
+                curve->gamma = 0.0f;
+            }
         }
     }
 

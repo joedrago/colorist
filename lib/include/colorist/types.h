@@ -44,4 +44,9 @@ typedef struct Timer
 void timerStart(Timer * timer);
 double timerElapsedSeconds(Timer * timer);
 
+uint16_t clHTONS(uint16_t s);
+uint16_t clNTOHS(uint16_t s);
+uint32_t clHTONL(uint32_t l);
+uint32_t clNTOHL(uint32_t l);
+
 #endif // ifndef COLORIST_TYPES_H

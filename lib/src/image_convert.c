@@ -68,7 +68,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
 
         // Gamma
         srcGamma = curve.gamma;
-        if (curve.type != CL_PCT_GAMMA) {
+        if ((curve.type != CL_PCT_GAMMA) && (srcGamma > 0.0f)) {
             clContextLog(C, "info", 0, "Estimated source gamma: %g", srcGamma);
         }
         if (params->gamma < 0.0f) {

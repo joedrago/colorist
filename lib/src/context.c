@@ -213,6 +213,7 @@ clContext * clContextCreate(clContextSystem * system)
     C->action = CL_ACTION_NONE;
     clConversionParamsSetDefaults(C, &C->params);
     C->help = clFalse;
+    C->iccOverride = NULL;
     C->verbose = clFalse;
     C->inputFilename = NULL;
     C->outputFilename = NULL;
@@ -371,6 +372,10 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
                 case 'h':
                     C->help = clTrue;
                     break;
+                case 'i':
+                    NEXTARG();
+                    C->iccOverride = arg;
+                    break;
                 case 'j':
                     NEXTARG();
                     C->params.jobs = atoi(arg);
@@ -525,6 +530,7 @@ void clContextPrintArgs(clContext * C)
     else
         clContextLog(C, "syntax", 1, "gamma      : auto");
     clContextLog(C, "syntax", 1, "help       : %s", C->help ? "enabled" : "disabled");
+    clContextLog(C, "syntax", 1, "ICCOverride: %s", C->iccOverride ? C->iccOverride : "--");
     if (C->params.luminance < 0) {
         clContextLog(C, "syntax", 1, "luminance  : source luminance (forced)");
     } else if (C->params.luminance) {
@@ -564,6 +570,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -f FORMAT      : Output format. auto (default), icc, j2k, jp2, jpg, png, webp");
     clContextLog(C, NULL, 0, "    -g GAMMA       : Output gamma. 0 for auto (default), or \"source\" to force source gamma");
     clContextLog(C, NULL, 0, "    -h             : Display this help");
+    clContextLog(C, NULL, 0, "    -i file.icc    : Override source ICC profile. default is to use embedded profile (if any), or sRGB@300");
     clContextLog(C, NULL, 0, "    -j JOBS        : Number of jobs to use when working. 0 for as many as possible (default)");
     clContextLog(C, NULL, 0, "    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default), or \"source\" to force source luminance");
     clContextLog(C, NULL, 0, "    -p PRIMARIES   : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy");

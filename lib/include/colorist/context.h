@@ -108,6 +108,7 @@ typedef struct clContext
     clAction action;
     clConversionParams params;   // see above
     clBool help;                 // -h
+    const char * iccOverride;    // -i
     clBool verbose;              // -v
     const char * inputFilename;  // index 0
     const char * outputFilename; // index 1
@@ -133,7 +134,7 @@ void clContextPrintVersions(clContext * C);
 void clContextPrintArgs(clContext * C);
 clBool clContextParseArgs(clContext * C, int argc, char * argv[]);
 
-struct clImage * clContextRead(clContext * C, const char * filename, clFormat * outFormat);
+struct clImage * clContextRead(clContext * C, const char * filename, const char * iccOverride, clFormat * outFormat);
 clBool clContextWrite(clContext * C, struct clImage * image, const char * filename, clFormat format, int quality, int rate);
 
 clBool clContextGetStockPrimaries(struct clContext * C, const char * name, struct clProfilePrimaries * outPrimaries);
