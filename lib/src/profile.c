@@ -342,6 +342,42 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
                 curve->gamma = 0.0f;
             }
         }
+
+        // Check for A2B0 implicit scale in the matrix curve, for reporting purposes
+        curve->matrixCurveScale = 0.0f;
+        {
+            cmsUInt32Number aToBTagSize = cmsReadRawTag(profile->handle, cmsSigAToB0Tag, NULL, 0);
+            if (aToBTagSize >= 32) { // A2B0 tag is present. Check for a matrix scale on para curve types 1 and above
+                uint8_t * rawA2B0 = clAllocate(aToBTagSize);
+                cmsReadRawTag(profile->handle, cmsSigAToB0Tag, rawA2B0, aToBTagSize);
+
+                uint32_t matrixCurveOffset = 0;
+                memcpy(&matrixCurveOffset, rawA2B0 + 20, sizeof(matrixCurveOffset));
+                matrixCurveOffset = clNTOHL(matrixCurveOffset);
+                if (matrixCurveOffset == 0) {
+                    // No matrix curve present
+                    clFree(rawA2B0);
+                    return clFalse;
+                }
+
+                if (!memcmp(&rawA2B0[matrixCurveOffset], "para", 4)) {
+                    uint16_t curveType;
+                    memcpy(&curveType, &rawA2B0[matrixCurveOffset + 8], 2);
+                    curveType = clNTOHS(curveType);
+                    if ((curveType > 0) && (curveType <= 4)) {
+                        // Guaranteed to have a g(0) argument and an a(1) argument. a^g is the scale.
+                        float g, a;
+                        cmsS15Fixed16Number e;
+                        memcpy(&e, &rawA2B0[matrixCurveOffset + 12], 4);
+                        g = (float)_cms15Fixed16toDouble(clNTOHL(e));
+                        memcpy(&e, &rawA2B0[matrixCurveOffset + 16], 4);
+                        a = (float)_cms15Fixed16toDouble(clNTOHL(e));
+                        curve->matrixCurveScale = pow(a, g);
+                    }
+                }
+                clFree(rawA2B0);
+            }
+        }
     }
 
     if (luminance) {

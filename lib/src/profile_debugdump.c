@@ -36,5 +36,9 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, int extraInde
             primaries.white[0], primaries.white[1]);
         clContextLog(C, "profile", 1 + extraIndent, "Max Luminance: %d", luminance);
         clContextLog(C, "profile", 1 + extraIndent, "Curve: %s(%.3g)", curveTypeToString(curve.type), curve.gamma);
+        if (curve.matrixCurveScale > 0.0f) {
+            clContextLog(C, "profile", 1 + extraIndent, "Implicit matrix curve scale: %g", curve.matrixCurveScale);
+            clContextLog(C, "profile", 1 + extraIndent, "Actual max luminance: %g", luminance * curve.matrixCurveScale);
+        }
     }
 }
