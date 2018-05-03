@@ -7,6 +7,8 @@
 
 #include "colorist/types.h"
 
+#include <string.h>
+
 static double now();
 
 void timerStart(Timer * timer)
