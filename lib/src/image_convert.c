@@ -106,7 +106,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         }
 
         // Pull dstLuminance out of the overridden profile, if present
-        clProfileQuery(C, srcImage->profile, NULL, NULL, &dstLuminance);
+        clProfileQuery(C, dstProfile, NULL, NULL, &dstLuminance);
         if (dstLuminance == 0) {
             dstLuminance = srcLuminance;
         }
@@ -256,7 +256,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
             cmsHTRANSFORM fromLinear = cmsCreateTransformTHR(C->lcms, dstLinear->handle, TYPE_RGBA_FLT, dstImage->profile->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
             float * dstFloats; // final values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
 
-            clContextLog(C, "luminance", 0, "Scaling luminance (%s)...", tonemap ? "tonemap" : "clip");
+            clContextLog(C, "luminance", 0, "Scaling luminance (%gx, %s)...", luminanceScale, tonemap ? "tonemap" : "clip");
             timerStart(&t);
             clPixelMathScaleLuminance(C, linearPixels, linearPixelsCount, luminanceScale, tonemap);
             clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
