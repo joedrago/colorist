@@ -97,6 +97,23 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         }
     }
 
+    // Load output profile override, if any
+    if (params->iccOverrideOut) {
+        dstProfile = clProfileRead(C, params->iccOverrideOut);
+        if (!dstProfile) {
+            clContextLogError(C, "Invalid destination profile override: %s", params->iccOverrideOut);
+            FAIL();
+        }
+
+        // Pull dstLuminance out of the overridden profile, if present
+        clProfileQuery(C, srcImage->profile, NULL, NULL, &dstLuminance);
+        if (dstLuminance == 0) {
+            dstLuminance = srcLuminance;
+        }
+
+        clContextLog(C, "profile", 1, "Overriding dst profile with file: %s", params->iccOverrideOut);
+    }
+
     // Create intermediate 1.0 gamma float32 pixel array if we're going to need it later.
     if ((srcLuminance != dstLuminance)) {
         cmsHTRANSFORM toLinear;
@@ -152,7 +169,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     }
 
     // Create the destination profile, or clone the source one
-    {
+    if (dstProfile == NULL) {
         if (
             (params->primaries[0] > 0.0f) ||  // Custom primaries
             (srcGamma != dstGamma) ||         // Custom gamma

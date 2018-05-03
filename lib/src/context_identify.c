@@ -33,7 +33,7 @@ int clContextIdentify(clContext * C)
     } else {
         clImage * image;
         clContextLog(C, "decode", 0, "Reading: %s (%d bytes)", C->inputFilename, clFileSize(C->inputFilename));
-        image = clContextRead(C, C->inputFilename, C->iccOverride, &format);
+        image = clContextRead(C, C->inputFilename, C->iccOverrideIn, &format);
         if (image) {
             int rect[4];
             memcpy(rect, C->params.rect, sizeof(rect));

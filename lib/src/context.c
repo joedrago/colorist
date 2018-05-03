@@ -151,17 +151,23 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
 // ------------------------------------------------------------------------------------------------
 // clContext
 
-void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
+static void clConversionParamsSetOutputProfileDefaults(clContext * C, clConversionParams * params)
 {
     params->autoGrade = clFalse;
-    params->bpp = 0;
     params->copyright = NULL;
     params->description = NULL;
-    params->format = CL_FORMAT_AUTO;
     params->gamma = 0;
-    params->jobs = clTaskLimit();
     params->luminance = 0;
     memset(params->primaries, 0, sizeof(float) * 8);
+}
+
+void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
+{
+    clConversionParamsSetOutputProfileDefaults(C, params);
+    params->bpp = 0;
+    params->format = CL_FORMAT_AUTO;
+    params->jobs = clTaskLimit();
+    params->iccOverrideOut = NULL;
     params->quality = 90; // ?
     params->rate = 150;   // ?
     params->rect[0] = 0;
@@ -210,7 +216,7 @@ clContext * clContextCreate(clContextSystem * system)
     C->action = CL_ACTION_NONE;
     clConversionParamsSetDefaults(C, &C->params);
     C->help = clFalse;
-    C->iccOverride = NULL;
+    C->iccOverrideIn = NULL;
     C->verbose = clFalse;
     C->inputFilename = NULL;
     C->outputFilename = NULL;
@@ -371,7 +377,7 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
                     break;
                 case 'i':
                     NEXTARG();
-                    C->iccOverride = arg;
+                    C->iccOverrideIn = arg;
                     break;
                 case 'j':
                     NEXTARG();
@@ -387,6 +393,10 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
                     } else {
                         C->params.luminance = atoi(arg);
                     }
+                    break;
+                case 'o':
+                    NEXTARG();
+                    C->params.iccOverrideOut = arg;
                     break;
                 case 'p':
                     NEXTARG();
@@ -502,6 +512,10 @@ static clBool validateArgs(clContext * C)
         clContextLog(C, "syntax", 0, "WARNING: auto color grading mode (-a) is useless with both -g and -l specified, disabling auto color grading");
         C->params.autoGrade = clFalse;
     }
+    if (C->params.iccOverrideOut) {
+        clContextLog(C, "syntax", 0, "-o in use, disabling all other output profile options");
+        clConversionParamsSetOutputProfileDefaults(C, &C->params);
+    }
     return valid;
 }
 
@@ -523,7 +537,8 @@ void clContextPrintArgs(clContext * C)
     else
         clContextLog(C, "syntax", 1, "gamma      : auto");
     clContextLog(C, "syntax", 1, "help       : %s", C->help ? "enabled" : "disabled");
-    clContextLog(C, "syntax", 1, "ICCOverride: %s", C->iccOverride ? C->iccOverride : "--");
+    clContextLog(C, "syntax", 1, "ICC in     : %s", C->iccOverrideIn ? C->iccOverrideIn : "--");
+    clContextLog(C, "syntax", 1, "ICC out    : %s", C->params.iccOverrideOut ? C->params.iccOverrideOut : "--");
     if (C->params.luminance < 0) {
         clContextLog(C, "syntax", 1, "luminance  : source luminance (forced)");
     } else if (C->params.luminance) {
@@ -553,25 +568,33 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "        colorist generate                [output.icc]   [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist generate [image string] [output image] [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist report   [input]        [output.html]  [OPTIONS]");
-    clContextLog(C, NULL, 0, "Options:");
-    clContextLog(C, NULL, 0, "    -a             : Enable automatic color grading of max luminance and gamma (disabled by default)");
-    clContextLog(C, NULL, 0, "    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)");
-    clContextLog(C, NULL, 0, "    -c COPYRIGHT   : ICC profile copyright string.");
-    clContextLog(C, NULL, 0, "    -d DESCRIPTION : ICC profile description.");
-    clContextLog(C, NULL, 0, "    -f FORMAT      : Output format. auto (default), icc, j2k, jp2, jpg, png, webp");
-    clContextLog(C, NULL, 0, "    -g GAMMA       : Output gamma. 0 for auto (default), or \"source\" to force source gamma");
+    clContextLog(C, NULL, 0, "");
+    clContextLog(C, NULL, 0, "Basic Options:");
     clContextLog(C, NULL, 0, "    -h             : Display this help");
-    clContextLog(C, NULL, 0, "    -i file.icc    : Override source ICC profile. default is to use embedded profile (if any), or sRGB@300");
     clContextLog(C, NULL, 0, "    -j JOBS        : Number of jobs to use when working. 0 for as many as possible (default)");
-    clContextLog(C, NULL, 0, "    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default), or \"source\" to force source luminance");
-    clContextLog(C, NULL, 0, "    -p PRIMARIES   : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy");
-    clContextLog(C, NULL, 0, "    -q QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -r below). (default: 90)");
-    clContextLog(C, NULL, 0, "    -r RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)");
-    clContextLog(C, NULL, 0, "    -t TONEMAP     : Set tonemapping. auto (default), on, or off");
     clContextLog(C, NULL, 0, "    -v             : Verbose mode.");
     clContextLog(C, NULL, 0, "    -z x,y,w,h     : Pixels to dump in identify mode. x,y,w,h");
     clContextLog(C, NULL, 0, "");
-    clContextLog(C, NULL, 0, "See image string examples here: https://github.com/joedrago/colorist/blob/master/lib/src/image_string.c");
+    clContextLog(C, NULL, 0, "Input Options:");
+    clContextLog(C, NULL, 0, "    -i file.icc    : Override source ICC profile. default is to use embedded profile (if any), or sRGB@300");
+    clContextLog(C, NULL, 0, "");
+    clContextLog(C, NULL, 0, "Output Profile Options:");
+    clContextLog(C, NULL, 0, "    -o file.icc    : Override destination ICC profile. Disables all other output profile options");
+    clContextLog(C, NULL, 0, "    -a             : Enable automatic color grading of max luminance and gamma (disabled by default)");
+    clContextLog(C, NULL, 0, "    -c COPYRIGHT   : ICC profile copyright string.");
+    clContextLog(C, NULL, 0, "    -d DESCRIPTION : ICC profile description.");
+    clContextLog(C, NULL, 0, "    -g GAMMA       : Output gamma. 0 for auto (default), or \"source\" to force source gamma");
+    clContextLog(C, NULL, 0, "    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default), or \"source\" to force source luminance");
+    clContextLog(C, NULL, 0, "    -p PRIMARIES   : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy");
+    clContextLog(C, NULL, 0, "");
+    clContextLog(C, NULL, 0, "Output Format Options:");
+    clContextLog(C, NULL, 0, "    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)");
+    clContextLog(C, NULL, 0, "    -f FORMAT      : Output format. auto (default), icc, j2k, jp2, jpg, png, webp");
+    clContextLog(C, NULL, 0, "    -q QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -r below). (default: 90)");
+    clContextLog(C, NULL, 0, "    -r RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)");
+    clContextLog(C, NULL, 0, "    -t TONEMAP     : Set tonemapping. auto (default), on, or off");
+    clContextLog(C, NULL, 0, "");
+    clContextLog(C, NULL, 0, "See image string examples here: https://joedrago.github.io/colorist/docs/Usage.html");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "CPUs Available: %d", clTaskLimit());
     clContextLog(C, NULL, 0, "");

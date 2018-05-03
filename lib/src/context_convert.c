@@ -42,7 +42,7 @@ int clContextConvert(clContext * C)
 
     clContextLog(C, "decode", 0, "Reading: %s (%d bytes)", C->inputFilename, clFileSize(C->inputFilename));
     timerStart(&t);
-    srcImage = clContextRead(C, C->inputFilename, C->iccOverride, NULL);
+    srcImage = clContextRead(C, C->inputFilename, C->iccOverrideIn, NULL);
     if (srcImage == NULL) {
         return 1;
     }

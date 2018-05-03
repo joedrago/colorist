@@ -82,19 +82,20 @@ typedef struct clContextSystem
 
 typedef struct clConversionParams
 {
-    clBool autoGrade;         // -a
-    int bpp;                  // -b
-    const char * copyright;   // -c
-    const char * description; // -d
-    clFormat format;          // -f
-    float gamma;              // -g
-    int jobs;                 // -j
-    int luminance;            // -l
-    float primaries[8];       // -p
-    int quality;              // -q
-    int rate;                 // -r
-    clTonemap tonemap;        // -t
-    int rect[4];              // -z
+    clBool autoGrade;            // -a
+    int bpp;                     // -b
+    const char * copyright;      // -c
+    const char * description;    // -d
+    clFormat format;             // -f
+    float gamma;                 // -g
+    int jobs;                    // -j
+    int luminance;               // -l
+    const char * iccOverrideOut; // -o
+    float primaries[8];          // -p
+    int quality;                 // -q
+    int rate;                    // -r
+    clTonemap tonemap;           // -t
+    int rect[4];                 // -z
 } clConversionParams;
 
 void clConversionParamsSetDefaults(struct clContext * C, clConversionParams * params);
@@ -108,7 +109,7 @@ typedef struct clContext
     clAction action;
     clConversionParams params;   // see above
     clBool help;                 // -h
-    const char * iccOverride;    // -i
+    const char * iccOverrideIn;  // -i
     clBool verbose;              // -v
     const char * inputFilename;  // index 0
     const char * outputFilename; // index 1
