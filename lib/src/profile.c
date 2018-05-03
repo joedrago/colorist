@@ -372,7 +372,7 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
                         g = (float)_cms15Fixed16toDouble(clNTOHL(e));
                         memcpy(&e, &rawA2B0[matrixCurveOffset + 16], 4);
                         a = (float)_cms15Fixed16toDouble(clNTOHL(e));
-                        curve->matrixCurveScale = pow(a, g);
+                        curve->matrixCurveScale = powf(a, g);
                     }
                 }
                 clFree(rawA2B0);
