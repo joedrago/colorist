@@ -171,6 +171,19 @@ clBool clProfilePack(struct clContext * C, clProfile * profile, clRaw * out)
     return clTrue;
 }
 
+int clProfileSize(struct clContext * C, clProfile * profile)
+{
+    int ret;
+    clRaw raw;
+    memset(&raw, 0, sizeof(raw));
+    if (!clProfilePack(C, profile, &raw)) {
+        return 0;
+    }
+    ret = raw.size;
+    clRawFree(C, &raw);
+    return ret;
+}
+
 clProfile * clProfileRead(struct clContext * C, const char * filename)
 {
     clProfile * profile;
@@ -219,6 +232,31 @@ clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * fi
     }
     fclose(f);
     clRawFree(C, &rawProfile);
+    return clTrue;
+}
+
+clBool clProfileReload(struct clContext * C, clProfile * profile)
+{
+    clProfile * tmpProfile;
+    clRaw raw;
+    memset(&raw, 0, sizeof(raw));
+    if (!clProfilePack(C, profile, &raw)) {
+        return clFalse;
+    }
+    tmpProfile = clProfileParse(C, raw.ptr, raw.size, profile->description);
+    clRawFree(C, &raw);
+    if (!tmpProfile) {
+        return clFalse;
+    }
+
+    // swap contents (yuck!)
+    {
+        clProfile t;
+        memcpy(&t, profile, sizeof(clProfile));
+        memcpy(profile, tmpProfile, sizeof(clProfile));
+        memcpy(tmpProfile, &t, sizeof(clProfile));
+    }
+    clProfileDestroy(C, tmpProfile);
     return clTrue;
 }
 
@@ -429,6 +467,33 @@ clBool clProfileSetMLU(struct clContext * C, clProfile * profile, const char tag
     cmsWriteTag(profile->handle, tagSignature, mlu);
     cmsMLUfree(mlu);
     return clTrue;
+}
+
+clBool clProfileSetGamma(struct clContext * C, clProfile * profile, float gamma)
+{
+    cmsToneCurve * gammaCurve = cmsBuildGamma(C->lcms, gamma);
+
+    if (!cmsWriteTag(profile->handle, cmsSigRedTRCTag, (void *)gammaCurve)) {
+        goto cleanup;
+    }
+    if (!cmsLinkTag(profile->handle, cmsSigGreenTRCTag, cmsSigRedTRCTag)) {
+        goto cleanup;
+    }
+    if (!cmsLinkTag(profile->handle, cmsSigBlueTRCTag, cmsSigRedTRCTag)) {
+        goto cleanup;
+    }
+cleanup:
+    cmsFreeToneCurve(gammaCurve);
+    return clTrue;
+}
+
+clBool clProfileSetLuminance(struct clContext * C, clProfile * profile, int luminance)
+{
+    cmsCIEXYZ lumi;
+    lumi.X = 0.0f;
+    lumi.Y = (cmsFloat64Number)luminance;
+    lumi.Z = 0.0f;
+    return (cmsWriteTag(profile->handle, cmsSigLuminanceTag, &lumi)) ? clTrue : clFalse;
 }
 
 char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance)

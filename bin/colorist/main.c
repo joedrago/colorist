@@ -45,6 +45,9 @@ int main(int argc, char * argv[])
         case CL_ACTION_IDENTIFY:
             ret = clContextIdentify(C);
             break;
+        case CL_ACTION_MODIFY:
+            ret = clContextModify(C);
+            break;
         case CL_ACTION_REPORT:
             ret = clContextReport(C);
             break;

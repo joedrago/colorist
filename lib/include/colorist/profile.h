@@ -55,12 +55,16 @@ clProfile * clProfileClone(struct clContext * C, clProfile * profile);
 clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance, const char * description);
 clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, int iccLen, const char * description);
 clProfile * clProfileRead(struct clContext * C, const char * filename);
+clBool clProfileReload(struct clContext * C, clProfile * profile);
 clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * filename);
 clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries, clProfileCurve * curve, int * maxLuminance);
 char * clProfileGetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3]);
 clBool clProfileSetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3], const char * ascii);
 clBool clProfilePack(struct clContext * C, clProfile * profile, struct clRaw * out);
-void clProfileDebugDump(struct clContext * C, clProfile * profile, int extraIndent);
+clBool clProfileSetGamma(struct clContext * C, clProfile * profile, float gamma);
+clBool clProfileSetLuminance(struct clContext * C, clProfile * profile, int luminance);
+int clProfileSize(struct clContext * C, clProfile * profile);
+void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTags, int extraIndent);
 void clProfileDestroy(struct clContext * C, clProfile * profile);
 
 // TODO: this needs a better name

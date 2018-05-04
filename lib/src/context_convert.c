@@ -57,7 +57,7 @@ int clContextConvert(clContext * C)
         // Just dump out the profile to disk and bail out
 
         clContextLog(C, "encode", 0, "Writing ICC: %s", C->outputFilename);
-        clProfileDebugDump(C, srcImage->profile, 0);
+        clProfileDebugDump(C, srcImage->profile, C->verbose, 0);
 
         if (!clProfileWrite(C, srcImage->profile, C->outputFilename)) {
             FAIL();

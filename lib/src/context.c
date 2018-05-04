@@ -39,6 +39,7 @@ clAction clActionFromString(struct clContext * C, const char * str)
     if (!strcmp(str, "generate")) return CL_ACTION_GENERATE;
     if (!strcmp(str, "gen")) return CL_ACTION_GENERATE;
     if (!strcmp(str, "convert")) return CL_ACTION_CONVERT;
+    if (!strcmp(str, "modify")) return CL_ACTION_MODIFY;
     if (!strcmp(str, "report")) return CL_ACTION_REPORT;
     return CL_ACTION_ERROR;
 }
@@ -50,6 +51,7 @@ const char * clActionToString(struct clContext * C, clAction action)
         case CL_ACTION_IDENTIFY: return "identify";
         case CL_ACTION_GENERATE: return "generate";
         case CL_ACTION_CONVERT:  return "convert";
+        case CL_ACTION_MODIFY:   return "modify";
         case CL_ACTION_REPORT:   return "report";
         case CL_ACTION_ERROR:
         default:
@@ -174,6 +176,7 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->rect[1] = 0;
     params->rect[2] = -1;
     params->rect[3] = -1;
+    params->stripTags = NULL;
     params->tonemap = CL_TONEMAP_AUTO;
 }
 
@@ -411,6 +414,10 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
                     NEXTARG();
                     C->params.rate = atoi(arg);
                     break;
+                case 's':
+                    NEXTARG();
+                    C->params.stripTags = arg;
+                    break;
                 case 't':
                     NEXTARG();
                     C->params.tonemap = clTonemapFromString(C, arg);
@@ -478,6 +485,19 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
             C->outputFilename = filenames[1];
             if (!C->outputFilename) {
                 clContextLogError(C, "convert requires an output filename.");
+                return clFalse;
+            }
+            break;
+
+        case CL_ACTION_MODIFY:
+            C->inputFilename = filenames[0];
+            if (!C->inputFilename) {
+                clContextLogError(C, "modify requires an input filename.");
+                return clFalse;
+            }
+            C->outputFilename = filenames[1];
+            if (!C->outputFilename) {
+                clContextLogError(C, "modify requires an output filename.");
                 return clFalse;
             }
             break;
@@ -555,10 +575,12 @@ void clContextPrintArgs(clContext * C)
     else
         clContextLog(C, "syntax", 1, "primaries  : auto");
     clContextLog(C, "syntax", 1, "rect       : (%d,%d) %dx%d", C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3]);
+    clContextLog(C, "syntax", 1, "stripTags  : %s", C->params.stripTags ? C->params.stripTags : "--");
     clContextLog(C, "syntax", 1, "tonemap    : %s", clTonemapToString(C, C->params.tonemap));
     clContextLog(C, "syntax", 1, "verbose    : %s", C->verbose ? "enabled" : "disabled");
     clContextLog(C, "syntax", 1, "input      : %s", C->inputFilename ? C->inputFilename : "--");
     clContextLog(C, "syntax", 1, "output     : %s", C->outputFilename ? C->outputFilename : "--");
+    clContextLog(C, NULL, 0, "");
 }
 
 void clContextPrintSyntax(clContext * C)
@@ -567,6 +589,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "        colorist identify [input]                       [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist generate                [output.icc]   [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist generate [image string] [output image] [OPTIONS]");
+    clContextLog(C, NULL, 0, "        colorist modify   [input.icc]    [output.icc]   [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist report   [input]        [output.html]  [OPTIONS]");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Basic Options:");
@@ -593,6 +616,9 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -q QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -r below). (default: 90)");
     clContextLog(C, NULL, 0, "    -r RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)");
     clContextLog(C, NULL, 0, "    -t TONEMAP     : Set tonemapping. auto (default), on, or off");
+    clContextLog(C, NULL, 0, "");
+    clContextLog(C, NULL, 0, "Modify Options:");
+    clContextLog(C, NULL, 0, "    -s TAG,...     : Strips ICC tags from profile");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "See image string examples here: https://joedrago.github.io/colorist/docs/Usage.html");
     clContextLog(C, NULL, 0, "");

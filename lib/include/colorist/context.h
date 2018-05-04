@@ -25,6 +25,7 @@ typedef enum clAction
     CL_ACTION_CONVERT,
     CL_ACTION_GENERATE,
     CL_ACTION_IDENTIFY,
+    CL_ACTION_MODIFY,
     CL_ACTION_REPORT,
 
     CL_ACTION_ERROR
@@ -94,6 +95,7 @@ typedef struct clConversionParams
     float primaries[8];          // -p
     int quality;                 // -q
     int rate;                    // -r
+    const char * stripTags;      // -s
     clTonemap tonemap;           // -t
     int rect[4];                 // -z
 } clConversionParams;
@@ -144,6 +146,7 @@ clBool clContextGetRawStockPrimaries(struct clContext * C, const char * name, fl
 int clContextConvert(clContext * C);
 int clContextGenerate(clContext * C);
 int clContextIdentify(clContext * C);
+int clContextModify(clContext * C);
 int clContextReport(clContext * C);
 
 #define TIMING_FORMAT "--> %g sec"

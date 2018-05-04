@@ -29,7 +29,7 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
     dumpEndH = (dumpEndH < image->height) ? dumpEndH : image->height;
 
     clContextLog(C, "image", 0 + extraIndent, "Image: %dx%d %d-bit", image->width, image->height, image->depth);
-    clProfileDebugDump(C, image->profile, 1 + extraIndent);
+    clProfileDebugDump(C, image->profile, C->verbose, 1 + extraIndent);
     if (((dumpEndW - x) > 0) && ((dumpEndH - y) > 0)) {
         clContextLog(C, "image", 1 + extraIndent, "Pixels:");
     }

@@ -27,7 +27,7 @@ int clContextIdentify(clContext * C)
         clProfile * profile = clProfileRead(C, C->inputFilename);
         if (profile) {
             clContextLog(C, "identify", 1, "Format: %s", clFormatToString(C, format));
-            clProfileDebugDump(C, profile, 1);
+            clProfileDebugDump(C, profile, C->verbose, 1);
             clProfileDestroy(C, profile);
         }
     } else {

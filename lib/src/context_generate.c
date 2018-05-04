@@ -122,7 +122,7 @@ int clContextGenerate(clContext * C)
         }
     } else {
         clContextLog(C, "generate", 0, "Writing ICC: %s", C->outputFilename);
-        clProfileDebugDump(C, dstProfile, 0);
+        clProfileDebugDump(C, dstProfile, C->verbose, 0);
         if (!clProfileWrite(C, dstProfile, C->outputFilename)) {
             clProfileDestroy(C, dstProfile);
             return 1;
