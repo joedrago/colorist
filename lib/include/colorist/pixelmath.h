@@ -8,6 +8,7 @@
 #ifndef COLORIST_PIXELMATH_H
 #define COLORIST_PIXELMATH_H
 
+#include "colorist/context.h"
 #include "colorist/types.h"
 
 struct clContext;
@@ -17,5 +18,6 @@ void clPixelMathUNormToFloat(struct clContext * C, uint8_t * inPixels, int inDep
 void clPixelMathFloatToUNorm(struct clContext * C, float * inPixels, uint8_t * outPixels, int outDepth, int pixelCount);
 void clPixelMathScaleLuminance(struct clContext * C, float * pixels, int pixelCount, float luminanceScale, clBool tonemap);
 void clPixelMathColorGrade(struct clContext * C, int taskCount, float * pixels, int pixelCount, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose);
+void clPixelMathResize(struct clContext * C, int srcW, int srcH, float * srcPixels, int dstW, int dstH, float * dstPixels, clFilter filter);
 
 #endif

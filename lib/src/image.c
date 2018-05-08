@@ -12,8 +12,6 @@
 
 #include <string.h>
 
-static int depthToBytes(clContext * C, int depth);
-
 clImage * clImageCreate(clContext * C, int width, int height, int depth, clProfile * profile)
 {
     clImage * image = clAllocateStruct(clImage);
@@ -26,7 +24,7 @@ clImage * clImageCreate(clContext * C, int width, int height, int depth, clProfi
     image->width = width;
     image->height = height;
     image->depth = depth;
-    image->size = 4 * image->width * image->height * depthToBytes(C, image->depth);
+    image->size = 4 * image->width * image->height * clDepthToBytes(C, image->depth);
     image->pixels = (uint8_t *)clAllocate(image->size);
     memset(image->pixels, 0xff, image->size);
     return image;
@@ -45,7 +43,7 @@ clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, in
         return NULL;
     }
 
-    depthBytes = depthToBytes(C, srcImage->depth);
+    depthBytes = clDepthToBytes(C, srcImage->depth);
     dstImage = clImageCreate(C, w, h, srcImage->depth, srcImage->profile);
     for (j = 0; j < h; ++j) {
         for (i = 0; i < w; ++i) {
@@ -106,7 +104,7 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
 {
     clImage * rotated;
     int i, j;
-    int pixelBytes = depthToBytes(C, image->depth) * 4;
+    int pixelBytes = clDepthToBytes(C, image->depth) * 4;
     switch (cwTurns) {
         case 0: // Not rotated
             rotated = clImageCreate(C, image->width, image->height, image->depth, image->profile);
@@ -155,7 +153,7 @@ void clImageDestroy(clContext * C, clImage * image)
     clFree(image);
 }
 
-static int depthToBytes(clContext * C, int depth)
+int clDepthToBytes(clContext * C, int depth)
 {
     switch (depth) {
         case 8: return 1;

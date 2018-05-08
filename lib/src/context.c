@@ -176,6 +176,9 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->rect[1] = 0;
     params->rect[2] = -1;
     params->rect[3] = -1;
+    params->resizeW = 0;
+    params->resizeH = 0;
+    params->resizeFilter = CL_FILTER_BILINEAR;
     params->stripTags = NULL;
     params->tonemap = CL_TONEMAP_AUTO;
 }
@@ -323,6 +326,42 @@ static clBool parseRect(clContext * C, int rect[4], const char * arg)
         clContextLogError(C, "Too few values for rect: (expecting: x,y,w,h)");
         return clFalse;
     }
+    clFree(buffer);
+    return clTrue;
+}
+
+static clBool parseResize(clContext * C, clConversionParams * params, const char * arg)
+{
+    static const char * delims = ",x";
+    char * buffer;
+    char * token;
+    clBool gotWidth = clFalse;
+    clBool gotHeight = clFalse;
+    buffer = clContextStrdup(C, arg);
+    for (token = strtok(buffer, delims); token != NULL; token = strtok(NULL, delims)) {
+        if (!strcmp(token, "nearest")) {
+            params->resizeFilter = CL_FILTER_NEAREST;
+            continue;
+        }
+        if (!strcmp(token, "bilinear")) {
+            params->resizeFilter = CL_FILTER_BILINEAR;
+            continue;
+        }
+        if (!gotWidth) {
+            gotWidth = clTrue;
+            params->resizeW = atoi(token);
+            continue;
+        }
+        if (!gotHeight) {
+            gotHeight = clTrue;
+            params->resizeH = atoi(token);
+            continue;
+        }
+
+        clContextLogError(C, "Too many parameters for --resize");
+        return clFalse;
+    }
+    clFree(buffer);
     return clTrue;
 }
 
@@ -396,6 +435,10 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
             } else if (!strcmp(arg, "-q") || !strcmp(arg, "--quality")) {
                 NEXTARG();
                 C->params.quality = atoi(arg);
+            } else if (!strcmp(arg, "-r") || !strcmp(arg, "--resize")) {
+                NEXTARG();
+                if (!parseResize(C, &C->params, arg))
+                    return clFalse;
             } else if (!strcmp(arg, "-s") || !strcmp(arg, "--striptags")) {
                 NEXTARG();
                 C->params.stripTags = arg;
@@ -526,44 +569,47 @@ static clBool validateArgs(clContext * C)
 void clContextPrintArgs(clContext * C)
 {
     clContextLog(C, "syntax", 0, "Args:");
-    clContextLog(C, "syntax", 1, "Action     : %s", clActionToString(C, C->action));
+    clContextLog(C, "syntax", 1, "Action      : %s", clActionToString(C, C->action));
     if (C->params.bpp)
-        clContextLog(C, "syntax", 1, "bpp        : %d", C->params.bpp);
+        clContextLog(C, "syntax", 1, "bpp         : %d", C->params.bpp);
     else
-        clContextLog(C, "syntax", 1, "bpp        : auto");
-    clContextLog(C, "syntax", 1, "copyright  : %s", C->params.copyright ? C->params.copyright : "--");
-    clContextLog(C, "syntax", 1, "description: %s", C->params.description ? C->params.description : "--");
-    clContextLog(C, "syntax", 1, "format     : %s", clFormatToString(C, C->params.format));
+        clContextLog(C, "syntax", 1, "bpp         : auto");
+    clContextLog(C, "syntax", 1, "copyright   : %s", C->params.copyright ? C->params.copyright : "--");
+    clContextLog(C, "syntax", 1, "description : %s", C->params.description ? C->params.description : "--");
+    clContextLog(C, "syntax", 1, "format      : %s", clFormatToString(C, C->params.format));
     if (C->params.gamma < 0.0f) {
-        clContextLog(C, "syntax", 1, "gamma      : source gamma (forced)");
+        clContextLog(C, "syntax", 1, "gamma       : source gamma (forced)");
     } else if (C->params.gamma > 0.0f)
-        clContextLog(C, "syntax", 1, "gamma      : %g", C->params.gamma);
+        clContextLog(C, "syntax", 1, "gamma       : %g", C->params.gamma);
     else
-        clContextLog(C, "syntax", 1, "gamma      : auto");
-    clContextLog(C, "syntax", 1, "help       : %s", C->help ? "enabled" : "disabled");
-    clContextLog(C, "syntax", 1, "ICC in     : %s", C->iccOverrideIn ? C->iccOverrideIn : "--");
-    clContextLog(C, "syntax", 1, "ICC out    : %s", C->params.iccOverrideOut ? C->params.iccOverrideOut : "--");
+        clContextLog(C, "syntax", 1, "gamma       : auto");
+    clContextLog(C, "syntax", 1, "help        : %s", C->help ? "enabled" : "disabled");
+    clContextLog(C, "syntax", 1, "ICC in      : %s", C->iccOverrideIn ? C->iccOverrideIn : "--");
+    clContextLog(C, "syntax", 1, "ICC out     : %s", C->params.iccOverrideOut ? C->params.iccOverrideOut : "--");
     if (C->params.luminance < 0) {
-        clContextLog(C, "syntax", 1, "luminance  : source luminance (forced)");
+        clContextLog(C, "syntax", 1, "luminance   : source luminance (forced)");
     } else if (C->params.luminance) {
-        clContextLog(C, "syntax", 1, "luminance  : %d", C->params.luminance);
+        clContextLog(C, "syntax", 1, "luminance   : %d", C->params.luminance);
     } else {
-        clContextLog(C, "syntax", 1, "luminance  : auto");
+        clContextLog(C, "syntax", 1, "luminance   : auto");
     }
     if (C->params.primaries[0] > 0.0f)
-        clContextLog(C, "syntax", 1, "primaries  : r:(%.4g,%.4g) g:(%.4g,%.4g) b:(%.4g,%.4g) w:(%.4g,%.4g)",
+        clContextLog(C, "syntax", 1, "primaries   : r:(%.4g,%.4g) g:(%.4g,%.4g) b:(%.4g,%.4g) w:(%.4g,%.4g)",
             C->params.primaries[0], C->params.primaries[1],
             C->params.primaries[2], C->params.primaries[3],
             C->params.primaries[4], C->params.primaries[5],
             C->params.primaries[6], C->params.primaries[7]);
     else
-        clContextLog(C, "syntax", 1, "primaries  : auto");
-    clContextLog(C, "syntax", 1, "rect       : (%d,%d) %dx%d", C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3]);
-    clContextLog(C, "syntax", 1, "stripTags  : %s", C->params.stripTags ? C->params.stripTags : "--");
-    clContextLog(C, "syntax", 1, "tonemap    : %s", clTonemapToString(C, C->params.tonemap));
-    clContextLog(C, "syntax", 1, "verbose    : %s", C->verbose ? "enabled" : "disabled");
-    clContextLog(C, "syntax", 1, "input      : %s", C->inputFilename ? C->inputFilename : "--");
-    clContextLog(C, "syntax", 1, "output     : %s", C->outputFilename ? C->outputFilename : "--");
+        clContextLog(C, "syntax", 1, "primaries   : auto");
+    clContextLog(C, "syntax", 1, "resizeW     : %d", C->params.resizeW);
+    clContextLog(C, "syntax", 1, "resizeH     : %d", C->params.resizeH);
+    clContextLog(C, "syntax", 1, "resizeFilter: %s", (C->params.resizeFilter == CL_FILTER_BILINEAR) ? "bilinear" : "nearest");
+    clContextLog(C, "syntax", 1, "rect        : (%d,%d) %dx%d", C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3]);
+    clContextLog(C, "syntax", 1, "stripTags   : %s", C->params.stripTags ? C->params.stripTags : "--");
+    clContextLog(C, "syntax", 1, "tonemap     : %s", clTonemapToString(C, C->params.tonemap));
+    clContextLog(C, "syntax", 1, "verbose     : %s", C->verbose ? "enabled" : "disabled");
+    clContextLog(C, "syntax", 1, "input       : %s", C->inputFilename ? C->inputFilename : "--");
+    clContextLog(C, "syntax", 1, "output      : %s", C->outputFilename ? C->outputFilename : "--");
     clContextLog(C, NULL, 0, "");
 }
 
@@ -601,6 +647,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Convert Options:");
+    clContextLog(C, NULL, 0, "    -r,--resize w,h,filter   : Resize dst image to WxH. Use optional filter (nearest, bilinear (default))");
     clContextLog(C, NULL, 0, "    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Identify Options:");

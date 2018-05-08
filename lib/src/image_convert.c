@@ -41,6 +41,11 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     float luminanceScale = 0.0f;
     clBool tonemap = clFalse;
 
+    // Variables used for resizing
+    int dstWidth = 0;
+    int dstHeight = 0;
+    clBool resizing = clFalse;
+
     // Parse source image and args for early pipeline decisions
     {
         clProfileCurve curve;
@@ -95,6 +100,27 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
                 dstLuminance = srcLuminance;
             }
         }
+
+        if ((params->resizeW > 0) || (params->resizeH > 0)) {
+            if (params->resizeW <= 0) {
+                dstWidth = (int)(((float)srcImage->width / (float)srcImage->height) * params->resizeH);
+                dstHeight = params->resizeH;
+            } else if (params->resizeH <= 0) {
+                dstWidth = params->resizeW;
+                dstHeight = (int)(((float)srcImage->height / (float)srcImage->width) * params->resizeW);
+            } else {
+                dstWidth = params->resizeW;
+                dstHeight = params->resizeH;
+            }
+            if (dstWidth <= 0)
+                dstWidth = 1;
+            if (dstHeight <= 0)
+                dstHeight = 1;
+        } else {
+            dstWidth = srcImage->width;
+            dstHeight = srcImage->height;
+        }
+        resizing = ((dstWidth != srcImage->width) || (dstHeight != srcImage->height)) ? clTrue : clFalse;
     }
 
     // Load output profile override, if any
@@ -115,7 +141,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     }
 
     // Create intermediate 1.0 gamma float32 pixel array if we're going to need it later.
-    if ((srcLuminance != dstLuminance)) {
+    if ((srcLuminance != dstLuminance) || resizing) {
         cmsHTRANSFORM toLinear;
         float * srcFloats; // original values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
 
@@ -228,8 +254,20 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         }
     }
 
+    if (resizing) {
+        int resizedPixelsCount = dstWidth * dstHeight;
+        float * resizedPixels = clAllocate(4 * sizeof(float) * resizedPixelsCount);
+        clContextLog(C, "resize", 0, "Resizing %dx%d -> %dx%d", srcImage->width, srcImage->height, dstWidth, dstHeight);
+        timerStart(&t);
+        clPixelMathResize(C, srcImage->width, srcImage->height, linearPixels, dstWidth, dstHeight, resizedPixels, params->resizeFilter);
+        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+        clFree(linearPixels);
+        linearPixels = resizedPixels;
+        linearPixelsCount = resizedPixelsCount;
+    }
+
     // Create dstImage
-    dstImage = clImageCreate(C, srcImage->width, srcImage->height, dstDepth, dstProfile);
+    dstImage = clImageCreate(C, dstWidth, dstHeight, dstDepth, dstProfile);
 
     // Show image details
     {
@@ -256,10 +294,12 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
             cmsHTRANSFORM fromLinear = cmsCreateTransformTHR(C->lcms, dstLinear->handle, TYPE_RGBA_FLT, dstImage->profile->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
             float * dstFloats; // final values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
 
-            clContextLog(C, "luminance", 0, "Scaling luminance (%gx, %s)...", luminanceScale, tonemap ? "tonemap" : "clip");
-            timerStart(&t);
-            clPixelMathScaleLuminance(C, linearPixels, linearPixelsCount, luminanceScale, tonemap);
-            clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+            if (srcLuminance != dstLuminance) {
+                clContextLog(C, "luminance", 0, "Scaling luminance (%gx, %s)...", luminanceScale, tonemap ? "tonemap" : "clip");
+                timerStart(&t);
+                clPixelMathScaleLuminance(C, linearPixels, linearPixelsCount, luminanceScale, tonemap);
+                clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+            }
 
             clContextLog(C, "convert", 0, "Calculating final pixel values...");
             timerStart(&t);

@@ -9,9 +9,8 @@
 #define COLORIST_IMAGE_H
 
 #include "colorist/types.h"
+#include "colorist/context.h"
 
-struct clContext;
-struct clConversionParams;
 struct clProfile;
 struct clRaw;
 
@@ -49,5 +48,7 @@ clImage * clImageReadWebP(struct clContext * C, const char * filename);
 clBool clImageWriteWebP(struct clContext * C, clImage * image, const char * filename, int quality);
 
 clImage * clImageParseString(struct clContext * C, const char * str, int depth, struct clProfile * profile);
+
+int clDepthToBytes(clContext * C, int depth);
 
 #endif // ifndef COLORIST_IMAGE_H

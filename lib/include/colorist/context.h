@@ -62,6 +62,12 @@ typedef enum clTonemap
 clTonemap clTonemapFromString(struct clContext * C, const char * str);
 const char * clTonemapToString(struct clContext * C, clTonemap tonemap);
 
+typedef enum clFilter
+{
+    CL_FILTER_BILINEAR = 0,
+    CL_FILTER_NEAREST
+} clFilter;
+
 typedef void *(* clContextAllocFunc)(struct clContext * C, int bytes); // C will be NULL when allocating the clContext itself
 typedef void (* clContextFreeFunc)(struct clContext * C, void * ptr);
 typedef void (* clContextLogFunc)(struct clContext * C, const char * section, int indent, const char * format, va_list args);
@@ -94,6 +100,9 @@ typedef struct clConversionParams
     const char * iccOverrideOut; // -o
     float primaries[8];          // -p
     int quality;                 // -q
+    int resizeW;                 // -r
+    int resizeH;                 // -r
+    clFilter resizeFilter;       // -r
     const char * stripTags;      // -s
     clTonemap tonemap;           // -t
     int rect[4];                 // -z
