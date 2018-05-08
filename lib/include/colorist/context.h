@@ -94,10 +94,10 @@ typedef struct clConversionParams
     const char * iccOverrideOut; // -o
     float primaries[8];          // -p
     int quality;                 // -q
-    int rate;                    // -r
     const char * stripTags;      // -s
     clTonemap tonemap;           // -t
     int rect[4];                 // -z
+    int jp2rate;                 // -2
 } clConversionParams;
 
 void clConversionParamsSetDefaults(struct clContext * C, clConversionParams * params);

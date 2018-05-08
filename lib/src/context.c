@@ -170,8 +170,8 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->format = CL_FORMAT_AUTO;
     params->jobs = clTaskLimit();
     params->iccOverrideOut = NULL;
-    params->quality = 90; // ?
-    params->rate = 150;   // ?
+    params->quality = 90;  // ?
+    params->jp2rate = 150; // ?
     params->rect[0] = 0;
     params->rect[1] = 0;
     params->rect[2] = -1;
@@ -410,10 +410,6 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
                     NEXTARG();
                     C->params.quality = atoi(arg);
                     break;
-                case 'r':
-                    NEXTARG();
-                    C->params.rate = atoi(arg);
-                    break;
                 case 's':
                     NEXTARG();
                     C->params.stripTags = arg;
@@ -429,6 +425,10 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
                     NEXTARG();
                     if (!parseRect(C, C->params.rect, arg))
                         return clFalse;
+                    break;
+                case '2':
+                    NEXTARG();
+                    C->params.jp2rate = atoi(arg);
                     break;
             }
         } else {
@@ -614,7 +614,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)");
     clContextLog(C, NULL, 0, "    -f FORMAT      : Output format. auto (default), icc, j2k, jp2, jpg, png, webp");
     clContextLog(C, NULL, 0, "    -q QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -r below). (default: 90)");
-    clContextLog(C, NULL, 0, "    -r RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)");
+    clContextLog(C, NULL, 0, "    -2 RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)");
     clContextLog(C, NULL, 0, "    -t TONEMAP     : Set tonemapping. auto (default), on, or off");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Modify Options:");

@@ -48,9 +48,9 @@ int clContextConvert(clContext * C)
     }
     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
 
-    if ((params.format == CL_FORMAT_JP2) && (params.rate > 0)) {
-        int estimatedFileSizeKB = (8 + ((srcImage->width * srcImage->height * ((srcImage->depth == 16) ? 8 : 4)) / params.rate)) / 1024;
-        clContextLog(C, "estimate", 0, "JP2 [R:%d] estimated filesize: %d KB", params.rate, estimatedFileSizeKB);
+    if ((params.format == CL_FORMAT_JP2) && (params.jp2rate > 0)) {
+        int estimatedFileSizeKB = (8 + ((srcImage->width * srcImage->height * ((srcImage->depth == 16) ? 8 : 4)) / params.jp2rate)) / 1024;
+        clContextLog(C, "estimate", 0, "JP2 [R:%d] estimated filesize: %d KB", params.jp2rate, estimatedFileSizeKB);
     }
 
     if (params.format == CL_FORMAT_ICC) {
@@ -72,7 +72,7 @@ int clContextConvert(clContext * C)
 
     switch (params.format) {
         case CL_FORMAT_JP2:
-            clContextLog(C, "encode", 0, "Writing JP2 [%s:%d]: %s", (params.rate) ? "R" : "Q", (params.rate) ? params.rate : params.quality, C->outputFilename);
+            clContextLog(C, "encode", 0, "Writing JP2 [%s:%d]: %s", (params.jp2rate) ? "R" : "Q", (params.jp2rate) ? params.jp2rate : params.quality, C->outputFilename);
             break;
         case CL_FORMAT_JPG:
             clContextLog(C, "encode", 0, "Writing JPG [Q:%d]: %s", params.quality, C->outputFilename);
@@ -85,7 +85,7 @@ int clContextConvert(clContext * C)
             break;
     }
     timerStart(&t);
-    if (!clContextWrite(C, dstImage, C->outputFilename, params.format, params.quality, params.rate)) {
+    if (!clContextWrite(C, dstImage, C->outputFilename, params.format, params.quality, params.jp2rate)) {
         FAIL();
     }
     clContextLog(C, "encode", 1, "Wrote %d bytes.", clFileSize(C->outputFilename));

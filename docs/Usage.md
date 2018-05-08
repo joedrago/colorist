@@ -5,22 +5,36 @@ Syntax: colorist convert  [input]        [output]       [OPTIONS]
         colorist identify [input]                       [OPTIONS]
         colorist generate                [output.icc]   [OPTIONS]
         colorist generate [image string] [output image] [OPTIONS]
-Options:
-    -a             : Enable automatic color grading of max luminance and gamma (disabled by default)
-    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)
-    -c COPYRIGHT   : ICC profile copyright string.
-    -d DESCRIPTION : ICC profile description.
-    -f FORMAT      : Output format. auto (default), icc, jp2, jpg, png, webp
-    -g GAMMA       : Output gamma. 0 for auto (default), or "source" to force source gamma
+        colorist modify   [input.icc]    [output.icc]   [OPTIONS]
+        colorist report   [input]        [output.html]  [OPTIONS]
+
+Basic Options:
     -h             : Display this help
     -j JOBS        : Number of jobs to use when working. 0 for as many as possible (default)
-    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default), or "source" to force source luminance
-    -p PRIMARIES   : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy
-    -q QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -r below). (default: 90)
-    -r RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)
-    -t TONEMAP     : Set tonemapping. auto (default), on, or off
     -v             : Verbose mode.
     -z x,y,w,h     : Pixels to dump in identify mode. x,y,w,h
+
+Input Options:
+    -i file.icc    : Override source ICC profile. default is to use embedded profile (if any), or sRGB@300
+
+Output Profile Options:
+    -o file.icc    : Override destination ICC profile. Disables all other output profile options
+    -a             : Enable automatic color grading of max luminance and gamma (disabled by default)
+    -c COPYRIGHT   : ICC profile copyright string.
+    -d DESCRIPTION : ICC profile description.
+    -g GAMMA       : Output gamma. 0 for auto (default), or "source" to force source gamma
+    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default), or "source" to force source luminance
+    -p PRIMARIES   : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy
+
+Output Format Options:
+    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)
+    -f FORMAT      : Output format. auto (default), icc, j2k, jp2, jpg, png, webp
+    -q QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -r below). (default: 90)
+    -2 RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)
+    -t TONEMAP     : Set tonemapping. auto (default), on, or off
+
+Modify Options:
+    -s TAG,...     : Strips ICC tags from profile
 ```
 
 ---
@@ -112,7 +126,7 @@ Choose a lossy quality (0-100) for any output file format that supports it
 (JPG, JP2 if not using `-r`, WebP). The lower the value, the lower the file
 size and quality. For WebP and JP2 (without `-r`), 100 is lossless.
 
-### -r RATE
+### -2 RATE
 
 Choose a "rate" for JP2 output compression. This effectively puts a hard
 ceiling on the size of the output JP2 file, and can be treated as a divisor on
