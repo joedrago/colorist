@@ -28,8 +28,8 @@ typedef struct clImage
 clImage * clImageCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
 clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns);
 clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConversionParams * params);
-void clImageResize(struct clContext * C, clImage * image, int width, int height, int depth);
-void clImageChangeDepth(struct clContext * C, clImage * image, int depth);
+clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, int w, int h, clBool keepSrc);
+clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y, int * w, int * h);
 void clImageSetPixel(struct clContext * C, clImage * image, int x, int y, int r, int g, int b, int a);
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent);
 void clImageDestroy(struct clContext * C, clImage * image);

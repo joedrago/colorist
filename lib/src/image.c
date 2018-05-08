@@ -23,60 +23,63 @@ clImage * clImageCreate(clContext * C, int width, int height, int depth, clProfi
     } else {
         image->profile = clProfileCreateStock(C, CL_PS_SRGB);
     }
-    clImageResize(C, image, width, height, depth);
-    return image;
-}
-
-void clImageResize(clContext * C, clImage * image, int width, int height, int depth)
-{
-    uint8_t * prevPixels = NULL;
-    if ((image->width == width) && (image->height == height) && (image->depth == depth)) {
-        return;
-    }
-
-    if (image->pixels) {
-        if ((image->width != width) || (image->height != height)) {
-            COLORIST_WARNING("Image resize is unsupported, throwing out pixel data");
-            clFree(image->pixels);
-            image->pixels = NULL;
-        } else {
-            prevPixels = image->pixels;
-        }
-    }
-
     image->width = width;
     image->height = height;
     image->depth = depth;
     image->size = 4 * image->width * image->height * depthToBytes(C, image->depth);
     image->pixels = (uint8_t *)clAllocate(image->size);
-
-    if (prevPixels) {
-        // If we get here, we're trying to depth shift
-        const int channelCount = 4 * image->width * image->height;
-        int i;
-        if (image->depth == 16) {
-            uint8_t * src = prevPixels;
-            uint16_t * dst = (uint16_t *)image->pixels;
-            for (i = 0; i < channelCount; ++i) {
-                dst[i] = (uint16_t)((float)src[i] / 255.0f * 65535.0f);
-            }
-        } else {
-            uint16_t * src = (uint16_t *)prevPixels;
-            uint8_t * dst = image->pixels;
-            COLORIST_ASSERT(image->depth == 8);
-            for (i = 0; i < channelCount; ++i) {
-                dst[i] = src[i] >> 8;
-            }
-        }
-        clFree(prevPixels);
-    } else {
-        memset(image->pixels, 0xff, image->size);
-    }
+    memset(image->pixels, 0xff, image->size);
+    return image;
 }
 
-void clImageChangeDepth(clContext * C, clImage * image, int depth)
+clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, int w, int h, clBool keepSrc)
 {
-    clImageResize(C, image, image->width, image->height, depth);
+    clImage * dstImage = NULL;
+    int depthBytes;
+    int i, j;
+
+    if (!srcImage) {
+        return NULL;
+    }
+    if (!clImageAdjustRect(C, srcImage, &x, &y, &w, &h)) {
+        return NULL;
+    }
+
+    depthBytes = depthToBytes(C, srcImage->depth);
+    dstImage = clImageCreate(C, w, h, srcImage->depth, srcImage->profile);
+    for (j = 0; j < h; ++j) {
+        for (i = 0; i < w; ++i) {
+            uint8_t * src = &srcImage->pixels[4 * depthBytes * ((i + x) + (srcImage->width * (j + y)))];
+            uint8_t * dst = &dstImage->pixels[4 * depthBytes * (i + (dstImage->width * j))];
+            memcpy(dst, src, depthBytes * 4);
+        }
+    }
+
+    if (!keepSrc) {
+        clImageDestroy(C, srcImage);
+    }
+    return dstImage;
+}
+
+clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y, int * w, int * h)
+{
+    int endX, endY;
+
+    if ((*x < 0) || (*y < 0) || (*w <= 0) || (*h <= 0)) {
+        return clFalse;
+    }
+
+    *x = (*x < image->width) ? *x : image->width - 1;
+    *y = (*y < image->height) ? *y : image->height - 1;
+
+    endX = *x + *w;
+    endY = *y + *h;
+    endX = (endX < image->width) ? endX : image->width;
+    endY = (endY < image->height) ? endY : image->height;
+
+    *w = endX - *x;
+    *h = endY - *y;
+    return clTrue;
 }
 
 void clImageSetPixel(clContext * C, clImage * image, int x, int y, int r, int g, int b, int a)

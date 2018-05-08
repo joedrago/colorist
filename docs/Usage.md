@@ -32,6 +32,9 @@ Output Format Options:
     -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)
     -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off
 
+Convert Options:
+    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h
+
 Identify Options:
     -z,--rect x,y,w,h        : Pixels to dump. x,y,w,h
 
@@ -161,7 +164,7 @@ luminance.
 
 Verbose mode. Ironically, that's it for this one.
 
-### -z, --rect
+### -z, --rect, --crop
 
 When using `identify`, it will dump the basic information about the image such
 as the dimensions, bit depth, and embedded ICC profile. By default, it also
@@ -169,6 +172,8 @@ dumps the colors of a handful of pixels from the upper left corner. If you
 want to choose an alternate rectangle for that pixel information, use this.
 Choosing a width and height of 0 will disable pixel dumping during identify
 (`-z 0,0,0,0`).
+
+When using `convert`, it will crop the source image to the requested rect.
 
 ---
 

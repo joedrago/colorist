@@ -17,26 +17,21 @@ static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent)
 {
     int i, j;
-    int dumpEndW;
-    int dumpEndH;
 
     cmsHPROFILE xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
     cmsHTRANSFORM toXYZ = cmsCreateTransformTHR(C->lcms, image->profile->handle, TYPE_RGB_FLT, xyzProfile, TYPE_XYZ_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
 
-    dumpEndW = x + w;
-    dumpEndH = y + h;
-    dumpEndW = (dumpEndW < image->width) ? dumpEndW : image->width;
-    dumpEndH = (dumpEndH < image->height) ? dumpEndH : image->height;
-
     clContextLog(C, "image", 0 + extraIndent, "Image: %dx%d %d-bit", image->width, image->height, image->depth);
     clProfileDebugDump(C, image->profile, C->verbose, 1 + extraIndent);
-    if (((dumpEndW - x) > 0) && ((dumpEndH - y) > 0)) {
-        clContextLog(C, "image", 1 + extraIndent, "Pixels:");
-    }
 
-    for (j = y; j < dumpEndH; ++j) {
-        for (i = x; i < dumpEndW; ++i) {
-            dumpPixel(C, image, toXYZ, i, j, extraIndent);
+    if (clImageAdjustRect(C, image, &x, &y, &w, &h)) {
+        int endX = x + w;
+        int endY = y + h;
+        clContextLog(C, "image", 1 + extraIndent, "Pixels:");
+        for (j = y; j < endY; ++j) {
+            for (i = x; i < endX; ++i) {
+                dumpPixel(C, image, toXYZ, i, j, extraIndent);
+            }
         }
     }
 

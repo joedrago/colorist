@@ -27,6 +27,8 @@ int clContextConvert(clContext * C)
     clImage * srcImage = NULL;
     clImage * dstImage = NULL;
 
+    int crop[4];
+
     clConversionParams params;
     memcpy(&params, &C->params, sizeof(params));
 
@@ -63,6 +65,14 @@ int clContextConvert(clContext * C)
             FAIL();
         }
         goto convertCleanup;
+    }
+
+    memcpy(crop, C->params.rect, 4 * sizeof(int));
+    if (clImageAdjustRect(C, srcImage, &crop[0], &crop[1], &crop[2], &crop[3])) {
+        timerStart(&t);
+        clContextLog(C, "crop", 0, "Cropping source image from %dx%d to: +%d+%d %dx%d", srcImage->width, srcImage->height, crop[0], crop[1], crop[2], crop[3]);
+        srcImage = clImageCrop(C, srcImage, crop[0], crop[1], crop[2], crop[3], clFalse);
+        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
 
     dstImage = clImageConvert(C, srcImage, &params);

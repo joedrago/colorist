@@ -600,9 +600,9 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)");
     clContextLog(C, NULL, 0, "    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off");
     clContextLog(C, NULL, 0, "");
-    // clContextLog(C, NULL, 0, "Convert Options:");
-    // clContextLog(C, NULL, 0, "    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h");
-    // clContextLog(C, NULL, 0, "");
+    clContextLog(C, NULL, 0, "Convert Options:");
+    clContextLog(C, NULL, 0, "    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h");
+    clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Identify Options:");
     clContextLog(C, NULL, 0, "    -z,--rect x,y,w,h        : Pixels to dump. x,y,w,h");
     clContextLog(C, NULL, 0, "");
