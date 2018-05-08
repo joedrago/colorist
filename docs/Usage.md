@@ -9,39 +9,41 @@ Syntax: colorist convert  [input]        [output]       [OPTIONS]
         colorist report   [input]        [output.html]  [OPTIONS]
 
 Basic Options:
-    -h             : Display this help
-    -j JOBS        : Number of jobs to use when working. 0 for as many as possible (default)
-    -v             : Verbose mode.
-    -z x,y,w,h     : Pixels to dump in identify mode. x,y,w,h
+    -h,--help                : Display this help
+    -j,--jobs JOBS           : Number of jobs to use when working. 0 for as many as possible (default)
+    -v,--verbose             : Verbose mode.
 
 Input Options:
-    -i file.icc    : Override source ICC profile. default is to use embedded profile (if any), or sRGB@300
+    -i,--iccin file.icc      : Override source ICC profile. default is to use embedded profile (if any), or sRGB@300
 
 Output Profile Options:
-    -o file.icc    : Override destination ICC profile. Disables all other output profile options
-    -a             : Enable automatic color grading of max luminance and gamma (disabled by default)
-    -c COPYRIGHT   : ICC profile copyright string.
-    -d DESCRIPTION : ICC profile description.
-    -g GAMMA       : Output gamma. 0 for auto (default), or "source" to force source gamma
-    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default), or "source" to force source luminance
-    -p PRIMARIES   : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy
+    -o,--iccout file.icc     : Override destination ICC profile. Disables all other output profile options
+    -a,--autograde           : Enable automatic color grading of max luminance and gamma (disabled by default)
+    -c,--copyright COPYRIGHT : ICC profile copyright string.
+    -d,--description DESC    : ICC profile description.
+    -g,--gamma GAMMA         : Output gamma. 0 for auto (default), or "source" to force source gamma
+    -l,--luminance LUMINANCE : ICC profile max luminance. 0 for auto (default), or "source" to force source luminance
+    -p,--primaries PRIMARIES : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy
 
 Output Format Options:
-    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)
-    -f FORMAT      : Output format. auto (default), icc, j2k, jp2, jpg, png, webp
-    -q QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -r below). (default: 90)
-    -2 RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)
-    -t TONEMAP     : Set tonemapping. auto (default), on, or off
+    -b,--bpp BPP             : Output bits-per-pixel. 8, 16, or 0 for auto (default)
+    -f,--format FORMAT       : Output format. auto (default), icc, j2k, jp2, jpg, png, webp
+    -q,--quality QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -2 below). (default: 90)
+    -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)
+    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off
+
+Identify Options:
+    -z,--rect x,y,w,h        : Pixels to dump. x,y,w,h
 
 Modify Options:
-    -s TAG,...     : Strips ICC tags from profile
+    -s,--striptags TAG,...   : Strips ICC tags from profile
 ```
 
 ---
 
 # Options
 
-### -a
+### -a, --autograde
 
 Enable automatic color grading. "Grading" is currently a bit overstated, but
 the tool's name is "colorist" and it is close enough to one potential goal of
@@ -52,44 +54,44 @@ conversion process.
 Turning this on and then specifying a luminance (`-l`) AND gamma (`-g`) will
 make this a useless switch.
 
-### -b BPP
+### -b, --bpp
 
 Choose an output bit depth (8 or 16). By default, `convert` will try to use
 the bit depth of the source image, and `generate` will choose a 16-bit image.
 In either case, choosing an output file format incapable of 16-bit will
 automatically force it to 8-bit.
 
-### -c COPYRIGHT
+### -c, --copyright
 
 Write a copyright into the copyright tag (`cprt`) of the ICC profile of any
 output file generated. If not used, the copyright tag will default to whatever
 [LittleCMS](http://www.littlecms.com/) uses for its default ("No copyright,
 use freely").
 
-### -d DESCRIPTION
+### -d, --description
 
 Write a description into the description tag (`desc`) of the ICC profile of
 any output file generated. If not used, Colorist will make one up based on the
 contents of the ICC profile.
 
-### -f FORMAT
+### -f, --format
 
 Force a specific output file format. Most of the time this is not required as
 Colorist will infer the format from the output file extension, but if you
 wanted to choose a nonstandard output filename, this is the switch for you.
 
-### -g GAMMA
+### -g, --gamma
 
 Choose a specific gamma curve for the tone curves in the ICC profile (for all
 channels). Similar to `-b`, `convert` will try to use the source image's gamma
 by default, and `generate` will use a gamma of 2.4 as it is sRGB's gamma (very
 common).
 
-### -h
+### -h, --help
 
 Show the help/syntax text shown in Basic Usage, and quit.
 
-### -j JOBS
+### -j, --jobs
 
 Choose the number of threads to spawn when performing any operation that has
 been multithreaded, such as pixel transformations or automatic grading. By
@@ -97,7 +99,7 @@ default, Colorist chooses the number of cores available in the system. Running
 `colorist -h` will show how many cores Colorist detects (and will use by
 default) after displaying the syntax.
 
-### -l LUMINANCE
+### -l, --luminance
 
 Set a max luminance in the lumi tag of the ICC profile, and use this max in
 any luminance scaling that needs to be performed. For example, if the source
@@ -105,7 +107,7 @@ image's max luminance claims to be 10,000 nits and you specify `-l 300` for
 the output luminance, all pixels in the scene will have their luminance scaled
 up and either clipped or tonemapped to 300 nits (see `-t`).
 
-### -p PRIMARIES
+### -p, --primaries
 
 Sets the color primaries for the output ICC profile, in the form
 `rx,ry,gx,gy,bx,by,wx,wy`. These values are readily available for any RGB
@@ -120,25 +122,25 @@ There are a handful of builtin primaries for convenience:
 * `bt2020` - [BT. 2020](https://en.wikipedia.org/wiki/Rec._2020#System_colorimetry)
 * `p3`     - [DCI-P3](https://en.wikipedia.org/wiki/DCI-P3#System_colorimetry)
 
-### -q QUALITY
+### -q, --quality
 
 Choose a lossy quality (0-100) for any output file format that supports it
-(JPG, JP2 if not using `-r`, WebP). The lower the value, the lower the file
-size and quality. For WebP and JP2 (without `-r`), 100 is lossless.
+(JPG, JP2 if not using `-2`, WebP). The lower the value, the lower the file
+size and quality. For WebP and JP2 (without `-2`), 100 is lossless.
 
-### -2 RATE
+### -2, --jp2rate
 
 Choose a "rate" for JP2 output compression. This effectively puts a hard
 ceiling on the size of the output JP2 file, and can be treated as a divisor on
 the input source data. For example, a 3840x2160, 16-bit image is (3840 \* 2160
-\* 8 == 66,355,200) bytes in size (~63 MB). Specifying `-r 200` will make the
+\* 8 == 66,355,200) bytes in size (~63 MB). Specifying `-2 200` will make the
 output file size roughly (66,355,200 / 200 = 331776) bytes, or 324 KB.
 
 The JP2 compressor will do everything it can to blur/ruin your image if you
 don't give it enough breathing room, but it *will* hit your requested rate.
 Also, be sure to experiment to make sure my math isn't really wrong.
 
-### -t TONEMAP
+### -t, --tonemap
 
 Forces tonemapping to be on or off. When scaling from a large luminance range
 down to a smaller range, any values that are too bright will not "fit" in the
@@ -155,11 +157,11 @@ max luminance, as it will never choose a luminance that will cause a pixel to
 clip. Use this switch (`-t off`) to achieve this with a manually specified max
 luminance.
 
-### -v
+### -v, --verbose
 
 Verbose mode. Ironically, that's it for this one.
 
-### -z x,y,w,h
+### -z, --rect
 
 When using `identify`, it will dump the basic information about the image such
 as the dimensions, bit depth, and embedded ICC profile. By default, it also

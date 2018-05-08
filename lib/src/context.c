@@ -343,93 +343,77 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
     while (argIndex < argc) {
         const char * arg = argv[argIndex];
         if ((arg[0] == '-')) {
-            switch (arg[1]) {
-                case 'a':
-                    C->params.autoGrade = clTrue;
-                    break;
-                case 'b':
-                    NEXTARG();
-                    C->params.bpp = atoi(arg);
-                    break;
-                case 'c':
-                    NEXTARG();
-                    C->params.copyright = arg;
-                    break;
-                case 'd':
-                    NEXTARG();
-                    C->params.description = arg;
-                    break;
-                case 'f':
-                    NEXTARG();
-                    C->params.format = clFormatFromString(C, arg);
-                    if (C->params.format == CL_FORMAT_ERROR) {
-                        clContextLogError(C, "Unknown format: %s", arg);
-                        return clFalse;
-                    }
-                    break;
-                case 'g':
-                    NEXTARG();
-                    if (arg[0] == 's') {
-                        C->params.gamma = -1.0f; // Use source gamma
-                    } else {
-                        C->params.gamma = (float)strtod(arg, NULL);
-                    }
-                    break;
-                case 'h':
-                    C->help = clTrue;
-                    break;
-                case 'i':
-                    NEXTARG();
-                    C->iccOverrideIn = arg;
-                    break;
-                case 'j':
-                    NEXTARG();
-                    C->params.jobs = atoi(arg);
-                    if (C->params.jobs == 0)
-                        C->params.jobs = taskLimit;
-                    C->params.jobs = CL_CLAMP(C->params.jobs, 1, taskLimit);
-                    break;
-                case 'l':
-                    NEXTARG();
-                    if (arg[0] == 's') {
-                        C->params.luminance = -1; // Use source luminance
-                    } else {
-                        C->params.luminance = atoi(arg);
-                    }
-                    break;
-                case 'o':
-                    NEXTARG();
-                    C->params.iccOverrideOut = arg;
-                    break;
-                case 'p':
-                    NEXTARG();
-                    if (!parsePrimaries(C, C->params.primaries, arg))
-                        return clFalse;
-                    break;
-                case 'q':
-                    NEXTARG();
-                    C->params.quality = atoi(arg);
-                    break;
-                case 's':
-                    NEXTARG();
-                    C->params.stripTags = arg;
-                    break;
-                case 't':
-                    NEXTARG();
-                    C->params.tonemap = clTonemapFromString(C, arg);
-                    break;
-                case 'v':
-                    C->verbose = clTrue;
-                    break;
-                case 'z':
-                    NEXTARG();
-                    if (!parseRect(C, C->params.rect, arg))
-                        return clFalse;
-                    break;
-                case '2':
-                    NEXTARG();
-                    C->params.jp2rate = atoi(arg);
-                    break;
+            if (!strcmp(arg, "-a") || !strcmp(arg, "--auto") || !strcmp(arg, "--autograde")) {
+                C->params.autoGrade = clTrue;
+            } else if (!strcmp(arg, "-b") || !strcmp(arg, "--bpp")) {
+                NEXTARG();
+                C->params.bpp = atoi(arg);
+            } else if (!strcmp(arg, "-c") || !strcmp(arg, "--copyright")) {
+                NEXTARG();
+                C->params.copyright = arg;
+            } else if (!strcmp(arg, "-d") || !strcmp(arg, "--description")) {
+                NEXTARG();
+                C->params.description = arg;
+            } else if (!strcmp(arg, "-f") || !strcmp(arg, "--format")) {
+                NEXTARG();
+                C->params.format = clFormatFromString(C, arg);
+                if (C->params.format == CL_FORMAT_ERROR) {
+                    clContextLogError(C, "Unknown format: %s", arg);
+                    return clFalse;
+                }
+            } else if (!strcmp(arg, "-g") || !strcmp(arg, "--gamma")) {
+                NEXTARG();
+                if (arg[0] == 's') {
+                    C->params.gamma = -1.0f; // Use source gamma
+                } else {
+                    C->params.gamma = (float)strtod(arg, NULL);
+                }
+            } else if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
+                C->help = clTrue;
+            } else if (!strcmp(arg, "-i") || !strcmp(arg, "--iccin")) {
+                NEXTARG();
+                C->iccOverrideIn = arg;
+            } else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs")) {
+                NEXTARG();
+                C->params.jobs = atoi(arg);
+                if (C->params.jobs == 0)
+                    C->params.jobs = taskLimit;
+                C->params.jobs = CL_CLAMP(C->params.jobs, 1, taskLimit);
+            } else if (!strcmp(arg, "-l") || !strcmp(arg, "--luminance")) {
+                NEXTARG();
+                if (arg[0] == 's') {
+                    C->params.luminance = -1; // Use source luminance
+                } else {
+                    C->params.luminance = atoi(arg);
+                }
+            } else if (!strcmp(arg, "-o") || !strcmp(arg, "--iccout")) {
+                NEXTARG();
+                C->params.iccOverrideOut = arg;
+            } else if (!strcmp(arg, "-p") || !strcmp(arg, "--primaries")) {
+                NEXTARG();
+                if (!parsePrimaries(C, C->params.primaries, arg))
+                    return clFalse;
+            } else if (!strcmp(arg, "-q") || !strcmp(arg, "--quality")) {
+                NEXTARG();
+                C->params.quality = atoi(arg);
+            } else if (!strcmp(arg, "-s") || !strcmp(arg, "--striptags")) {
+                NEXTARG();
+                C->params.stripTags = arg;
+            } else if (!strcmp(arg, "-t") || !strcmp(arg, "--tonemap")) {
+                NEXTARG();
+                C->params.tonemap = clTonemapFromString(C, arg);
+            } else if (!strcmp(arg, "-v") || !strcmp(arg, "--verbose")) {
+                C->verbose = clTrue;
+            } else if (!strcmp(arg, "-z") || !strcmp(arg, "--rect") || !strcmp(arg, "--crop")) {
+                NEXTARG();
+                if (!parseRect(C, C->params.rect, arg))
+                    return clFalse;
+            } else if (!strcmp(arg, "-2") || !strcmp(arg, "--rate") || !strcmp(arg, "--jp2rate")) {
+                NEXTARG();
+                C->params.jp2rate = atoi(arg);
+            } else {
+                clContextLogError(C, "unknown parameter: %s", arg);
+                return clFalse;
             }
         } else {
             if (C->action == CL_ACTION_NONE) {
@@ -593,32 +577,37 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "        colorist report   [input]        [output.html]  [OPTIONS]");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Basic Options:");
-    clContextLog(C, NULL, 0, "    -h             : Display this help");
-    clContextLog(C, NULL, 0, "    -j JOBS        : Number of jobs to use when working. 0 for as many as possible (default)");
-    clContextLog(C, NULL, 0, "    -v             : Verbose mode.");
-    clContextLog(C, NULL, 0, "    -z x,y,w,h     : Pixels to dump in identify mode. x,y,w,h");
+    clContextLog(C, NULL, 0, "    -h,--help                : Display this help");
+    clContextLog(C, NULL, 0, "    -j,--jobs JOBS           : Number of jobs to use when working. 0 for as many as possible (default)");
+    clContextLog(C, NULL, 0, "    -v,--verbose             : Verbose mode.");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Input Options:");
-    clContextLog(C, NULL, 0, "    -i file.icc    : Override source ICC profile. default is to use embedded profile (if any), or sRGB@300");
+    clContextLog(C, NULL, 0, "    -i,--iccin file.icc      : Override source ICC profile. default is to use embedded profile (if any), or sRGB@300");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Output Profile Options:");
-    clContextLog(C, NULL, 0, "    -o file.icc    : Override destination ICC profile. Disables all other output profile options");
-    clContextLog(C, NULL, 0, "    -a             : Enable automatic color grading of max luminance and gamma (disabled by default)");
-    clContextLog(C, NULL, 0, "    -c COPYRIGHT   : ICC profile copyright string.");
-    clContextLog(C, NULL, 0, "    -d DESCRIPTION : ICC profile description.");
-    clContextLog(C, NULL, 0, "    -g GAMMA       : Output gamma. 0 for auto (default), or \"source\" to force source gamma");
-    clContextLog(C, NULL, 0, "    -l LUMINANCE   : ICC profile max luminance. 0 for auto (default), or \"source\" to force source luminance");
-    clContextLog(C, NULL, 0, "    -p PRIMARIES   : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy");
+    clContextLog(C, NULL, 0, "    -o,--iccout file.icc     : Override destination ICC profile. Disables all other output profile options");
+    clContextLog(C, NULL, 0, "    -a,--autograde           : Enable automatic color grading of max luminance and gamma (disabled by default)");
+    clContextLog(C, NULL, 0, "    -c,--copyright COPYRIGHT : ICC profile copyright string.");
+    clContextLog(C, NULL, 0, "    -d,--description DESC    : ICC profile description.");
+    clContextLog(C, NULL, 0, "    -g,--gamma GAMMA         : Output gamma. 0 for auto (default), or \"source\" to force source gamma");
+    clContextLog(C, NULL, 0, "    -l,--luminance LUMINANCE : ICC profile max luminance. 0 for auto (default), or \"source\" to force source luminance");
+    clContextLog(C, NULL, 0, "    -p,--primaries PRIMARIES : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Output Format Options:");
-    clContextLog(C, NULL, 0, "    -b BPP         : Output bits-per-pixel. 8, 16, or 0 for auto (default)");
-    clContextLog(C, NULL, 0, "    -f FORMAT      : Output format. auto (default), icc, j2k, jp2, jpg, png, webp");
-    clContextLog(C, NULL, 0, "    -q QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -r below). (default: 90)");
-    clContextLog(C, NULL, 0, "    -2 RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)");
-    clContextLog(C, NULL, 0, "    -t TONEMAP     : Set tonemapping. auto (default), on, or off");
+    clContextLog(C, NULL, 0, "    -b,--bpp BPP             : Output bits-per-pixel. 8, 16, or 0 for auto (default)");
+    clContextLog(C, NULL, 0, "    -f,--format FORMAT       : Output format. auto (default), icc, j2k, jp2, jpg, png, webp");
+    clContextLog(C, NULL, 0, "    -q,--quality QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -2 below). (default: 90)");
+    clContextLog(C, NULL, 0, "    -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)");
+    clContextLog(C, NULL, 0, "    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off");
+    clContextLog(C, NULL, 0, "");
+    // clContextLog(C, NULL, 0, "Convert Options:");
+    // clContextLog(C, NULL, 0, "    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h");
+    // clContextLog(C, NULL, 0, "");
+    clContextLog(C, NULL, 0, "Identify Options:");
+    clContextLog(C, NULL, 0, "    -z,--rect x,y,w,h        : Pixels to dump. x,y,w,h");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Modify Options:");
-    clContextLog(C, NULL, 0, "    -s TAG,...     : Strips ICC tags from profile");
+    clContextLog(C, NULL, 0, "    -s,--striptags TAG,...   : Strips ICC tags from profile");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "See image string examples here: https://joedrago.github.io/colorist/docs/Usage.html");
     clContextLog(C, NULL, 0, "");
