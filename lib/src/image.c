@@ -135,7 +135,7 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
             for (j = 0; j < image->height; ++j) {
                 for (i = 0; i < image->width; ++i) {
                     uint8_t * srcPixel = &image->pixels[pixelBytes * (i + (j * image->width))];
-                    uint8_t * dstPixel = &rotated->pixels[pixelBytes * (j + (i * rotated->width))];
+                    uint8_t * dstPixel = &rotated->pixels[pixelBytes * (j + ((rotated->height - 1 - i) * rotated->width))];
                     memcpy(dstPixel, srcPixel, pixelBytes);
                 }
             }
