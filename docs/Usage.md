@@ -255,7 +255,7 @@ by putting a *stutter* in between our `..`, such as:
 `colorist generate "128x128,#ff0000.3.#000000,#000000..#00ff00" image.png`
 
 There we go! Remember, the whole point here is evenly spreading a big list of
-colors across an image, top to bottom. By choosing to stutter the range
+colors across an image, left to right. By choosing to stutter the range
 instead of repeat the whole thing, we create an entirely different effect.
 
 How about a horizontal gradient? This is where basic rotation comes into play.
@@ -269,13 +269,12 @@ will be performed at the end.
 
 How about some color squares for testing?
 
-`colorist generate "100x400,#ff0000,#00ff00,#0000ff,#ffffff,ccw" image.png`
+`colorist generate "400x100,#ff0000,#00ff00,#0000ff,#ffffff" image.png`
 
-Note that the final image generated here is actually 400x100! This is due to
-our rotation at the end. A lot of the trick with using image strings is
-describing a color count that corresponds evenly with the pixel count of the
-requested image dimension. Try to make the color list's count to be a factor
-of the pixel count for best results.
+A lot of the trick with using image strings is describing a color count that
+corresponds evenly with the pixel count of the requested image dimension. Try
+to make the color list's count to be a factor of the pixel count for best
+results.
 
 There are many ways to define a color. For example, simply parenthesizing
 some numbers works!

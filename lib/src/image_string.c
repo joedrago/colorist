@@ -538,9 +538,9 @@ static char * sanitizeString(char * s)
     return s;
 }
 
-static clImage * interpretTokens(struct clContext * C, clToken * tokens, int depth, struct clProfile * profile);
+static clImage * interpretTokens(struct clContext * C, clToken * tokens, int depth, struct clProfile * profile, int defaultW, int defaultH);
 
-clImage * clImageParseString(struct clContext * C, const char * s, int depth, struct clProfile * profile)
+static clImage * clImageParseStripe(struct clContext * C, const char * s, int depth, struct clProfile * profile, int defaultW, int defaultH)
 {
     char * sanitizedString;
     clImage * image = NULL;
@@ -550,8 +550,6 @@ clImage * clImageParseString(struct clContext * C, const char * s, int depth, st
 
     cmsHPROFILE xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
     cmsHTRANSFORM fromXYZ = cmsCreateTransformTHR(C->lcms, xyzProfile, TYPE_XYZ_FLT, profile->handle, TYPE_RGB_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
-
-    clContextLog(C, "parse", 0, "Parsing image string...");
 
     sanitizedString = sanitizeString(clContextStrdup(C, s));
     s = sanitizedString;
@@ -595,9 +593,7 @@ clImage * clImageParseString(struct clContext * C, const char * s, int depth, st
         ++s; // advance past a single comma
     }
 
-    clContextLog(C, "parse", 1, "Successfully parsed image string.");
-
-    image = interpretTokens(C, tokens, depth, profile);
+    image = interpretTokens(C, tokens, depth, profile, defaultW, defaultH);
 
 parseCleanup:
     cmsDeleteTransform(fromXYZ);
@@ -611,6 +607,93 @@ parseCleanup:
             clFree(freeMe);
         }
     }
+    return image;
+}
+
+typedef struct Stripe
+{
+    char * s;
+    clImage * image;
+    struct Stripe * next;
+} Stripe;
+
+clImage * clImageParseString(struct clContext * C, const char * s, int depth, struct clProfile * profile)
+{
+    Stripe * stripes = NULL;
+    Stripe * lastStripe = NULL;
+    Stripe * stripe;
+    clImage * image = NULL;
+    int stripeCount = 0;
+    int stripeIndex = 0;
+    int maxStripeWidth = 0;
+    int totalStripeHeight = 0;
+    int prevW = 0;
+    int prevH = 0;
+    char * buffer = clContextStrdup(C, s);
+    const char * stripeDelims = "|/";
+    char * stripeString;
+    uint8_t * pixelPos;
+    int depthBytes = clDepthToBytes(C, depth);
+
+    clContextLog(C, "parse", 0, "Parsing image string...");
+
+    for (stripeString = strtok(buffer, stripeDelims); stripeString != NULL; stripeString = strtok(NULL, stripeDelims)) {
+        stripe = clAllocateStruct(Stripe);
+        stripe->s = clContextStrdup(C, stripeString);
+        if (lastStripe == NULL) {
+            stripes = lastStripe = stripe;
+        } else {
+            lastStripe->next = stripe;
+            lastStripe = stripe;
+        }
+        ++stripeCount;
+    }
+
+    clContextLog(C, "parse", 0, "Found %d image stripe%s.", stripeCount, (stripeCount == 1) ? "" : "s");
+
+    for (stripe = stripes; stripe != NULL; stripe = stripe->next) {
+        clContextLog(C, "parse", 0, "Parsing stripe index: %d", stripeIndex);
+        stripe->image = clImageParseStripe(C, stripe->s, depth, profile, prevW, prevH);
+        if (!stripe->image) {
+            goto parseCleanup;
+        }
+        if (maxStripeWidth < stripe->image->width) {
+            maxStripeWidth = stripe->image->width;
+        }
+        totalStripeHeight += stripe->image->height;
+        prevW = stripe->image->width;
+        prevH = stripe->image->height;
+        ++stripeIndex;
+    }
+
+    if (stripeCount > 1) {
+        clContextLog(C, "parse", 0, "Compositing final image (stacking vertically): %dx%d", maxStripeWidth, totalStripeHeight);
+        image = clImageCreate(C, maxStripeWidth, totalStripeHeight, depth, profile);
+        pixelPos = image->pixels;
+        for (stripe = stripes; stripe != NULL; stripe = stripe->next) {
+            int y;
+            for (y = 0; y < stripe->image->height; ++y) {
+                memcpy(pixelPos, &stripe->image->pixels[4 * depthBytes * y * stripe->image->width], 4 * depthBytes * stripe->image->width);
+                pixelPos += 4 * depthBytes * image->width;
+            }
+        }
+    } else {
+        image = stripes->image;
+        stripes->image = NULL;
+    }
+    clContextLog(C, "parse", 1, "Successfully parsed image string.");
+
+parseCleanup:
+    while (stripes != NULL) {
+        Stripe * deleteme = stripes;
+        stripes = stripes->next;
+        clFree(deleteme->s);
+        if (deleteme->image) {
+            clImageDestroy(C, deleteme->image);
+        }
+        clFree(deleteme);
+    }
+    clFree(buffer);
     return image;
 }
 
@@ -707,12 +790,12 @@ static void getColor(struct clContext * C, clToken * tokens, int reqIndex, int d
     }
 }
 
-static clImage * interpretTokens(struct clContext * C, clToken * tokens, int depth, struct clProfile * profile)
+static clImage * interpretTokens(struct clContext * C, clToken * tokens, int depth, struct clProfile * profile, int defaultW, int defaultH)
 {
     clImage * image = NULL;
     int colorCount;
-    int imageWidth = 0;
-    int imageHeight = 0;
+    int imageWidth = defaultW;
+    int imageHeight = defaultH;
     int pixelCount = 0;
     int pixelIndex;
     int rotate = 0;
@@ -740,17 +823,17 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
     }
     rotate = rotate % 4;
 
-    clContextLog(C, "parse", 1, "Image string describes %d color%s.", colorCount, (colorCount > 1) ? "s" : "");
+    clContextLog(C, "parse", 1, "Image stripe describes %d color%s.", colorCount, (colorCount != 1) ? "s" : "");
+    if (colorCount < 1) {
+        clContextLogError(C, "Image stripe specifies no colors, bailing out");
+        return NULL;
+    }
     if (imageWidth && imageHeight) {
-        clContextLog(C, "parse", 1, "Image string requests a resolution of %dx%d", imageWidth, imageHeight);
+        clContextLog(C, "parse", 1, "Image stripe requests a resolution of %dx%d", imageWidth, imageHeight);
     } else {
-        if (colorCount < 1) {
-            clContextLogError(C, "Image string specifies no colors and no resolution, bailing out");
-            return NULL;
-        }
         imageWidth = colorCount;
         imageHeight = 1;
-        clContextLog(C, "parse", 1, "Image string does not specify a resolution, choosing %dx%d", imageWidth, imageHeight);
+        clContextLog(C, "parse", 1, "Image stripe does not specify a resolution, choosing %dx%d", imageWidth, imageHeight);
     }
     pixelCount = imageWidth * imageHeight;
 
@@ -766,21 +849,23 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
 
     for (pixelIndex = 0; pixelIndex < pixelCount; ++pixelIndex) {
         clColor color;
+        int x = pixelIndex / imageHeight;
+        int y = pixelIndex % imageHeight;
+        int verticalPixelIndex = x + (y * imageWidth); // this fills columns down, then to the right
         if (pixelIndex && ((pixelIndex % every) == 0)) {
             ++colorIndex;
         }
         colorIndex = CL_CLAMP(colorIndex, 0, colorCount - 1);
-        // clContextLog(C, "debug", 0, "pixel %d gets color %d", pixelIndex, colorIndex);
         getColor(C, tokens, colorIndex, depth, &color);
         if (depth == 16) {
             uint16_t * pixels = (uint16_t *)image->pixels;
-            uint16_t * pixel = &pixels[4 * pixelIndex];
+            uint16_t * pixel = &pixels[4 * verticalPixelIndex];
             pixel[0] = color.r;
             pixel[1] = color.g;
             pixel[2] = color.b;
             pixel[3] = color.a;
         } else {
-            uint8_t * pixel = &image->pixels[4 * pixelIndex];
+            uint8_t * pixel = &image->pixels[4 * verticalPixelIndex];
             pixel[0] = color.r;
             pixel[1] = color.g;
             pixel[2] = color.b;
