@@ -66,7 +66,7 @@ Generate a 4K black to red 16-bit gradient (top to bottom):
 
 Generate the [SMPTE color bars](https://en.wikipedia.org/wiki/SMPTE_color_bars):
 
-`colorist generate "640x320, #bfbfbf, #bfbf00, #00bfbf, #00bf00, #bf00bf, #bf0000, #0000bf / 640x40, #0000bf, #000000, #bf00bf, #000000, #00bfbf, #000000, #bfbfbf / 640x120, #00214C, x3, #ffffff, x3, #32006A, x3, #131313, x3, #000000, #131313, #1D1D1D, #131313, x3" smtpe.png`
+`colorist generate "640x320, #c0c0c0, #c0c000, #00c0c0, #00c000, #c000c0, #c00000, #0000c0 / 640x40, #0000c0, #000000, #c000c0, #000000, #00c0c0, #000000, #c0c0c0 / 640x120, #00214C, x3, #ffffff, x3, #32006A, x3, #131313, x3, #000000, #090909, #1D1D1D, #131313, x3" smtpe.png`
 
 Generate the [Macbeth chart](https://en.wikipedia.org/wiki/ColorChecker):
 
