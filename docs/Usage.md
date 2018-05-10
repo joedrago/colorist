@@ -201,10 +201,10 @@ with `-b 8`.
 
 Let's add some more information:
 
-`colorist generate "128x128,#ff0000" image.png`
+`colorist generate "1024x1024,#ff0000" image.png`
 
 Colorist will count a total of 1 color in the color list, and instead of
-choosing a 1x1 image to spread the colors across, it'll honor the 128x128
+choosing a 1x1 image to spread the colors across, it'll honor the 1024x1024
 dimensions request, so it'll just fill the whole image with red.
 
 *Quick tips:*
@@ -213,15 +213,15 @@ dimensions request, so it'll just fill the whole image with red.
 
 How about a second color?
 
-`colorist generate "128x128,#ff0000,#00ff00" image.png`
+`colorist generate "1024x1024,#ff0000,#00ff00" image.png`
 
-This creates the same 128x128 image, but it shares the pixels evenly across
+This creates the same 1024x1024 image, but it shares the pixels evenly across
 the two colors (red for the first half, then green). Reordering or adding
 colors will continue the pattern.
 
 What if I wanted 75% red and 25% green?
 
-`colorist generate "128x128,#ff0000,x3,#00ff00" image.png`
+`colorist generate "1024x1024,#ff0000,x3,#00ff00" image.png`
 
 The `x3` in there says to pretend that the previous statement was listed three
 times in a row. Colorist will then count a total of *four* colors, and will
@@ -229,7 +229,7 @@ spread those four colors across the requested image size.
 
 How about a gradient?
 
-`colorist generate "128x128,#ff0000..#000000" image.png`
+`colorist generate "1024x1024,#ff0000..#000000" image.png`
 
 The `..` syntax creates an interpolation (gradient) between the two colors.
 Colorist will count 256 images in the color list, and since there are more
@@ -238,13 +238,13 @@ image, creating the gradient.
 
 How about two gradients?
 
-`colorist generate "128x128,#ff0000..#000000,#000000..#00ff00" image.png`
+`colorist generate "1024x1024,#ff0000..#000000,#000000..#00ff00" image.png`
 
 Colorist counts 512 colors here, and spreads them accordingly. What if I
 wanted my red gradient to take up 75%, and the green one only 25%? Let's try
 it.
 
-`colorist generate "128x128,#ff0000..#000000,x3,#000000..#00ff00" image.png`
+`colorist generate "1024x1024,#ff0000..#000000,x3,#000000..#00ff00" image.png`
 
 Oops! `x3` is making 3 red-to-black gradients, followed by 1 red-to-black
 gradient. I didn't want to *repeat* my gradient, I wanted to *stretch* my
@@ -252,17 +252,17 @@ gradient. To be more precise, I wanted each color entry in the gradient itself
 to repeat, or "stutter": (111222333) vs (123123123). We can achieve this
 by putting a *stutter* in between our `..`, such as:
 
-`colorist generate "128x128,#ff0000.3.#000000,#000000..#00ff00" image.png`
+`colorist generate "1024x1024,#ff0000.3.#000000,#000000..#00ff00" image.png`
 
 There we go! Remember, the whole point here is evenly spreading a big list of
 colors across an image, left to right. By choosing to stutter the range
 instead of repeat the whole thing, we create an entirely different effect.
 
-How about a horizontal gradient? This is where basic rotation comes into play.
+How about a vertical gradient? This is where basic rotation comes into play.
 
-`colorist generate "128x128,#ff0000..#000000,ccw" image.png`
+`colorist generate "1024x1024,#ff0000..#000000,cw" image.png`
 
-This rotates the image counter-clockwise once after generating it. You can use
+This rotates the image clockwise once after generating it. You can use
 multiple `cw` or `ccw` statements if you want, but ultimately their rotations
 will all be summed up and potentially cancelled out, and a single rotation
 will be performed at the end.
@@ -279,19 +279,19 @@ results.
 There are many ways to define a color. For example, simply parenthesizing
 some numbers works!
 
-`colorist generate "128x128,(255,0,0),(0,255,0)" image.png`
+`colorist generate "1024x1024,(255,0,0),(0,255,0)" image.png`
 
 This should recreate our red/green image from earlier. How about a gradient?
 
-`colorist generate "128x128,(255,0,0)..(0,0,0)" image.png`
+`colorist generate "1024x1024,(255,0,0)..(0,0,0)" image.png`
 
 Another red/green version:
 
-`colorist generate "128x128,rgb(255,0,0)..#000000" image.png`
+`colorist generate "1024x1024,rgb(255,0,0)..#000000" image.png`
 
 or
 
-`colorist generate "128x128,rgb16(65535,0,0)..#000000" image.png`
+`colorist generate "1024x1024,rgb16(65535,0,0)..#000000" image.png`
 
 All possible color formats:
 

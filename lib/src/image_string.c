@@ -839,12 +839,12 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
 
     image = clImageCreate(C, imageWidth, imageHeight, depth, profile);
 
-    if (colorCount < pixelCount) {
-        clContextLog(C, "parse", 1, "More pixels than colors. Spreading colors evenly.");
-        every = pixelCount / colorCount;
+    if (colorCount < imageWidth) {
+        clContextLog(C, "parse", 1, "More width than colors. Spreading colors evenly.");
+        every = imageHeight * (imageWidth / colorCount);
     } else {
-        clContextLog(C, "parse", 1, "One color per pixel until no pixels are left.");
-        every = 1;
+        clContextLog(C, "parse", 1, "One color per row until no rows are left.");
+        every = imageHeight;
     }
 
     for (pixelIndex = 0; pixelIndex < pixelCount; ++pixelIndex) {

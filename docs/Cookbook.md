@@ -52,16 +52,16 @@ Generate an sRGB ICC profile with a max luminance of 300 nits and a custom descr
 
 `colorist generate mysrgb.icc -p bt709 -l 300 -g 2.4 -d "My sRGB Profile" -c "(c) Me 2018"`
 
-Generate a 4K black to red 8-bit gradient (top to bottom):
+Generate a 4K black to red 8-bit gradient (left to right):
 
 `colorist generate -b 8 "3840x2160,(0,0,0)..(255,0,0)" gradient.png`
 
-Generate a 4K black to red 8-bit gradient (left to right):
+Generate a 4K black to red 8-bit gradient (top to bottom):
 
-`colorist generate -b 8 "2160x3840,(0,0,0)..(255,0,0),ccw" gradient.png`
+`colorist generate -b 8 "2160x3840,(0,0,0)..(255,0,0),cw" gradient.png`
 
-Generate a 4K black to red 16-bit gradient (left to right):
+Generate a 4K black to red 16-bit gradient (top to bottom):
 
-`colorist generate "2160x3840,(0,0,0)..(255,0,0),ccw" gradient.png`
+`colorist generate "2160x3840,(0,0,0)..(255,0,0),cw" gradient.png`
 
 Many more image string examples are in the [Usage](./Usage.md) section.
