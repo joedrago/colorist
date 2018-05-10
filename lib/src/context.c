@@ -435,10 +435,10 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
             } else if (!strcmp(arg, "-q") || !strcmp(arg, "--quality")) {
                 NEXTARG();
                 C->params.quality = atoi(arg);
-            } else if (!strcmp(arg, "-r") || !strcmp(arg, "--resize")) {
-                NEXTARG();
-                if (!parseResize(C, &C->params, arg))
-                    return clFalse;
+                // } else if (!strcmp(arg, "-r") || !strcmp(arg, "--resize")) {
+                //     NEXTARG();
+                //     if (!parseResize(C, &C->params, arg))
+                //         return clFalse;
             } else if (!strcmp(arg, "-s") || !strcmp(arg, "--striptags")) {
                 NEXTARG();
                 C->params.stripTags = arg;
@@ -647,7 +647,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Convert Options:");
-    clContextLog(C, NULL, 0, "    -r,--resize w,h,filter   : Resize dst image to WxH. Use optional filter (nearest, bilinear (default))");
+    // clContextLog(C, NULL, 0, "    -r,--resize w,h,filter   : Resize dst image to WxH. Use optional filter (nearest, bilinear (default))");
     clContextLog(C, NULL, 0, "    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Identify Options:");
