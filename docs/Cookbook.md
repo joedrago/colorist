@@ -64,4 +64,12 @@ Generate a 4K black to red 16-bit gradient (top to bottom):
 
 `colorist generate "2160x3840,(0,0,0)..(255,0,0),cw" gradient.png`
 
+Generate the [SMPTE color bars](https://en.wikipedia.org/wiki/SMPTE_color_bars):
+
+`colorist generate "640x320, #bfbfbf, #bfbf00, #00bfbf, #00bf00, #bf00bf, #bf0000, #0000bf / 640x40, #0000bf, #000000, #bf00bf, #000000, #00bfbf, #000000, #bfbfbf / 640x120, #00214C, x3, #ffffff, x3, #32006A, x3, #131313, x3, #000000, #131313, #1D1D1D, #131313, x3" smtpe.png`
+
+Generate the [Macbeth chart](https://en.wikipedia.org/wiki/ColorChecker):
+
+`colorist generate "1920x270,xyY(0.400, 0.350, 0.101), xyY(0.377, 0.345, 0.358), xyY(0.247, 0.251, 0.193), xyY(0.337, 0.422, 0.133), xyY(0.265, 0.240, 0.243), xyY(0.261, 0.343, 0.431) / xyY(0.506, 0.407, 0.301), xyY(0.211, 0.175, 0.120), xyY(0.453, 0.306, 0.198), xyY(0.285, 0.202, 0.066), xyY(0.380, 0.489, 0.443), xyY(0.473, 0.438, 0.431) / xyY(0.187, 0.129, 0.061), xyY(0.305, 0.478, 0.234), xyY(0.539, 0.313, 0.120), xyY(0.448, 0.470, 0.591), xyY(0.364, 0.233, 0.198), xyY(0.196, 0.252, 0.198) / xyY(0.310, 0.316, 0.900), xyY(0.310, 0.316, 0.591), xyY(0.310, 0.316, 0.362), xyY(0.310, 0.316, 0.198), xyY(0.310, 0.316, 0.090), xyY(0.310, 0.316, 0.031)" macbeth.png`
+
 Many more image string examples are in the [Usage](./Usage.md) section.
