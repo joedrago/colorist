@@ -10,6 +10,7 @@
 #include "colorist/profile.h"
 #include "colorist/task.h"
 
+#include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -151,6 +152,38 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
 }
 
 // ------------------------------------------------------------------------------------------------
+// clTonemap
+
+clFilter clFilterFromString(struct clContext * C, const char * str)
+{
+    if (!strcmp(str, "auto")) return CL_FILTER_AUTO;
+    if (!strcmp(str, "box")) return CL_FILTER_BOX;
+    if (!strcmp(str, "triangle")) return CL_FILTER_TRIANGLE;
+    if (!strcmp(str, "cubic")) return CL_FILTER_CUBICBSPLINE;
+    if (!strcmp(str, "catmullrom")) return CL_FILTER_CATMULLROM;
+    if (!strcmp(str, "mitchell")) return CL_FILTER_MITCHELL;
+    if (!strcmp(str, "nearest")) return CL_FILTER_NEAREST;
+    return CL_FILTER_INVALID;
+}
+
+const char * clFilterToString(struct clContext * C, clFilter filter)
+{
+    switch (filter) {
+        case CL_FILTER_AUTO:  return "auto";
+        case CL_FILTER_BOX:  return "box";
+        case CL_FILTER_TRIANGLE:  return "triangle";
+        case CL_FILTER_CUBICBSPLINE:  return "cubicbspline";
+        case CL_FILTER_CATMULLROM:  return "catmullrom";
+        case CL_FILTER_MITCHELL:  return "mitchell";
+        case CL_FILTER_NEAREST:  return "nearest";
+        case CL_FILTER_INVALID:
+        default:
+            break;
+    }
+    return "Invalid";
+}
+
+// ------------------------------------------------------------------------------------------------
 // clContext
 
 static void clConversionParamsSetOutputProfileDefaults(clContext * C, clConversionParams * params)
@@ -178,7 +211,7 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->rect[3] = -1;
     params->resizeW = 0;
     params->resizeH = 0;
-    params->resizeFilter = CL_FILTER_BILINEAR;
+    params->resizeFilter = CL_FILTER_AUTO;
     params->stripTags = NULL;
     params->tonemap = CL_TONEMAP_AUTO;
 }
@@ -338,27 +371,54 @@ static clBool parseResize(clContext * C, clConversionParams * params, const char
     clBool gotWidth = clFalse;
     clBool gotHeight = clFalse;
     buffer = clContextStrdup(C, arg);
+
     for (token = strtok(buffer, delims); token != NULL; token = strtok(NULL, delims)) {
+        if (isdigit(token[0])) {
+            if (!gotWidth) {
+                gotWidth = clTrue;
+                params->resizeW = atoi(token);
+                continue;
+            }
+            if (!gotHeight) {
+                gotHeight = clTrue;
+                params->resizeH = atoi(token);
+                continue;
+            }
+
+            clContextLogError(C, "Too many numerical parameters for --resize");
+            return clFalse;
+        }
+
+        if (!strcmp(token, "auto")) {
+            params->resizeFilter = CL_FILTER_AUTO;
+            continue;
+        }
+        if (!strcmp(token, "box")) {
+            params->resizeFilter = CL_FILTER_BOX;
+            continue;
+        }
+        if (!strcmp(token, "triangle")) {
+            params->resizeFilter = CL_FILTER_TRIANGLE;
+            continue;
+        }
+        if (!strcmp(token, "cubic")) {
+            params->resizeFilter = CL_FILTER_CUBICBSPLINE;
+            continue;
+        }
+        if (!strcmp(token, "catmullrom")) {
+            params->resizeFilter = CL_FILTER_CATMULLROM;
+            continue;
+        }
+        if (!strcmp(token, "mitchell")) {
+            params->resizeFilter = CL_FILTER_MITCHELL;
+            continue;
+        }
         if (!strcmp(token, "nearest")) {
             params->resizeFilter = CL_FILTER_NEAREST;
             continue;
         }
-        if (!strcmp(token, "bilinear")) {
-            params->resizeFilter = CL_FILTER_BILINEAR;
-            continue;
-        }
-        if (!gotWidth) {
-            gotWidth = clTrue;
-            params->resizeW = atoi(token);
-            continue;
-        }
-        if (!gotHeight) {
-            gotHeight = clTrue;
-            params->resizeH = atoi(token);
-            continue;
-        }
 
-        clContextLogError(C, "Too many parameters for --resize");
+        clContextLogError(C, "Unrecognized resize filter: %s", token);
         return clFalse;
     }
     clFree(buffer);
@@ -435,10 +495,10 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
             } else if (!strcmp(arg, "-q") || !strcmp(arg, "--quality")) {
                 NEXTARG();
                 C->params.quality = atoi(arg);
-                // } else if (!strcmp(arg, "-r") || !strcmp(arg, "--resize")) {
-                //     NEXTARG();
-                //     if (!parseResize(C, &C->params, arg))
-                //         return clFalse;
+            } else if (!strcmp(arg, "-r") || !strcmp(arg, "--resize")) {
+                NEXTARG();
+                if (!parseResize(C, &C->params, arg))
+                    return clFalse;
             } else if (!strcmp(arg, "-s") || !strcmp(arg, "--striptags")) {
                 NEXTARG();
                 C->params.stripTags = arg;
@@ -603,7 +663,7 @@ void clContextPrintArgs(clContext * C)
         clContextLog(C, "syntax", 1, "primaries   : auto");
     clContextLog(C, "syntax", 1, "resizeW     : %d", C->params.resizeW);
     clContextLog(C, "syntax", 1, "resizeH     : %d", C->params.resizeH);
-    clContextLog(C, "syntax", 1, "resizeFilter: %s", (C->params.resizeFilter == CL_FILTER_BILINEAR) ? "bilinear" : "nearest");
+    clContextLog(C, "syntax", 1, "resizeFilter: %s", clFilterToString(C, C->params.resizeFilter));
     clContextLog(C, "syntax", 1, "rect        : (%d,%d) %dx%d", C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3]);
     clContextLog(C, "syntax", 1, "stripTags   : %s", C->params.stripTags ? C->params.stripTags : "--");
     clContextLog(C, "syntax", 1, "tonemap     : %s", clTonemapToString(C, C->params.tonemap));
@@ -647,7 +707,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Convert Options:");
-    // clContextLog(C, NULL, 0, "    -r,--resize w,h,filter   : Resize dst image to WxH. Use optional filter (nearest, bilinear (default))");
+    clContextLog(C, NULL, 0, "    -r,--resize w,h,filter   : Resize dst image to WxH. Use optional filter (nearest, bilinear (default))");
     clContextLog(C, NULL, 0, "    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Identify Options:");

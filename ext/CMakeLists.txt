@@ -25,6 +25,12 @@ add_library(cjson
     cJSON/cJSON.h
 )
 
+include_directories(stb)
+add_library(stb
+    stb/stb_image_resize.c
+    stb/stb_image_resize.h
+)
+
 add_subdirectory(genHeader)
 
 set(EXECUTABLE_OUTPUT_PATH "" CACHE PATH "Unset OpenJPEG shenanigans")
@@ -106,6 +112,7 @@ add_library(jpeg
 
 set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/cJSON"
+    "${CMAKE_CURRENT_SOURCE_DIR}/stb"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/liblcms2/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libz"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libpng"
@@ -124,6 +131,7 @@ set(COLORIST_EXT_LIBS
     lcms2
     openjp2
     jpeg
+    stb
     z
     webp
     webpmux
@@ -149,6 +157,7 @@ set_folder_safe(opj_compress "ext/openjpeg")
 set_folder_safe(opj_decompress "ext/openjpeg")
 set_folder_safe(opj_dump "ext/openjpeg")
 set_folder_safe(png "ext")
+set_folder_safe(stb "ext")
 set_folder_safe(tiff "ext/openjpeg")
 set_folder_safe(webp "ext/webp")
 set_folder_safe(webpdecode "ext/webp")
