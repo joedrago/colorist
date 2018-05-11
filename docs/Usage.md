@@ -33,6 +33,7 @@ Output Format Options:
     -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off
 
 Convert Options:
+    -r,--resize w,h,filter   : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)
     -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h
 
 Identify Options:
