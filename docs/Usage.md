@@ -143,6 +143,28 @@ The JP2 compressor will do everything it can to blur/ruin your image if you
 don't give it enough breathing room, but it *will* hit your requested rate.
 Also, be sure to experiment to make sure my math isn't really wrong.
 
+### -r, --resize
+
+Resizes the destination image during conversion. `-r` expects 1-2 numbers,
+either comma separated or in the form `WxH`, representing the destination
+dimensions. If either of the dimensions is absent, colorist will use the
+aspect ratio of the source image to choose an appropriate value for the other
+dimension.
+
+A third, optional argument (separated from the dimensions with a comma) can
+specify the filter to be used when resizing. This is the list of valid filter
+values (explanations here taken directly from [STB library's](https://github.com/nothings/stb/) image_resize):
+
+* `box`          - A trapezoid w/1-pixel wide ramps, same result as box for integer scale ratios
+* `triangle`     - On upsampling, produces same results as bilinear texture filtering
+* `cubic`        - The cubic b-spline (aka Mitchell-Netrevalli with B=1,C=0), gaussian-esque
+* `catmullrom`   - An interpolating cubic spline
+* `mitchell`     - Mitchell-Netrevalli filter with B=1/3, C=1/3
+* `nearest`      - nearest neighbor (pixel art)
+
+If unspecified or `auto` (default), colorist will use `catmullrom` for scaling
+up, and `mitchell` for scaling down.
+
 ### -t, --tonemap
 
 Forces tonemapping to be on or off. When scaling from a large luminance range
@@ -173,7 +195,8 @@ want to choose an alternate rectangle for that pixel information, use this.
 Choosing a width and height of 0 will disable pixel dumping during identify
 (`-z 0,0,0,0`).
 
-When using `convert`, it will crop the source image to the requested rect.
+When using `convert`, it will crop the source image (prior to conversion) to
+the requested rect.
 
 ---
 

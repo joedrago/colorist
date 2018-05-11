@@ -257,7 +257,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     if (resizing) {
         int resizedPixelsCount = dstWidth * dstHeight;
         float * resizedPixels = clAllocate(4 * sizeof(float) * resizedPixelsCount);
-        clContextLog(C, "resize", 0, "Resizing %dx%d -> %dx%d", srcImage->width, srcImage->height, dstWidth, dstHeight);
+        clContextLog(C, "resize", 0, "Resizing %dx%d -> [filter:%s] -> %dx%d", srcImage->width, srcImage->height, clFilterToString(C, params->resizeFilter), dstWidth, dstHeight);
         timerStart(&t);
         clPixelMathResize(C, srcImage->width, srcImage->height, linearPixels, dstWidth, dstHeight, resizedPixels, params->resizeFilter);
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
