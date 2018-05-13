@@ -71,6 +71,7 @@ clFormat clFormatFromString(struct clContext * C, const char * str)
     if (!strcmp(str, "jp2")) return CL_FORMAT_JP2;
     if (!strcmp(str, "jpg")) return CL_FORMAT_JPG;
     if (!strcmp(str, "png")) return CL_FORMAT_PNG;
+    if (!strcmp(str, "tiff")) return CL_FORMAT_TIFF;
     if (!strcmp(str, "webp")) return CL_FORMAT_WEBP;
     return CL_FORMAT_ERROR;
 }
@@ -83,6 +84,7 @@ const char * clFormatToString(struct clContext * C, clFormat format)
         case CL_FORMAT_JP2:   return "JP2";
         case CL_FORMAT_JPG:   return "JPG";
         case CL_FORMAT_PNG:   return "PNG";
+        case CL_FORMAT_TIFF:  return "TIFF";
         case CL_FORMAT_WEBP:  return "WebP";
         case CL_FORMAT_ERROR:
         default:
@@ -104,6 +106,8 @@ clFormat clFormatDetect(struct clContext * C, const char * filename)
     if (!strcmp(ext, "jp2")) return CL_FORMAT_JP2;
     if (!strcmp(ext, "jpg")) return CL_FORMAT_JPG;
     if (!strcmp(ext, "png")) return CL_FORMAT_PNG;
+    if (!strcmp(ext, "tif")) return CL_FORMAT_TIFF;
+    if (!strcmp(ext, "tiff")) return CL_FORMAT_TIFF;
     if (!strcmp(ext, "webp")) return CL_FORMAT_WEBP;
     clContextLogError(C, "Unknown file extension '%s'", ext);
     return CL_FORMAT_ERROR;
@@ -116,6 +120,7 @@ int clFormatMaxDepth(struct clContext * C, clFormat format)
         case CL_FORMAT_JP2:   return 16;
         case CL_FORMAT_JPG:   return 8;
         case CL_FORMAT_PNG:   return 16;
+        case CL_FORMAT_TIFF:  return 16;
         case CL_FORMAT_WEBP:  return 8;
         default:
             break;
@@ -705,7 +710,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Output Format Options:");
     clContextLog(C, NULL, 0, "    -b,--bpp BPP             : Output bits-per-pixel. 8, 16, or 0 for auto (default)");
-    clContextLog(C, NULL, 0, "    -f,--format FORMAT       : Output format. auto (default), icc, j2k, jp2, jpg, png, webp");
+    clContextLog(C, NULL, 0, "    -f,--format FORMAT       : Output format. auto (default), icc, j2k, jp2, jpg, png, tiff, webp");
     clContextLog(C, NULL, 0, "    -q,--quality QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -2 below). (default: 90)");
     clContextLog(C, NULL, 0, "    -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)");
     clContextLog(C, NULL, 0, "    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off");

@@ -34,7 +34,8 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
         clContextLog(C, "profile", 0 + extraIndent, "Profile \"%s\"", profile->description);
         clContextLog(C, "profile", 1 + extraIndent, "Size: %d bytes", clProfileSize(C, profile));
 
-        if (tempStr = clProfileGetMLU(C, profile, "cprt", "en", "US")) {
+        tempStr = clProfileGetMLU(C, profile, "cprt", "en", "US");
+        if (tempStr) {
             clContextLog(C, "profile", 1 + extraIndent, "Copyright: \"%s\"", tempStr);
             clFree(tempStr);
         }

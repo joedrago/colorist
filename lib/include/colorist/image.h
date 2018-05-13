@@ -44,6 +44,9 @@ char * clImageWriteJPGURI(struct clContext * C, clImage * image, int quality);
 clImage * clImageReadPNG(struct clContext * C, const char * filename);
 clBool clImageWritePNG(struct clContext * C, clImage * image, const char * filename);
 
+clImage * clImageReadTIFF(struct clContext * C, const char * filename);
+clBool clImageWriteTIFF(struct clContext * C, clImage * image, const char * filename);
+
 clImage * clImageReadWebP(struct clContext * C, const char * filename);
 clBool clImageWriteWebP(struct clContext * C, clImage * image, const char * filename, int quality);
 

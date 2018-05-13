@@ -116,6 +116,8 @@ set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/liblcms2/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libz"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libpng"
+    "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libtiff"
+    "${libtiff_BINARY_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/src/lib/openjp2"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/include"
     "${OPENJPEG_BINARY_DIR}/src/lib/openjp2"
@@ -132,6 +134,7 @@ set(COLORIST_EXT_LIBS
     openjp2
     jpeg
     stb
+    tiff
     z
     webp
     webpmux

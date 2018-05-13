@@ -30,6 +30,9 @@ struct clImage * clContextRead(clContext * C, const char * filename, const char 
         case CL_FORMAT_PNG:
             image = clImageReadPNG(C, filename);
             break;
+        case CL_FORMAT_TIFF:
+            image = clImageReadTIFF(C, filename);
+            break;
         case CL_FORMAT_WEBP:
             image = clImageReadWebP(C, filename);
             break;
@@ -74,6 +77,9 @@ clBool clContextWrite(clContext * C, struct clImage * image, const char * filena
             break;
         case CL_FORMAT_PNG:
             return clImageWritePNG(C, image, filename);
+            break;
+        case CL_FORMAT_TIFF:
+            return clImageWriteTIFF(C, image, filename);
             break;
         case CL_FORMAT_WEBP:
             return clImageWriteWebP(C, image, filename, quality);

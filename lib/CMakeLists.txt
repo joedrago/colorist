@@ -62,6 +62,7 @@ set(COLORIST_LIB_SRCS
     src/image_jpg.c
     src/image_png.c
     src/image_string.c
+    src/image_tiff.c
     src/image_webp.c
     src/pixelmath_grade.c
     src/pixelmath_resize.c
