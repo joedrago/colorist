@@ -4,42 +4,42 @@
 
 void clPixelMathUNormToFloat(struct clContext * C, uint8_t * inPixels, int inDepth, float * outPixels, int pixelCount)
 {
+    float maxChannel = (float)((1 << inDepth) - 1);
     int channelCount = pixelCount * 4;
     int i;
 
-    if (inDepth == 16) {
+    if (inDepth > 8) {
         uint16_t * inChannel = (uint16_t *)inPixels;
         float * outChannel = outPixels;
         for (i = 0; i < channelCount; ++i) {
-            outChannel[i] = inChannel[i] / 65535.0f;
+            outChannel[i] = inChannel[i] / maxChannel;
         }
     } else {
         uint8_t * inChannel = inPixels;
         float * outChannel = outPixels;
-        COLORIST_ASSERT(inDepth == 8);
         for (i = 0; i < channelCount; ++i) {
-            outChannel[i] = inChannel[i] / 255.0f;
+            outChannel[i] = inChannel[i] / maxChannel;
         }
     }
 }
 
 void clPixelMathFloatToUNorm(struct clContext * C, float * inPixels, uint8_t * outPixels, int outDepth, int pixelCount)
 {
+    float maxChannel = (float)((1 << outDepth) - 1);
     int channelCount = pixelCount * 4;
     int i;
 
-    if (outDepth == 16) {
+    if (outDepth > 8) {
         float * inChannel = inPixels;
         uint16_t * outChannel = (uint16_t *)outPixels;
         for (i = 0; i < channelCount; ++i) {
-            outChannel[i] = (uint16_t)clPixelMathRoundf(inChannel[i] * 65535.0f);
+            outChannel[i] = (uint16_t)clPixelMathRoundf(inChannel[i] * maxChannel);
         }
     } else {
         float * inChannel = inPixels;
         uint8_t * outChannel = outPixels;
-        COLORIST_ASSERT(outDepth == 8);
         for (i = 0; i < channelCount; ++i) {
-            outChannel[i] = (uint8_t)clPixelMathRoundf(inChannel[i] * 255.0f);
+            outChannel[i] = (uint8_t)clPixelMathRoundf(inChannel[i] * maxChannel);
         }
     }
 }
