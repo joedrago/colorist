@@ -98,7 +98,7 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, float * pixels, 
         int gammaInt;
         int minGammaInt;
         float minErrorTerm = -1.0f;
-        float maxChannel = (dstColorDepth == 16) ? 65535.0f : 255.0f;
+        float maxChannel = (float)((1 << dstColorDepth) - 1);
         clTask ** tasks;
         clGammaErrorTermTask * infos;
         int tasksInFlight = 0;
