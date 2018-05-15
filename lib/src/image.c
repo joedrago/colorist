@@ -155,10 +155,8 @@ void clImageDestroy(clContext * C, clImage * image)
 
 int clDepthToBytes(clContext * C, int depth)
 {
-    switch (depth) {
-        case 8: return 1;
-        case 16: return 2;
-    }
-    COLORIST_FAILURE1("unexpected depth: %d", depth);
+    COLORIST_ASSERT(depth <= 16);
+    if (depth > 8)
+        return 2;
     return 1;
 }

@@ -30,9 +30,13 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     clProfilePrimaries dstPrimaries;
     float dstGamma = 0.0f;
     int dstLuminance = 0;
+    int bestDepth;
     int dstDepth = 0;
     clProfile * dstProfile = NULL;
     clImage * dstImage = NULL;
+
+    // if true, don't bother with an intermediate array of floats, just use LittleCMS
+    clBool convertDirectly = clTrue;
 
     // Variables used in luminance scaling
     clProfile * dstLinear = NULL;
@@ -87,9 +91,10 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         if (dstDepth == 0) {
             dstDepth = srcImage->depth;
         }
-        if ((dstDepth != 8) && (clFormatMaxDepth(C, params->format) < dstDepth)) {
-            clContextLog(C, "validate", 0, "Forcing output to 8-bit (format limitations)");
-            dstDepth = 8;
+        bestDepth = clFormatBestDepth(C, params->format, dstDepth);
+        if (dstDepth != bestDepth) {
+            clContextLog(C, "validate", 0, "Overriding output depth %d-bit -> %d-bit (format limitations)", dstDepth, bestDepth);
+            dstDepth = bestDepth;
         }
 
         if (!params->autoGrade) {
@@ -140,8 +145,22 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         clContextLog(C, "profile", 1, "Overriding dst profile with file: %s", params->iccOverrideOut);
     }
 
+    // Decide whether or not to create intermediate float array or convert directly with Little CMS
+    if (srcLuminance != dstLuminance) {
+        // Luminance scaling is involved, floats needed
+        convertDirectly = clFalse;
+    }
+    if (resizing) {
+        // resizing occurs with floats
+        convertDirectly = clFalse;
+    }
+    if (((srcImage->depth != 8) && (srcImage->depth != 16)) || ((dstDepth != 8) && (dstDepth != 16))) {
+        // LittleCMS can only directly convert from/to 8 or 16 bit formats
+        convertDirectly = clFalse;
+    }
+
     // Create intermediate 1.0 gamma float32 pixel array if we're going to need it later.
-    if ((srcLuminance != dstLuminance) || resizing) {
+    if (!convertDirectly) {
         cmsHTRANSFORM toLinear;
         float * srcFloats; // original values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
 
@@ -270,46 +289,43 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     dstImage = clImageCreate(C, dstWidth, dstHeight, dstDepth, dstProfile);
 
     // Show image details
-    {
-        clContextLog(C, "details", 0, "Source:");
-        clImageDebugDump(C, srcImage, 0, 0, 0, 0, 1);
-        clContextLog(C, "details", 0, "Destination:");
-        clImageDebugDump(C, dstImage, 0, 0, 0, 0, 1);
-    }
+    clContextLog(C, "details", 0, "Source:");
+    clImageDebugDump(C, srcImage, 0, 0, 0, 0, 1);
+    clContextLog(C, "details", 0, "Destination:");
+    clImageDebugDump(C, dstImage, 0, 0, 0, 0, 1);
 
     // Convert srcImage -> dstImage
-    {
-        if (linearPixels == NULL) {
-            cmsHTRANSFORM directTransform;
-            cmsUInt32Number srcFormat = (srcImage->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
-            cmsUInt32Number dstFormat = (dstImage->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
+    if (convertDirectly) {
+        cmsHTRANSFORM directTransform;
+        cmsUInt32Number srcFormat = (srcImage->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
+        cmsUInt32Number dstFormat = (dstImage->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
 
-            clContextLog(C, "convert", 0, "Converting directly...");
+        clContextLog(C, "convert", 0, "Converting directly...");
+        timerStart(&t);
+        directTransform = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, srcFormat, dstImage->profile->handle, dstFormat, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+        doMultithreadedTransform(C, params->jobs, directTransform, srcImage->pixels, (srcImage->depth == 16) ? 8 : 4, dstImage->pixels, (dstImage->depth == 16) ? 8 : 4, dstImage->width * dstImage->height);
+        cmsDeleteTransform(directTransform);
+        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+    } else {
+        cmsHTRANSFORM fromLinear = cmsCreateTransformTHR(C->lcms, dstLinear->handle, TYPE_RGBA_FLT, dstImage->profile->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+        float * dstFloats; // final values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
+        COLORIST_ASSERT(linearPixels);
+
+        if (srcLuminance != dstLuminance) {
+            clContextLog(C, "luminance", 0, "Scaling luminance (%gx, %s)...", luminanceScale, tonemap ? "tonemap" : "clip");
             timerStart(&t);
-            directTransform = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, srcFormat, dstImage->profile->handle, dstFormat, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
-            doMultithreadedTransform(C, params->jobs, directTransform, srcImage->pixels, (srcImage->depth == 16) ? 8 : 4, dstImage->pixels, (dstImage->depth == 16) ? 8 : 4, dstImage->width * dstImage->height);
-            cmsDeleteTransform(directTransform);
-            clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
-        } else {
-            cmsHTRANSFORM fromLinear = cmsCreateTransformTHR(C->lcms, dstLinear->handle, TYPE_RGBA_FLT, dstImage->profile->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
-            float * dstFloats; // final values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
-
-            if (srcLuminance != dstLuminance) {
-                clContextLog(C, "luminance", 0, "Scaling luminance (%gx, %s)...", luminanceScale, tonemap ? "tonemap" : "clip");
-                timerStart(&t);
-                clPixelMathScaleLuminance(C, linearPixels, linearPixelsCount, luminanceScale, tonemap);
-                clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
-            }
-
-            clContextLog(C, "convert", 0, "Calculating final pixel values...");
-            timerStart(&t);
-            dstFloats = clAllocate(4 * sizeof(float) * linearPixelsCount);
-            doMultithreadedTransform(C, params->jobs, fromLinear, (uint8_t *)linearPixels, 4 * sizeof(float), (uint8_t *)dstFloats, 4 * sizeof(float), linearPixelsCount);
-            cmsDeleteTransform(fromLinear);
-            clPixelMathFloatToUNorm(C, dstFloats, dstImage->pixels, dstImage->depth, linearPixelsCount);
-            clFree(dstFloats);
+            clPixelMathScaleLuminance(C, linearPixels, linearPixelsCount, luminanceScale, tonemap);
             clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
         }
+
+        clContextLog(C, "convert", 0, "Calculating final pixel values...");
+        timerStart(&t);
+        dstFloats = clAllocate(4 * sizeof(float) * linearPixelsCount);
+        doMultithreadedTransform(C, params->jobs, fromLinear, (uint8_t *)linearPixels, 4 * sizeof(float), (uint8_t *)dstFloats, 4 * sizeof(float), linearPixelsCount);
+        cmsDeleteTransform(fromLinear);
+        clPixelMathFloatToUNorm(C, dstFloats, dstImage->pixels, dstImage->depth, linearPixelsCount);
+        clFree(dstFloats);
+        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
 
 convertCleanup:

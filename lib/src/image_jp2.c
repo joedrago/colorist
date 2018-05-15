@@ -40,6 +40,7 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
     opj_image_t * opjImage = NULL;
     opj_stream_t * opjStream = NULL;
     int channelFactor[4] = { 1, 1, 1, 1 };
+    int maxChannel;
 
     const char * errorExtName = "JP2";
     clBool isJ2K = clFalse;
@@ -114,15 +115,16 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
         // Find biggest component
         dstDepth = (dstDepth > (int)opjImage->comps[i].prec) ? dstDepth : (int)opjImage->comps[i].prec;
     }
-    if ((dstDepth != 8) && (dstDepth != 16)) {
+    if ((dstDepth < 8) || (dstDepth > 16)) {
         int srcDepth = dstDepth;
-        dstDepth = (dstDepth > 8) ? 16 : 8; // round to nearest Colorist-supported depth
-        clContextLog(C, "JP2", 1, "Promoting %d-bit source to %d bits", srcDepth, dstDepth);
+        dstDepth = CL_CLAMP(dstDepth, 8, 16); // round to nearest Colorist-supported depth
+        clContextLog(C, "JP2", 1, "Clamping %d-bit source to %d bits", srcDepth, dstDepth);
     }
     for (i = 0; i < (int)opjImage->numcomps; ++i) {
         // Calculate scales for incoming components
         channelFactor[i] = 1 << (dstDepth - opjImage->comps[i].prec);
     }
+    maxChannel = (1 << dstDepth) - 1;
 
     image = clImageCreate(C, opjImage->x1, opjImage->y1, dstDepth, profile);
     if (profile) {
@@ -131,8 +133,7 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
 
     pixelCount = image->width * image->height;
 
-    if (image->depth == 16) {
-        // 16-bit
+    if (image->depth > 8) {
         uint16_t * pixel = (uint16_t *)image->pixels;
         if (opjImage->numcomps == 3) {
             // RGB, fill A
@@ -140,7 +141,7 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
                 pixel[0] = opjImage->comps[0].data[i] * channelFactor[0];
                 pixel[1] = opjImage->comps[1].data[i] * channelFactor[1];
                 pixel[2] = opjImage->comps[2].data[i] * channelFactor[2];
-                pixel[3] = 65535;
+                pixel[3] = maxChannel;
                 pixel += 4;
             }
         } else {
@@ -155,7 +156,6 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
             }
         }
     } else {
-        // 8-bit
         uint8_t * pixel = image->pixels;
         if (opjImage->numcomps == 3) {
             // RGB, fill A
@@ -163,7 +163,7 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
                 pixel[0] = opjImage->comps[0].data[i] * channelFactor[0];
                 pixel[1] = opjImage->comps[1].data[i] * channelFactor[1];
                 pixel[2] = opjImage->comps[2].data[i] * channelFactor[2];
-                pixel[3] = 255;
+                pixel[3] = maxChannel;
                 pixel += 4;
             }
         } else {
@@ -235,7 +235,7 @@ clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filen
         return 0;
     }
 
-    if (image->depth == 16) {
+    if (image->depth > 8) {
         unsigned short * src = (unsigned short *)image->pixels;
         for (j = 0; j < image->height; ++j) {
             for (i = 0; i < image->width; ++i) {

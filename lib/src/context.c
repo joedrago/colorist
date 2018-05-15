@@ -129,6 +129,30 @@ int clFormatMaxDepth(struct clContext * C, clFormat format)
     return 8;
 }
 
+int clFormatBestDepth(struct clContext * C, clFormat format, int reqDepth)
+{
+    if (reqDepth < 8) {
+        return 8;
+    }
+
+    if ((format == CL_FORMAT_J2K) || (format == CL_FORMAT_JP2)) {
+        if (reqDepth > 16)
+            return 16;
+
+        // JPEG 2000 supports every bit depth 8-16
+        return reqDepth;
+    }
+
+    if ((format == CL_FORMAT_PNG) || (format == CL_FORMAT_TIFF)) {
+        if (reqDepth > 8) {
+            return 16;
+        }
+    }
+
+    // Everything else gets 8 bit
+    return 8;
+}
+
 // ------------------------------------------------------------------------------------------------
 // clTonemap
 
@@ -620,7 +644,7 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
 static clBool validateArgs(clContext * C)
 {
     clBool valid = clTrue;
-    if ((C->params.bpp != 0) && (C->params.bpp != 8) && (C->params.bpp != 16)) {
+    if (C->params.bpp < 0) {
         clContextLogError(C, "Unknown bpp: %d", C->params.bpp);
         valid = clFalse;
     }

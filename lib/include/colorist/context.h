@@ -52,6 +52,7 @@ clFormat clFormatFromString(struct clContext * C, const char * str);
 const char * clFormatToString(struct clContext * C, clFormat format);
 clFormat clFormatDetect(struct clContext * C, const char * filename);
 int clFormatMaxDepth(struct clContext * C, clFormat format);
+int clFormatBestDepth(struct clContext * C, clFormat format, int reqDepth);
 
 typedef enum clTonemap
 {
