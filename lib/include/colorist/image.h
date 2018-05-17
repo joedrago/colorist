@@ -43,6 +43,7 @@ char * clImageWriteJPGURI(struct clContext * C, clImage * image, int quality);
 
 clImage * clImageReadPNG(struct clContext * C, const char * filename);
 clBool clImageWritePNG(struct clContext * C, clImage * image, const char * filename);
+clBool clImageWritePNGRaw(struct clContext * C, clImage * image, struct clRaw * dst);
 
 clImage * clImageReadTIFF(struct clContext * C, const char * filename);
 clBool clImageWriteTIFF(struct clContext * C, clImage * image, const char * filename);

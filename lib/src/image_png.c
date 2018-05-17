@@ -124,29 +124,51 @@ clImage * clImageReadPNG(struct clContext * C, const char * filename)
     return image;
 }
 
-clBool clImageWritePNG(struct clContext * C, clImage * image, const char * filename)
+struct writeInfo
+{
+    struct clContext * C;
+    clRaw * dst;
+    uint32_t offset;
+};
+
+static void writeCallback(png_structp png, png_bytep data, png_size_t length)
+{
+    struct writeInfo * wi = (struct writeInfo *)png_get_io_ptr(png);
+    if ((wi->offset + length) > wi->dst->size) {
+        uint32_t newSize = wi->dst->size;
+        if (!newSize)
+            newSize = 8;
+        do {
+            newSize *= 2;
+        } while (newSize < (wi->offset + length));
+        clRawRealloc(wi->C, wi->dst, newSize);
+    }
+    memcpy(wi->dst->ptr + wi->offset, data, length);
+    wi->offset += length;
+}
+
+clBool clImageWritePNGRaw(struct clContext * C, clImage * image, struct clRaw * dst)
 {
     int y;
     png_bytep * rowPointers;
     int imgBytesPerChannel = (image->depth == 16) ? 2 : 1;
     clRaw rawProfile;
+    struct writeInfo wi;
     png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     png_infop info = png_create_info_struct(png);
 
-    FILE * fp = fopen(filename, "wb");
-    if (!fp) {
-        return clFalse;
-    }
-
     memset(&rawProfile, 0, sizeof(rawProfile));
     if (!clProfilePack(C, image->profile, &rawProfile)) {
-        fclose(fp);
         return clFalse;
     }
 
     COLORIST_ASSERT(png && info);
     setjmp(png_jmpbuf(png));
-    png_init_io(png, fp);
+
+    wi.C = C;
+    wi.offset = 0;
+    wi.dst = dst;
+    png_set_write_fn(png, &wi, writeCallback, NULL);
 
     png_set_IHDR(
         png,
@@ -180,7 +202,35 @@ clBool clImageWritePNG(struct clContext * C, clImage * image, const char * filen
     png_destroy_write_struct(&png, &info);
 
     clFree(rowPointers);
-    fclose(fp);
     clRawFree(C, &rawProfile);
+    dst->size = wi.offset;
+    return clTrue;
+}
+
+clBool clImageWritePNG(struct clContext * C, clImage * image, const char * filename)
+{
+    FILE * outfile = NULL;
+    clRaw dst;
+
+    memset(&dst, 0, sizeof(dst));
+    if (!clImageWritePNGRaw(C, image, &dst)) {
+        goto writePNGCleanup;
+    }
+
+    outfile = fopen(filename, "wb");
+    if (!outfile) {
+        clContextLogError(C, "ERROR: can't open PNG for write: %s", filename);
+        goto writePNGCleanup;
+    }
+
+    if (fwrite(dst.ptr, dst.size, 1, outfile) != 1) {
+        clContextLogError(C, "ERROR: can't write %d bytes to PNG: %s", dst.size, filename);
+        goto writePNGCleanup;
+    }
+
+writePNGCleanup:
+    if (outfile)
+        fclose(outfile);
+    clRawFree(C, &dst);
     return clTrue;
 }
