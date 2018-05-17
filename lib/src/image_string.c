@@ -745,8 +745,9 @@ static void getColor(struct clContext * C, clToken * tokens, int reqIndex, int d
     getRawColor(C, tokens, reqIndex, outColor);
 
     // get 32 bit color version
-    memcpy(&color32, outColor, sizeof(color32));
-    if (outColor->depth != 32) {
+    if (outColor->depth == 32) {
+        memcpy(&color32, outColor, sizeof(color32));
+    } else {
         maxChannelf = (float)((1 << outColor->depth) - 1);
         color32.fr = (float)outColor->r / maxChannelf;
         color32.fg = (float)outColor->g / maxChannelf;
@@ -758,13 +759,13 @@ static void getColor(struct clContext * C, clToken * tokens, int reqIndex, int d
     // convert from 32 to destination depth
     maxChannel = ((1 << depth) - 1);
     maxChannelf = (float)maxChannel;
-    outColor->r = (uint16_t)clPixelMathRoundf(outColor->fr * maxChannelf);
+    outColor->r = (uint16_t)clPixelMathRoundf(color32.fr * maxChannelf);
     outColor->r = CL_CLAMP(outColor->r, 0, maxChannel);
-    outColor->g = (uint16_t)clPixelMathRoundf(outColor->fg * maxChannelf);
+    outColor->g = (uint16_t)clPixelMathRoundf(color32.fg * maxChannelf);
     outColor->g = CL_CLAMP(outColor->g, 0, maxChannel);
-    outColor->b = (uint16_t)clPixelMathRoundf(outColor->fb * maxChannelf);
+    outColor->b = (uint16_t)clPixelMathRoundf(color32.fb * maxChannelf);
     outColor->b = CL_CLAMP(outColor->b, 0, maxChannel);
-    outColor->a = (uint16_t)clPixelMathRoundf(outColor->fa * maxChannelf);
+    outColor->a = (uint16_t)clPixelMathRoundf(color32.fa * maxChannelf);
     outColor->a = CL_CLAMP(outColor->a, 0, maxChannel);
     outColor->depth = depth;
 }
