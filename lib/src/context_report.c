@@ -59,7 +59,7 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
         char * channelFormat = "u8";
         clRaw rawPixels;
         clStructArraySchema imageSchema[4];
-        if (image->depth == 16) {
+        if (image->depth > 8) {
             channelFormat = "u16";
         }
         imageSchema[0].format = channelFormat;
