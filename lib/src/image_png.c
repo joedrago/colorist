@@ -234,3 +234,34 @@ writePNGCleanup:
     clRawFree(C, &dst);
     return clTrue;
 }
+
+char * clImageWritePNGURI(struct clContext * C, clImage * image)
+{
+    clRaw dst;
+    char * b64;
+    int b64Len;
+    char * output;
+    static const char prefixURI[] = "data:image/png;base64,";
+    static int prefixURILen = sizeof(prefixURI) - 1;
+
+    memset(&dst, 0, sizeof(dst));
+    if (!clImageWritePNGRaw(C, image, &dst)) {
+        return NULL;
+    }
+
+    b64 = clRawToBase64(C, &dst);
+    if (!b64) {
+        clRawFree(C, &dst);
+        return NULL;
+    }
+    b64Len = strlen(b64);
+
+    output = clAllocate(prefixURILen + b64Len + 1);
+    memcpy(output, prefixURI, prefixURILen);
+    memcpy(output + prefixURILen, b64, b64Len);
+    output[prefixURILen + b64Len] = 0;
+
+    clFree(b64);
+    clRawFree(C, &dst);
+    return output;
+}

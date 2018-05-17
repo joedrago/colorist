@@ -96,13 +96,14 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
         if (!visual) {
             return clFalse;
         }
-        jpegB64 = clImageWriteJPGURI(C, visual, 90);
+        jpegB64 = clImageWritePNGURI(C, visual);
         clImageDestroy(C, visual);
         if (!jpegB64) {
             return clFalse;
         }
         cJSON_AddItemToObject(payload, "uri", cJSON_CreateString(jpegB64));
         clFree(jpegB64);
+        clContextLog(C, "encode", 0, "Visual generation complete.");
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
 
@@ -131,11 +132,11 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
     return clTrue;
 }
 
-static clBool reportHeatMap(clContext * C, clImage * image, cJSON * payload)
-{
-    cJSON_AddItemToObject(payload, "heatmap_example_number", cJSON_CreateNumber(42));
-    return clTrue;
-}
+// static clBool reportHeatMap(clContext * C, clImage * image, cJSON * payload)
+// {
+//     cJSON_AddItemToObject(payload, "heatmap_example_number", cJSON_CreateNumber(42));
+//     return clTrue;
+// }
 
 int clContextReport(clContext * C)
 {
@@ -167,15 +168,15 @@ int clContextReport(clContext * C)
         }
     }
 
-    // if "create heat map report" ...
-    {
-        clContextLog(C, "heatmap", 0, "Generating heatmap...");
-        timerStart(&t);
-        if (!reportHeatMap(C, image, payload)) {
-            FAIL();
-        }
-        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
-    }
+    // // if "create heat map report" ...
+    // {
+    //     clContextLog(C, "heatmap", 0, "Generating heatmap...");
+    //     timerStart(&t);
+    //     if (!reportHeatMap(C, image, payload)) {
+    //         FAIL();
+    //     }
+    //     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+    // }
 
     timerStart(&t);
     {
