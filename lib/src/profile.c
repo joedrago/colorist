@@ -15,6 +15,9 @@
 #include <math.h>
 #include <string.h>
 
+// from cmsio1.c
+extern cmsBool _cmsReadCHAD(cmsMAT3 * Dest, cmsHPROFILE hProfile);
+
 clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock)
 {
     clProfilePrimaries primaries;
@@ -270,7 +273,7 @@ void clProfileDestroy(struct clContext * C, clProfile * profile)
 clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries, clProfileCurve * curve, int * luminance)
 {
     if (primaries) {
-        cmsMAT3 * chad;
+        cmsMAT3 chad;
         cmsMAT3 invChad;
         cmsMAT3 tmpColorants;
         cmsMAT3 colorants;
@@ -323,19 +326,26 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
             _cmsVEC3init(&tmpColorants.v[2], redXYZ->Z, greenXYZ->Z, blueXYZ->Z);
         }
 
-        chad = (cmsMAT3 *)cmsReadTag(profile->handle, cmsSigChromaticAdaptationTag);
-        if ((chad != NULL) && _cmsMAT3inverse(chad, &invChad)) {
-            cmsVEC3 srcWP, dstWP;
-            cmsCIExyY whiteXYY;
-            cmsXYZ2xyY(&whiteXYY, whiteXYZ);
-            srcWP.n[VX] = whiteXYZ->X;
-            srcWP.n[VY] = whiteXYZ->Y;
-            srcWP.n[VZ] = whiteXYZ->Z;
-            _cmsMAT3eval(&dstWP, &invChad, &srcWP);
-            adaptedWhiteXYZ.X = dstWP.n[VX];
-            adaptedWhiteXYZ.Y = dstWP.n[VY];
-            adaptedWhiteXYZ.Z = dstWP.n[VZ];
+        if (_cmsReadCHAD(&chad, profile->handle) && _cmsMAT3inverse(&chad, &invChad)) {
+            // Always adapt the colorants with the chad tag (if wtpt is D50, it'll be identity)
             _cmsMAT3per(&colorants, &invChad, &tmpColorants);
+
+            if ((cmsGetEncodedICCversion(profile->handle) < 0x4000000) && !cmsIsTag(profile->handle, cmsSigChromaticAdaptationTag)) {
+                // Old version without a chad tag, honor the wtpt tag (do not chromatically adapt it)
+                adaptedWhiteXYZ = *whiteXYZ;
+            } else {
+                // Newer version or a chad tag was explicitly set, adapt white point
+                cmsVEC3 srcWP, dstWP;
+                cmsCIExyY whiteXYY;
+                cmsXYZ2xyY(&whiteXYY, whiteXYZ);
+                srcWP.n[VX] = whiteXYZ->X;
+                srcWP.n[VY] = whiteXYZ->Y;
+                srcWP.n[VZ] = whiteXYZ->Z;
+                _cmsMAT3eval(&dstWP, &invChad, &srcWP);
+                adaptedWhiteXYZ.X = dstWP.n[VX];
+                adaptedWhiteXYZ.Y = dstWP.n[VY];
+                adaptedWhiteXYZ.Z = dstWP.n[VZ];
+            }
         } else {
             colorants = tmpColorants;
             adaptedWhiteXYZ = *whiteXYZ;
