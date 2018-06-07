@@ -62,7 +62,7 @@ int clContextGenerate(clContext * C)
     curve.type = CL_PCT_GAMMA;
     if (C->params.gamma <= 0.0f) {
         clContextLog(C, "generate", 1, "No gamma specified (-g). Using default sRGB gamma.");
-        curve.gamma = 2.4f;
+        curve.gamma = COLORIST_SRGB_GAMMA;
     } else {
         curve.gamma = C->params.gamma;
     }

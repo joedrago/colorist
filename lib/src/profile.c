@@ -37,8 +37,8 @@ clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock)
             primaries.white[0] = 0.3127f;
             primaries.white[1] = 0.3290f;
             curve.type = CL_PCT_GAMMA;
-            curve.gamma = 2.4f;
-            maxLuminance = 300;
+            curve.gamma = COLORIST_SRGB_GAMMA;
+            maxLuminance = COLORIST_DEFAULT_LUMINANCE;
             description = "SRGB";
             break;
     }

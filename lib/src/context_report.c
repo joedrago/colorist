@@ -88,8 +88,8 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
         params.format = CL_FORMAT_JPG;
         params.bpp = 8;
         clContextGetRawStockPrimaries(C, "bt709", params.primaries);
-        params.gamma = 2.4f;
-        params.luminance = 300;
+        params.gamma = COLORIST_SRGB_GAMMA;
+        params.luminance = COLORIST_DEFAULT_LUMINANCE;
         params.quality = 95;
         params.jobs = C->params.jobs;
         visual = clImageConvert(C, image, &params);
