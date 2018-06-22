@@ -109,6 +109,7 @@ typedef struct clConversionParams
     const char * description;    // -d
     clFormat format;             // -f
     float gamma;                 // -g
+    const char * hald;           // --hald
     int jobs;                    // -j
     int luminance;               // -l
     const char * iccOverrideOut; // -o

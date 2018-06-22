@@ -50,6 +50,10 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     int dstHeight = 0;
     clBool resizing = clFalse;
 
+    // Hald CLUT
+    clImage * haldImage = NULL;
+    int haldDims = 0;
+
     // Parse source image and args for early pipeline decisions
     {
         clProfileCurve curve;
@@ -156,6 +160,38 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     }
     if (((srcImage->depth != 8) && (srcImage->depth != 16)) || ((dstDepth != 8) && (dstDepth != 16))) {
         // LittleCMS can only directly convert from/to 8 or 16 bit formats
+        convertDirectly = clFalse;
+    }
+    if (params->hald) {
+        haldImage = clContextRead(C, params->hald, NULL, NULL);
+        if (!haldImage) {
+            clContextLogError(C, "Can't read Hald CLUT: %s", params->hald);
+            FAIL();
+        }
+        if (haldImage->width != haldImage->height) {
+            clContextLogError(C, "Hald CLUT isn't square [%dx%d]: %s", haldImage->width, haldImage->height, params->hald);
+            FAIL();
+        }
+
+        // Find haldDims
+        {
+            int i;
+            for (i = 0; i < 32; ++i) {
+                if ((i * i * i) == haldImage->width) {
+                    haldDims = i * i;
+                    break;
+                }
+            }
+
+            if (haldDims == 0) {
+                clContextLogError(C, "Hald CLUT dimensions aren't cubic [%dx%d]: %s", haldImage->width, haldImage->height, params->hald);
+                FAIL();
+            }
+
+            clContextLog(C, "hald", 0, "Loaded %dx%dx%d Hald CLUT: %s", haldDims, haldDims, haldDims, params->hald);
+        }
+
+        // Using a Hald CLUT, we need some source floats
         convertDirectly = clFalse;
     }
 
@@ -318,14 +354,38 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
             clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
         }
 
-        clContextLog(C, "convert", 0, "Calculating final pixel values...");
+        clContextLog(C, "convert", 0, "Performing color conversion...");
         timerStart(&t);
         dstFloats = clAllocate(4 * sizeof(float) * linearPixelsCount);
         doMultithreadedTransform(C, params->jobs, fromLinear, (uint8_t *)linearPixels, 4 * sizeof(float), (uint8_t *)dstFloats, 4 * sizeof(float), linearPixelsCount);
         cmsDeleteTransform(fromLinear);
+        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+
+        if (haldImage) {
+            int i;
+            int haldDataCount = haldImage->width * haldImage->height;
+            float * haldSrcFloats;
+            float * haldData;
+
+            clContextLog(C, "hald", 0, "Performing Hald CLUT postprocessing...");
+            timerStart(&t);
+
+            haldData = clAllocate(4 * sizeof(float) * haldDataCount);
+            clPixelMathUNormToFloat(C, haldImage->pixels, haldImage->depth, haldData, haldDataCount);
+
+            haldSrcFloats = dstFloats;
+            dstFloats = clAllocate(4 * sizeof(float) * linearPixelsCount);
+
+            for (i = 0; i < linearPixelsCount; ++i) {
+                clPixelMathHaldCLUTLookup(C, haldData, haldDims, &haldSrcFloats[i * 4], &dstFloats[i * 4]);
+            }
+
+            clFree(haldData);
+            clFree(haldSrcFloats);
+            clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+        }
         clPixelMathFloatToUNorm(C, dstFloats, dstImage->pixels, dstImage->depth, linearPixelsCount);
         clFree(dstFloats);
-        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
 
 convertCleanup:
@@ -335,6 +395,8 @@ convertCleanup:
         clProfileDestroy(C, dstLinear);
     if (linearPixels)
         clFree(linearPixels);
+    if (haldImage)
+        clImageDestroy(C, haldImage);
 
     if (!result) {
         if (dstImage) {

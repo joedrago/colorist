@@ -230,6 +230,7 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     clConversionParamsSetOutputProfileDefaults(C, params);
     params->bpp = 0;
     params->format = CL_FORMAT_AUTO;
+    params->hald = NULL;
     params->jobs = clTaskLimit();
     params->iccOverrideOut = NULL;
     params->quality = 90;  // ?
@@ -502,6 +503,9 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
                 }
             } else if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
                 C->help = clTrue;
+            } else if (!strcmp(arg, "--hald")) {
+                NEXTARG();
+                C->params.hald = arg;
             } else if (!strcmp(arg, "-i") || !strcmp(arg, "--iccin")) {
                 NEXTARG();
                 C->iccOverrideIn = arg;
@@ -676,6 +680,7 @@ void clContextPrintArgs(clContext * C)
         clContextLog(C, "syntax", 1, "gamma       : %g", C->params.gamma);
     else
         clContextLog(C, "syntax", 1, "gamma       : auto");
+    clContextLog(C, "syntax", 1, "hald clut   : %s", C->params.hald ? C->params.hald : "--");
     clContextLog(C, "syntax", 1, "help        : %s", C->help ? "enabled" : "disabled");
     clContextLog(C, "syntax", 1, "ICC in      : %s", C->iccOverrideIn ? C->iccOverrideIn : "--");
     clContextLog(C, "syntax", 1, "ICC out     : %s", C->params.iccOverrideOut ? C->params.iccOverrideOut : "--");
@@ -742,6 +747,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "Convert Options:");
     clContextLog(C, NULL, 0, "    -r,--resize w,h,filter   : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)");
     clContextLog(C, NULL, 0, "    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h");
+    clContextLog(C, NULL, 0, "    --hald FILENAME          : Image containing valid Hald CLUT to be used after color conversion");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Identify Options:");
     clContextLog(C, NULL, 0, "    -z,--rect x,y,w,h        : Pixels to dump. x,y,w,h");
