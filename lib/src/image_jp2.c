@@ -202,11 +202,13 @@ clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filen
 
     opjStream = opj_stream_create_file_stream(filename, 1 * 1024 * 1024, OPJ_FALSE);
 
+    memset(&parameters, 0, sizeof(parameters));
     opj_set_default_encoder_parameters(&parameters);
     parameters.cod_format = 0;
     parameters.tcp_numlayers = 1;
     parameters.cp_disto_alloc = 1;
     parameters.numresolution = 1;
+    parameters.tcp_mct = 1;
     while (parameters.numresolution < 6) {
         if (image->width <= (1 << (parameters.numresolution - 1)))
             break;
@@ -229,6 +231,7 @@ clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filen
     }
 
     for (i = 0; i < numcomps; i++) {
+        memset(&cmptparm[i], 0, sizeof(cmptparm[0]));
         cmptparm[i].prec = image->depth;
         cmptparm[i].bpp = image->depth;
         cmptparm[i].sgnd = 0;
@@ -273,6 +276,7 @@ clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filen
     opjImage->y0 = 0;
     opjImage->x1 = image->width;
     opjImage->y1 = image->height;
+    opjImage->comps[3].alpha = 1;
 
     memset(&rawProfile, 0, sizeof(rawProfile));
     if (!clProfilePack(C, image->profile, &rawProfile)) {

@@ -233,8 +233,8 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->hald = NULL;
     params->jobs = clTaskLimit();
     params->iccOverrideOut = NULL;
-    params->quality = 90;  // ?
-    params->jp2rate = 150; // ?
+    params->quality = 90; // ?
+    params->jp2rate = 0;  // Choosing a value here is dangerous as it is heavily impacted by image size
     params->rect[0] = 0;
     params->rect[1] = 0;
     params->rect[2] = -1;
@@ -741,7 +741,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -b,--bpp BPP             : Output bits-per-pixel. 8, 16, or 0 for auto (default)");
     clContextLog(C, NULL, 0, "    -f,--format FORMAT       : Output format. auto (default), icc, j2k, jp2, jpg, png, tiff, webp");
     clContextLog(C, NULL, 0, "    -q,--quality QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -2 below). (default: 90)");
-    clContextLog(C, NULL, 0, "    -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)");
+    clContextLog(C, NULL, 0, "    -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 0)");
     clContextLog(C, NULL, 0, "    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Convert Options:");
