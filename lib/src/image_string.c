@@ -519,7 +519,7 @@ static char * sanitizeString(char * s)
 
     // Remove whitespace
     while (*src) {
-        if ((*src != ' ') && (*src != '\t')) {
+        if ((*src != ' ') && (*src != '\t') && (*src != '\n') && (*src != '\r')) {
             *dst = tolower(*src);
             ++dst;
         }
@@ -542,9 +542,37 @@ static clImage * clImageParseStripe(struct clContext * C, const char * s, int de
     cmsHPROFILE xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
     cmsHTRANSFORM fromXYZ = cmsCreateTransformTHR(C->lcms, xyzProfile, TYPE_XYZ_FLT, profile->handle, TYPE_RGB_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
 
-    sanitizedString = sanitizeString(clContextStrdup(C, s));
-    s = sanitizedString;
+    if (s[0] == '@') {
+        // It's a response file. Read it all in.
+        char * tempString;
+        int size;
+        FILE * f = fopen(s + 1, "rb");
+        if (!f) {
+            clContextLogError(C, "generate can't open response file: %s", s + 1);
+            goto parseCleanup;
+        }
+        fseek(f, 0, SEEK_END);
+        size = (int)ftell(f);
+        fseek(f, 0, SEEK_SET);
+        if (size < 1) {
+            fclose(f);
+            clContextLogError(C, "generate can't use a 0 byte response file: %s", s + 1);
+            goto parseCleanup;
+        }
+        tempString = clAllocate(size + 1);
+        if (fread(tempString, size, 1, f) != 1) {
+            clContextLogError(C, "generate failed to read all %d bytes from response file: %s", size, s + 1);
+            clFree(tempString);
+            fclose(f);
+            goto parseCleanup;
+        }
+        fclose(f);
+        sanitizedString = sanitizeString(tempString); // pass ownership to sanitizedString
+    } else {
+        sanitizedString = sanitizeString(clContextStrdup(C, s));
+    }
 
+    s = sanitizedString;
     for (;;) {
         token = clAllocateStruct(clToken);
         s = parseNext(C, s, token, fromXYZ);
