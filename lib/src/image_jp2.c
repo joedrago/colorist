@@ -207,8 +207,8 @@ clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filen
     parameters.cod_format = 0;
     parameters.tcp_numlayers = 1;
     parameters.cp_disto_alloc = 1;
-    parameters.numresolution = 1;
     parameters.tcp_mct = 1;
+    parameters.numresolution = 1;
     while (parameters.numresolution < 6) {
         if (image->width <= (1 << (parameters.numresolution - 1)))
             break;
