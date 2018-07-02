@@ -41,6 +41,7 @@ typedef enum clFormat
     CL_FORMAT_J2K,
     CL_FORMAT_JP2,
     CL_FORMAT_JPG,
+    CL_FORMAT_JXR,
     CL_FORMAT_PNG,
     CL_FORMAT_TIFF,
     CL_FORMAT_WEBP,

@@ -45,6 +45,8 @@ set(WEBP_BUILD_IMG2WEBP ON CACHE BOOL "")
 set(WEBP_BUILD_WEBPINFO OFF CACHE BOOL "")
 add_subdirectory(libwebp)
 
+add_subdirectory(jxrlib)
+
 include_directories(jpeg)
 add_library(jpeg
     jpeg/cdjpeg.c
@@ -113,6 +115,8 @@ add_library(jpeg
 set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/cJSON"
     "${CMAKE_CURRENT_SOURCE_DIR}/stb"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/image/sys"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/jxrgluelib"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/liblcms2/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libz"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libpng"
@@ -122,6 +126,8 @@ set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/include"
     "${OPENJPEG_BINARY_DIR}/src/lib/openjp2"
     "${CMAKE_CURRENT_SOURCE_DIR}/jpeg"
+    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/image/sys"
+    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/jxrgluelib"
     "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/imageio"
     "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/src/webp"
 )
@@ -133,6 +139,7 @@ set(COLORIST_EXT_LIBS
     lcms2
     openjp2
     jpeg
+    jxrlib
     stb
     tiff
     z
@@ -154,6 +161,7 @@ endmacro()
 set_folder_safe(cjson "ext")
 set_folder_safe(genHeader "ext")
 set_folder_safe(jpeg "ext")
+set_folder_safe(jxrlib "ext")
 set_folder_safe(lcms2 "ext")
 set_folder_safe(openjp2 "ext/openjpeg")
 set_folder_safe(opj_compress "ext/openjpeg")
