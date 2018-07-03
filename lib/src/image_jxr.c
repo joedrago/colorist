@@ -127,7 +127,7 @@ clImage * clImageReadJXR(struct clContext * C, const char * filename)
         guidPixFormat = GUID_PKPixelFormat64bppRGBA;
     } else {
         depth = 8;
-        guidPixFormat = GUID_PKPixelFormat32bppBGRA;
+        guidPixFormat = GUID_PKPixelFormat32bppRGBA;
     }
 
     if (Failed(err = pDecoder->GetFrameCount(pDecoder, &frameCount)) || (frameCount < 1)) {
