@@ -184,7 +184,7 @@ clBool clImageWriteJXR(struct clContext * C, clImage * image, const char * filen
     PKImageEncode * pEncoder = NULL;
 
     // Defaults
-    guidPixFormat = (image->depth > 8) ? GUID_PKPixelFormat64bppRGBA : GUID_PKPixelFormat32bppBGRA;
+    guidPixFormat = (image->depth > 8) ? GUID_PKPixelFormat64bppRGBA : GUID_PKPixelFormat32bppRGBA;
     memset(&wmiSCP, 0, sizeof(wmiSCP));
     wmiSCP.bVerbose = FALSE;
     wmiSCP.cfColorFormat = YUV_444;
