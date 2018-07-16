@@ -71,11 +71,10 @@ typedef struct clToken
 
     // Color: #ffffff, #ffffffff, (0,0,0), rgb(0,0,0), f(0,0,0), float(0,0,0)
     // Range: Color..Color
-    // Range with N stutter: Color.N.Color
+    // Range with specified count: Color.N.Color
     clColor start;
     clColor end;
-    int stutter;
-    int count; // total number of lerped colors (stutter included)
+    int count; // total number of lerped colors
 
     // xN
     int repeat;
@@ -330,7 +329,7 @@ static const char * parseRange(struct clContext * C, const char * s, clToken * t
         return NULL;
     }
     if (s[1] == '.') {
-        token->stutter = 0;
+        token->count = 0;
         return s + 2;
     } else {
         char buffer[32];
@@ -341,12 +340,12 @@ static const char * parseRange(struct clContext * C, const char * s, clToken * t
         }
         len = end - s;
         if (len > 31) {
-            clContextLogError(C, "range stutter too long [%d] here: %s", len, s);
+            clContextLogError(C, "range size string too long [%d] here: %s", len, s);
             return NULL;
         }
         memcpy(buffer, s, len);
         buffer[len] = 0;
-        token->stutter = atoi(buffer);
+        token->count = atoi(buffer);
         return end + 1;
     }
     // Shouldn't be able to get here
@@ -367,16 +366,16 @@ static clBool finishRange(struct clContext * C, clToken * token)
         return clFalse;
     }
 
-    maxDiff = abs(token->start.r - token->end.r);
-    diff = abs(token->start.g - token->end.g);
-    maxDiff = (diff > maxDiff) ? diff : maxDiff;
-    diff = abs(token->start.b - token->end.b);
-    maxDiff = (diff > maxDiff) ? diff : maxDiff;
-    diff = abs(token->start.a - token->end.a);
-    maxDiff = (diff > maxDiff) ? diff : maxDiff;
-    token->count = 1 + maxDiff; // inclusive
-    if (token->stutter > 0) {
-        token->count *= token->stutter;
+    // If the count isn't specified, use the full range
+    if (token->count == 0) {
+        maxDiff = abs(token->start.r - token->end.r);
+        diff = abs(token->start.g - token->end.g);
+        maxDiff = (diff > maxDiff) ? diff : maxDiff;
+        diff = abs(token->start.b - token->end.b);
+        maxDiff = (diff > maxDiff) ? diff : maxDiff;
+        diff = abs(token->start.a - token->end.a);
+        maxDiff = (diff > maxDiff) ? diff : maxDiff;
+        token->count = 1 + maxDiff; // inclusive
     }
     return clTrue;
 }

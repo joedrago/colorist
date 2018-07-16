@@ -272,15 +272,9 @@ it.
 
 Oops! `x3` is making 3 red-to-black gradients, followed by 1 red-to-black
 gradient. I didn't want to *repeat* my gradient, I wanted to *stretch* my
-gradient. To be more precise, I wanted each color entry in the gradient itself
-to repeat, or "stutter": (111222333) vs (123123123). We can achieve this
-by putting a *stutter* in between our `..`, such as:
+gradient.  We can achieve this specifying the color range, such as:
 
-`colorist generate "1024x1024,#ff0000.3.#000000,#000000..#00ff00" image.png`
-
-There we go! Remember, the whole point here is evenly spreading a big list of
-colors across an image, left to right. By choosing to stutter the range
-instead of repeat the whole thing, we create an entirely different effect.
+`colorist generate "1024x1024,#ff0000.768.#000000,#000000..#00ff00" image.png`
 
 How about a vertical gradient? This is where basic rotation comes into play.
 
