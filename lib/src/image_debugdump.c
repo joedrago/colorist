@@ -12,11 +12,13 @@
 
 #include <string.h>
 
-static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, int x, int y, int extraIndent);
+static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, float maxLuminance, int x, int y, int extraIndent);
 
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent)
 {
     int i, j;
+    int maxLuminance;
+    float maxLuminanceFloat;
 
     cmsHPROFILE xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
     cmsHTRANSFORM toXYZ = cmsCreateTransformTHR(C->lcms, image->profile->handle, TYPE_RGB_FLT, xyzProfile, TYPE_XYZ_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
@@ -24,13 +26,19 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
     clContextLog(C, "image", 0 + extraIndent, "Image: %dx%d %d-bit", image->width, image->height, image->depth);
     clProfileDebugDump(C, image->profile, C->verbose, 1 + extraIndent);
 
+    clProfileQuery(C, image->profile, NULL, NULL, &maxLuminance);
+    if (maxLuminance == 0) {
+        maxLuminance = COLORIST_DEFAULT_LUMINANCE;
+    }
+    maxLuminanceFloat = (float)maxLuminance;
+
     if (clImageAdjustRect(C, image, &x, &y, &w, &h)) {
         int endX = x + w;
         int endY = y + h;
         clContextLog(C, "image", 1 + extraIndent, "Pixels:");
         for (j = y; j < endY; ++j) {
             for (i = x; i < endX; ++i) {
-                dumpPixel(C, image, toXYZ, i, j, extraIndent);
+                dumpPixel(C, image, toXYZ, maxLuminanceFloat, i, j, extraIndent);
             }
         }
     }
@@ -39,7 +47,7 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
     cmsCloseProfile(xyzProfile);
 }
 
-static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, int x, int y, int extraIndent)
+static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, float maxLuminance, int x, int y, int extraIndent)
 {
     int intRGB[4];
     float maxChannel = (float)((1 << image->depth) - 1);
@@ -80,9 +88,10 @@ static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ
         memset(&xyY, 0, sizeof(xyY));
     }
 
-    clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): rgba%d(%u, %u, %u, %u), XYZ(%g, %g, %g), xyY(%g, %g, %g)",
+    clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): rgba%d(%u, %u, %u, %u), XYZ(%g, %g, %g), xyY(%g, %g, %g), %g nits",
         x, y, image->depth,
         intRGB[0], intRGB[1], intRGB[2], intRGB[3],
         XYZ.X, XYZ.Y, XYZ.Z,
-        xyY.x, xyY.y, xyY.Y);
+        xyY.x, xyY.y, xyY.Y,
+        xyY.Y * maxLuminance);
 }
