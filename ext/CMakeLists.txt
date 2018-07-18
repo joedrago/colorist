@@ -126,6 +126,7 @@ set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/include"
     "${OPENJPEG_BINARY_DIR}/src/lib/openjp2"
     "${CMAKE_CURRENT_SOURCE_DIR}/jpeg"
+    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/common/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/image/sys"
     "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/jxrgluelib"
     "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/imageio"

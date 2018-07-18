@@ -291,10 +291,12 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
             // No colorant tags. See if we can harvest them (poorly) from the A2B0 tag. (yuck)
             cmsUInt32Number aToBTagSize = cmsReadRawTag(profile->handle, cmsSigAToB0Tag, NULL, 0);
             if (aToBTagSize >= 32) { // A2B0 tag is present. Allow it to override primaries and tone curves.
+                int i;
+                float matrix[9];
+                uint32_t matrixOffset = 0;
                 uint8_t * rawA2B0 = clAllocate(aToBTagSize);
                 cmsReadRawTag(profile->handle, cmsSigAToB0Tag, rawA2B0, aToBTagSize);
 
-                uint32_t matrixOffset = 0;
                 memcpy(&matrixOffset, rawA2B0 + 16, sizeof(matrixOffset));
                 matrixOffset = clNTOHL(matrixOffset);
                 if (matrixOffset == 0) {
@@ -308,8 +310,7 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
                     return clFalse;
                 }
 
-                float matrix[9];
-                for (int i = 0; i < 9; ++i) {
+                for (i = 0; i < 9; ++i) {
                     cmsS15Fixed16Number e;
                     memcpy(&e, &rawA2B0[matrixOffset + (i * 4)], 4);
                     matrix[i] = (float)_cms15Fixed16toDouble(clNTOHL(e));

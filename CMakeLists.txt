@@ -17,6 +17,7 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DCOLORIST_DEBUG=1")
 
 if(UNIX)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g")
+    add_definitions(-DANSI=1 -D__ANSI__=1) # for jxrlib
 endif()
 
 if(WIN32)

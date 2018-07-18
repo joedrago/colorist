@@ -1,10 +1,10 @@
 set(JXRLIB_SRCS
 #    common/include/guiddef.h
 #    common/include/wmsal.h
-#    common/include/wmspecstring.h
-#    common/include/wmspecstrings_adt.h
-#    common/include/wmspecstrings_strict.h
-#    common/include/wmspecstrings_undef.h
+    common/include/wmspecstring.h
+    common/include/wmspecstrings_adt.h
+    common/include/wmspecstrings_strict.h
+    common/include/wmspecstrings_undef.h
     image/decode/decode.c
     image/decode/decode.h
     image/decode/JXRTranscode.c
@@ -57,6 +57,7 @@ set(JXRLIB_SRCS
 add_definitions(-DDISABLE_PERF_MEASUREMENT=1)
 
 include_directories(
+    common/include
     image/sys
     jxrgluelib
 )
