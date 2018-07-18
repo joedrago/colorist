@@ -22,6 +22,7 @@ struct clProfilePrimaries;
 typedef enum clAction
 {
     CL_ACTION_NONE = 0,
+    CL_ACTION_CALC,
     CL_ACTION_CONVERT,
     CL_ACTION_GENERATE,
     CL_ACTION_IDENTIFY,

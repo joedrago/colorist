@@ -7,6 +7,7 @@ Syntax: colorist convert  [input]        [output]       [OPTIONS]
         colorist generate [image string] [output image] [OPTIONS]
         colorist modify   [input.icc]    [output.icc]   [OPTIONS]
         colorist report   [input]        [output.html]  [OPTIONS]
+        colorist calc     [image string]                [OPTIONS]
 
 Basic Options:
     -h,--help                : Display this help
@@ -27,14 +28,15 @@ Output Profile Options:
 
 Output Format Options:
     -b,--bpp BPP             : Output bits-per-pixel. 8, 16, or 0 for auto (default)
-    -f,--format FORMAT       : Output format. auto (default), icc, j2k, jp2, jpg, png, webp
+    -f,--format FORMAT       : Output format. auto (default), icc, j2k, jp2, jpg, jxr, png, tiff, webp
     -q,--quality QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -2 below). (default: 90)
-    -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 150)
+    -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 0)
     -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off
 
 Convert Options:
     -r,--resize w,h,filter   : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)
     -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h
+    --hald FILENAME          : Image containing valid Hald CLUT to be used after color conversion
 
 Identify Options:
     -z,--rect x,y,w,h        : Pixels to dump. x,y,w,h

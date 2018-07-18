@@ -20,15 +20,21 @@ int clContextGenerate(clContext * C)
     int luminance;
     clProfile * dstProfile = NULL;
     clImage * image = NULL;
-
     clFormat outputFileFormat = C->params.format;
-    if (outputFileFormat == CL_FORMAT_AUTO)
-        outputFileFormat = clFormatDetect(C, C->outputFilename);
-    if (outputFileFormat == CL_FORMAT_ERROR) {
-        return 1;
+    const char * action = "generate";
+
+    if (C->outputFilename) {
+        if (outputFileFormat == CL_FORMAT_AUTO)
+            outputFileFormat = clFormatDetect(C, C->outputFilename);
+        if (outputFileFormat == CL_FORMAT_ERROR) {
+            return 1;
+        }
+        clContextLog(C, "action", 0, "Generating: %s", C->outputFilename);
+    } else {
+        clContextLog(C, "action", 0, "Calc: Generating an image and displaying its final pixels");
+        action = "calc";
     }
 
-    clContextLog(C, "action", 0, "Generating: %s", C->outputFilename);
     timerStart(&overall);
 
     if (outputFileFormat == CL_FORMAT_ICC) {
@@ -38,7 +44,7 @@ int clContextGenerate(clContext * C)
         }
     } else {
         if (C->inputFilename == NULL) {
-            clContextLogError(C, "generate requires an image string to generate an image.");
+            clContextLogError(C, "generate and calc require an image string.");
             return 1;
         }
     }
@@ -47,7 +53,7 @@ int clContextGenerate(clContext * C)
         clBool ret = clContextGetStockPrimaries(C, "bt709", &primaries);
         COLORIST_ASSERT(ret == clTrue);
         (void)ret; // unused in Release
-        clContextLog(C, "generate", 1, "No primaries specified (-p). Using default sRGB (BT.709) primaries.");
+        clContextLog(C, action, 1, "No primaries specified (-p). Using default sRGB (BT.709) primaries.");
     } else {
         primaries.red[0] = C->params.primaries[0];
         primaries.red[1] = C->params.primaries[1];
@@ -61,14 +67,14 @@ int clContextGenerate(clContext * C)
 
     curve.type = CL_PCT_GAMMA;
     if (C->params.gamma <= 0.0f) {
-        clContextLog(C, "generate", 1, "No gamma specified (-g). Using default sRGB gamma.");
+        clContextLog(C, action, 1, "No gamma specified (-g). Using default sRGB gamma.");
         curve.gamma = COLORIST_SRGB_GAMMA;
     } else {
         curve.gamma = C->params.gamma;
     }
 
     if (C->params.luminance <= 0) {
-        clContextLog(C, "generate", 1, "No luminance specified (-l). Using default Colorist luminance.");
+        clContextLog(C, action, 1, "No luminance specified (-l). Using default Colorist luminance.");
         luminance = COLORIST_DEFAULT_LUMINANCE;
     } else {
         luminance = C->params.luminance;
@@ -83,12 +89,12 @@ int clContextGenerate(clContext * C)
             description = clGenerateDescription(C, &primaries, &curve, luminance);
         }
 
-        clContextLog(C, "generate", 0, "Generating ICC profile: \"%s\"", description);
+        clContextLog(C, action, 0, "Generating ICC profile: \"%s\"", description);
         dstProfile = clProfileCreate(C, &primaries, &curve, luminance, description);
         clFree(description);
 
         if (C->params.copyright) {
-            clContextLog(C, "generate", 1, "Setting copyright: \"%s\"", C->params.copyright);
+            clContextLog(C, action, 1, "Setting copyright: \"%s\"", C->params.copyright);
             clProfileSetMLU(C, dstProfile, "cprt", "en", "US", C->params.copyright);
         }
     }
@@ -99,29 +105,44 @@ int clContextGenerate(clContext * C)
 
         depth = C->params.bpp;
         if (depth == 0) {
-            depth = 16;
-        }
-        if ((depth != 8) && (outputFileFormat != CL_FORMAT_ICC) && (clFormatMaxDepth(C, outputFileFormat) < depth)) {
-            clContextLog(C, "validate", 0, "Forcing output to 8-bit (format limitations)");
+            clContextLog(C, action, 1, "No bits per pixel specified (-b). Setting to 8-bit.");
             depth = 8;
+        }
+
+        if (C->outputFilename) {
+            if ((depth != 8) && (outputFileFormat != CL_FORMAT_ICC) && (clFormatMaxDepth(C, outputFileFormat) < depth)) {
+                clContextLog(C, "validate", 0, "Forcing output to 8-bit (format limitations)");
+                depth = 8;
+            }
         }
 
         image = clImageParseString(C, C->inputFilename, depth, dstProfile);
         if (image == NULL) {
             clProfileDestroy(C, dstProfile);
             return 1;
-        } else {
-            clContextLog(C, "generate", 0, "Writing Image: %s", C->outputFilename);
+        }
+
+        if (C->outputFilename) {
+            clContextLog(C, action, 0, "Writing Image: %s", C->outputFilename);
             clImageDebugDump(C, image, C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3], 0);
             if (!clContextWrite(C, image, C->outputFilename, outputFileFormat, C->params.quality, C->params.jp2rate)) {
                 clImageDestroy(C, image);
                 clProfileDestroy(C, dstProfile);
                 return 1;
             }
-            clImageDestroy(C, image);
+        } else {
+            int rect[4];
+            memcpy(rect, C->params.rect, sizeof(int) * 4);
+            if ((rect[0] == 0) && (rect[1] == 0) && (rect[2] == -1) && (rect[3] == -1)) {
+                // rect is unset, use the whole image
+                rect[2] = image->width;
+                rect[3] = image->height;
+            }
+            clImageDebugDump(C, image, rect[0], rect[1], rect[2], rect[3], 0);
         }
+        clImageDestroy(C, image);
     } else {
-        clContextLog(C, "generate", 0, "Writing ICC: %s", C->outputFilename);
+        clContextLog(C, action, 0, "Writing ICC: %s", C->outputFilename);
         clProfileDebugDump(C, dstProfile, C->verbose, 0);
         if (!clProfileWrite(C, dstProfile, C->outputFilename)) {
             clProfileDestroy(C, dstProfile);
@@ -130,7 +151,11 @@ int clContextGenerate(clContext * C)
     }
 
     clProfileDestroy(C, dstProfile);
-    clContextLog(C, "encode", 1, "Wrote %d bytes.", clFileSize(C->outputFilename));
-    clContextLog(C, "action", 0, "Generation complete (%g sec).", timerElapsedSeconds(&overall));
+    if (C->outputFilename) {
+        clContextLog(C, "encode", 1, "Wrote %d bytes.", clFileSize(C->outputFilename));
+        clContextLog(C, "action", 0, "Generation complete (%g sec).", timerElapsedSeconds(&overall));
+    } else {
+        clContextLog(C, "action", 0, "Calc complete (%g sec).", timerElapsedSeconds(&overall));
+    }
     return 0;
 }

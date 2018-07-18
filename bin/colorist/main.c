@@ -36,6 +36,9 @@ int main(int argc, char * argv[])
         clContextPrintArgs(C);
 
     switch (C->action) {
+        case CL_ACTION_CALC:
+            ret = clContextGenerate(C);
+            break;
         case CL_ACTION_CONVERT:
             ret = clContextConvert(C);
             break;

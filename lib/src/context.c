@@ -39,6 +39,7 @@ clAction clActionFromString(struct clContext * C, const char * str)
     if (!strcmp(str, "id")) return CL_ACTION_IDENTIFY;
     if (!strcmp(str, "generate")) return CL_ACTION_GENERATE;
     if (!strcmp(str, "gen")) return CL_ACTION_GENERATE;
+    if (!strcmp(str, "calc")) return CL_ACTION_CALC;
     if (!strcmp(str, "convert")) return CL_ACTION_CONVERT;
     if (!strcmp(str, "modify")) return CL_ACTION_MODIFY;
     if (!strcmp(str, "report")) return CL_ACTION_REPORT;
@@ -51,6 +52,7 @@ const char * clActionToString(struct clContext * C, clAction action)
         case CL_ACTION_NONE:     return "--";
         case CL_ACTION_IDENTIFY: return "identify";
         case CL_ACTION_GENERATE: return "generate";
+        case CL_ACTION_CALC:     return "calc";
         case CL_ACTION_CONVERT:  return "convert";
         case CL_ACTION_MODIFY:   return "modify";
         case CL_ACTION_REPORT:   return "report";
@@ -591,6 +593,15 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
             }
             break;
 
+        case CL_ACTION_CALC:
+            if (filenames[0]) {
+                C->inputFilename = filenames[0];
+            } else {
+                clContextLogError(C, "calc requires an input string.");
+                return clFalse;
+            }
+            break;
+
         case CL_ACTION_GENERATE:
             if (filenames[0] && filenames[1]) {
                 C->inputFilename = filenames[0];
@@ -723,6 +734,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "        colorist generate [image string] [output image] [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist modify   [input.icc]    [output.icc]   [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist report   [input]        [output.html]  [OPTIONS]");
+    clContextLog(C, NULL, 0, "        colorist calc     [image string]                [OPTIONS]");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Basic Options:");
     clContextLog(C, NULL, 0, "    -h,--help                : Display this help");
