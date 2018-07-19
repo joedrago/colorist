@@ -55,10 +55,8 @@
 
 typedef struct clColor
 {
-    union {
-        struct { int r, g, b, a; };
-        struct { float fr, fg, fb, fa; };
-    };
+    int r, g, b, a;
+    float fr, fg, fb, fa;
     int depth; // 8 and 16 are unorm, 32 is float
 } clColor;
 
@@ -237,22 +235,25 @@ static const char * parseParenColor(struct clContext * C, const char * s, int de
     return end + 1;
 }
 
-static void clampColor(struct clContext * C, clColor * parsedColor)
+static void finishColor(struct clContext * C, clColor * parsedColor)
 {
-    if (parsedColor->depth == 32) {
-        parsedColor->fr = CL_CLAMP(parsedColor->fr, 0.0f, 1.0f);
-        parsedColor->fg = CL_CLAMP(parsedColor->fg, 0.0f, 1.0f);
-        parsedColor->fb = CL_CLAMP(parsedColor->fb, 0.0f, 1.0f);
-        parsedColor->fa = CL_CLAMP(parsedColor->fa, 0.0f, 1.0f);
-    } else if (parsedColor->depth <= 16) {
+    if (parsedColor->depth <= 16) {
         int maxChannel = (1 << parsedColor->depth) - 1;
         parsedColor->r = CL_CLAMP(parsedColor->r, 0, maxChannel);
         parsedColor->g = CL_CLAMP(parsedColor->g, 0, maxChannel);
         parsedColor->b = CL_CLAMP(parsedColor->b, 0, maxChannel);
         parsedColor->a = CL_CLAMP(parsedColor->a, 0, maxChannel);
-    } else {
-        COLORIST_FAILURE1("clampColor: unexpected depth %d", parsedColor->depth);
+        parsedColor->fr = (float)parsedColor->r / (float)maxChannel;
+        parsedColor->fg = (float)parsedColor->g / (float)maxChannel;
+        parsedColor->fb = (float)parsedColor->b / (float)maxChannel;
+        parsedColor->fa = (float)parsedColor->a / (float)maxChannel;
+    } else if (parsedColor->depth != 32) {
+        COLORIST_FAILURE1("finishColor: unexpected depth %d", parsedColor->depth);
     }
+    parsedColor->fr = CL_CLAMP(parsedColor->fr, 0.0f, 1.0f);
+    parsedColor->fg = CL_CLAMP(parsedColor->fg, 0.0f, 1.0f);
+    parsedColor->fb = CL_CLAMP(parsedColor->fb, 0.0f, 1.0f);
+    parsedColor->fa = CL_CLAMP(parsedColor->fa, 0.0f, 1.0f);
 }
 
 static const char * parseColor(struct clContext * C, const char * s, clColor * parsedColor, cmsHTRANSFORM fromXYZ)
@@ -260,61 +261,61 @@ static const char * parseColor(struct clContext * C, const char * s, clColor * p
     if (*s == '#') {
         s = parseHashColor(C, s, parsedColor);
         if (s != NULL) {
-            clampColor(C, parsedColor);
+            finishColor(C, parsedColor);
         }
         return s;
     } else if (!strncmp(s, "(", 1)) {
         s = parseParenColor(C, s, 8, parsedColor, NULL, clFalse);
         if (s != NULL) {
-            clampColor(C, parsedColor);
+            finishColor(C, parsedColor);
         }
         return s;
     } else if (!strncmp(s, "rgb(", 4)) {
         s = parseParenColor(C, s + 3, 8, parsedColor, NULL, clFalse);
         if (s != NULL) {
-            clampColor(C, parsedColor);
+            finishColor(C, parsedColor);
         }
         return s;
     } else if (!strncmp(s, "rgba(", 5)) {
         s = parseParenColor(C, s + 4, 8, parsedColor, NULL, clFalse);
         if (s != NULL) {
-            clampColor(C, parsedColor);
+            finishColor(C, parsedColor);
         }
         return s;
     } else if (!strncmp(s, "rgb16(", 6)) {
         s = parseParenColor(C, s + 5, 16, parsedColor, NULL, clFalse);
         if (s != NULL) {
-            clampColor(C, parsedColor);
+            finishColor(C, parsedColor);
         }
         return s;
     } else if (!strncmp(s, "rgba16(", 7)) {
         s = parseParenColor(C, s + 6, 16, parsedColor, NULL, clFalse);
         if (s != NULL) {
-            clampColor(C, parsedColor);
+            finishColor(C, parsedColor);
         }
         return s;
     } else if (!strncmp(s, "f(", 2)) {
         s = parseParenColor(C, s + 1, 32, parsedColor, NULL, clFalse);
         if (s != NULL) {
-            clampColor(C, parsedColor);
+            finishColor(C, parsedColor);
         }
         return s;
     } else if (!strncmp(s, "float(", 6)) {
         s = parseParenColor(C, s + 5, 32, parsedColor, NULL, clFalse);
         if (s != NULL) {
-            clampColor(C, parsedColor);
+            finishColor(C, parsedColor);
         }
         return s;
     } else if ((!strncmp(s, "xyz(", 4))) {
         s = parseParenColor(C, s + 3, 32, parsedColor, fromXYZ, clFalse);
         if (s != NULL) {
-            clampColor(C, parsedColor);
+            finishColor(C, parsedColor);
         }
         return s;
     } else if ((!strncmp(s, "xyy(", 4))) {
         s = parseParenColor(C, s + 3, 32, parsedColor, fromXYZ, clTrue);
         if (s != NULL) {
-            clampColor(C, parsedColor);
+            finishColor(C, parsedColor);
         }
         return s;
     }
@@ -357,17 +358,17 @@ static clBool finishRange(struct clContext * C, clToken * token)
 {
     int diff, maxDiff;
 
-    if ((token->start.depth == 32) || (token->end.depth == 32)) {
-        clContextLogError(C, "float colors disallowed in ranges");
-        return clFalse;
-    }
-    if (token->start.depth != token->end.depth) {
-        clContextLogError(C, "ranges must match in depth");
-        return clFalse;
-    }
-
     // If the count isn't specified, use the full range
     if (token->count == 0) {
+        if ((token->start.depth == 32) || (token->end.depth == 32)) {
+            clContextLogError(C, "range size must be specified when using float colors");
+            return clFalse;
+        }
+        if (token->start.depth != token->end.depth) {
+            clContextLogError(C, "range size must be specified when using mismatched depths for start and end");
+            return clFalse;
+        }
+
         maxDiff = abs(token->start.r - token->end.r);
         diff = abs(token->start.g - token->end.g);
         maxDiff = (diff > maxDiff) ? diff : maxDiff;
@@ -718,20 +719,24 @@ parseCleanup:
 static void getColorFromRange(struct clContext * C, clToken * t, int reqIndex, clColor * outColor)
 {
     float p;
-    int diff;
+    float diff;
 
     reqIndex = reqIndex % t->count;
     p = (float)reqIndex / (t->count - 1);
 
-    diff = t->end.r - t->start.r;
-    outColor->r = t->start.r + (int)((float)diff * p);
-    diff = t->end.g - t->start.g;
-    outColor->g = t->start.g + (int)((float)diff * p);
-    diff = t->end.b - t->start.b;
-    outColor->b = t->start.b + (int)((float)diff * p);
-    diff = t->end.a - t->start.a;
-    outColor->a = t->start.a + (int)((float)diff * p);
+    diff = t->end.fr - t->start.fr;
+    outColor->fr = t->start.fr + (diff * p);
+    diff = t->end.fg - t->start.fg;
+    outColor->fg = t->start.fg + (diff * p);
+    diff = t->end.fb - t->start.fb;
+    outColor->fb = t->start.fb + (diff * p);
+    diff = t->end.fa - t->start.fa;
+    outColor->fa = t->start.fa + (diff * p);
+
     outColor->depth = t->start.depth;
+    if (outColor->depth < t->end.depth) {
+        outColor->depth = t->end.depth;
+    }
 }
 
 static void getRawColor(struct clContext * C, clToken * tokens, int reqIndex, clColor * outColor)
@@ -766,33 +771,21 @@ static void getRawColor(struct clContext * C, clToken * tokens, int reqIndex, cl
 
 static void getColor(struct clContext * C, clToken * tokens, int reqIndex, int depth, clColor * outColor)
 {
-    clColor color32;
+    clColor tmpColor;
     int maxChannel;
     float maxChannelf;
-    getRawColor(C, tokens, reqIndex, outColor);
-
-    // get 32 bit color version
-    if (outColor->depth == 32) {
-        memcpy(&color32, outColor, sizeof(color32));
-    } else {
-        maxChannelf = (float)((1 << outColor->depth) - 1);
-        color32.fr = (float)outColor->r / maxChannelf;
-        color32.fg = (float)outColor->g / maxChannelf;
-        color32.fb = (float)outColor->b / maxChannelf;
-        color32.fa = (float)outColor->a / maxChannelf;
-        color32.depth = 32;
-    }
+    getRawColor(C, tokens, reqIndex, &tmpColor);
 
     // convert from 32 to destination depth
     maxChannel = ((1 << depth) - 1);
     maxChannelf = (float)maxChannel;
-    outColor->r = (uint16_t)clPixelMathRoundf(color32.fr * maxChannelf);
+    outColor->r = (uint16_t)clPixelMathRoundf(tmpColor.fr * maxChannelf);
     outColor->r = CL_CLAMP(outColor->r, 0, maxChannel);
-    outColor->g = (uint16_t)clPixelMathRoundf(color32.fg * maxChannelf);
+    outColor->g = (uint16_t)clPixelMathRoundf(tmpColor.fg * maxChannelf);
     outColor->g = CL_CLAMP(outColor->g, 0, maxChannel);
-    outColor->b = (uint16_t)clPixelMathRoundf(color32.fb * maxChannelf);
+    outColor->b = (uint16_t)clPixelMathRoundf(tmpColor.fb * maxChannelf);
     outColor->b = CL_CLAMP(outColor->b, 0, maxChannel);
-    outColor->a = (uint16_t)clPixelMathRoundf(color32.fa * maxChannelf);
+    outColor->a = (uint16_t)clPixelMathRoundf(tmpColor.fa * maxChannelf);
     outColor->a = CL_CLAMP(outColor->a, 0, maxChannel);
     outColor->depth = depth;
 }
