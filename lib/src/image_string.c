@@ -857,7 +857,7 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
         }
         colorIndex = CL_CLAMP(colorIndex, 0, colorCount - 1);
         getColor(C, tokens, colorIndex, depth, &color);
-        if (depth == 16) {
+        if (depth > 8) {
             uint16_t * pixels = (uint16_t *)image->pixels;
             uint16_t * pixel = &pixels[4 * verticalPixelIndex];
             pixel[0] = color.r;
