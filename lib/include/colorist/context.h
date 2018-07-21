@@ -39,6 +39,7 @@ typedef enum clFormat
 {
     CL_FORMAT_AUTO = 0,
     CL_FORMAT_ICC,
+    CL_FORMAT_BMP,
     CL_FORMAT_J2K,
     CL_FORMAT_JP2,
     CL_FORMAT_JPG,

@@ -33,6 +33,9 @@ void clImageSetPixel(struct clContext * C, clImage * image, int x, int y, int r,
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent);
 void clImageDestroy(struct clContext * C, clImage * image);
 
+clImage * clImageReadBMP(struct clContext * C, const char * filename);
+clBool clImageWriteBMP(struct clContext * C, clImage * image, const char * filename);
+
 clImage * clImageReadJP2(struct clContext * C, const char * filename);
 clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filename, clBool isJ2K, int quality, int rate);
 

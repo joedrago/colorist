@@ -69,6 +69,7 @@ const char * clActionToString(struct clContext * C, clAction action)
 clFormat clFormatFromString(struct clContext * C, const char * str)
 {
     if (!strcmp(str, "auto")) return CL_FORMAT_AUTO;
+    if (!strcmp(str, "bmp")) return CL_FORMAT_BMP;
     if (!strcmp(str, "icc")) return CL_FORMAT_ICC;
     if (!strcmp(str, "jp2")) return CL_FORMAT_JP2;
     if (!strcmp(str, "jpg")) return CL_FORMAT_JPG;
@@ -83,6 +84,7 @@ const char * clFormatToString(struct clContext * C, clFormat format)
 {
     switch (format) {
         case CL_FORMAT_AUTO:  return "Auto";
+        case CL_FORMAT_BMP:   return "BMP";
         case CL_FORMAT_ICC:   return "ICC";
         case CL_FORMAT_JP2:   return "JP2";
         case CL_FORMAT_JPG:   return "JPG";
@@ -105,6 +107,7 @@ clFormat clFormatDetect(struct clContext * C, const char * filename)
         return CL_FORMAT_ERROR;
     }
     ++ext; // skip past the period
+    if (!strcmp(ext, "bmp")) return CL_FORMAT_BMP;
     if (!strcmp(ext, "icc")) return CL_FORMAT_ICC;
     if (!strcmp(ext, "j2k")) return CL_FORMAT_J2K;
     if (!strcmp(ext, "jp2")) return CL_FORMAT_JP2;
@@ -121,6 +124,7 @@ clFormat clFormatDetect(struct clContext * C, const char * filename)
 int clFormatMaxDepth(struct clContext * C, clFormat format)
 {
     switch (format) {
+        case CL_FORMAT_BMP:   return 10; // crushes alpha to 2 bits
         case CL_FORMAT_J2K:   return 16;
         case CL_FORMAT_JP2:   return 16;
         case CL_FORMAT_JPG:   return 8;
@@ -152,6 +156,13 @@ int clFormatBestDepth(struct clContext * C, clFormat format, int reqDepth)
     if ((format == CL_FORMAT_PNG) || (format == CL_FORMAT_TIFF) || (format == CL_FORMAT_JXR)) {
         if (reqDepth > 8) {
             return 16;
+        }
+    }
+
+    if (format == CL_FORMAT_BMP) {
+        if (reqDepth == 10) {
+            // Specifically allow 10 bit
+            return 10;
         }
     }
 
@@ -755,7 +766,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Output Format Options:");
     clContextLog(C, NULL, 0, "    -b,--bpp BPP             : Output bits-per-pixel. 8, 16, or 0 for auto (default)");
-    clContextLog(C, NULL, 0, "    -f,--format FORMAT       : Output format. auto (default), icc, j2k, jp2, jpg, jxr, png, tiff, webp");
+    clContextLog(C, NULL, 0, "    -f,--format FORMAT       : Output format. auto (default), bmp, icc, j2k, jp2, jpg, jxr, png, tiff, webp");
     clContextLog(C, NULL, 0, "    -q,--quality QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -2 below). (default: 90)");
     clContextLog(C, NULL, 0, "    -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 0)");
     clContextLog(C, NULL, 0, "    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off");

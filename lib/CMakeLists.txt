@@ -58,6 +58,7 @@ set(COLORIST_LIB_SRCS
     src/image.c
     src/image_convert.c
     src/image_debugdump.c
+    src/image_bmp.c
     src/image_jp2.c
     src/image_jpg.c
     src/image_jxr.c
