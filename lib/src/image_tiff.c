@@ -78,6 +78,7 @@ clImage * clImageReadTIFF(struct clContext * C, const char * filename)
         orientation = ORIENTATION_TOPLEFT;
     }
 
+    clImageLogCreate(C, width, height, depth, profile);
     image = clImageCreate(C, width, height, depth, profile);
     rowBytes = image->width * 4 * clDepthToBytes(C, image->depth);
     for (rowIndex = 0; rowIndex < image->height; ++rowIndex) {

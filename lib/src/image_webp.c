@@ -65,6 +65,7 @@ clImage * clImageReadWebP(struct clContext * C, const char * filename)
         goto readCleanup;
     }
 
+    clImageLogCreate(C, width, height, 8, profile);
     image = clImageCreate(C, width, height, 8, profile);
     memcpy(image->pixels, readPixels, 4 * width * height);
 

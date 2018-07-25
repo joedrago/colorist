@@ -126,6 +126,7 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
     }
     maxChannel = (1 << dstDepth) - 1;
 
+    clImageLogCreate(C, opjImage->x1, opjImage->y1, dstDepth, profile);
     image = clImageCreate(C, opjImage->x1, opjImage->y1, dstDepth, profile);
     if (profile) {
         clProfileDestroy(C, profile);

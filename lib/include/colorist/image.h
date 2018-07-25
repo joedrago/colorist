@@ -32,6 +32,7 @@ clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y
 void clImageSetPixel(struct clContext * C, clImage * image, int x, int y, int r, int g, int b, int a);
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent);
 void clImageDestroy(struct clContext * C, clImage * image);
+void clImageLogCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
 
 clImage * clImageReadBMP(struct clContext * C, const char * filename);
 clBool clImageWriteBMP(struct clContext * C, clImage * image, const char * filename);

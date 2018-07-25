@@ -12,6 +12,13 @@
 
 #include <string.h>
 
+void clImageLogCreate(clContext * C, int width, int height, int depth, clProfile * profile)
+{
+    if (profile == NULL) {
+        clContextLog(C, "decode", 1, "No embedded ICC profile, using SRGB");
+    }
+}
+
 clImage * clImageCreate(clContext * C, int width, int height, int depth, clProfile * profile)
 {
     clImage * image = clAllocateStruct(clImage);

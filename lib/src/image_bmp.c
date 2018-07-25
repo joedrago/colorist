@@ -201,6 +201,7 @@ clImage * clImageReadBMP(struct clContext * C, const char * filename)
     }
     memcpy(packedPixels, fileContents.ptr + fileHeader.bfOffBits, packedPixelBytes);
 
+    clImageLogCreate(C, info.bV5Width, info.bV5Height, depth, profile);
     image = clImageCreate(C, info.bV5Width, info.bV5Height, depth, profile);
 
     if (image->depth == 8) {

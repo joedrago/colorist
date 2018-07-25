@@ -147,6 +147,8 @@ clImage * clImageReadJXR(struct clContext * C, const char * filename)
 
     rect.Width = pDecoder->uWidth;
     rect.Height = pDecoder->uHeight;
+
+    clImageLogCreate(C, pDecoder->uWidth, pDecoder->uHeight, depth, profile);
     image = clImageCreate(C, pDecoder->uWidth, pDecoder->uHeight, depth, profile);
     if (Failed(err = pConverter->Copy(pConverter, &rect, image->pixels, image->width * 4 * clDepthToBytes(C, image->depth)))) {
         clContextLogError(C, "Can't copy JXR pixels: %s", filename);

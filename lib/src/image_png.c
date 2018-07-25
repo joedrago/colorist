@@ -101,6 +101,7 @@ clImage * clImageReadPNG(struct clContext * C, const char * filename)
     png_read_update_info(png, info);
     setjmp(png_jmpbuf(png));
 
+    clImageLogCreate(C, rawWidth, rawHeight, imgBitDepth, profile);
     image = clImageCreate(C, rawWidth, rawHeight, imgBitDepth, profile);
     if (profile) {
         clProfileDestroy(C, profile);

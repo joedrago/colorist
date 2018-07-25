@@ -81,6 +81,7 @@ clImage * clImageReadJPG(struct clContext * C, const char * filename)
         clFree(iccData);
     }
 
+    clImageLogCreate(C, cinfo.output_width, cinfo.output_height, 8, profile);
     image = clImageCreate(C, cinfo.output_width, cinfo.output_height, 8, profile);
     if (profile) {
         clProfileDestroy(C, profile);
