@@ -16,7 +16,7 @@ or higher.
 Clone or download a zip of the repo, then run CMake on the root directory and
 run the generated build. If you want to use the same build as someone that
 installed via Homebrew or AppVeyor, download the source of a [tagged
-release](https://github.com/joedrago/colorist/releases) instead of just building
+release](https://github.com/joedrago/colorist/tags) instead of just building
 the latest in the master branch.
 
 ---
