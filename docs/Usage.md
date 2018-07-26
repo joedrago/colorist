@@ -63,7 +63,7 @@ make this a useless switch.
 ### -b, --bpp
 
 Choose an output bit depth (8 or 16). By default, `convert` will try to use
-the bit depth of the source image, and `generate` will choose a 16-bit image.
+the bit depth of the source image, and `generate` will choose an 8-bit image.
 In either case, choosing an output file format incapable of 16-bit will
 automatically force it to 8-bit.
 
