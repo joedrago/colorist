@@ -179,6 +179,89 @@ matDeriveRGBToRGB = (srcPrimaries, dstPrimaries) ->
 
 # ---------------------------------------------------------------------------
 
+calcMaxY = (xyy, primaries) ->
+  toXYZ = matDeriveRGBToXYZ(primaries)
+  fromXYZ = matInvert(toXYZ)
+
+  fakeXYY = [ xyy[0], xyy[1], 1.0 ]
+  xyz = convertXYYtoXYZ(fakeXYY)
+  rgb = matEval(fromXYZ, xyz)
+  maxChannel = rgb[0]
+  if maxChannel < rgb[1]
+    maxChannel = rgb[1]
+  if maxChannel < rgb[2]
+    maxChannel = rgb[2]
+  rgb[0] /= maxChannel
+  rgb[1] /= maxChannel
+  rgb[2] /= maxChannel
+  xyz = matEval(toXYZ, rgb)
+  return xyz[1]
+
+calcOverbright = (xyy, overbrightScale, primaries) ->
+  maxY = calcMaxY(xyy, primaries)
+  p = (xyy[2] / maxY) * overbrightScale
+  if p > 1.0
+    p = (p - 1.0) / (overbrightScale - 1.0)
+    if p < 0
+      p = 0
+    if p > 1.0
+      p = 1.0
+    return p
+  return 0
+
+calcGamutDistances = (x, y, primaries) ->
+  rX = primaries[0]
+  rY = primaries[1]
+  gX = primaries[2]
+  gY = primaries[3]
+  bX = primaries[4]
+  bY = primaries[5]
+
+  distBetweenRG = Math.sqrt(((rY - gY) * (rY - gY)) + ((rX - gX) * (rX - gX)))
+  distBetweenGB = Math.sqrt(((gY - bY) * (gY - bY)) + ((gX - bX) * (gX - bX)))
+  distBetweenRB = Math.sqrt(((rY - bY) * (rY - bY)) + ((rX - bX) * (rX - bX)))
+  distFromRGEdge = ((x * (gY - rY)) - (y * (gX - rX)) + (gX * rY) - (gY * rX)) / distBetweenRG
+  distFromGBEdge = ((x * (bY - gY)) - (y * (bX - gX)) + (bX * gY) - (bY * gX)) / distBetweenGB
+  distFromRBEdge = ((x * (rY - bY)) - (y * (rX - bX)) + (rX * bY) - (rY * bX)) / distBetweenRB
+
+  return [distFromRGEdge, distFromGBEdge, distFromRBEdge]
+
+
+calcOutofSRGB = (x, y, primaries) ->
+  srgbPrimaries = [0.64, 0.33, 0.30, 0.60, 0.15, 0.06]
+  if Math.abs(srgbPrimaries[3] - primaries[3]) < 0.0001
+    # We're probably in sRGB, just say we're in-gamut
+    return 0
+
+  gamutDistances = calcGamutDistances(x, y, primaries)
+  srgbDistances = calcGamutDistances(x, y, srgbPrimaries)
+
+  srgbMaxDist = srgbDistances[0]
+  for dist, i in srgbDistances
+    if srgbMaxDist <= dist
+      srgbMaxDist = dist
+      gamutMaxDist = gamutDistances[i]
+
+  if srgbMaxDist < 0
+    # in gamut
+    return 0
+
+  if gamutMaxDist > -0.00001
+    # As far as possible, probably on the line or on a primary
+    return 1
+
+  totalDist = srgbMaxDist - gamutMaxDist
+  ratio = srgbMaxDist / totalDist
+
+  if ratio > 0.9999
+    # close enough
+    ratio = 1
+  # console.log "srgbMaxDist #{srgbMaxDist} gamutMaxDist #{gamutMaxDist} totalDist #{totalDist} ratio #{ratio}"
+
+  return ratio
+
+# ---------------------------------------------------------------------------
+
 module.exports =
   vecDiv: vecDiv
   vecScaleK: vecScaleK
@@ -198,3 +281,7 @@ module.exports =
   whitePointToXYZ: whitePointToXYZ
   matDeriveRGBToXYZ: matDeriveRGBToXYZ
   matDeriveRGBToRGB: matDeriveRGBToRGB
+
+  calcMaxY: calcMaxY
+  calcOverbright: calcOverbright
+  calcOutofSRGB: calcOutofSRGB

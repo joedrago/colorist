@@ -15,7 +15,7 @@
 
 #define FAIL() { result = clFalse; goto convertCleanup; }
 
-static void doMultithreadedTransform(clContext * C, int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount);
+void doMultithreadedTransform(clContext * C, int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount);
 
 clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConversionParams * params)
 {
@@ -420,7 +420,7 @@ static void transformTaskFunc(clTransformTask * info)
     cmsDoTransform(info->transform, info->inPixels, info->outPixels, info->pixelCount);
 }
 
-static void doMultithreadedTransform(clContext * C, int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
+void doMultithreadedTransform(clContext * C, int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
 {
     if (taskCount > pixelCount) {
         // This is a dumb corner case I'm not too worried about.

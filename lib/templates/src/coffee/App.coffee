@@ -29,6 +29,8 @@ class App extends React.Component
     @views =
       summary: SummaryView
       pixels: PixelsView
+      srgb100: PixelsView
+      srgb300: PixelsView
 
     @navigate(true)
     window.addEventListener('hashchange', (event) =>
@@ -101,6 +103,26 @@ class App extends React.Component
           @redirect('#pixels')
           @setState { navOpen: false }
       }
+
+      el MenuItem, {
+        key: "menu.srgb100"
+        primaryText: "sRGB Highlight (100)"
+        leftIcon: tags.icon 'event_note'
+        onClick: (e) =>
+          e.preventDefault()
+          @redirect('#srgb100')
+          @setState { navOpen: false }
+      }
+
+      el MenuItem, {
+        key: "menu.srgb300"
+        primaryText: "sRGB Highlight (300)"
+        leftIcon: tags.icon 'event_note'
+        onClick: (e) =>
+          e.preventDefault()
+          @redirect('#srgb300')
+          @setState { navOpen: false }
+      }
     ]
     elements.push el Drawer, {
       key: 'leftnav'
@@ -113,6 +135,7 @@ class App extends React.Component
     # Main view
     if @state.view != null
       elements.push el @views[@state.view], {
+        name: @state.view
         key: @state.view
         width: @state.width
         height: @state.height

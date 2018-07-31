@@ -45,10 +45,23 @@ class PixelsView extends React.Component
 
     infoPanelWidth = 300
 
+    title = "Pixels"
+    image = COLORIST_DATA.visual
+    maxNits = COLORIST_DATA.icc.luminance
+    if @props.name == 'srgb100'
+      title = "sRGB Highlight (100)"
+      image = COLORIST_DATA.srgb100.visual
+      maxNits = 100
+    else if @props.name == 'srgb300'
+      title = "sRGB Highlight (300)"
+      image = COLORIST_DATA.srgb300.visual
+      maxNits = 300
+    overbrightScale = COLORIST_DATA.icc.luminance / maxNits
+
     elements.push el ImageRenderer, {
       width: @props.width - infoPanelWidth
       height: @props.height
-      url: COLORIST_DATA.uri
+      url: image
       listener: this
     }
 
@@ -77,19 +90,44 @@ class PixelsView extends React.Component
       toXYZ = cm.matDeriveRGBToXYZ(COLORIST_DATA.icc.primaries)
       XYZ = cm.matEval(toXYZ, floatLin)
       xyY = cm.convertXYZtoXYY(XYZ, [COLORIST_DATA.icc.primaries[6], COLORIST_DATA.icc.primaries[7]])
+
+      pixelLuminance = xyY[2] * COLORIST_DATA.icc.luminance
+      maxPixelLuminance = maxNits * cm.calcMaxY(xyY, COLORIST_DATA.icc.primaries)
+
       sections.push {
         name: "xyY"
         rows: [
           ["x", utils.fr(xyY[0], 4)]
-          ["y", utils.fr(xyY[1], 4), "", "Nits:"]
-          ["Y", utils.fr(xyY[2], 4), "", utils.fr(xyY[2] * COLORIST_DATA.icc.luminance, 4)]
+          ["y", utils.fr(xyY[1], 4)]
+          ["Y", utils.fr(xyY[2], 4)]
+          ["Nits:", utils.fr(pixelLuminance, 2), "/", utils.fr(maxPixelLuminance, 2)]
         ]
       }
       horseshoeX = xyY[0]
       horseshoeY = xyY[1]
 
+      if @props.name != 'pixels'
+        overbright = cm.calcOverbright(xyY, overbrightScale, COLORIST_DATA.icc.primaries)
+        outofSRGB = cm.calcOutofSRGB(xyY[0], xyY[1], COLORIST_DATA.icc.primaries)
+        luminancePercentage = 100 * (pixelLuminance / maxPixelLuminance)
+        if luminancePercentage > 100
+          luminancePercentage = utils.fr(luminancePercentage, 2) + "%"
+        else
+          luminancePercentage = "--"
+        if outofSRGB > 0
+          outofSRGB = utils.fr(100 * outofSRGB, 2) + "%"
+        else
+          outofSRGB = "--"
+        sections.push {
+          name: "sRGB Overranging (#{maxNits} nits)"
+          rows: [
+            ["Luminance", luminancePercentage]
+            ["Out Gamut", outofSRGB]
+          ]
+        }
+
     elements.push el InfoPanel, {
-      title: "Pixels"
+      title: title
       left: @props.width - infoPanelWidth
       width: infoPanelWidth
       height: @props.height
