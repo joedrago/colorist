@@ -88,9 +88,10 @@ static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ
         memset(&xyY, 0, sizeof(xyY));
     }
 
-    clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): rgba%d(%u, %u, %u, %u), XYZ(%g, %g, %g), xyY(%g, %g, %g), %g nits",
+    clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): rgba%d(%u, %u, %u, %u), f(%g, %g, %g, %g), XYZ(%g, %g, %g), xyY(%g, %g, %g), %g nits",
         x, y, image->depth,
         intRGB[0], intRGB[1], intRGB[2], intRGB[3],
+        floatRGB[0], floatRGB[1], floatRGB[2], floatRGB[3],
         XYZ.X, XYZ.Y, XYZ.Z,
         xyY.x, xyY.y, xyY.Y,
         xyY.Y * maxLuminance);
