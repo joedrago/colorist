@@ -12,7 +12,7 @@
 
 #include <string.h>
 
-static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, float maxLuminance, int x, int y, int extraIndent);
+static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, cmsHTRANSFORM toLinear, float maxLuminance, int x, int y, int extraIndent);
 
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent)
 {
@@ -23,14 +23,24 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
     cmsHPROFILE xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
     cmsHTRANSFORM toXYZ = cmsCreateTransformTHR(C->lcms, image->profile->handle, TYPE_RGB_FLT, xyzProfile, TYPE_XYZ_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
 
+    clProfilePrimaries primaries;
+    clProfileCurve gamma1;
+    cmsHTRANSFORM toLinear;
+    clProfile * linearProfile = NULL;
+
     clContextLog(C, "image", 0 + extraIndent, "Image: %dx%d %d-bit", image->width, image->height, image->depth);
     clProfileDebugDump(C, image->profile, C->verbose, 1 + extraIndent);
 
-    clProfileQuery(C, image->profile, NULL, NULL, &maxLuminance);
+    clProfileQuery(C, image->profile, &primaries, NULL, &maxLuminance);
     if (maxLuminance == 0) {
         maxLuminance = COLORIST_DEFAULT_LUMINANCE;
     }
     maxLuminanceFloat = (float)maxLuminance;
+
+    gamma1.type = CL_PCT_GAMMA;
+    gamma1.gamma = 1.0f;
+    linearProfile = clProfileCreate(C, &primaries, &gamma1, 0, NULL);
+    toLinear = cmsCreateTransformTHR(C->lcms, image->profile->handle, TYPE_RGBA_FLT, linearProfile->handle, TYPE_RGBA_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
 
     if (clImageAdjustRect(C, image, &x, &y, &w, &h)) {
         int endX = x + w;
@@ -38,20 +48,23 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
         clContextLog(C, "image", 1 + extraIndent, "Pixels:");
         for (j = y; j < endY; ++j) {
             for (i = x; i < endX; ++i) {
-                dumpPixel(C, image, toXYZ, maxLuminanceFloat, i, j, extraIndent);
+                dumpPixel(C, image, toXYZ, toLinear, maxLuminanceFloat, i, j, extraIndent);
             }
         }
     }
 
+    cmsDeleteTransform(toLinear);
     cmsDeleteTransform(toXYZ);
     cmsCloseProfile(xyzProfile);
+    clProfileDestroy(C, linearProfile);
 }
 
-static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, float maxLuminance, int x, int y, int extraIndent)
+static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, cmsHTRANSFORM toLinear, float maxLuminance, int x, int y, int extraIndent)
 {
     int intRGB[4];
     float maxChannel = (float)((1 << image->depth) - 1);
     float floatRGB[4];
+    float floatLinear[4];
     float floatXYZ[3];
     cmsCIEXYZ XYZ;
     cmsCIExyY xyY;
@@ -88,9 +101,12 @@ static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ
         memset(&xyY, 0, sizeof(xyY));
     }
 
-    clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): rgba%d(%u, %u, %u, %u), XYZ(%g, %g, %g), xyY(%g, %g, %g), %g nits",
+    cmsDoTransform(toLinear, floatRGB, floatLinear, 1);
+
+    clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): rgba%d(%u, %u, %u, %u), lin float(%g, %g, %g, %g), XYZ(%g, %g, %g), xyY(%g, %g, %g), %g nits",
         x, y, image->depth,
         intRGB[0], intRGB[1], intRGB[2], intRGB[3],
+        floatLinear[0], floatLinear[1], floatLinear[2], floatLinear[3],
         XYZ.X, XYZ.Y, XYZ.Z,
         xyY.x, xyY.y, xyY.Y,
         xyY.Y * maxLuminance);
