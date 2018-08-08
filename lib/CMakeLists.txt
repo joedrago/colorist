@@ -5,7 +5,7 @@
 #                  http://www.boost.org/LICENSE_1_0.txt)
 # ---------------------------------------------------------------------------
 
-MACRO(generate_headers _sources )
+MACRO(generate_headers)
     FOREACH (_current_FILE ${ARGN})
       GET_FILENAME_COMPONENT(_in ${_current_FILE} ABSOLUTE)
       GET_FILENAME_COMPONENT(_basename ${_current_FILE} NAME_WE)
@@ -22,10 +22,10 @@ MACRO(generate_headers _sources )
          DEPENDS ${_in}
          DEPENDS genHeader
       )
-
-      SET(${_sources} ${${_sources}} ${_out})
    ENDFOREACH (_current_FILE)
 ENDMACRO(generate_headers)
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/bin2h.cmake)
 
 set(COLORIST_LIB_INCLUDES
     include/colorist/colorist.h
@@ -38,10 +38,19 @@ set(COLORIST_LIB_INCLUDES
     include/colorist/types.h
     include/colorist/version.h
     include/colorist/embedded.h
+    ${CMAKE_CURRENT_BINARY_DIR}/reportTemplateBinary.h
 )
-generate_headers(COLORIST_LIB_INCLUDES
-    templates/reportTemplate.html
-)
+
+if(COLORIST_EMSCRIPTEN)
+  if(EXISTS "${CMAKE_CURRENT_BINARY_DIR}/reportTemplateBinary.skip")
+    message(STATUS "Skipping reportTemplateBinary.h generation")
+  else()
+    message(STATUS "Generating reportTemplateBinary.h slowly (Emscripten can't use genHeader), please wait...")
+    bin2h(SOURCE_FILE "templates/reportTemplate.html" HEADER_FILE "${CMAKE_CURRENT_BINARY_DIR}/reportTemplateBinary.h" VARIABLE_NAME "reportTemplateBinary")
+  endif()
+else()
+  generate_headers(templates/reportTemplate.html)
+endif()
 
 set(COLORIST_LIB_SRCS
     src/context.c
@@ -61,7 +70,7 @@ set(COLORIST_LIB_SRCS
     src/image_bmp.c
     src/image_jp2.c
     src/image_jpg.c
-    src/image_jxr.c
+#    src/image_jxr.c
     src/image_png.c
     src/image_string.c
     src/image_tiff.c

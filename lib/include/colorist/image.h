@@ -45,8 +45,8 @@ clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filen
 clBool clImageWriteJPGRaw(struct clContext * C, clImage * image, struct clRaw * dst, int quality);
 char * clImageWriteJPGURI(struct clContext * C, clImage * image, int quality);
 
-clImage * clImageReadJXR(struct clContext * C, const char * filename);
-clBool clImageWriteJXR(struct clContext * C, clImage * image, const char * filename, int quality);
+// clImage * clImageReadJXR(struct clContext * C, const char * filename);
+// clBool clImageWriteJXR(struct clContext * C, clImage * image, const char * filename, int quality);
 
 clImage * clImageReadPNG(struct clContext * C, const char * filename);
 clBool clImageWritePNG(struct clContext * C, clImage * image, const char * filename);

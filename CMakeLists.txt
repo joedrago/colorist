@@ -9,8 +9,14 @@ cmake_minimum_required(VERSION 3.5) # This is so high because of libwebp
 project(colorist)
 
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release")
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Debug")
+
+if(COLORIST_EMSCRIPTEN)
+  set(CMAKE_BUILD_TYPE "Release")
+  add_definitions(-DCOLORIST_EMSCRIPTEN=1)
+else()
+  if(NOT CMAKE_BUILD_TYPE)
+      set(CMAKE_BUILD_TYPE "Debug")
+  endif()
 endif()
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DCOLORIST_DEBUG=1")

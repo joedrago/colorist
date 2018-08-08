@@ -398,9 +398,9 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
             cmsUInt32Number aToBTagSize = cmsReadRawTag(profile->handle, cmsSigAToB0Tag, NULL, 0);
             if (aToBTagSize >= 32) { // A2B0 tag is present. Check for a matrix scale on para curve types 1 and above
                 uint8_t * rawA2B0 = clAllocate(aToBTagSize);
-                cmsReadRawTag(profile->handle, cmsSigAToB0Tag, rawA2B0, aToBTagSize);
-
                 uint32_t matrixCurveOffset = 0;
+
+                cmsReadRawTag(profile->handle, cmsSigAToB0Tag, rawA2B0, aToBTagSize);
                 memcpy(&matrixCurveOffset, rawA2B0 + 20, sizeof(matrixCurveOffset));
                 matrixCurveOffset = clNTOHL(matrixCurveOffset);
                 if (matrixCurveOffset == 0) {

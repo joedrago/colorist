@@ -30,9 +30,9 @@ struct clImage * clContextRead(clContext * C, const char * filename, const char 
         case CL_FORMAT_JPG:
             image = clImageReadJPG(C, filename);
             break;
-        case CL_FORMAT_JXR:
-            image = clImageReadJXR(C, filename);
-            break;
+        // case CL_FORMAT_JXR:
+        //     image = clImageReadJXR(C, filename);
+        //     break;
         case CL_FORMAT_PNG:
             image = clImageReadPNG(C, filename);
             break;
@@ -84,9 +84,9 @@ clBool clContextWrite(clContext * C, struct clImage * image, const char * filena
         case CL_FORMAT_JPG:
             return clImageWriteJPG(C, image, filename, quality);
             break;
-        case CL_FORMAT_JXR:
-            return clImageWriteJXR(C, image, filename, quality);
-            break;
+        // case CL_FORMAT_JXR:
+        //     return clImageWriteJXR(C, image, filename, quality);
+        //     break;
         case CL_FORMAT_PNG:
             return clImageWritePNG(C, image, filename);
             break;

@@ -11,6 +11,52 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#ifdef COLORIST_EMSCRIPTEN
+
+#include <emscripten.h>
+
+void clContextDefaultLog(clContext * C, const char * section, int indent, const char * format, va_list args)
+{
+    int needed;
+    char * buffer;
+    needed = vsnprintf(NULL, 0, format, args);
+    if (needed <= 0) {
+        return;
+    }
+
+    buffer = clAllocate(needed + 1);
+    vsnprintf(buffer, needed + 1, format, args);
+    EM_ASM_({
+        if (Module.coloristLog) {
+            Module.coloristLog(UTF8ToString($0), $1, UTF8ToString($2));
+        }
+    }, section, indent, buffer);
+
+    clFree(buffer);
+}
+
+void clContextDefaultLogError(clContext * C, const char * format, va_list args)
+{
+    int needed;
+    char * buffer;
+    needed = vsnprintf(NULL, 0, format, args);
+    if (needed <= 0) {
+        return;
+    }
+
+    buffer = clAllocate(needed + 1);
+    vsnprintf(buffer, needed + 1, format, args);
+    EM_ASM_({
+        if (Module.coloristError) {
+            Module.coloristError(UTF8ToString($0));
+        }
+    }, buffer);
+
+    clFree(buffer);
+}
+
+#else /* ifdef COLORIST_EMSCRIPTEN */
+
 void clContextDefaultLog(clContext * C, const char * section, int indent, const char * format, va_list args)
 {
     if (section) {
@@ -38,6 +84,8 @@ void clContextDefaultLogError(clContext * C, const char * format, va_list args)
     vfprintf(stderr, format, args);
     fprintf(stderr, "\n");
 }
+
+#endif /* ifdef COLORIST_EMSCRIPTEN */
 
 void clContextLog(clContext * C, const char * section, int indent, const char * format, ...)
 {

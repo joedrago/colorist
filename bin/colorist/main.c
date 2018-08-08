@@ -13,7 +13,11 @@
 #include <crtdbg.h>
 #endif
 
-int main(int argc, char * argv[])
+#ifdef COLORIST_EMSCRIPTEN
+#include <emscripten.h>
+EMSCRIPTEN_KEEPALIVE
+#endif
+int execute(int argc, char * argv[])
 {
     int ret = 1;
     clContext * C;
@@ -60,4 +64,13 @@ int main(int argc, char * argv[])
     }
     clContextDestroy(C);
     return ret;
+}
+
+int main(int argc, char * argv[])
+{
+#ifdef COLORIST_EMSCRIPTEN
+    return 0;
+#else
+    return execute(argc, argv);
+#endif
 }

@@ -156,6 +156,7 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     float luminanceScale;
     float overbrightScale;
     float * srcFloats;
+    clProfilePrimaries srcPrimaries;
     int srcLuminance = 0;
     float * xyzPixels;
     clProfileCurve gamma1;
@@ -174,7 +175,6 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
 
     gamma1.type = CL_PCT_GAMMA;
     gamma1.gamma = 1.0f;
-    clProfilePrimaries srcPrimaries;
     clProfileQuery(C, srcImage->profile, &srcPrimaries, NULL, &srcLuminance);
     linearProfile = clProfileCreate(C, &srcPrimaries, &gamma1, srcLuminance, NULL);
 
