@@ -1,0 +1,489 @@
+<html>
+<head>
+<style>
+body {
+  font-family: sans-serif;
+  background-color: #cccccc;
+}
+a {
+  color: #369;
+}
+.note {
+  width: 50%;
+  margin: 50px auto;
+  font-size: 1.25em;
+  color: #333;
+  text-align: justify;
+}
+
+.templateform {
+  width: 480px;
+  text-align: left;
+  margin-top: 10px;
+}
+.templatelegend {
+  font-size: 0.8em;
+  font-family: monospace;
+}
+
+#cmd {
+  font-size: 1.2em;
+  font-family: monospace;
+}
+
+#drop-area {
+  border: 2px dashed #aaa;
+  border-radius: 20px;
+  width: 480px;
+  margin: 20px auto;
+  padding: 20px;
+}
+#drop-area.highlight {
+  border-color: purple;
+}
+p {
+  margin-top: 0;
+}
+.my-form {
+  margin-bottom: 10px;
+}
+.title {
+  font-size: 2em;
+  margin-top: 20px;
+  text-align: center;
+  font-family: monospace;
+}
+.error {
+  color: #ff0000;
+  font-weight: 900;
+}
+.header {
+  color: #33aa33;
+  font-weight: 900;
+}
+#sourcefiles {
+  margin-top: 10px;
+  font-family: monospace;
+  white-space: pre;
+}
+#output {
+  display: none;
+  padding: 5px;
+  background-color: #eee;
+  font-family: monospace;
+  white-space: pre;
+  border: 1px dashed #000;
+  width: 80%;
+  height: 400px;
+  overflow: scroll;
+  overflow-x: hidden;
+  text-align: left;
+}
+.button {
+  font-size: 0.8em;
+  display: inline-block;
+  padding: 8px;
+  background: #aaa;
+  cursor: pointer;
+  border-radius: 5px;
+  border: 1px solid #000;
+}
+.button:hover {
+  background: #ddd;
+}
+#fileElem {
+  display: none;
+}
+
+.section {
+  font-weight: 900;
+  color: #777777;
+}
+</style>
+</head>
+<body>
+
+<div class="title">Colorist</div>
+
+<center>
+<div class="templateform">
+<div class="templatelegend">Command Template (see <a target="_new" href="https://joedrago.github.io/colorist/docs/Usage.html">Usage</a>):</div>
+<input id="cmd" type="text" size=50 value="convert &quot;/!SRC!&quot; &quot;/output/!BASENAME!.png&quot;"></input>
+</div>
+</center>
+
+<div id="drop-area">
+  <form class="my-form">
+    <p>Drop images here!</p>
+    <input type="file" id="fileElem" multiple accept="image/*" onchange="handleFiles(this.files)">
+    <label class="button" for="fileElem">Or browse...</label>
+  </form>
+  <div id="sourcefiles" /></div>
+</div>
+<center>
+  <div id="output"></div>
+</center>
+<script src="colorist.js"></script>
+<script>
+
+var colorist = Module; // Yuck?
+
+// ------------------------------------------------------------------------------------------------
+
+/* FileSaver.js
+ * A saveAs() FileSaver implementation.
+ * 1.3.8
+ * 2018-03-22 14:03:47
+ *
+ * By Eli Grey, https://eligrey.com
+ * License: MIT
+ *   See https://github.com/eligrey/FileSaver.js/blob/master/LICENSE.md
+ */
+
+/*global self */
+/*jslint bitwise: true, indent: 4, laxbreak: true, laxcomma: true, smarttabs: true, plusplus: true */
+
+/*! @source http://purl.eligrey.com/github/FileSaver.js/blob/master/src/FileSaver.js */
+
+var saveAs = saveAs || (function(view) {
+  "use strict";
+  // IE <10 is explicitly unsupported
+  if (typeof view === "undefined" || typeof navigator !== "undefined" && /MSIE [1-9]\./.test(navigator.userAgent)) {
+    return;
+  }
+  var
+      doc = view.document
+      // only get URL when necessary in case Blob.js hasn't overridden it yet
+    , get_URL = function() {
+      return view.URL || view.webkitURL || view;
+    }
+    , save_link = doc.createElementNS("http://www.w3.org/1999/xhtml", "a")
+    , can_use_save_link = "download" in save_link
+    , click = function(node) {
+      var event = new MouseEvent("click");
+      node.dispatchEvent(event);
+    }
+    , is_safari = /constructor/i.test(view.HTMLElement) || view.safari
+    , is_chrome_ios =/CriOS\/[\d]+/.test(navigator.userAgent)
+    , setImmediate = view.setImmediate || view.setTimeout
+    , throw_outside = function(ex) {
+      setImmediate(function() {
+        throw ex;
+      }, 0);
+    }
+    , force_saveable_type = "application/octet-stream"
+    // the Blob API is fundamentally broken as there is no "downloadfinished" event to subscribe to
+    , arbitrary_revoke_timeout = 1000 * 40 // in ms
+    , revoke = function(file) {
+      var revoker = function() {
+        if (typeof file === "string") { // file is an object URL
+          get_URL().revokeObjectURL(file);
+        } else { // file is a File
+          file.remove();
+        }
+      };
+      setTimeout(revoker, arbitrary_revoke_timeout);
+    }
+    , dispatch = function(filesaver, event_types, event) {
+      event_types = [].concat(event_types);
+      var i = event_types.length;
+      while (i--) {
+        var listener = filesaver["on" + event_types[i]];
+        if (typeof listener === "function") {
+          try {
+            listener.call(filesaver, event || filesaver);
+          } catch (ex) {
+            throw_outside(ex);
+          }
+        }
+      }
+    }
+    , auto_bom = function(blob) {
+      // prepend BOM for UTF-8 XML and text/* types (including HTML)
+      // note: your browser will automatically convert UTF-16 U+FEFF to EF BB BF
+      if (/^\s*(?:text\/\S*|application\/xml|\S*\/\S*\+xml)\s*;.*charset\s*=\s*utf-8/i.test(blob.type)) {
+        return new Blob([String.fromCharCode(0xFEFF), blob], {type: blob.type});
+      }
+      return blob;
+    }
+    , FileSaver = function(blob, name, no_auto_bom) {
+      if (!no_auto_bom) {
+        blob = auto_bom(blob);
+      }
+      // First try a.download, then web filesystem, then object URLs
+      var
+          filesaver = this
+        , type = blob.type
+        , force = type === force_saveable_type
+        , object_url
+        , dispatch_all = function() {
+          dispatch(filesaver, "writestart progress write writeend".split(" "));
+        }
+        // on any filesys errors revert to saving with object URLs
+        , fs_error = function() {
+          if ((is_chrome_ios || (force && is_safari)) && view.FileReader) {
+            // Safari doesn't allow downloading of blob urls
+            var reader = new FileReader();
+            reader.onloadend = function() {
+              var url = is_chrome_ios ? reader.result : reader.result.replace(/^data:[^;]*;/, 'data:attachment/file;');
+              var popup = view.open(url, '_blank');
+              if(!popup) view.location.href = url;
+              url=undefined; // release reference before dispatching
+              filesaver.readyState = filesaver.DONE;
+              dispatch_all();
+            };
+            reader.readAsDataURL(blob);
+            filesaver.readyState = filesaver.INIT;
+            return;
+          }
+          // don't create more object URLs than needed
+          if (!object_url) {
+            object_url = get_URL().createObjectURL(blob);
+          }
+          if (force) {
+            view.location.href = object_url;
+          } else {
+            var opened = view.open(object_url, "_blank");
+            if (!opened) {
+              // Apple does not allow window.open, see https://developer.apple.com/library/safari/documentation/Tools/Conceptual/SafariExtensionGuide/WorkingwithWindowsandTabs/WorkingwithWindowsandTabs.html
+              view.location.href = object_url;
+            }
+          }
+          filesaver.readyState = filesaver.DONE;
+          dispatch_all();
+          revoke(object_url);
+        }
+      ;
+      filesaver.readyState = filesaver.INIT;
+
+      if (can_use_save_link) {
+        object_url = get_URL().createObjectURL(blob);
+        setImmediate(function() {
+          save_link.href = object_url;
+          save_link.download = name;
+          click(save_link);
+          dispatch_all();
+          revoke(object_url);
+          filesaver.readyState = filesaver.DONE;
+        }, 0);
+        return;
+      }
+
+      fs_error();
+    }
+    , FS_proto = FileSaver.prototype
+    , saveAs = function(blob, name, no_auto_bom) {
+      return new FileSaver(blob, name || blob.name || "download", no_auto_bom);
+    }
+  ;
+
+  // IE 10+ (native saveAs)
+  if (typeof navigator !== "undefined" && navigator.msSaveOrOpenBlob) {
+    return function(blob, name, no_auto_bom) {
+      name = name || blob.name || "download";
+
+      if (!no_auto_bom) {
+        blob = auto_bom(blob);
+      }
+      return navigator.msSaveOrOpenBlob(blob, name);
+    };
+  }
+
+  // todo: detect chrome extensions & packaged apps
+  //save_link.target = "_blank";
+
+  FS_proto.abort = function(){};
+  FS_proto.readyState = FS_proto.INIT = 0;
+  FS_proto.WRITING = 1;
+  FS_proto.DONE = 2;
+
+  FS_proto.error =
+  FS_proto.onwritestart =
+  FS_proto.onprogress =
+  FS_proto.onwrite =
+  FS_proto.onabort =
+  FS_proto.onerror =
+  FS_proto.onwriteend =
+    null;
+
+  return saveAs;
+}(
+     typeof self !== "undefined" && self
+  || typeof window !== "undefined" && window
+  || this
+));
+
+// ------------------------------------------------------------------------------------------------
+
+var queue = [];
+
+let dropArea = document.getElementById("drop-area")
+
+// Prevent default drag behaviors
+;['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+  dropArea.addEventListener(eventName, preventDefaults, false)
+  document.body.addEventListener(eventName, preventDefaults, false)
+})
+
+// Highlight drop area when item is dragged over it
+;['dragenter', 'dragover'].forEach(eventName => {
+  dropArea.addEventListener(eventName, highlight, false)
+})
+
+;['dragleave', 'drop'].forEach(eventName => {
+  dropArea.addEventListener(eventName, unhighlight, false)
+})
+
+// Handle dropped files
+dropArea.addEventListener('drop', handleDrop, false)
+
+function preventDefaults (e) {
+  e.preventDefault()
+  e.stopPropagation()
+}
+
+function highlight(e) {
+  dropArea.classList.add('highlight')
+}
+
+function unhighlight(e) {
+  dropArea.classList.remove('active')
+}
+
+function handleDrop(e) {
+  var dt = e.dataTransfer
+  var files = dt.files
+
+  handleFiles(files)
+}
+
+function handleFiles(files) {
+  files = [...files]
+  // console.log(files);
+
+  html = ""
+  files.forEach(file => {
+    queue.push(file);
+    html += " * " + file.name + " ("+file.size+" bytes)\n";
+  });
+
+  let sourceFiles = document.getElementById("sourcefiles");
+  sourceFiles.innerHTML = html;
+
+  runColorist();
+}
+
+function calcFilename(str) {
+  return new String(str).substring(str.lastIndexOf('/') + 1);
+}
+
+function calcBasename(str) {
+   var base = calcFilename(str);
+    if(base.lastIndexOf(".") != -1)
+        base = base.substring(0, base.lastIndexOf("."));
+   return base;
+}
+
+function headerLog(text) {
+  var outputElem = document.getElementById('output');
+  var dashes = "";
+  var len = text.length;
+  for(var i = 0; i < len; i++) {
+    dashes += "-";
+  }
+  outputElem.style.display = 'block';
+  outputElem.innerHTML += "\n<span class=\"header\">"+dashes+"\n" + text + "\n"+dashes+"</span>\n\n";
+  outputElem.scrollTop = outputElem.scrollHeight;
+}
+
+
+Module.coloristLog = function(section, indent, text) {
+  var spaces = "";
+  var spacesNeeded = 9 - section.length;
+  for(var i = 0; i < spacesNeeded; i++) {
+    spaces += " ";
+  }
+
+  var indentText = "";
+  if(indent < 0) {
+    indent = 17 + indent;
+  }
+  if(indent > 0) {
+    for(var i = 0; i < indent; i++) {
+      indentText += "    ";
+    }
+  }
+
+  var outputElem = document.getElementById('output');
+  outputElem.style.display = 'block';
+  outputElem.innerHTML += "[<span class=\"section\">"+spaces+section+"</span>] " + indentText + text + "\n";
+  outputElem.scrollTop = outputElem.scrollHeight;
+}
+
+Module.coloristError = function(text) {
+  var outputElem = document.getElementById('output');
+  outputElem.style.display = 'block';
+  outputElem.innerHTML += "\n<span class=\"error\">ERROR: " + text + "</span>\n\n";
+  outputElem.scrollTop = outputElem.scrollHeight;
+}
+
+function shellSplit(cmd) {
+    var args = cmd.match(/"[^"]+"|'[^']+'|\S+/g);
+    args = args.map(function(arg) {
+      arg = arg.replace(/^[\"']/g, "");
+      arg = arg.replace(/[\"']$/g, "");
+      return arg;
+    });
+    return args;
+}
+
+function runColorist() {
+  if(queue.length < 1) {
+    document.getElementById('fileElem').value = null;
+    return;
+  }
+
+  var file = queue.shift();
+
+  headerLog("Processing: " + file.name);
+
+  var reader = new FileReader;
+  reader.readAsArrayBuffer(file);
+  reader.onloadend = function() {
+    var basename = calcBasename(file.name);
+    try {
+      colorist.FS.mkdir('/output');
+    } catch(e) {
+      // who cares
+    }
+    colorist.FS.writeFile("/" + file.name, new Uint8Array(reader.result));
+
+    var cmdElem = document.getElementById("cmd");
+    var template = cmdElem.value;
+    var cmd = template;
+    cmd = cmd.replace(/!SRC!/g, file.name);
+    cmd = cmd.replace(/!BASENAME!/g, basename);
+    var args = shellSplit(cmd);
+    console.log(args);
+
+    colorist.execute(args, function() {
+      var outputFilename = colorist.outputFilename;
+      if(outputFilename != null) {
+        console.log("Reading: ", outputFilename);
+        var output = colorist.FS.readFile(outputFilename);
+        colorist.FS.unlink(file.name);
+        colorist.FS.unlink(outputFilename);
+        saveAs(new Blob([output], { type: 'application/octet-stream' }), calcFilename(outputFilename));
+      }
+
+      setTimeout(function() {
+        runColorist();
+      }, 0);
+    });
+  }
+}
+
+
+</script>
+</body>
+</html>

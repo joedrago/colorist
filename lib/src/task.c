@@ -114,10 +114,14 @@ int clTaskLimit()
 
 int clTaskLimit()
 {
+#ifdef COLORIST_EMSCRIPTEN
+    return 1;
+#else
     int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
     return CL_CLAMP(numCPU, 1, numCPU);
-}
 #endif
+}
+#endif /* ifdef __APPLE__ */
 
 #include <pthread.h>
 

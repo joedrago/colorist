@@ -39,6 +39,12 @@ int execute(int argc, char * argv[])
     if (C->verbose)
         clContextPrintArgs(C);
 
+#ifdef COLORIST_EMSCRIPTEN
+    EM_ASM(
+        Module.outputFilename = null;
+        );
+#endif
+
     switch (C->action) {
         case CL_ACTION_CALC:
             ret = clContextGenerate(C);
@@ -62,6 +68,22 @@ int execute(int argc, char * argv[])
             clContextLogError(C, "Unimplemented action: %s", clActionToString(C, C->action));
             break;
     }
+
+#ifdef COLORIST_EMSCRIPTEN
+    if ((ret == 0) && C->outputFilename) {
+        EM_ASM_({
+            Module.outputFilename = UTF8ToString($0);
+        }, C->outputFilename);
+    }
+    EM_ASM(
+        if (Module.onExecuteFinished) {
+        setTimeout(function() {
+            Module.onExecuteFinished();
+        }, 0);
+    }
+        );
+#endif
+
     clContextDestroy(C);
     return ret;
 }

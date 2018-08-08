@@ -31,6 +31,7 @@ void clContextDefaultLog(clContext * C, const char * section, int indent, const 
             Module.coloristLog(UTF8ToString($0), $1, UTF8ToString($2));
         }
     }, section, indent, buffer);
+    emscripten_sleep_with_yield(1);
 
     clFree(buffer);
 }
@@ -51,6 +52,7 @@ void clContextDefaultLogError(clContext * C, const char * format, va_list args)
             Module.coloristError(UTF8ToString($0));
         }
     }, buffer);
+    emscripten_sleep_with_yield(1);
 
     clFree(buffer);
 }
