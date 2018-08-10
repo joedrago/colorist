@@ -331,11 +331,8 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
             // Always adapt the colorants with the chad tag (if wtpt is D50, it'll be identity)
             _cmsMAT3per(&colorants, &invChad, &tmpColorants);
 
-            if ((cmsGetEncodedICCversion(profile->handle) < 0x4000000) && !cmsIsTag(profile->handle, cmsSigChromaticAdaptationTag)) {
-                // Old version without a chad tag, honor the wtpt tag (do not chromatically adapt it)
-                adaptedWhiteXYZ = *whiteXYZ;
-            } else {
-                // Newer version or a chad tag was explicitly set, adapt white point
+            if ((cmsGetEncodedICCversion(profile->handle) >= 0x4000000) && cmsIsTag(profile->handle, cmsSigChromaticAdaptationTag)) {
+                // Newer version with a chad tag set, adapt white point
                 cmsVEC3 srcWP, dstWP;
                 cmsCIExyY whiteXYY;
                 cmsXYZ2xyY(&whiteXYY, whiteXYZ);
@@ -346,6 +343,9 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
                 adaptedWhiteXYZ.X = dstWP.n[VX];
                 adaptedWhiteXYZ.Y = dstWP.n[VY];
                 adaptedWhiteXYZ.Z = dstWP.n[VZ];
+            } else {
+                // Old version, or new version without a chad tag, leave wtpt alone
+                adaptedWhiteXYZ = *whiteXYZ;
             }
         } else {
             colorants = tmpColorants;
