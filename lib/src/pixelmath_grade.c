@@ -72,7 +72,7 @@ static void gammaErrorTermTaskFunc(clGammaErrorTermTask * info)
     info->outErrorTerm = gammaErrorTerm(info->gamma, info->pixels, info->pixelCount, info->maxChannel, info->luminanceScale);
 }
 
-void clPixelMathColorGrade(struct clContext * C, int taskCount, clProfile * pixelProfile, float * pixels, int pixelCount, int imageWidth, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose)
+void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile * pixelProfile, float * pixels, int pixelCount, int imageWidth, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose)
 {
     int maxLuminance = 0;
     float bestGamma = 0.0f;
