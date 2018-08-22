@@ -1,6 +1,7 @@
 #include "colorist/pixelmath.h"
 
 #include "colorist/context.h"
+#include "colorist/profile.h"
 #include "colorist/task.h"
 
 #include <math.h>
@@ -11,6 +12,8 @@
 #define GAMMA_INT_DIVISOR 20.0f
 
 // NOTE: This is a work in progress. There are probably lots of problems with this.
+
+void doMultithreadedTransform(clContext * C, int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount);
 
 // roundf() doesn't exist until C99
 float clPixelMathRoundf(float val)
@@ -69,29 +72,58 @@ static void gammaErrorTermTaskFunc(clGammaErrorTermTask * info)
     info->outErrorTerm = gammaErrorTerm(info->gamma, info->pixels, info->pixelCount, info->maxChannel, info->luminanceScale);
 }
 
-void clPixelMathColorGrade(struct clContext * C, int taskCount, float * pixels, int pixelCount, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose)
+void clPixelMathColorGrade(struct clContext * C, int taskCount, clProfile * pixelProfile, float * pixels, int pixelCount, int imageWidth, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose)
 {
     int maxLuminance = 0;
     float bestGamma = 0.0f;
-    float * pixel;
     int i;
 
     // Find max luminance
     if (*outLuminance == 0) {
-        // TODO: This should probably be some kind of histogram which spends most of the codepoints where most of the pixel values are.
-
+        float * pixel;
+        int indexWithMaxChannel = 0;
         float maxChannel = 0.0f;
+        float maxPixel[4];
+        float xyz[3];
+        int pixelX, pixelY, pixelLuminance;
+
+        cmsHPROFILE xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
+        cmsHTRANSFORM toXYZ = cmsCreateTransformTHR(C->lcms, pixelProfile->handle, TYPE_RGBA_FLT, xyzProfile, TYPE_XYZ_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
 
         pixel = pixels;
         for (i = 0; i < pixelCount; ++i) {
-            maxChannel = (maxChannel > pixel[0]) ? maxChannel : pixel[0];
-            maxChannel = (maxChannel > pixel[1]) ? maxChannel : pixel[1];
-            maxChannel = (maxChannel > pixel[2]) ? maxChannel : pixel[2];
+            clBool foundBigger = clFalse;
+            if (maxChannel < pixel[0]) {
+                indexWithMaxChannel = i;
+                maxChannel = pixel[0];
+            }
+            if (maxChannel < pixel[1]) {
+                indexWithMaxChannel = i;
+                maxChannel = pixel[1];
+            }
+            if (maxChannel < pixel[2]) {
+                indexWithMaxChannel = i;
+                maxChannel = pixel[2];
+            }
             pixel += 4;
         }
 
-        maxLuminance = (int)(maxChannel * srcLuminance);
-        clContextLog(C, "grading", 1, "Found max luminance: %d nits", maxLuminance);
+        cmsDoTransform(toXYZ, &pixels[indexWithMaxChannel * 4], xyz, 1);
+        pixelX = indexWithMaxChannel % imageWidth;
+        pixelY = indexWithMaxChannel / imageWidth;
+        pixelLuminance = (int)(xyz[1] * srcLuminance);
+
+        maxPixel[0] = maxChannel;
+        maxPixel[1] = maxChannel;
+        maxPixel[2] = maxChannel;
+        maxPixel[3] = 1.0f;
+        cmsDoTransform(toXYZ, maxPixel, xyz, 1);
+        maxLuminance = (int)(xyz[1] * srcLuminance);
+
+        cmsDeleteTransform(toXYZ);
+        cmsCloseProfile(xyzProfile);
+
+        clContextLog(C, "grading", 1, "Found pixel (%d,%d) with largest single RGB channel (%d nits, %d nits if white).", pixelX, pixelY, pixelLuminance, maxLuminance, maxLuminance);
     } else {
         maxLuminance = *outLuminance;
         clContextLog(C, "grading", 1, "Using requested max luminance: %d nits", maxLuminance);

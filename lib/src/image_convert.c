@@ -222,7 +222,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     if (params->autoGrade) {
         clContextLog(C, "grading", 0, "Color grading...");
         timerStart(&t);
-        clPixelMathColorGrade(C, params->jobs, linearPixels, linearPixelsCount, srcLuminance, dstDepth, &dstLuminance, &dstGamma, C->verbose);
+        clPixelMathColorGrade(C, params->jobs, dstLinear, linearPixels, linearPixelsCount, srcImage->width, srcLuminance, dstDepth, &dstLuminance, &dstGamma, C->verbose);
         clContextLog(C, "grading", 0, "Using maxLum: %d, gamma: %g", dstLuminance, dstGamma);
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
