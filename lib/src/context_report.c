@@ -395,14 +395,12 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
     }
 
     {
-        // clImage * highlight;
-        // char * pngB64;
         clContextLog(C, "encode", 0, "Creating out-of-gamut highlights...");
         timerStart(&t);
 
-        if (!addSRGBHighlight(C, image, 100, payload, "srgb100")) {
-            return clFalse;
-        }
+        // if (!addSRGBHighlight(C, image, 100, payload, "srgb100")) {
+        //     return clFalse;
+        // }
         if (!addSRGBHighlight(C, image, 300, payload, "srgb300")) {
             return clFalse;
         }

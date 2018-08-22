@@ -29,7 +29,7 @@ class App extends React.Component
     @views =
       summary: SummaryView
       pixels: PixelsView
-      srgb100: PixelsView
+      # srgb100: PixelsView
       srgb300: PixelsView
 
     @navigate(true)
@@ -104,15 +104,15 @@ class App extends React.Component
           @setState { navOpen: false }
       }
 
-      el MenuItem, {
-        key: "menu.srgb100"
-        primaryText: "sRGB Highlight (100)"
-        leftIcon: tags.icon 'event_note'
-        onClick: (e) =>
-          e.preventDefault()
-          @redirect('#srgb100')
-          @setState { navOpen: false }
-      }
+      # el MenuItem, {
+      #   key: "menu.srgb100"
+      #   primaryText: "sRGB Highlight (100)"
+      #   leftIcon: tags.icon 'event_note'
+      #   onClick: (e) =>
+      #     e.preventDefault()
+      #     @redirect('#srgb100')
+      #     @setState { navOpen: false }
+      # }
 
       el MenuItem, {
         key: "menu.srgb300"
