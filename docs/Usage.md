@@ -28,7 +28,7 @@ Output Profile Options:
 
 Output Format Options:
     -b,--bpp BPP             : Output bits-per-pixel. 8, 16, or 0 for auto (default)
-    -f,--format FORMAT       : Output format. auto (default), icc, j2k, jp2, jpg, jxr, png, tiff, webp
+    -f,--format FORMAT       : Output format. auto (default), bmp, icc, j2k, jp2, jpg, png, tiff, webp
     -q,--quality QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -2 below). (default: 90)
     -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 0)
     -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off
@@ -62,10 +62,10 @@ make this a useless switch.
 
 ### -b, --bpp
 
-Choose an output bit depth (8 or 16). By default, `convert` will try to use
+Choose an output bit depth (8 - 16). By default, `convert` will try to use
 the bit depth of the source image, and `generate` will choose an 8-bit image.
 In either case, choosing an output file format incapable of 16-bit will
-automatically force it to 8-bit.
+automatically force it to 8-bit. Currently, only J2K/JP2 supports bpp (9-15).
 
 ### -c, --copyright
 
