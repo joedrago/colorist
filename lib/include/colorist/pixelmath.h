@@ -12,6 +12,7 @@
 #include "colorist/types.h"
 
 struct clContext;
+struct clProfile;
 
 float clPixelMathRoundf(float val);
 float clPixelMathFloorf(float val);
