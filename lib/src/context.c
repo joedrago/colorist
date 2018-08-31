@@ -779,8 +779,9 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h");
     clContextLog(C, NULL, 0, "    --hald FILENAME          : Image containing valid Hald CLUT to be used after color conversion");
     clContextLog(C, NULL, 0, "");
-    clContextLog(C, NULL, 0, "Identify Options:");
+    clContextLog(C, NULL, 0, "Identify / Calc Options:");
     clContextLog(C, NULL, 0, "    -z,--rect x,y,w,h        : Pixels to dump. x,y,w,h");
+    clContextLog(C, NULL, 0, "    --json                   : Output valid JSON description instead of standard log output");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Modify Options:");
     clContextLog(C, NULL, 0, "    -s,--striptags TAG,...   : Strips ICC tags from profile");

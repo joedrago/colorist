@@ -38,8 +38,9 @@ Convert Options:
     -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h
     --hald FILENAME          : Image containing valid Hald CLUT to be used after color conversion
 
-Identify Options:
+Identify / Calc Options:
     -z,--rect x,y,w,h        : Pixels to dump. x,y,w,h
+    --json                   : Output valid JSON description instead of standard log output
 
 Modify Options:
     -s,--striptags TAG,...   : Strips ICC tags from profile
@@ -104,6 +105,12 @@ been multithreaded, such as pixel transformations or automatic grading. By
 default, Colorist chooses the number of cores available in the system. Running
 `colorist -h` will show how many cores Colorist detects (and will use by
 default) after displaying the syntax.
+
+### --json
+
+When using `identify` or `calc`, this will disable all log output and instead
+emit a single JSON object output that contains the requested information. If
+an error occurs, the JSON will only contain a single key named "error".
 
 ### -l, --luminance
 
