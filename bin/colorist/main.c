@@ -11,8 +11,8 @@
 
 #ifdef WIN32_MEMORY_LEAK_DETECTION
 #define _CRTDBG_MAP_ALLOC
-#endif
 #include <crtdbg.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
 
