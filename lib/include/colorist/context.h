@@ -18,6 +18,7 @@
 
 struct clContext;
 struct clProfilePrimaries;
+struct cJSON;
 
 typedef enum clAction
 {
@@ -171,8 +172,8 @@ clBool clContextGetStockPrimaries(struct clContext * C, const char * name, struc
 clBool clContextGetRawStockPrimaries(struct clContext * C, const char * name, float outPrimaries[8]);
 
 int clContextConvert(clContext * C);
-int clContextGenerate(clContext * C);
-int clContextIdentify(clContext * C);
+int clContextGenerate(clContext * C, struct cJSON * output); // output here only used in ACTION_CALC
+int clContextIdentify(clContext * C, struct cJSON * output);
 int clContextModify(clContext * C);
 int clContextReport(clContext * C);
 

@@ -12,7 +12,7 @@
 
 #include <string.h>
 
-int clContextGenerate(clContext * C)
+int clContextGenerate(clContext * C, struct cJSON * output)
 {
     Timer overall;
     clProfilePrimaries primaries;
@@ -138,7 +138,11 @@ int clContextGenerate(clContext * C)
                 rect[2] = image->width;
                 rect[3] = image->height;
             }
-            clImageDebugDump(C, image, rect[0], rect[1], rect[2], rect[3], 0);
+            if (output) {
+                clImageDebugDumpJSON(C, output, image, rect[0], rect[1], rect[2], rect[3]);
+            } else {
+                clImageDebugDump(C, image, rect[0], rect[1], rect[2], rect[3], 0);
+            }
         }
         clImageDestroy(C, image);
     } else {

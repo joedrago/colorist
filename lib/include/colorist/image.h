@@ -13,6 +13,7 @@
 
 struct clProfile;
 struct clRaw;
+struct cJSON;
 
 typedef struct clImage
 {
@@ -31,6 +32,7 @@ clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, in
 clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y, int * w, int * h);
 void clImageSetPixel(struct clContext * C, clImage * image, int x, int y, int r, int g, int b, int a);
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent);
+void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clImage * image, int x, int y, int w, int h);
 void clImageDestroy(struct clContext * C, clImage * image);
 void clImageLogCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
 

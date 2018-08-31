@@ -11,16 +11,18 @@
 
 #include <string.h>
 
+#include "cJSON.h"
+
 static const char * curveTypeToString(clProfileCurveType curveType)
 {
     switch (curveType) {
-        case CL_PCT_GAMMA:   return "Gamma";
-        case CL_PCT_COMPLEX: return "Complex";
+        case CL_PCT_GAMMA:   return "gamma";
+        case CL_PCT_COMPLEX: return "complex";
         case CL_PCT_UNKNOWN:
         default:
             break;
     }
-    return "Unknown";
+    return "unknown";
 }
 
 void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTags, int extraIndent)
@@ -66,6 +68,74 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
                 memcpy(tagName, &invSig, 4);
                 tagName[4] = 0;
                 clContextLog(C, "profile", 2 + extraIndent, "Tag %2d [%5d bytes]: %s", i, tagSize, tagName);
+            }
+        }
+    }
+}
+
+void clProfileDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clProfile * profile, clBool dumpTags)
+{
+    clProfilePrimaries primaries;
+    clProfileCurve curve;
+    int luminance;
+    char * tempStr;
+
+    if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
+        cJSON * jsonPrimaries;
+        cJSON * jsonPrimary;
+        cJSON * jsonCurve;
+
+        cJSON_AddStringToObject(jsonOutput, "description", profile->description);
+        cJSON_AddNumberToObject(jsonOutput, "size", clProfileSize(C, profile));
+
+        tempStr = clProfileGetMLU(C, profile, "cprt", "en", "US");
+        if (tempStr) {
+            cJSON_AddStringToObject(jsonOutput, "copyright", tempStr);
+            clFree(tempStr);
+        }
+
+        jsonPrimaries = cJSON_AddObjectToObject(jsonOutput, "primaries");
+        jsonPrimary = cJSON_AddObjectToObject(jsonPrimaries, "red");
+        cJSON_AddNumberToObject(jsonPrimary, "x", primaries.red[0]);
+        cJSON_AddNumberToObject(jsonPrimary, "y", primaries.red[1]);
+        jsonPrimary = cJSON_AddObjectToObject(jsonPrimaries, "green");
+        cJSON_AddNumberToObject(jsonPrimary, "x", primaries.green[0]);
+        cJSON_AddNumberToObject(jsonPrimary, "y", primaries.green[1]);
+        jsonPrimary = cJSON_AddObjectToObject(jsonPrimaries, "blue");
+        cJSON_AddNumberToObject(jsonPrimary, "x", primaries.blue[0]);
+        cJSON_AddNumberToObject(jsonPrimary, "y", primaries.blue[1]);
+        jsonPrimary = cJSON_AddObjectToObject(jsonPrimaries, "white");
+        cJSON_AddNumberToObject(jsonPrimary, "x", primaries.white[0]);
+        cJSON_AddNumberToObject(jsonPrimary, "y", primaries.white[1]);
+
+        cJSON_AddNumberToObject(jsonOutput, "luminance", luminance);
+
+        jsonCurve = cJSON_AddObjectToObject(jsonOutput, "curve");
+        cJSON_AddStringToObject(jsonCurve, "type", curveTypeToString(curve.type));
+        cJSON_AddNumberToObject(jsonCurve, "gamma", curve.gamma);
+        cJSON_AddNumberToObject(jsonCurve, "matrixCurveScale", curve.matrixCurveScale);
+        if (curve.matrixCurveScale > 0.0f) {
+            cJSON_AddNumberToObject(jsonOutput, "actualLuminance", luminance * curve.matrixCurveScale);
+        } else {
+            cJSON_AddNumberToObject(jsonOutput, "actualLuminance", luminance);
+        }
+
+        if (dumpTags) {
+            cJSON * jsonTags = cJSON_AddArrayToObject(jsonOutput, "tags");
+            cmsInt32Number i, tagSize, tagCount = cmsGetTagCount(profile->handle);
+            for (i = 0; i < tagCount; ++i) {
+                cJSON * jsonTag;
+                char tagName[5];
+                cmsTagSignature invSig, sig = cmsGetTagSignature(profile->handle, i);
+                invSig = clNTOHL(sig);
+                tagSize = cmsReadRawTag(profile->handle, sig, NULL, 0);
+                memcpy(tagName, &invSig, 4);
+                tagName[4] = 0;
+
+                jsonTag = cJSON_CreateObject();
+                cJSON_AddStringToObject(jsonTag, "name", tagName);
+                cJSON_AddNumberToObject(jsonTag, "size", tagSize);
+                cJSON_AddItemToArray(jsonTags, jsonTag);
             }
         }
     }

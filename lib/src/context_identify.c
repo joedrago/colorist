@@ -10,9 +10,11 @@
 #include "colorist/image.h"
 #include "colorist/profile.h"
 
+#include "cJSON.h"
+
 #include <string.h>
 
-int clContextIdentify(clContext * C)
+int clContextIdentify(clContext * C, struct cJSON * output)
 {
     clFormat format = C->params.format;
     if (format == CL_FORMAT_AUTO)
@@ -27,7 +29,11 @@ int clContextIdentify(clContext * C)
         clProfile * profile = clProfileRead(C, C->inputFilename);
         if (profile) {
             clContextLog(C, "identify", 1, "Format: %s", clFormatToString(C, format));
-            clProfileDebugDump(C, profile, C->verbose, 1);
+            if (output) {
+                clProfileDebugDumpJSON(C, output, profile, C->verbose);
+            } else {
+                clProfileDebugDump(C, profile, C->verbose, 1);
+            }
             clProfileDestroy(C, profile);
         }
     } else {
@@ -43,7 +49,11 @@ int clContextIdentify(clContext * C)
                 rect[3] = 3;
             }
             clContextLog(C, "identify", 1, "Format: %s", clFormatToString(C, format));
-            clImageDebugDump(C, image, rect[0], rect[1], rect[2], rect[3], 1);
+            if (output) {
+                clImageDebugDumpJSON(C, output, image, rect[0], rect[1], rect[2], rect[3]);
+            } else {
+                clImageDebugDump(C, image, rect[0], rect[1], rect[2], rect[3], 1);
+            }
             clImageDestroy(C, image);
         }
     }

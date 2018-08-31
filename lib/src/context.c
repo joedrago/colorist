@@ -532,6 +532,8 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
                 if (C->params.jobs == 0)
                     C->params.jobs = taskLimit;
                 C->params.jobs = CL_CLAMP(C->params.jobs, 1, taskLimit);
+            } else if (!strcmp(arg, "--json")) {
+                // Allow it to exist on the cmdline, it doesn't adjust any params
             } else if (!strcmp(arg, "-l") || !strcmp(arg, "--luminance")) {
                 NEXTARG();
                 if (arg[0] == 's') {
@@ -693,6 +695,7 @@ void clContextPrintArgs(clContext * C)
 {
     clContextLog(C, "syntax", 0, "Args:");
     clContextLog(C, "syntax", 1, "Action      : %s", clActionToString(C, C->action));
+    clContextLog(C, "syntax", 1, "autoGrade   : %s", C->params.autoGrade ? "true" : "false");
     if (C->params.bpp)
         clContextLog(C, "syntax", 1, "bpp         : %d", C->params.bpp);
     else

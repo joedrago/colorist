@@ -14,6 +14,7 @@
 #include "lcms2.h"
 
 struct clContext;
+struct cJSON;
 
 typedef struct clProfilePrimaries
 {
@@ -65,6 +66,7 @@ clBool clProfileSetGamma(struct clContext * C, clProfile * profile, float gamma)
 clBool clProfileSetLuminance(struct clContext * C, clProfile * profile, int luminance);
 int clProfileSize(struct clContext * C, clProfile * profile);
 void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTags, int extraIndent);
+void clProfileDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clProfile * profile, clBool dumpTags);
 void clProfileDestroy(struct clContext * C, clProfile * profile);
 
 // TODO: this needs a better name

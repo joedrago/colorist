@@ -10,9 +10,11 @@
 #include "colorist/context.h"
 #include "colorist/profile.h"
 
+#include "cJSON.h"
+
 #include <string.h>
 
-static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, float maxLuminance, int x, int y, int extraIndent);
+static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, float maxLuminance, int x, int y, int extraIndent, cJSON * jsonPixels);
 
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent)
 {
@@ -38,7 +40,7 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
         clContextLog(C, "image", 1 + extraIndent, "Pixels:");
         for (j = y; j < endY; ++j) {
             for (i = x; i < endX; ++i) {
-                dumpPixel(C, image, toXYZ, maxLuminanceFloat, i, j, extraIndent);
+                dumpPixel(C, image, toXYZ, maxLuminanceFloat, i, j, extraIndent, NULL);
             }
         }
     }
@@ -47,7 +49,49 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
     cmsCloseProfile(xyzProfile);
 }
 
-static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, float maxLuminance, int x, int y, int extraIndent)
+void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clImage * image, int x, int y, int w, int h)
+{
+    cJSON * jsonProfile = cJSON_AddObjectToObject(jsonOutput, "profile");
+
+    int i, j;
+    int maxLuminance;
+    float maxLuminanceFloat;
+
+    cmsHPROFILE xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
+    cmsHTRANSFORM toXYZ = cmsCreateTransformTHR(C->lcms, image->profile->handle, TYPE_RGB_FLT, xyzProfile, TYPE_XYZ_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
+
+    cJSON_AddNumberToObject(jsonOutput, "width", image->width);
+    cJSON_AddNumberToObject(jsonOutput, "height", image->height);
+    cJSON_AddNumberToObject(jsonOutput, "depth", image->depth);
+
+    clProfileDebugDumpJSON(C, jsonProfile, image->profile, C->verbose);
+
+    clProfileQuery(C, image->profile, NULL, NULL, &maxLuminance);
+    if (maxLuminance == 0) {
+        maxLuminance = COLORIST_DEFAULT_LUMINANCE;
+    }
+    maxLuminanceFloat = (float)maxLuminance;
+
+    if (clImageAdjustRect(C, image, &x, &y, &w, &h)) {
+        int endX = x + w;
+        int endY = y + h;
+        cJSON * jsonPixels = NULL;
+        for (j = y; j < endY; ++j) {
+            for (i = x; i < endX; ++i) {
+                if (!jsonPixels) {
+                    // Lazily create it in case we never have to
+                    jsonPixels = cJSON_AddArrayToObject(jsonOutput, "pixels");
+                }
+                dumpPixel(C, image, toXYZ, maxLuminanceFloat, i, j, 0, jsonPixels);
+            }
+        }
+    }
+
+    cmsDeleteTransform(toXYZ);
+    cmsCloseProfile(xyzProfile);
+}
+
+static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, float maxLuminance, int x, int y, int extraIndent, cJSON * jsonPixels)
 {
     int intRGB[4];
     float maxChannel = (float)((1 << image->depth) - 1);
@@ -88,11 +132,45 @@ static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ
         memset(&xyY, 0, sizeof(xyY));
     }
 
-    clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): rgba%d(%u, %u, %u, %u), f(%g, %g, %g, %g), XYZ(%g, %g, %g), xyY(%g, %g, %g), %g nits",
-        x, y, image->depth,
-        intRGB[0], intRGB[1], intRGB[2], intRGB[3],
-        floatRGB[0], floatRGB[1], floatRGB[2], floatRGB[3],
-        XYZ.X, XYZ.Y, XYZ.Z,
-        xyY.x, xyY.y, xyY.Y,
-        xyY.Y * maxLuminance);
+    if (jsonPixels) {
+        cJSON * jsonPixel = cJSON_CreateObject();
+        cJSON * t;
+
+        cJSON_AddNumberToObject(jsonPixel, "x", x);
+        cJSON_AddNumberToObject(jsonPixel, "y", y);
+
+        t = cJSON_AddObjectToObject(jsonPixel, "raw");
+        cJSON_AddNumberToObject(t, "r", intRGB[0]);
+        cJSON_AddNumberToObject(t, "g", intRGB[1]);
+        cJSON_AddNumberToObject(t, "b", intRGB[2]);
+        cJSON_AddNumberToObject(t, "a", intRGB[3]);
+
+        t = cJSON_AddObjectToObject(jsonPixel, "float");
+        cJSON_AddNumberToObject(t, "r", floatRGB[0]);
+        cJSON_AddNumberToObject(t, "g", floatRGB[1]);
+        cJSON_AddNumberToObject(t, "b", floatRGB[2]);
+        cJSON_AddNumberToObject(t, "a", floatRGB[3]);
+
+        t = cJSON_AddObjectToObject(jsonPixel, "XYZ");
+        cJSON_AddNumberToObject(t, "X", XYZ.X);
+        cJSON_AddNumberToObject(t, "Y", XYZ.Y);
+        cJSON_AddNumberToObject(t, "Z", XYZ.Z);
+
+        t = cJSON_AddObjectToObject(jsonPixel, "xyY");
+        cJSON_AddNumberToObject(t, "x", xyY.x);
+        cJSON_AddNumberToObject(t, "y", xyY.y);
+        cJSON_AddNumberToObject(t, "Y", xyY.Y);
+
+        cJSON_AddNumberToObject(jsonPixel, "nits", xyY.Y * maxLuminance);
+
+        cJSON_AddItemToArray(jsonPixels, jsonPixel);
+    } else {
+        clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): rgba%d(%u, %u, %u, %u), f(%g, %g, %g, %g), XYZ(%g, %g, %g), xyY(%g, %g, %g), %g nits",
+            x, y, image->depth,
+            intRGB[0], intRGB[1], intRGB[2], intRGB[3],
+            floatRGB[0], floatRGB[1], floatRGB[2], floatRGB[3],
+            XYZ.X, XYZ.Y, XYZ.Z,
+            xyY.x, xyY.y, xyY.Y,
+            xyY.Y * maxLuminance);
+    }
 }
