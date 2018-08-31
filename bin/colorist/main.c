@@ -80,7 +80,6 @@ int execute(int argc, char * argv[])
     }
     if (C->help || (C->action == CL_ACTION_NONE)) {
         clContextPrintSyntax(C);
-        clContextDestroy(C);
         goto cleanup;
     }
     if (C->verbose)
