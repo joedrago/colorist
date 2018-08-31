@@ -39,7 +39,7 @@ clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock)
             curve.type = CL_PCT_GAMMA;
             curve.gamma = COLORIST_SRGB_GAMMA;
             maxLuminance = COLORIST_DEFAULT_LUMINANCE;
-            description = "SRGB";
+            description = "Colorist SRGB";
             break;
     }
     return clProfileCreate(C, &primaries, &curve, maxLuminance, description);
