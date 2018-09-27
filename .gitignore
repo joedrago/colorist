@@ -1,4 +1,5 @@
 /build*
+/.vscode
 /go
 .DS_Store
 /_site
