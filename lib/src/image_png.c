@@ -14,14 +14,29 @@
 
 #include <string.h>
 
-clImage * clImageReadPNG(struct clContext * C, const char * filename)
+struct readInfo
+{
+    struct clContext * C;
+    clRaw * src;
+    uint32_t offset;
+};
+
+static void readCallback(png_structp png, png_bytep data, png_size_t length)
+{
+    struct readInfo * ri = (struct readInfo *)png_get_io_ptr(png);
+    if ((ri->offset + length) <= ri->src->size) {
+        memcpy(data, ri->src->ptr + ri->offset, length);
+    }
+    ri->offset += length;
+}
+
+struct clImage * clFormatReadPNG(struct clContext * C, const char *formatName, struct clRaw * input)
 {
     clImage * image;
     clProfile * profile = NULL;
 
     png_structp png;
     png_infop info;
-    png_byte header[8];
 
     char * iccpProfileName;
     int iccpCompression;
@@ -38,24 +53,20 @@ clImage * clImageReadPNG(struct clContext * C, const char * filename)
     png_bytep * rowPointers;
     int y;
 
-    FILE * fp = fopen(filename, "rb");
-    if (!fp) {
-        clContextLogError(C, "cannot open PNG: '%s'", filename);
-        return NULL;
-    }
+    struct readInfo ri;
+    ri.C = C;
+    ri.src = input;
+    ri.offset = 0;
 
-    fread(header, 1, 8, fp);
-    if (png_sig_cmp(header, 0, 8)) {
-        fclose(fp);
-        clContextLogError(C, "not a PNG: '%s'", filename);
+    if (png_sig_cmp(input->ptr, 0, 8)) {
+        clContextLogError(C, "not a PNG");
         return NULL;
     }
 
     png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     info = png_create_info_struct(png);
     setjmp(png_jmpbuf(png));
-    png_init_io(png, fp);
-    png_set_sig_bytes(png, 8);
+    png_set_read_fn(png, &ri, readCallback);
     png_read_info(png, info);
 
     if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
@@ -121,7 +132,6 @@ clImage * clImageReadPNG(struct clContext * C, const char * filename)
     png_read_image(png, rowPointers);
     png_destroy_read_struct(&png, &info, NULL);
     clFree(rowPointers);
-    fclose(fp);
     return image;
 }
 
@@ -148,7 +158,7 @@ static void writeCallback(png_structp png, png_bytep data, png_size_t length)
     wi->offset += length;
 }
 
-clBool clImageWritePNGRaw(struct clContext * C, clImage * image, struct clRaw * dst)
+clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char *formatName, struct clRaw * output, struct clWriteParams * writeParams)
 {
     int y;
     png_bytep * rowPointers;
@@ -168,7 +178,7 @@ clBool clImageWritePNGRaw(struct clContext * C, clImage * image, struct clRaw * 
 
     wi.C = C;
     wi.offset = 0;
-    wi.dst = dst;
+    wi.dst = output;
     png_set_write_fn(png, &wi, writeCallback, NULL);
 
     png_set_IHDR(
@@ -204,65 +214,6 @@ clBool clImageWritePNGRaw(struct clContext * C, clImage * image, struct clRaw * 
 
     clFree(rowPointers);
     clRawFree(C, &rawProfile);
-    dst->size = wi.offset;
+    output->size = wi.offset;
     return clTrue;
-}
-
-clBool clImageWritePNG(struct clContext * C, clImage * image, const char * filename)
-{
-    FILE * outfile = NULL;
-    clRaw dst;
-
-    memset(&dst, 0, sizeof(dst));
-    if (!clImageWritePNGRaw(C, image, &dst)) {
-        goto writePNGCleanup;
-    }
-
-    outfile = fopen(filename, "wb");
-    if (!outfile) {
-        clContextLogError(C, "ERROR: can't open PNG for write: %s", filename);
-        goto writePNGCleanup;
-    }
-
-    if (fwrite(dst.ptr, dst.size, 1, outfile) != 1) {
-        clContextLogError(C, "ERROR: can't write %d bytes to PNG: %s", dst.size, filename);
-        goto writePNGCleanup;
-    }
-
-writePNGCleanup:
-    if (outfile)
-        fclose(outfile);
-    clRawFree(C, &dst);
-    return clTrue;
-}
-
-char * clImageWritePNGURI(struct clContext * C, clImage * image)
-{
-    clRaw dst;
-    char * b64;
-    int b64Len;
-    char * output;
-    static const char prefixURI[] = "data:image/png;base64,";
-    static int prefixURILen = sizeof(prefixURI) - 1;
-
-    memset(&dst, 0, sizeof(dst));
-    if (!clImageWritePNGRaw(C, image, &dst)) {
-        return NULL;
-    }
-
-    b64 = clRawToBase64(C, &dst);
-    if (!b64) {
-        clRawFree(C, &dst);
-        return NULL;
-    }
-    b64Len = strlen(b64);
-
-    output = clAllocate(prefixURILen + b64Len + 1);
-    memcpy(output, prefixURI, prefixURILen);
-    memcpy(output + prefixURILen, b64, b64Len);
-    output[prefixURILen + b64Len] = 0;
-
-    clFree(b64);
-    clRawFree(C, &dst);
-    return output;
 }

@@ -32,6 +32,7 @@ char * clRawToBase64(struct clContext * C, clRaw * src);
 void clRawSet(struct clContext * C, clRaw * raw, const uint8_t * data, uint32_t len);
 void clRawFree(struct clContext * C, clRaw * raw);
 clBool clRawReadFile(struct clContext * C, clRaw * raw, const char * filename);
+clBool clRawWriteFile(struct clContext * C, clRaw * raw, const char * filename);
 struct cJSON * clRawToStructArray(struct clContext * C, clRaw * raw, int width, int height, clStructArraySchema * schema, int schemaCount);
 
 #endif

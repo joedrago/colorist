@@ -102,11 +102,10 @@ static int maskDepth(uint32_t mask, int currentDepth, int * channelDepth, int * 
     return (depth > currentDepth) ? depth : currentDepth;
 }
 
-clImage * clImageReadBMP(struct clContext * C, const char * filename)
+struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clRaw * fileContents)
 {
     clImage * image = NULL;
     clProfile * profile = NULL;
-    clRaw fileContents;
     const uint16_t expectedMagic = 0x4D42; // 'BM'
     uint16_t magic = 0;
     BITMAPFILEHEADER fileHeader;
@@ -118,51 +117,46 @@ clImage * clImageReadBMP(struct clContext * C, const char * filename)
     uint32_t * packedPixels;
     int pixelCount;
 
-    memset(&fileContents, 0, sizeof(fileContents));
-    if (!clRawReadFile(C, &fileContents, filename)) {
+    if (fileContents->size < (sizeof(magic) + sizeof(fileHeader))) {
+        clContextLogError(C, "Truncated BMP");
         goto readCleanup;
     }
 
-    if (fileContents.size < (sizeof(magic) + sizeof(fileHeader))) {
-        clContextLogError(C, "Truncated BMP: '%s'", filename);
-        goto readCleanup;
-    }
-
-    memcpy(&magic, fileContents.ptr, sizeof(magic));
+    memcpy(&magic, fileContents->ptr, sizeof(magic));
     if (magic != expectedMagic) {
-        clContextLogError(C, "Unexpected magic (BM): '%s'", filename);
+        clContextLogError(C, "Unexpected magic (BM)");
         goto readCleanup;
     }
 
-    memcpy(&fileHeader, fileContents.ptr + 2, sizeof(fileHeader));
-    if (fileHeader.bfSize != fileContents.size) {
-        clContextLogError(C, "Invalid BMP total size in file header: '%s'", filename);
+    memcpy(&fileHeader, fileContents->ptr + 2, sizeof(fileHeader));
+    if (fileHeader.bfSize != fileContents->size) {
+        clContextLogError(C, "Invalid BMP total size in file header");
         goto readCleanup;
     }
 
     memset(&info, 0, sizeof(info));
-    memcpy(&info, fileContents.ptr + sizeof(magic) + sizeof(fileHeader), 4); // read bV5Size
-    if ((info.bV5Size >= fileContents.size) || (info.bV5Size > sizeof(info))) {
-        clContextLogError(C, "Invalid BMP info header size: '%s'", filename);
+    memcpy(&info, fileContents->ptr + sizeof(magic) + sizeof(fileHeader), 4); // read bV5Size
+    if ((info.bV5Size >= fileContents->size) || (info.bV5Size > sizeof(info))) {
+        clContextLogError(C, "Invalid BMP info header size");
         goto readCleanup;
     }
-    memcpy(&info, fileContents.ptr + 2 + sizeof(fileHeader), info.bV5Size); // read the whole header
+    memcpy(&info, fileContents->ptr + 2 + sizeof(fileHeader), info.bV5Size); // read the whole header
     // TODO: Make decisions based on the size? (autodetect V4 or previous)
 
     if (info.bV5BitCount != 32) {
-        clContextLogError(C, "Colorist currently only supports 32bit BMPs [%d detected]: '%s'", info.bV5BitCount, filename);
+        clContextLogError(C, "Colorist currently only supports 32bit BMPs [%d detected]", info.bV5BitCount);
         goto readCleanup;
     }
 
     if (info.bV5CSType == PROFILE_EMBEDDED) {
-        if ((sizeof(magic) + sizeof(fileHeader) + info.bV5ProfileData + info.bV5ProfileSize) > fileContents.size) {
-            clContextLogError(C, "Invalid BMP ICC profile offset/size: '%s'", filename);
+        if ((sizeof(magic) + sizeof(fileHeader) + info.bV5ProfileData + info.bV5ProfileSize) > fileContents->size) {
+            clContextLogError(C, "Invalid BMP ICC profile offset/size");
             goto readCleanup;
         } else {
-            uint8_t * rawProfileData = fileContents.ptr + sizeof(magic) + sizeof(fileHeader) + info.bV5ProfileData;
+            uint8_t * rawProfileData = fileContents->ptr + sizeof(magic) + sizeof(fileHeader) + info.bV5ProfileData;
             profile = clProfileParse(C, rawProfileData, info.bV5ProfileSize, NULL);
             if (profile == NULL) {
-                clContextLogError(C, "Invalid ICC embedded profile: '%s'", filename);
+                clContextLogError(C, "Invalid ICC embedded profile");
                 goto readCleanup;
             }
         }
@@ -175,7 +169,7 @@ clImage * clImageReadBMP(struct clContext * C, const char * filename)
         depth = maskDepth(info.bV5AlphaMask, depth, &aDepth, &aShift);
     } else {
         if (info.bV5Compression != BI_RGB) {
-            clContextLogError(C, "Unsupported BMP compression: '%s'", filename);
+            clContextLogError(C, "Unsupported BMP compression");
             goto readCleanup;
         }
 
@@ -188,18 +182,18 @@ clImage * clImageReadBMP(struct clContext * C, const char * filename)
     }
 
     if ((depth != 8) && (depth != 10)) {
-        clContextLogError(C, "Invalid BMP depth [%d]: '%s'", depth, filename);
+        clContextLogError(C, "Invalid BMP depth [%d]", depth);
         goto readCleanup;
     }
 
     pixelCount = info.bV5Width * info.bV5Height;
     packedPixelBytes = sizeof(uint32_t) * pixelCount;
     packedPixels = clAllocate(packedPixelBytes);
-    if ((fileHeader.bfOffBits + packedPixelBytes) > fileContents.size) {
-        clContextLogError(C, "Truncated BMP (not enough pixel data): '%s'", filename);
+    if ((fileHeader.bfOffBits + packedPixelBytes) > fileContents->size) {
+        clContextLogError(C, "Truncated BMP (not enough pixel data)");
         goto readCleanup;
     }
-    memcpy(packedPixels, fileContents.ptr + fileHeader.bfOffBits, packedPixelBytes);
+    memcpy(packedPixels, fileContents->ptr + fileHeader.bfOffBits, packedPixelBytes);
 
     clImageLogCreate(C, info.bV5Width, info.bV5Height, depth, profile);
     image = clImageCreate(C, info.bV5Width, info.bV5Height, depth, profile);
@@ -234,24 +228,23 @@ clImage * clImageReadBMP(struct clContext * C, const char * filename)
     }
 
 readCleanup:
-    clRawFree(C, &fileContents);
     if (profile) {
         clProfileDestroy(C, profile);
     }
     return image;
 }
 
-clBool clImageWriteBMP(struct clContext * C, clImage * image, const char * filename)
+clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
 {
     clBool writeResult = clTrue;
     clRaw rawProfile;
     uint16_t magic = 0x4D42; // 'BM'
     BITMAPFILEHEADER fileHeader;
     BITMAPV5HEADER info;
-    FILE * f;
     int packedPixelBytes = 0;
     uint32_t * packedPixels = NULL;
     int pixelCount = image->width * image->height;
+    uint8_t *p;
 
     memset(&rawProfile, 0, sizeof(rawProfile));
     if (!clProfilePack(C, image->profile, &rawProfile)) {
@@ -311,42 +304,20 @@ clBool clImageWriteBMP(struct clContext * C, clImage * image, const char * filen
         info.bV5AlphaMask = 0; // no alpha in 10-bit BMPs, it behaves poorly with imagemagick
     }
 
-    f = fopen(filename, "wb");
-    if (!f) {
-        clContextLogError(C, "cannot open BMP for write: '%s'", filename);
-        writeResult = clFalse;
-        goto writeCleanup;
-    }
-
     memset(&fileHeader, 0, sizeof(fileHeader));
     fileHeader.bfOffBits = sizeof(magic) + sizeof(fileHeader) + sizeof(info) + rawProfile.size;
     fileHeader.bfSize = fileHeader.bfOffBits + packedPixelBytes;
 
-    if (fwrite(&magic, sizeof(magic), 1, f) != 1) {
-        clContextLogError(C, "Failed to write BMP file magic");
-        goto writeCleanup;
-    }
-    if (fwrite(&fileHeader, sizeof(fileHeader), 1, f) != 1) {
-        clContextLogError(C, "Failed to write BMP file header");
-        goto writeCleanup;
-    }
-    if (fwrite(&info, sizeof(info), 1, f) != 1) {
-        clContextLogError(C, "Failed to write BMP info header");
-        goto writeCleanup;
-    }
-    if (fwrite(rawProfile.ptr, rawProfile.size, 1, f) != 1) {
-        clContextLogError(C, "Failed to write BMP ICC profile");
-        goto writeCleanup;
-    }
-    if (fwrite(packedPixels, packedPixelBytes, 1, f) != 1) {
-        clContextLogError(C, "Failed to write BMP pixels");
-        goto writeCleanup;
-    }
+    clRawRealloc(C, output, fileHeader.bfSize);
+#define APPEND(PTR, SIZE) memcpy(p, PTR, SIZE); p += SIZE;
+    p = output->ptr;
+    APPEND(&magic, sizeof(magic));
+    APPEND(&fileHeader, sizeof(fileHeader));
+    APPEND(&info, sizeof(info));
+    APPEND(rawProfile.ptr, rawProfile.size);
+    APPEND(packedPixels, packedPixelBytes);
 
 writeCleanup:
-    if (f) {
-        fclose(f);
-    }
     if (packedPixels) {
         clFree(packedPixels);
     }

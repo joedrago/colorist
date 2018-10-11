@@ -285,7 +285,7 @@ static clBool addSRGBHighlight(clContext * C, clImage * image, int maxLuminance,
     if (!highlight) {
         return clFalse;
     }
-    pngB64 = clImageWritePNGURI(C, highlight);
+    pngB64 = clContextWriteURI(C, highlight, "png", 0, 0);
     clImageDestroy(C, highlight);
     if (!pngB64) {
         return clFalse;
@@ -372,7 +372,7 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
         clContextLog(C, "encode", 0, "Creating raw pixels visual...");
         timerStart(&t);
         clConversionParamsSetDefaults(C, &params);
-        params.format = CL_FORMAT_JPG;
+        params.formatName = "jpg";
         params.bpp = 8;
         clContextGetRawStockPrimaries(C, "bt709", params.primaries);
         params.gamma = COLORIST_SRGB_GAMMA;
@@ -383,7 +383,7 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
         if (!visual) {
             return clFalse;
         }
-        pngB64 = clImageWritePNGURI(C, visual);
+        pngB64 = clContextWriteURI(C, visual, "png", 0, 0);
         clImageDestroy(C, visual);
         if (!pngB64) {
             return clFalse;

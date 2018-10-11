@@ -213,6 +213,26 @@ clBool clRawReadFile(struct clContext * C, clRaw * raw, const char * filename)
     return clTrue;
 }
 
+clBool clRawWriteFile(struct clContext * C, clRaw * raw, const char * filename)
+{
+    FILE * f;
+
+    f = fopen(filename, "wb");
+    if (!f) {
+        clContextLogError(C, "Failed to open file for write: %s", filename);
+        return clFalse;
+    }
+    if(raw->size > 0) {
+        if(fwrite(raw->ptr, raw->size, 1, f) != 1) {
+            fclose(f);
+            clContextLogError(C, "Failed to write %d bytes to: %s", raw->size, filename);
+            return clFalse;
+        }
+    }
+    fclose(f);
+    return clTrue;
+}
+
 int clFileSize(const char * filename)
 {
     // TODO: reimplement as fstat()

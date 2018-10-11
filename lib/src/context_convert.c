@@ -32,9 +32,9 @@ int clContextConvert(clContext * C)
     clConversionParams params;
     memcpy(&params, &C->params, sizeof(params));
 
-    if (params.format == CL_FORMAT_AUTO)
-        params.format = clFormatDetect(C, C->outputFilename);
-    if (params.format == CL_FORMAT_ERROR) {
+    if (!params.formatName)
+        params.formatName = clFormatDetect(C, C->outputFilename);
+    if (!params.formatName) {
         clContextLogError(C, "Unknown output file format: %s", C->outputFilename);
         FAIL();
     }
@@ -50,12 +50,9 @@ int clContextConvert(clContext * C)
     }
     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
 
-    if ((params.format == CL_FORMAT_JP2) && (params.jp2rate > 0)) {
-        int estimatedFileSizeKB = (8 + ((srcImage->width * srcImage->height * ((srcImage->depth == 16) ? 8 : 4)) / params.jp2rate)) / 1024;
-        clContextLog(C, "estimate", 0, "JP2 [R:%d] estimated filesize: %d KB", params.jp2rate, estimatedFileSizeKB);
-    }
 
-    if (params.format == CL_FORMAT_ICC) {
+
+    if (!strcmp(params.formatName, "icc")) {
         // Just dump out the profile to disk and bail out
 
         clContextLog(C, "encode", 0, "Writing ICC: %s", C->outputFilename);
@@ -80,25 +77,19 @@ int clContextConvert(clContext * C)
         FAIL();
     }
 
-    switch (params.format) {
-        case CL_FORMAT_JP2:
-            clContextLog(C, "encode", 0, "Writing JP2 [%s:%d]: %s", (params.jp2rate) ? "R" : "Q", (params.jp2rate) ? params.jp2rate : params.quality, C->outputFilename);
-            break;
-        case CL_FORMAT_JPG:
-            clContextLog(C, "encode", 0, "Writing JPG [Q:%d]: %s", params.quality, C->outputFilename);
-            break;
-        case CL_FORMAT_JXR:
-            clContextLog(C, "encode", 0, "Writing JXR [Q:%d]: %s", params.quality, C->outputFilename);
-            break;
-        case CL_FORMAT_WEBP:
-            clContextLog(C, "encode", 0, "Writing WebP [Q:%d]: %s", params.quality, C->outputFilename);
-            break;
-        default:
-            clContextLog(C, "encode", 0, "Writing: %s", C->outputFilename);
-            break;
+    {
+        clFormat * format = clContextFindFormat(C, params.formatName);
+        COLORIST_ASSERT(format);
+        if (format->usesRate && format->usesQuality) {
+            clContextLog(C, "encode", 0, "Writing %s [%s:%d]: %s", format->description, (params.jp2rate) ? "R" : "Q", (params.jp2rate) ? params.jp2rate : params.quality, C->outputFilename);
+        } else if (format->usesQuality) {
+            clContextLog(C, "encode", 0, "Writing %s [Q:%d]: %s", format->description, params.quality, C->outputFilename);
+        } else {
+            clContextLog(C, "encode", 0, "Writing %s: %s", format->description, C->outputFilename);
+        }
     }
     timerStart(&t);
-    if (!clContextWrite(C, dstImage, C->outputFilename, params.format, params.quality, params.jp2rate)) {
+    if (!clContextWrite(C, dstImage, C->outputFilename, params.formatName, params.quality, params.jp2rate)) {
         FAIL();
     }
     clContextLog(C, "encode", 1, "Wrote %d bytes.", clFileSize(C->outputFilename));

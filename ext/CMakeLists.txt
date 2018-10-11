@@ -52,8 +52,6 @@ set(WEBP_BUILD_IMG2WEBP ON CACHE BOOL "")
 set(WEBP_BUILD_WEBPINFO OFF CACHE BOOL "")
 add_subdirectory(libwebp)
 
-# add_subdirectory(jxrlib)
-
 include_directories(jpeg)
 add_library(jpeg
     jpeg/cdjpeg.c

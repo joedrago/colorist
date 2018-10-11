@@ -16,11 +16,10 @@
 
 #include <string.h>
 
-clImage * clImageReadWebP(struct clContext * C, const char * filename)
+struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName, struct clRaw * input)
 {
     clImage * image = NULL;
     clProfile * profile = NULL;
-    clRaw fileContents;
 
     WebPData webpFileContents;
     WebPMux * mux = NULL;
@@ -32,36 +31,31 @@ clImage * clImageReadWebP(struct clContext * C, const char * filename)
 
     memset(&frameInfo, 0, sizeof(frameInfo));
 
-    memset(&fileContents, 0, sizeof(fileContents));
-    if (!clRawReadFile(C, &fileContents, filename)) {
-        goto readCleanup;
-    }
-
-    webpFileContents.bytes = fileContents.ptr;
-    webpFileContents.size = fileContents.size;
+    webpFileContents.bytes = input->ptr;
+    webpFileContents.size = input->size;
     mux = WebPMuxCreate(&webpFileContents, 0);
     WebPMuxGetFeatures(mux, &muxFlags);
     if (muxFlags & ICCP_FLAG) {
         WebPData iccChunk;
         if (WebPMuxGetChunk(mux, "ICCP", &iccChunk) != WEBP_MUX_OK) {
-            clContextLogError(C, "Failed get ICC profile chunk: '%s'", filename);
+            clContextLogError(C, "Failed get ICC profile chunk");
             goto readCleanup;
         }
         profile = clProfileParse(C, iccChunk.bytes, iccChunk.size, NULL);
         if (!profile) {
-            clContextLogError(C, "Failed parse ICC profile chunk: '%s'", filename);
+            clContextLogError(C, "Failed parse ICC profile chunk");
             goto readCleanup;
         }
     }
 
     if (WebPMuxGetFrame(mux, 1, &frameInfo) != WEBP_MUX_OK) {
-        clContextLogError(C, "Failed to get frame chunk in WebP: '%s'", filename);
+        clContextLogError(C, "Failed to get frame chunk in WebP");
         goto readCleanup;
     }
 
     readPixels = WebPDecodeRGBA(frameInfo.bitstream.bytes, frameInfo.bitstream.size, &width, &height);
     if (!readPixels) {
-        clContextLogError(C, "Failed to decode WebP: '%s'", filename);
+        clContextLogError(C, "Failed to decode WebP");
         goto readCleanup;
     }
 
@@ -70,7 +64,6 @@ clImage * clImageReadWebP(struct clContext * C, const char * filename)
     memcpy(image->pixels, readPixels, 4 * width * height);
 
 readCleanup:
-    clRawFree(C, &fileContents);
     WebPDataClear(&frameInfo.bitstream);
     if (readPixels) {
         WebPFree(readPixels);
@@ -84,7 +77,7 @@ readCleanup:
     return image;
 }
 
-clBool clImageWriteWebP(struct clContext * C, clImage * image, const char * filename, int quality)
+clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
 {
     clBool writeResult = clTrue;
     clRaw rawProfile;
@@ -95,7 +88,6 @@ clBool clImageWriteWebP(struct clContext * C, clImage * image, const char * file
     WebPConfig config;
     WebPPicture picture;
     WebPMemoryWriter memoryWriter;
-    FILE * f;
 
     WebPData iccChunk, imageChunk, assembledChunk;
     WebPMux * mux = NULL;
@@ -109,22 +101,15 @@ clBool clImageWriteWebP(struct clContext * C, clImage * image, const char * file
     WebPConfigInit(&config);
     WebPPictureInit(&picture);
 
-    f = fopen(filename, "wb");
-    if (!f) {
-        clContextLogError(C, "cannot open WebP for write: '%s'", filename);
-        writeResult = clFalse;
-        goto writeCleanup;
-    }
-
     memset(&rawProfile, 0, sizeof(rawProfile));
     if (!clProfilePack(C, image->profile, &rawProfile)) {
         clContextLogError(C, "Failed to create ICC profile");
         goto writeCleanup;
     }
 
-    config.lossless = (quality >= 100) ? 1 : 0;
+    config.lossless = (writeParams->quality >= 100) ? 1 : 0;
     config.emulate_jpeg_size = 1; // consistency across export quality values
-    config.quality = (float)quality;
+    config.quality = (float)writeParams->quality;
     config.method = 6; // always go for the best output, encoding speed be damned
 
     picture.writer = WebPMemoryWrite;
@@ -157,20 +142,13 @@ clBool clImageWriteWebP(struct clContext * C, clImage * image, const char * file
     imageChunk.size = memoryWriter.size;
     WebPMuxSetImage(mux, &imageChunk, 0);
     if (WebPMuxAssemble(mux, &assembledChunk) != WEBP_MUX_OK) {
-        clContextLogError(C, "Failed to assemble WebP: %s", filename);
+        clContextLogError(C, "Failed to assemble WebP");
         goto writeCleanup;
     }
 
-    if (fwrite(assembledChunk.bytes, assembledChunk.size, 1, f) != 1) {
-        clContextLogError(C, "Failed to write %d bytes: %s", assembledChunk.size, filename);
-        writeResult = clFalse;
-        goto writeCleanup;
-    }
+    clRawSet(C, output, assembledChunk.bytes, assembledChunk.size);
 
 writeCleanup:
-    if (f) {
-        fclose(f);
-    }
     if (mux) {
         WebPMuxDelete(mux);
     }

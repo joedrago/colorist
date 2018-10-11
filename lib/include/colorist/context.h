@@ -17,7 +17,9 @@
 #include <stdarg.h>
 
 struct clContext;
+struct clImage;
 struct clProfilePrimaries;
+struct clRaw;
 struct cJSON;
 
 typedef enum clAction
@@ -36,27 +38,40 @@ typedef enum clAction
 clAction clActionFromString(struct clContext * C, const char * str);
 const char * clActionToString(struct clContext * C, clAction action);
 
-typedef enum clFormat
+typedef struct clWriteParams
 {
-    CL_FORMAT_AUTO = 0,
-    CL_FORMAT_ICC,
-    CL_FORMAT_BMP,
-    CL_FORMAT_J2K,
-    CL_FORMAT_JP2,
-    CL_FORMAT_JPG,
-    CL_FORMAT_JXR,
-    CL_FORMAT_PNG,
-    CL_FORMAT_TIFF,
-    CL_FORMAT_WEBP,
+    int quality;
+    int rate;
+} clWriteParams;
+typedef struct clImage * (* clFormatReadFunc)(struct clContext * C, const char * formatName, struct clRaw * input);
+typedef clBool (* clFormatWriteFunc)(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
-    CL_FORMAT_ERROR
+typedef enum clFormatDepth
+{
+    CL_FORMAT_DEPTH_8 = 0,
+    CL_FORMAT_DEPTH_8_OR_10,
+    CL_FORMAT_DEPTH_8_OR_16,
+    CL_FORMAT_DEPTH_8_TO_16
+} clFormatDepth;
+
+#define CL_FORMAT_MAX_EXTENSIONS 4
+typedef struct clFormat
+{
+    const char * name;
+    const char * description;
+    const char * mimeType;
+    const char * extensions[CL_FORMAT_MAX_EXTENSIONS];
+    clFormatDepth depth;
+    clBool usesQuality;
+    clBool usesRate;
+    clFormatReadFunc readFunc;
+    clFormatWriteFunc writeFunc;
 } clFormat;
 
-clFormat clFormatFromString(struct clContext * C, const char * str);
-const char * clFormatToString(struct clContext * C, clFormat format);
-clFormat clFormatDetect(struct clContext * C, const char * filename);
-int clFormatMaxDepth(struct clContext * C, clFormat format);
-int clFormatBestDepth(struct clContext * C, clFormat format, int reqDepth);
+clBool clFormatExists(struct clContext * C, const char * formatName);
+int clFormatMaxDepth(struct clContext * C, const char * formatName);
+int clFormatBestDepth(struct clContext * C, const char * formatName, int reqDepth);
+const char * clFormatDetect(struct clContext * C, const char * filename);
 
 typedef enum clTonemap
 {
@@ -111,7 +126,7 @@ typedef struct clConversionParams
     int bpp;                     // -b
     const char * copyright;      // -c
     const char * description;    // -d
-    clFormat format;             // -f
+    const char * formatName;     // -f
     float gamma;                 // -g
     const char * hald;           // --hald
     int jobs;                    // -j
@@ -130,11 +145,22 @@ typedef struct clConversionParams
 
 void clConversionParamsSetDefaults(struct clContext * C, clConversionParams * params);
 
+typedef struct clFormatRecord
+{
+    clFormat format;
+    struct clFormatRecord * next;
+} clFormatRecord;
+
+struct clFormat * clContextFindFormat(struct clContext * C, const char * formatName);
+void clContextRegisterBuiltinFormats(struct clContext * C);
+
 typedef struct clContext
 {
     clContextSystem system;
 
     cmsContext lcms;
+
+    clFormatRecord * formats;
 
     clAction action;
     clConversionParams params;   // see above
@@ -156,6 +182,7 @@ char * clContextStrdup(clContext * C, const char * str);
 // No need to allocate the clContextSystem structure; just put it on the stack. Any values will be shallow copied.
 clContext * clContextCreate(clContextSystem * system);
 void clContextDestroy(clContext * C);
+void clContextRegisterFormat(clContext * C, clFormat * format);
 
 void clContextLog(clContext * C, const char * section, int indent, const char * format, ...);
 void clContextLogError(clContext * C, const char * format, ...);
@@ -165,8 +192,9 @@ void clContextPrintVersions(clContext * C);
 void clContextPrintArgs(clContext * C);
 clBool clContextParseArgs(clContext * C, int argc, char * argv[]);
 
-struct clImage * clContextRead(clContext * C, const char * filename, const char * iccOverride, clFormat * outFormat);
-clBool clContextWrite(clContext * C, struct clImage * image, const char * filename, clFormat format, int quality, int rate);
+struct clImage * clContextRead(clContext * C, const char * filename, const char * iccOverride, const char ** outFormatName);
+clBool clContextWrite(clContext * C, struct clImage * image, const char * filename, const char * formatName, int quality, int rate);
+char * clContextWriteURI(struct clContext * C, struct clImage * image, const char * formatName, int quality, int rate);
 
 clBool clContextGetStockPrimaries(struct clContext * C, const char * name, struct clProfilePrimaries * outPrimaries);
 clBool clContextGetRawStockPrimaries(struct clContext * C, const char * name, float outPrimaries[8]);

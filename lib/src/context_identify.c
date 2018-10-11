@@ -16,19 +16,19 @@
 
 int clContextIdentify(clContext * C, struct cJSON * output)
 {
-    clFormat format = C->params.format;
-    if (format == CL_FORMAT_AUTO)
-        format = clFormatDetect(C, C->inputFilename);
-    if (format == CL_FORMAT_ERROR) {
+    const char * formatName = C->params.formatName;
+    if (!formatName)
+        formatName = clFormatDetect(C, C->inputFilename);
+    if (!formatName) {
         clContextLogError(C, "Unknown file format: %s", C->inputFilename);
         return 1;
     }
 
     clContextLog(C, "action", 0, "Identify: %s", C->inputFilename);
-    if (format == CL_FORMAT_ICC) {
+    if (!strcmp(formatName, "icc")) {
         clProfile * profile = clProfileRead(C, C->inputFilename);
         if (profile) {
-            clContextLog(C, "identify", 1, "Format: %s", clFormatToString(C, format));
+            clContextLog(C, "identify", 1, "Format: %s", formatName);
             if (output) {
                 clProfileDebugDumpJSON(C, output, profile, C->verbose);
             } else {
@@ -39,7 +39,7 @@ int clContextIdentify(clContext * C, struct cJSON * output)
     } else {
         clImage * image;
         clContextLog(C, "decode", 0, "Reading: %s (%d bytes)", C->inputFilename, clFileSize(C->inputFilename));
-        image = clContextRead(C, C->inputFilename, C->iccOverrideIn, &format);
+        image = clContextRead(C, C->inputFilename, C->iccOverrideIn, &formatName);
         if (image) {
             int rect[4];
             memcpy(rect, C->params.rect, sizeof(rect));
@@ -48,7 +48,7 @@ int clContextIdentify(clContext * C, struct cJSON * output)
                 rect[2] = 3;
                 rect[3] = 3;
             }
-            clContextLog(C, "identify", 1, "Format: %s", clFormatToString(C, format));
+            clContextLog(C, "identify", 1, "Format: %s", formatName);
             if (output) {
                 clImageDebugDumpJSON(C, output, image, rect[0], rect[1], rect[2], rect[3]);
             } else {

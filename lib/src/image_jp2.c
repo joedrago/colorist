@@ -29,7 +29,51 @@ static void info_callback(const char * msg, void * client_data)
     (void)client_data;
 }
 
-clImage * clImageReadJP2(struct clContext * C, const char * filename)
+struct opjCallbackInfo
+{
+    struct clContext * C;
+    clRaw * raw;
+    uint32_t offset;
+};
+
+static OPJ_SIZE_T readCallback(void * p_buffer, OPJ_SIZE_T p_nb_bytes, void * p_user_data)
+{
+    struct opjCallbackInfo * ci = (struct opjCallbackInfo *)p_user_data;
+    if ((ci->offset + p_nb_bytes) > ci->raw->size) {
+        p_nb_bytes = ci->raw->size - ci->offset;
+    }
+    memcpy(p_buffer, ci->raw->ptr + ci->offset, p_nb_bytes);
+    ci->offset += p_nb_bytes;
+    return p_nb_bytes;
+}
+
+static OPJ_SIZE_T writeCallback(void * p_buffer, OPJ_SIZE_T p_nb_bytes, void * p_user_data)
+{
+    struct opjCallbackInfo * ci = (struct opjCallbackInfo *)p_user_data;
+    if ((ci->offset + p_nb_bytes) > ci->raw->size) {
+        uint32_t newSize = ci->offset + p_nb_bytes;
+        clRawRealloc(ci->C, ci->raw, newSize);
+    }
+    memcpy(ci->raw->ptr + ci->offset, p_buffer, p_nb_bytes);
+    ci->offset += p_nb_bytes;
+    return p_nb_bytes;
+}
+
+static OPJ_OFF_T skipCallback(OPJ_OFF_T p_nb_bytes, void * p_user_data)
+{
+    struct opjCallbackInfo * ci = (struct opjCallbackInfo *)p_user_data;
+    ci->offset += (uint32_t)p_nb_bytes;
+    return p_nb_bytes;
+}
+
+static OPJ_BOOL seekCallback(OPJ_OFF_T p_nb_bytes, void * p_user_data)
+{
+    struct opjCallbackInfo * ci = (struct opjCallbackInfo *)p_user_data;
+    ci->offset = (uint32_t)p_nb_bytes;
+    return OPJ_TRUE;
+}
+
+struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, struct clRaw * input)
 {
     clImage * image = NULL;
     clProfile * profile = NULL;
@@ -41,39 +85,37 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
     opj_stream_t * opjStream = NULL;
     int channelFactor[4] = { 1, 1, 1, 1 };
     int maxChannel;
+    struct opjCallbackInfo ci;
 
     const char * errorExtName = "JP2";
     clBool isJ2K = clFalse;
-    {
+    if (input->size < 4) {
+        clContextLogError(C, "JP2/J2K header too small");
+        return NULL;
+    } else {
         static const unsigned char j2kHeader[4] = { 0xff, 0x4f, 0xff, 0x51 };
-        unsigned char fileHeader[4];
-        int itemsRead;
-
-        FILE * f = fopen(filename, "rb");
-        if (!f) {
-            clContextLogError(C, "Failed to open JP2/J2K to read header: %s", filename);
-            return NULL;
-        }
-
-        itemsRead = fread(fileHeader, 4, 1, f);
-        if (itemsRead != 1) {
-            clContextLogError(C, "Failed to read JP2/J2K header: %s", filename);
-            return NULL;
-        }
-        fclose(f);
-        if (!memcmp(fileHeader, j2kHeader, 4)) {
+        if (!memcmp(input->ptr, j2kHeader, 4)) {
             isJ2K = clTrue;
             errorExtName = "J2K";
         }
     }
+
+    ci.C = C;
+    ci.raw = input;
+    ci.offset = 0;
+
+    opjStream = opj_stream_create(OPJ_J2K_STREAM_CHUNK_SIZE, OPJ_TRUE);
+    opj_stream_set_user_data(opjStream, &ci, NULL);
+    opj_stream_set_user_data_length(opjStream, input->size);
+    opj_stream_set_read_function(opjStream, readCallback);
+    opj_stream_set_skip_function(opjStream, skipCallback);
+    opj_stream_set_seek_function(opjStream, seekCallback);
 
     opjCodec = opj_create_decompress(isJ2K ? OPJ_CODEC_J2K : OPJ_CODEC_JP2);
     opj_set_info_handler(opjCodec, info_callback, C);
     opj_set_warning_handler(opjCodec, warning_callback, C);
     opj_set_error_handler(opjCodec, error_callback, C);
     opj_set_default_decoder_parameters(&parameters);
-
-    opjStream = opj_stream_create_file_stream(filename, 1 * 1024 * 1024, OPJ_TRUE);
 
     if (!opj_setup_decoder(opjCodec, &parameters) ) {
         clContextLogError(C, "Failed to setup %s decoder", errorExtName);
@@ -186,7 +228,7 @@ clImage * clImageReadJP2(struct clContext * C, const char * filename)
     return image;
 }
 
-clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filename, clBool isJ2K, int quality, int rate)
+clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
 {
     const OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_SRGB;
     int numcomps = 4;
@@ -200,8 +242,18 @@ clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filen
     OPJ_BOOL bSuccess;
     opj_stream_t * opjStream = NULL;
     clRaw rawProfile;
+    clBool isJ2K = !strcmp(formatName, "j2k");
+    struct opjCallbackInfo ci;
 
-    opjStream = opj_stream_create_file_stream(filename, 1 * 1024 * 1024, OPJ_FALSE);
+    ci.C = C;
+    ci.raw = output;
+    ci.offset = 0;
+
+    opjStream = opj_stream_create(OPJ_J2K_STREAM_CHUNK_SIZE, OPJ_FALSE);
+    opj_stream_set_user_data(opjStream, &ci, NULL);
+    opj_stream_set_write_function(opjStream, writeCallback);
+    opj_stream_set_skip_function(opjStream, skipCallback);
+    opj_stream_set_seek_function(opjStream, seekCallback);
 
     memset(&parameters, 0, sizeof(parameters));
     opj_set_default_encoder_parameters(&parameters);
@@ -218,15 +270,15 @@ clBool clImageWriteJP2(struct clContext * C, clImage * image, const char * filen
         ++parameters.numresolution;
     }
 
-    if (rate != 0) {
-        parameters.tcp_rates[0] = (float)rate;
+    if (writeParams->rate != 0) {
+        parameters.tcp_rates[0] = (float)writeParams->rate;
     } else {
-        if ((quality == 0) || (quality == 100)) {
+        if ((writeParams->quality == 0) || (writeParams->quality == 100)) {
             // Lossless
             parameters.tcp_rates[0] = 0; // lossless
         } else {
             // Set quality
-            parameters.tcp_distoratio[0] = (float)quality;
+            parameters.tcp_distoratio[0] = (float)writeParams->quality;
             parameters.cp_fixed_quality = OPJ_TRUE;
         }
     }

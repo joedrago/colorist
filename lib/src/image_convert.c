@@ -95,7 +95,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         if (dstDepth == 0) {
             dstDepth = srcImage->depth;
         }
-        bestDepth = clFormatBestDepth(C, params->format, dstDepth);
+        bestDepth = clFormatBestDepth(C, params->formatName, dstDepth);
         if (dstDepth != bestDepth) {
             clContextLog(C, "validate", 0, "Overriding output depth %d-bit -> %d-bit (format limitations)", dstDepth, bestDepth);
             dstDepth = bestDepth;

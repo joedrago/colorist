@@ -34,36 +34,29 @@ static void setup_read_icc_profile(j_decompress_ptr cinfo);
 static boolean read_icc_profile(struct clContext * C, j_decompress_ptr cinfo, JOCTET ** icc_data_ptr, unsigned int * icc_data_len);
 static void write_icc_profile(j_compress_ptr cinfo, const JOCTET * icc_data_ptr, unsigned int icc_data_len);
 
-clImage * clImageReadJPG(struct clContext * C, const char * filename)
+struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, struct clRaw * input)
 {
     clImage * image = NULL;
     clProfile * profile = NULL;
 
     struct my_error_mgr jerr;
     struct jpeg_decompress_struct cinfo;
-    FILE * infile;
     JSAMPARRAY buffer;
     int row_stride;
     int row;
     uint8_t * iccData = NULL;
     unsigned int iccDataLen;
 
-    if ((infile = fopen(filename, "rb")) == NULL) {
-        clContextLogError(C, "can't open %s", filename);
-        return 0;
-    }
-
     cinfo.err = jpeg_std_error(&jerr.pub);
     jerr.pub.error_exit = my_error_exit;
     if (setjmp(jerr.setjmp_buffer)) {
         jpeg_destroy_decompress(&cinfo);
-        fclose(infile);
         return 0;
     }
 
     jpeg_create_decompress(&cinfo);
     setup_read_icc_profile(&cinfo);
-    jpeg_stdio_src(&cinfo, infile);
+    jpeg_mem_src(&cinfo, input->ptr, input->size);
     jpeg_read_header(&cinfo, TRUE);
     jpeg_start_decompress(&cinfo);
 
@@ -73,8 +66,7 @@ clImage * clImageReadJPG(struct clContext * C, const char * filename)
     if (read_icc_profile(C, &cinfo, &iccData, &iccDataLen)) {
         profile = clProfileParse(C, iccData, iccDataLen, NULL);
         if (!profile) {
-            clContextLogError(C, "ERROR: can't parse JPEG embedded ICC profile: %s", filename);
-            fclose(infile);
+            clContextLogError(C, "ERROR: can't parse JPEG embedded ICC profile");
             jpeg_destroy_decompress(&cinfo);
             return NULL;
         }
@@ -107,11 +99,10 @@ clImage * clImageReadJPG(struct clContext * C, const char * filename)
 
     jpeg_finish_decompress(&cinfo);
     jpeg_destroy_decompress(&cinfo);
-    fclose(infile);
     return image;
 }
 
-clBool clImageWriteJPGRaw(struct clContext * C, clImage * image, clRaw * dst, int quality)
+clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
 {
     cmsUInt32Number srcFormat = (image->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
     cmsHTRANSFORM rgbTransform;
@@ -141,7 +132,7 @@ clBool clImageWriteJPGRaw(struct clContext * C, clImage * image, clRaw * dst, in
     cinfo.input_components = 3;
     cinfo.in_color_space = JCS_RGB;
     jpeg_set_defaults(&cinfo);
-    jpeg_set_quality(&cinfo, quality, TRUE);
+    jpeg_set_quality(&cinfo, writeParams->quality, TRUE);
     jpeg_start_compress(&cinfo, TRUE);
 
     memset(&rawProfile, 0, sizeof(rawProfile));
@@ -159,76 +150,17 @@ clBool clImageWriteJPGRaw(struct clContext * C, clImage * image, clRaw * dst, in
     jpeg_finish_compress(&cinfo);
 
     if (outbuffer && outsize) {
-        clRawSet(C, dst, outbuffer, outsize);
+        clRawSet(C, output, outbuffer, outsize);
     } else {
         clContextLogError(C, "ERROR: JPG compression failed");
-        clRawFree(C, dst);
+        clRawFree(C, output);
     }
     free(outbuffer);
 
     jpeg_destroy_compress(&cinfo);
     clFree(jpegPixels);
     clRawFree(C, &rawProfile);
-    return (dst->size > 0) ? clTrue : clFalse;
-}
-
-char * clImageWriteJPGURI(struct clContext * C, clImage * image, int quality)
-{
-    clRaw dst;
-    char * b64;
-    int b64Len;
-    char * output;
-    static const char prefixURI[] = "data:image/jpeg;base64,";
-    static int prefixURILen = sizeof(prefixURI) - 1;
-
-    memset(&dst, 0, sizeof(dst));
-    if (!clImageWriteJPGRaw(C, image, &dst, quality)) {
-        return NULL;
-    }
-
-    b64 = clRawToBase64(C, &dst);
-    if (!b64) {
-        clRawFree(C, &dst);
-        return NULL;
-    }
-    b64Len = strlen(b64);
-
-    output = clAllocate(prefixURILen + b64Len + 1);
-    memcpy(output, prefixURI, prefixURILen);
-    memcpy(output + prefixURILen, b64, b64Len);
-    output[prefixURILen + b64Len] = 0;
-
-    clFree(b64);
-    clRawFree(C, &dst);
-    return output;
-}
-
-clBool clImageWriteJPG(struct clContext * C, clImage * image, const char * filename, int quality)
-{
-    FILE * outfile = NULL;
-    clRaw dst;
-
-    memset(&dst, 0, sizeof(dst));
-    if (!clImageWriteJPGRaw(C, image, &dst, quality)) {
-        goto writeJPGCleanup;
-    }
-
-    outfile = fopen(filename, "wb");
-    if (!outfile) {
-        clContextLogError(C, "ERROR: can't open JPG for write: %s", filename);
-        goto writeJPGCleanup;
-    }
-
-    if (fwrite(dst.ptr, dst.size, 1, outfile) != 1) {
-        clContextLogError(C, "ERROR: can't write %d bytes to JPG: %s", dst.size, filename);
-        goto writeJPGCleanup;
-    }
-
-writeJPGCleanup:
-    if (outfile)
-        fclose(outfile);
-    clRawFree(C, &dst);
-    return clTrue;
+    return (output->size > 0) ? clTrue : clFalse;
 }
 
 // ----------------------------------------------------------------------------

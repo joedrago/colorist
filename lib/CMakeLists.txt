@@ -55,6 +55,7 @@ endif()
 set(COLORIST_LIB_SRCS
     src/context.c
     src/context_convert.c
+    src/context_formats.c
     src/context_generate.c
     src/context_identify.c
     src/context_log.c
@@ -70,7 +71,6 @@ set(COLORIST_LIB_SRCS
     src/image_bmp.c
     src/image_jp2.c
     src/image_jpg.c
-#    src/image_jxr.c
     src/image_png.c
     src/image_string.c
     src/image_tiff.c

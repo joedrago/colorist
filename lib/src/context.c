@@ -66,108 +66,90 @@ const char * clActionToString(struct clContext * C, clAction action)
 // ------------------------------------------------------------------------------------------------
 // clFormat
 
-clFormat clFormatFromString(struct clContext * C, const char * str)
+const char * clFormatDetect(struct clContext * C, const char * filename)
 {
-    if (!strcmp(str, "auto")) return CL_FORMAT_AUTO;
-    if (!strcmp(str, "bmp")) return CL_FORMAT_BMP;
-    if (!strcmp(str, "icc")) return CL_FORMAT_ICC;
-    if (!strcmp(str, "jp2")) return CL_FORMAT_JP2;
-    if (!strcmp(str, "jpg")) return CL_FORMAT_JPG;
-    // if (!strcmp(str, "jxr")) return CL_FORMAT_JXR;
-    if (!strcmp(str, "png")) return CL_FORMAT_PNG;
-    if (!strcmp(str, "tiff")) return CL_FORMAT_TIFF;
-    if (!strcmp(str, "webp")) return CL_FORMAT_WEBP;
-    return CL_FORMAT_ERROR;
-}
-
-const char * clFormatToString(struct clContext * C, clFormat format)
-{
-    switch (format) {
-        case CL_FORMAT_AUTO:  return "Auto";
-        case CL_FORMAT_BMP:   return "BMP";
-        case CL_FORMAT_ICC:   return "ICC";
-        case CL_FORMAT_JP2:   return "JP2";
-        case CL_FORMAT_JPG:   return "JPG";
-        // case CL_FORMAT_JXR:   return "JXR";
-        case CL_FORMAT_PNG:   return "PNG";
-        case CL_FORMAT_TIFF:  return "TIFF";
-        case CL_FORMAT_WEBP:  return "WebP";
-        case CL_FORMAT_ERROR:
-        default:
-            break;
-    }
-    return "Unknown";
-}
-
-clFormat clFormatDetect(struct clContext * C, const char * filename)
-{
+    clFormatRecord * record;
     const char * ext = strrchr(filename, '.');
     if (ext == NULL) {
         clContextLogError(C, "Unable to guess format");
-        return CL_FORMAT_ERROR;
+        return NULL;
     }
     ++ext; // skip past the period
-    if (!strcmp(ext, "bmp")) return CL_FORMAT_BMP;
-    if (!strcmp(ext, "icc")) return CL_FORMAT_ICC;
-    if (!strcmp(ext, "j2k")) return CL_FORMAT_J2K;
-    if (!strcmp(ext, "jp2")) return CL_FORMAT_JP2;
-    if (!strcmp(ext, "jpg")) return CL_FORMAT_JPG;
-    // if (!strcmp(ext, "jxr")) return CL_FORMAT_JXR;
-    if (!strcmp(ext, "png")) return CL_FORMAT_PNG;
-    if (!strcmp(ext, "tif")) return CL_FORMAT_TIFF;
-    if (!strcmp(ext, "tiff")) return CL_FORMAT_TIFF;
-    if (!strcmp(ext, "webp")) return CL_FORMAT_WEBP;
-    clContextLogError(C, "Unknown file extension '%s'", ext);
-    return CL_FORMAT_ERROR;
+
+    // Special case: icc profile (this might be bad)
+    if(!strcmp(ext, "icc")) {
+        return "icc";
+    }
+
+    for (record = C->formats; record != NULL; record = record->next) {
+        int extensionIndex;
+        for (extensionIndex = 0; extensionIndex < CL_FORMAT_MAX_EXTENSIONS; ++extensionIndex) {
+            if (record->format.extensions[extensionIndex] && !strcmp(record->format.extensions[extensionIndex], ext)) {
+                return record->format.name;
+            }
+        }
+    }
+    return NULL;
 }
 
-int clFormatMaxDepth(struct clContext * C, clFormat format)
+int clFormatMaxDepth(struct clContext * C, const char * formatName)
 {
-    switch (format) {
-        case CL_FORMAT_BMP:   return 10; // crushes alpha to 2 bits
-        case CL_FORMAT_J2K:   return 16;
-        case CL_FORMAT_JP2:   return 16;
-        case CL_FORMAT_JPG:   return 8;
-        // case CL_FORMAT_JXR:   return 16;
-        case CL_FORMAT_PNG:   return 16;
-        case CL_FORMAT_TIFF:  return 16;
-        case CL_FORMAT_WEBP:  return 8;
-        default:
-            break;
+    clFormat * format = clContextFindFormat(C, formatName);
+    if (!format) {
+        clContextLogError(C, "clFormatMaxDepth() called on unknown format");
+        return 8;
     }
-    clContextLogError(C, "clFormatMaxDepth() called on unknown format");
+
+    switch (format->depth) {
+        case CL_FORMAT_DEPTH_8:
+            return 8;
+        case CL_FORMAT_DEPTH_8_OR_10:
+            return 10;
+        case CL_FORMAT_DEPTH_8_OR_16:
+        case CL_FORMAT_DEPTH_8_TO_16:
+            return 16;
+    }
     return 8;
 }
 
-int clFormatBestDepth(struct clContext * C, clFormat format, int reqDepth)
+int clFormatBestDepth(struct clContext * C, const char * formatName, int reqDepth)
 {
+    clFormat * format = clContextFindFormat(C, formatName);
+    if (!format) {
+        clContextLogError(C, "clFormatBestDepth() called on unknown format");
+        return 8;
+    }
+
     if (reqDepth < 8) {
         return 8;
     }
 
-    if ((format == CL_FORMAT_J2K) || (format == CL_FORMAT_JP2)) {
-        if (reqDepth > 16)
-            return 16;
-
-        // JPEG 2000 supports every bit depth 8-16
-        return reqDepth;
-    }
-
-    if ((format == CL_FORMAT_PNG) || (format == CL_FORMAT_TIFF) /*|| (format == CL_FORMAT_JXR) */) {
-        if (reqDepth > 8) {
-            return 16;
-        }
-    }
-
-    if (format == CL_FORMAT_BMP) {
-        if (reqDepth == 10) {
-            // Specifically allow 10 bit
-            return 10;
-        }
+    switch (format->depth) {
+        case CL_FORMAT_DEPTH_8:
+            break;
+        case CL_FORMAT_DEPTH_8_OR_10:
+            if (reqDepth == 10)
+                return 10;
+            break;
+        case CL_FORMAT_DEPTH_8_OR_16:
+            if (reqDepth > 8)
+                return 16;
+            break;
+        case CL_FORMAT_DEPTH_8_TO_16:
+            if (reqDepth > 16)
+                return 16;
+            else
+                return reqDepth;
+            break;
     }
 
     // Everything else gets 8 bit
     return 8;
+}
+
+clBool clFormatExists(struct clContext * C, const char * formatName)
+{
+    return clContextFindFormat(C, formatName) != NULL;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -246,7 +228,7 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
 {
     clConversionParamsSetOutputProfileDefaults(C, params);
     params->bpp = 0;
-    params->format = CL_FORMAT_AUTO;
+    params->formatName = NULL;
     params->hald = NULL;
     params->jobs = clTaskLimit();
     params->iccOverrideOut = NULL;
@@ -307,13 +289,50 @@ clContext * clContextCreate(clContextSystem * system)
     C->inputFilename = NULL;
     C->outputFilename = NULL;
 
+    clContextRegisterBuiltinFormats(C);
+
     return C;
 }
 
 void clContextDestroy(clContext * C)
 {
+    clFormatRecord * record = C->formats;
+    while (record != NULL) {
+        clFormatRecord * freeme = record;
+        record = record->next;
+        clFree(freeme);
+    }
+    C->formats = NULL;
     cmsDeleteContext(C->lcms);
     clFree(C);
+}
+
+void clContextRegisterFormat(clContext * C, clFormat * format)
+{
+    clFormatRecord * record = clAllocateStruct(clFormatRecord);
+    memcpy(&record->format, format, sizeof(clFormatRecord));
+    record->next = NULL;
+
+    if (C->formats) {
+        clFormatRecord * prev = C->formats;
+        while(prev->next != NULL) {
+            prev = prev->next;
+        }
+        prev->next = record;
+    } else {
+        C->formats = record;
+    }
+}
+
+struct clFormat * clContextFindFormat(struct clContext * C, const char * formatName)
+{
+    clFormatRecord * record = C->formats;
+    for (; record != NULL; record = record->next) {
+        if (!strcmp(record->format.name, formatName)) {
+            return &record->format;
+        }
+    }
+    return NULL;
 }
 
 clBool clContextGetStockPrimaries(struct clContext * C, const char * name, struct clProfilePrimaries * outPrimaries)
@@ -506,8 +525,8 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
                 C->params.description = arg;
             } else if (!strcmp(arg, "-f") || !strcmp(arg, "--format")) {
                 NEXTARG();
-                C->params.format = clFormatFromString(C, arg);
-                if (C->params.format == CL_FORMAT_ERROR) {
+                C->params.formatName = arg;
+                if (!clFormatExists(C, C->params.formatName)) {
                     clContextLogError(C, "Unknown format: %s", arg);
                     return clFalse;
                 }
@@ -702,7 +721,7 @@ void clContextPrintArgs(clContext * C)
         clContextLog(C, "syntax", 1, "bpp         : auto");
     clContextLog(C, "syntax", 1, "copyright   : %s", C->params.copyright ? C->params.copyright : "--");
     clContextLog(C, "syntax", 1, "description : %s", C->params.description ? C->params.description : "--");
-    clContextLog(C, "syntax", 1, "format      : %s", clFormatToString(C, C->params.format));
+    clContextLog(C, "syntax", 1, "format      : %s", C->params.formatName ? C->params.formatName : "auto");
     if (C->params.gamma < 0.0f) {
         clContextLog(C, "syntax", 1, "gamma       : source gamma (forced)");
     } else if (C->params.gamma > 0.0f)
@@ -742,6 +761,14 @@ void clContextPrintArgs(clContext * C)
 
 void clContextPrintSyntax(clContext * C)
 {
+    clFormatRecord * record = C->formats;
+    char formatLine[1024]; // TODO: protect this size better
+    strcpy(formatLine, "    -f,--format FORMAT       : Output format. auto (default)");
+    for (; record != NULL; record = record->next) {
+        strcat(formatLine, ", ");
+        strcat(formatLine, record->format.name);
+    }
+
     clContextLog(C, NULL, 0, "Syntax: colorist convert  [input]        [output]       [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist identify [input]                       [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist generate                [output.icc]   [OPTIONS]");
@@ -768,8 +795,8 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -p,--primaries PRIMARIES : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Output Format Options:");
-    clContextLog(C, NULL, 0, "    -b,--bpp BPP             : Output bits-per-pixel. 8, 16, or 0 for auto (default)");
-    clContextLog(C, NULL, 0, "    -f,--format FORMAT       : Output format. auto (default), bmp, icc, j2k, jp2, jpg, png, tiff, webp");
+    clContextLog(C, NULL, 0, "    -b,--bpp BPP             : Output bits-per-pixel. 8 - 16, or 0 for auto (default)");
+    clContextLog(C, NULL, 0, formatLine);
     clContextLog(C, NULL, 0, "    -q,--quality QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -2 below). (default: 90)");
     clContextLog(C, NULL, 0, "    -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 0)");
     clContextLog(C, NULL, 0, "    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off");

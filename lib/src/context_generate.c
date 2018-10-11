@@ -20,13 +20,13 @@ int clContextGenerate(clContext * C, struct cJSON * output)
     int luminance;
     clProfile * dstProfile = NULL;
     clImage * image = NULL;
-    clFormat outputFileFormat = C->params.format;
+    const char * outputFileFormat = C->params.formatName;
     const char * action = "generate";
 
     if (C->outputFilename) {
-        if (outputFileFormat == CL_FORMAT_AUTO)
+        if (outputFileFormat == NULL)
             outputFileFormat = clFormatDetect(C, C->outputFilename);
-        if (outputFileFormat == CL_FORMAT_ERROR) {
+        if (outputFileFormat == NULL) {
             return 1;
         }
         clContextLog(C, "action", 0, "Generating: %s", C->outputFilename);
@@ -37,7 +37,7 @@ int clContextGenerate(clContext * C, struct cJSON * output)
 
     timerStart(&overall);
 
-    if (outputFileFormat == CL_FORMAT_ICC) {
+    if (outputFileFormat && !strcmp(outputFileFormat, "icc")) {
         if (C->inputFilename != NULL) {
             clContextLogError(C, "generate cannot accept an image string to generate a .icc file.");
             return 1;
@@ -110,7 +110,7 @@ int clContextGenerate(clContext * C, struct cJSON * output)
         }
 
         if (C->outputFilename) {
-            if ((depth != 8) && (outputFileFormat != CL_FORMAT_ICC) && (clFormatMaxDepth(C, outputFileFormat) < depth)) {
+            if ((depth != 8) && outputFileFormat && (strcmp(outputFileFormat, "icc")) && (clFormatMaxDepth(C, outputFileFormat) < depth)) {
                 clContextLog(C, "validate", 0, "Forcing output to 8-bit (format limitations)");
                 depth = 8;
             }

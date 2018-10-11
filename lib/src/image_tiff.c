@@ -14,7 +14,71 @@
 
 #include <string.h>
 
-clImage * clImageReadTIFF(struct clContext * C, const char * filename)
+typedef struct tiffCallbackInfo
+{
+    struct clContext * C;
+    clRaw * raw;
+    uint32_t offset;
+} tiffCallbackInfo;
+
+static tmsize_t readCallback(tiffCallbackInfo *ci, void* ptr, tmsize_t size)
+{
+    if ((ci->offset + size) > ci->raw->size) {
+        size = ci->raw->size - ci->offset;
+    }
+    memcpy(ptr, ci->raw->ptr + ci->offset, size);
+    ci->offset += size;
+    return size;
+}
+
+static tmsize_t writeCallback(tiffCallbackInfo *ci, void* ptr, tmsize_t size)
+{
+    if ((ci->offset + size) > ci->raw->size) {
+        uint32_t newSize = ci->offset + size;
+        clRawRealloc(ci->C, ci->raw, newSize);
+    }
+    memcpy(ci->raw->ptr + ci->offset, ptr, size);
+    ci->offset += size;
+    return size;
+}
+
+static toff_t seekCallback(tiffCallbackInfo *ci, toff_t off, int whence)
+{
+    switch(whence) {
+        default:
+        case SEEK_CUR:
+            ci->offset += (uint32_t)off;
+            break;
+        case SEEK_SET:
+            ci->offset = (uint32_t)off;
+            break;
+        case SEEK_END:
+            ci->offset = ci->raw->size + (uint32_t)off;
+            break;
+    }
+    return ci->offset;
+}
+
+static int closeCalllback(tiffCallbackInfo *ci)
+{
+    return 0;
+}
+
+static toff_t sizeCallback(tiffCallbackInfo *ci)
+{
+    return ci->offset; // this seems bad
+}
+
+static int mapCallback(tiffCallbackInfo *ci, void** base, toff_t* size)
+{
+    return 0;
+}
+
+static void unmapCallback(tiffCallbackInfo *ci, void* base, toff_t size)
+{
+}
+
+struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName, struct clRaw * input)
 {
     clProfile * profile = NULL;
     clImage * image = NULL;
@@ -27,42 +91,52 @@ clImage * clImageReadTIFF(struct clContext * C, const char * filename)
     int orientation = ORIENTATION_TOPLEFT;
     uint8_t * iccBuf = NULL;
     int rowIndex, rowBytes;
+    tiffCallbackInfo ci;
 
-    tiff = TIFFOpen(filename, "r");
+    ci.C = C;
+    ci.raw = input;
+    ci.offset = 0;
+
+    tiff = TIFFClientOpen("tiff", "rb",
+			 (thandle_t) &ci,
+			 readCallback, writeCallback,
+			 seekCallback, closeCalllback,
+			 sizeCallback,
+			 mapCallback, unmapCallback);
     if (!tiff) {
-        clContextLogError(C, "cannot open TIFF for read: '%s'", filename);
+        clContextLogError(C, "cannot open TIFF for read");
         goto readCleanup;
     }
 
     TIFFGetField(tiff, TIFFTAG_IMAGEWIDTH, &width);
     TIFFGetField(tiff, TIFFTAG_IMAGELENGTH, &height);
     if ((width <= 0) || (height <= 0)) {
-        clContextLogError(C, "cannot read width and height from TIFF: '%s'", filename);
+        clContextLogError(C, "cannot read width and height from TIFF");
         goto readCleanup;
     }
 
     TIFFGetField(tiff, TIFFTAG_SAMPLESPERPIXEL, &channelCount);
     if ((channelCount != 4)) {
         // TODO: support at least 3 channels
-        clContextLogError(C, "unsupported channelCount(%d) from TIFF: '%s'", channelCount, filename);
+        clContextLogError(C, "unsupported channelCount(%d) from TIFF", channelCount);
         goto readCleanup;
     }
 
     TIFFGetField(tiff, TIFFTAG_BITSPERSAMPLE, &depth);
     if ((depth <= 0)) {
         // TODO: convert to 16bit
-        clContextLogError(C, "cannot read depth from TIFF: '%s'", filename);
+        clContextLogError(C, "cannot read depth from TIFF: '%s'");
         goto readCleanup;
     }
     if ((depth != 8) && (depth != 16)) {
-        clContextLogError(C, "unsupported depth(%d) from TIFF: '%s'", depth, filename);
+        clContextLogError(C, "unsupported depth(%d) from TIFF", depth);
         goto readCleanup;
     }
 
     if (TIFFGetField(tiff, TIFFTAG_ICCPROFILE, &iccLen, &iccBuf)) {
         profile = clProfileParse(C, iccBuf, iccLen, NULL);
         if (!profile) {
-            clContextLogError(C, "cannot parse ICC profile from TIFF: '%s'", filename);
+            clContextLogError(C, "cannot parse ICC profile from TIFF");
             goto readCleanup;
         }
     }
@@ -70,7 +144,7 @@ clImage * clImageReadTIFF(struct clContext * C, const char * filename)
     if (TIFFGetField(tiff, TIFFTAG_ORIENTATION, &orientation)) {
         if ((orientation != ORIENTATION_TOPLEFT) && (orientation != ORIENTATION_BOTLEFT)) {
             // TODO: Support other orientations
-            clContextLogError(C, "Unsupported orientation (%d): '%s'", orientation, filename);
+            clContextLogError(C, "Unsupported orientation (%d)", orientation);
             goto readCleanup;
         }
     } else {
@@ -107,12 +181,13 @@ readCleanup:
     return image;
 }
 
-clBool clImageWriteTIFF(struct clContext * C, clImage * image, const char * filename)
+clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
 {
     clBool writeResult = clTrue;
     clRaw rawProfile;
     TIFF * tiff;
     int rowIndex, rowBytes;
+    tiffCallbackInfo ci;
 
     memset(&rawProfile, 0, sizeof(rawProfile));
     if (!clProfilePack(C, image->profile, &rawProfile)) {
@@ -120,9 +195,18 @@ clBool clImageWriteTIFF(struct clContext * C, clImage * image, const char * file
         goto writeCleanup;
     }
 
-    tiff = TIFFOpen(filename, "w");
+    ci.C = C;
+    ci.raw = output;
+    ci.offset = 0;
+
+    tiff = TIFFClientOpen("tiff", "wb",
+			 (thandle_t) &ci,
+			 readCallback, writeCallback,
+			 seekCallback, closeCalllback,
+			 sizeCallback,
+			 mapCallback, unmapCallback);
     if (!tiff) {
-        clContextLogError(C, "cannot open TIFF for write: '%s'", filename);
+        clContextLogError(C, "cannot open TIFF for write");
         writeResult = clFalse;
         goto writeCleanup;
     }
