@@ -51,6 +51,7 @@ if(HOMEBREW_BUILD)
     add_definitions(-DHOMEBREW_BUILD=1)
 endif()
 
+add_definitions(-DLIBHEIF_STATIC_BUILD=1 -DLIBDE265_STATIC_BUILD=1)
 add_subdirectory(ext)
 include_directories(${COLORIST_EXT_INCLUDES})
 

@@ -81,14 +81,14 @@ int clContextConvert(clContext * C)
     }
 
     switch (params.format) {
+        case CL_FORMAT_HEIF:
+            clContextLog(C, "encode", 0, "Writing HEIF [Q:%d]: %s", params.quality, C->outputFilename);
+            break;
         case CL_FORMAT_JP2:
             clContextLog(C, "encode", 0, "Writing JP2 [%s:%d]: %s", (params.jp2rate) ? "R" : "Q", (params.jp2rate) ? params.jp2rate : params.quality, C->outputFilename);
             break;
         case CL_FORMAT_JPG:
             clContextLog(C, "encode", 0, "Writing JPG [Q:%d]: %s", params.quality, C->outputFilename);
-            break;
-        case CL_FORMAT_JXR:
-            clContextLog(C, "encode", 0, "Writing JXR [Q:%d]: %s", params.quality, C->outputFilename);
             break;
         case CL_FORMAT_WEBP:
             clContextLog(C, "encode", 0, "Writing WebP [Q:%d]: %s", params.quality, C->outputFilename);

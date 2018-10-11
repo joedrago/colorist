@@ -9,6 +9,17 @@
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
 
+if(WIN32)
+    # None of these warnings are things I will alter a external lib for, so I'm going to hide them.
+    add_definitions(
+        /wd4018
+        /wd4244
+        /wd4309
+        /wd4101
+        /wd4005
+    )
+endif()
+
 # Currently not building zlib or libpng because openjp2 does it already.
 # I should stop using theirs and build my own, and somehow convince
 # openjpeg to use what I use.
@@ -52,7 +63,22 @@ set(WEBP_BUILD_IMG2WEBP ON CACHE BOOL "")
 set(WEBP_BUILD_WEBPINFO OFF CACHE BOOL "")
 add_subdirectory(libwebp)
 
-# add_subdirectory(jxrlib)
+add_subdirectory(x265/source)
+include_directories(
+    "${CMAKE_CURRENT_SOURCE_DIR}/x265/source"
+    "${CMAKE_CURRENT_BINARY_DIR}/x265/source"
+)
+set(X265_FOUND TRUE)
+set(X265_LIBRARIES x265-static)
+
+add_subdirectory(libde265)
+include_directories(
+    "${CMAKE_CURRENT_SOURCE_DIR}/libde265"
+)
+set(LIBDE265_LIBRARIES libde265)
+set(LIBDE265_FOUND TRUE)
+
+add_subdirectory(libheif)
 
 include_directories(jpeg)
 add_library(jpeg
@@ -122,8 +148,7 @@ add_library(jpeg
 set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/cJSON"
     "${CMAKE_CURRENT_SOURCE_DIR}/stb"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/image/sys"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/jxrgluelib"
+    "${CMAKE_CURRENT_SOURCE_DIR}/libheif"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/liblcms2/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libz"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libpng"
@@ -133,9 +158,6 @@ set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/include"
     "${OPENJPEG_BINARY_DIR}/src/lib/openjp2"
     "${CMAKE_CURRENT_SOURCE_DIR}/jpeg"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/common/include"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/image/sys"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/jxrgluelib"
     "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/imageio"
     "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/src/webp"
 )
@@ -144,10 +166,10 @@ set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} PARENT_SCOPE)
 set(COLORIST_EXT_LIBS
     cjson
     png
+    libheif
     lcms2
     openjp2
     jpeg
-#    jxrlib
     stb
     tiff
     z
@@ -168,8 +190,25 @@ endmacro()
 
 set_folder_safe(cjson "ext")
 set_folder_safe(genHeader "ext")
+set_folder_safe(cli "ext/x265")
+set_folder_safe(common "ext/x265")
+set_folder_safe(encoder "ext/x265")
+set_folder_safe(uninstall "ext/x265") # yuck
+set_folder_safe(x265-shared "ext/x265")
+set_folder_safe(x265-static "ext/x265")
+set_folder_safe(algo "ext/libde265")
+set_folder_safe(de265encoder "ext/libde265")
+set_folder_safe(dec265 "ext/libde265")
+set_folder_safe(enc265 "ext/libde265")
+set_folder_safe(libde265 "ext/libde265")
+set_folder_safe(x86 "ext/libde265")
+set_folder_safe(x86_sse "ext/libde265")
+set_folder_safe(libheif "ext/libheif")
+set_folder_safe(heif-convert "ext/libheif")
+set_folder_safe(heif-enc "ext/libheif")
+set_folder_safe(heif-info "ext/libheif")
+set_folder_safe(heif-test "ext/libheif")
 set_folder_safe(jpeg "ext")
-# set_folder_safe(jxrlib "ext")
 set_folder_safe(lcms2 "ext")
 set_folder_safe(openjp2 "ext/openjpeg")
 set_folder_safe(opj_compress "ext/openjpeg")

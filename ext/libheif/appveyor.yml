@@ -1,0 +1,29 @@
+# stats available at
+# https://ci.appveyor.com/project/strukturag/libheif
+version: 1.0.{build}
+
+os:
+  - Windows Server 2012 R2
+
+environment:
+  matrix:
+    - GENERATOR: "Visual Studio 14 2015"
+
+platform:
+  - x86
+  - x64
+
+configuration:
+  - Debug
+
+build:
+  verbosity: normal
+
+build_script:
+  - ps: if($env:PLATFORM -eq "x64") { $env:CMAKE_GEN_SUFFIX=" Win64" }
+  - cmd: scripts\prepare-appveyor.cmd
+  - cmake "-G%GENERATOR%%CMAKE_GEN_SUFFIX%" -H. -Bbuild -DLIBDE265_FOUND=1 -DLIBDE265_CFLAGS=/I"%APPVEYOR_BUILD_FOLDER%\build-libde265" -DLIBDE265_LIBRARIES="%APPVEYOR_BUILD_FOLDER%\build-libde265\libde265.lib" -DX265_FOUND=1 -DX265_CFLAGS=/I"%APPVEYOR_BUILD_FOLDER%\build-x265" -DX265_LIBRARIES="%APPVEYOR_BUILD_FOLDER%\build-x265\libx265.lib"
+  - cmake --build build --config %CONFIGURATION%
+
+artifacts:
+  - path: build
