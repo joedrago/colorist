@@ -65,16 +65,16 @@ set(COLORIST_LIB_SRCS
     src/context_rw.c
     src/context_version.c
     src/embedded.c
+    src/format_bmp.c
+    src/format_jp2.c
+    src/format_jpg.c
+    src/format_png.c
+    src/format_tiff.c
+    src/format_webp.c
     src/image.c
     src/image_convert.c
     src/image_debugdump.c
-    src/image_bmp.c
-    src/image_jp2.c
-    src/image_jpg.c
-    src/image_png.c
     src/image_string.c
-    src/image_tiff.c
-    src/image_webp.c
     src/pixelmath_grade.c
     src/pixelmath_resize.c
     src/pixelmath_scale.c
