@@ -49,39 +49,45 @@ int clContextGenerate(clContext * C, struct cJSON * output)
         }
     }
 
-    if (C->params.primaries[0] <= 0.0f) {
-        clBool ret = clContextGetStockPrimaries(C, "bt709", &primaries);
-        COLORIST_ASSERT(ret == clTrue);
-        (void)ret; // unused in Release
-        clContextLog(C, action, 1, "No primaries specified (-p). Using default sRGB (BT.709) primaries.");
+    if (C->params.iccOverrideOut) {
+        dstProfile = clProfileRead(C, C->params.iccOverrideOut);
+        if (!dstProfile) {
+            clContextLogError(C, "Invalid destination profile override: %s", C->params.iccOverrideOut);
+            return 1;
+        }
     } else {
-        primaries.red[0] = C->params.primaries[0];
-        primaries.red[1] = C->params.primaries[1];
-        primaries.green[0] = C->params.primaries[2];
-        primaries.green[1] = C->params.primaries[3];
-        primaries.blue[0] = C->params.primaries[4];
-        primaries.blue[1] = C->params.primaries[5];
-        primaries.white[0] = C->params.primaries[6];
-        primaries.white[1] = C->params.primaries[7];
-    }
-
-    curve.type = CL_PCT_GAMMA;
-    if (C->params.gamma <= 0.0f) {
-        clContextLog(C, action, 1, "No gamma specified (-g). Using default sRGB gamma.");
-        curve.gamma = COLORIST_SRGB_GAMMA;
-    } else {
-        curve.gamma = C->params.gamma;
-    }
-
-    if (C->params.luminance <= 0) {
-        clContextLog(C, action, 1, "No luminance specified (-l). Using default Colorist luminance.");
-        luminance = COLORIST_DEFAULT_LUMINANCE;
-    } else {
-        luminance = C->params.luminance;
-    }
-
-    {
         char * description = NULL;
+
+        if (C->params.primaries[0] <= 0.0f) {
+            clBool ret = clContextGetStockPrimaries(C, "bt709", &primaries);
+            COLORIST_ASSERT(ret == clTrue);
+            (void)ret; // unused in Release
+            clContextLog(C, action, 1, "No primaries specified (-p). Using default sRGB (BT.709) primaries.");
+        } else {
+            primaries.red[0] = C->params.primaries[0];
+            primaries.red[1] = C->params.primaries[1];
+            primaries.green[0] = C->params.primaries[2];
+            primaries.green[1] = C->params.primaries[3];
+            primaries.blue[0] = C->params.primaries[4];
+            primaries.blue[1] = C->params.primaries[5];
+            primaries.white[0] = C->params.primaries[6];
+            primaries.white[1] = C->params.primaries[7];
+        }
+
+        curve.type = CL_PCT_GAMMA;
+        if (C->params.gamma <= 0.0f) {
+            clContextLog(C, action, 1, "No gamma specified (-g). Using default sRGB gamma.");
+            curve.gamma = COLORIST_SRGB_GAMMA;
+        } else {
+            curve.gamma = C->params.gamma;
+        }
+
+        if (C->params.luminance <= 0) {
+            clContextLog(C, action, 1, "No luminance specified (-l). Using default Colorist luminance.");
+            luminance = COLORIST_DEFAULT_LUMINANCE;
+        } else {
+            luminance = C->params.luminance;
+        }
 
         if (C->params.description) {
             description = clContextStrdup(C, C->params.description);
