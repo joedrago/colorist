@@ -160,10 +160,10 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     int srcLuminance = 0;
     float * xyzPixels;
     clProfileCurve gamma1;
-    cmsHTRANSFORM linearTransform;
-    clProfile * linearProfile = NULL;
-    int linearPixelsCount = 0;
-    float * linearPixels = NULL;
+    cmsHTRANSFORM toLinear;
+    clProfile * linearFloatsProfile = NULL;
+    int pixelCount = 0;
+    float * linearFloatsPixels = NULL;
     clImage * highlight = NULL;
     int i;
 
@@ -176,26 +176,26 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     gamma1.type = CL_PCT_GAMMA;
     gamma1.gamma = 1.0f;
     clProfileQuery(C, srcImage->profile, &srcPrimaries, NULL, &srcLuminance);
-    linearProfile = clProfileCreate(C, &srcPrimaries, &gamma1, srcLuminance, NULL);
+    linearFloatsProfile = clProfileCreate(C, &srcPrimaries, &gamma1, srcLuminance, NULL);
 
-    linearPixelsCount = srcImage->width * srcImage->height;
-    linearPixels = clAllocate(4 * sizeof(float) * linearPixelsCount);
-    linearTransform = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, TYPE_RGBA_FLT, linearProfile->handle, TYPE_RGBA_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+    pixelCount = srcImage->width * srcImage->height;
+    linearFloatsPixels = clAllocate(4 * sizeof(float) * pixelCount);
+    toLinear = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, TYPE_RGBA_FLT, linearFloatsProfile->handle, TYPE_RGBA_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
 
-    stats->pixelCount = linearPixelsCount;
+    stats->pixelCount = pixelCount;
 
-    srcFloats = clAllocate(4 * sizeof(float) * linearPixelsCount);
-    clPixelMathUNormToFloat(C, srcImage->pixels, srcImage->depth, srcFloats, linearPixelsCount);
-    doMultithreadedTransform(C, C->params.jobs, linearTransform, (uint8_t *)srcFloats, 4 * sizeof(float), (uint8_t *)linearPixels, 4 * sizeof(float), linearPixelsCount);
+    srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
+    clPixelMathUNormToFloat(C, srcImage->pixels, srcImage->depth, srcFloats, pixelCount);
+    doMultithreadedTransform(C, C->params.jobs, toLinear, (uint8_t *)srcFloats, 4 * sizeof(float), (uint8_t *)linearFloatsPixels, 4 * sizeof(float), pixelCount);
 
-    xyzPixels = clAllocate(3 * sizeof(float) * linearPixelsCount);
-    doMultithreadedTransform(C, C->params.jobs, toXYZ, (uint8_t *)srcFloats, 4 * sizeof(float), (uint8_t *)xyzPixels, 3 * sizeof(float), linearPixelsCount);
+    xyzPixels = clAllocate(3 * sizeof(float) * pixelCount);
+    doMultithreadedTransform(C, C->params.jobs, toXYZ, (uint8_t *)srcFloats, 4 * sizeof(float), (uint8_t *)xyzPixels, 3 * sizeof(float), pixelCount);
 
     highlight = clImageCreate(C, srcImage->width, srcImage->height, 8, NULL);
     luminanceScale = (float)srcLuminance / 300.0f;
     overbrightScale = (float)srcLuminance / (float)srgbLuminance;
-    for (i = 0; i < linearPixelsCount; ++i) {
-        float * srcPixel = &linearPixels[i * 4];
+    for (i = 0; i < pixelCount; ++i) {
+        float * srcPixel = &linearFloatsPixels[i * 4];
         float * srcXYZ = &xyzPixels[i * 3];
         uint8_t * dstPixel = &highlight->pixels[i * 4];
         float baseIntensity;
@@ -265,10 +265,10 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     cmsDeleteTransform(fromXYZ);
     cmsDeleteTransform(toXYZ);
     cmsCloseProfile(xyzProfile);
-    cmsDeleteTransform(linearTransform);
-    clProfileDestroy(C, linearProfile);
+    cmsDeleteTransform(toLinear);
+    clProfileDestroy(C, linearFloatsProfile);
     clFree(srcFloats);
-    clFree(linearPixels);
+    clFree(linearFloatsPixels);
     clFree(xyzPixels);
     return highlight;
 }
