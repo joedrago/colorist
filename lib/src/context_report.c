@@ -180,7 +180,7 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
 
     linearPixelsCount = srcImage->width * srcImage->height;
     linearPixels = clAllocate(4 * sizeof(float) * linearPixelsCount);
-    linearTransform = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, TYPE_RGBA_FLT, linearProfile->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+    linearTransform = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, TYPE_RGBA_FLT, linearProfile->handle, TYPE_RGBA_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
 
     stats->pixelCount = linearPixelsCount;
 

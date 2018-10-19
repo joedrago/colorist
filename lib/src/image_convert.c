@@ -13,155 +13,153 @@
 #include "colorist/profile.h"
 #include "colorist/task.h"
 
+#include <string.h>
+
 #define FAIL() { result = clFalse; goto convertCleanup; }
 
 void doMultithreadedTransform(clContext * C, int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount);
 
+struct ImageInfo
+{
+    int width;
+    int height;
+    int depth;
+
+    clProfilePrimaries primaries;
+    clProfileCurve curve;
+    int luminance;
+};
+
 clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConversionParams * params)
 {
+    // -----------------------------------------------------------------------
+    // Variables
+
+    // Global state / timing
     clBool result = clTrue;
-
     Timer t;
-    int returnCode = 0;
 
-    float srcGamma = 0.0f;
-    int srcLuminance = 0;
-
-    clProfilePrimaries dstPrimaries;
-    float dstGamma = 0.0f;
-    int dstLuminance = 0;
-    int bestDepth;
-    int dstDepth = 0;
+    // Goals
     clProfile * dstProfile = NULL;
     clImage * dstImage = NULL;
 
-    // if true, don't bother with an intermediate array of floats, just use LittleCMS
-    clBool convertDirectly = clTrue;
-
-    // Variables used in luminance scaling
-    clProfile * dstLinear = NULL;
-    int linearPixelsCount = 0;
-    float * linearPixels = NULL;
-    float luminanceScale = 0.0f;
-    clBool tonemap = clFalse;
-
-    // Variables used for resizing
-    int dstWidth = 0;
-    int dstHeight = 0;
-    clBool resizing = clFalse;
+    // Information about the src&dst images, used to make all decisions
+    struct ImageInfo srcInfo;
+    struct ImageInfo dstInfo;
+    clBool needsColorConversion, needsResize, needsFloatRedepth, needsSrcFloats, needsLinearPixels;
 
     // Hald CLUT
     clImage * haldImage = NULL;
     int haldDims = 0;
 
-    // Parse source image and args for early pipeline decisions
-    {
-        clProfileCurve curve;
-        clProfileQuery(C, srcImage->profile, &dstPrimaries, &curve, &srcLuminance);
+    // Intermediate pixel data
+    int pixelCount = srcImage->width * srcImage->height;
+    float * srcFloatsPixels = NULL;         // source values in normalized floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
+    float * linearFloatsPixels = NULL;      // destination values in linear space
+    clProfile * linearFloatsProfile = NULL; // profile for linearFloatsPixels
 
-        // Primaries
-        if (params->primaries[0] > 0.0f) {
-            dstPrimaries.red[0] = params->primaries[0];
-            dstPrimaries.red[1] = params->primaries[1];
-            dstPrimaries.green[0] = params->primaries[2];
-            dstPrimaries.green[1] = params->primaries[3];
-            dstPrimaries.blue[0] = params->primaries[4];
-            dstPrimaries.blue[1] = params->primaries[5];
-            dstPrimaries.white[0] = params->primaries[6];
-            dstPrimaries.white[1] = params->primaries[7];
-        }
+    // -----------------------------------------------------------------------
+    // Parse source image and conversion params, make decisions about dst
 
-        // Luminance
-        srcLuminance = (srcLuminance != 0) ? srcLuminance : COLORIST_DEFAULT_LUMINANCE;
-        if (params->luminance < 0) {
-            dstLuminance = srcLuminance;
-        } else if (params->luminance != 0) {
-            dstLuminance = params->luminance;
-        }
+    // Populate srcInfo
+    srcInfo.width = srcImage->width;
+    srcInfo.height = srcImage->height;
+    srcInfo.depth = srcImage->depth;
+    clProfileQuery(C, srcImage->profile, &srcInfo.primaries, &srcInfo.curve, &srcInfo.luminance);
+    srcInfo.luminance = (srcInfo.luminance != 0) ? srcInfo.luminance : COLORIST_DEFAULT_LUMINANCE;
+    if ((srcInfo.curve.type != CL_PCT_GAMMA) && (srcInfo.curve.gamma > 0.0f)) {
+        clContextLog(C, "info", 0, "Estimated source gamma: %g", srcInfo.curve.gamma);
+    }
 
-        // Gamma
-        srcGamma = curve.gamma;
-        if ((curve.type != CL_PCT_GAMMA) && (srcGamma > 0.0f)) {
-            clContextLog(C, "info", 0, "Estimated source gamma: %g", srcGamma);
-        }
-        if (params->gamma < 0.0f) {
-            dstGamma = srcGamma;
-        } else if (params->gamma > 0.0f) {
-            dstGamma = params->gamma;
-        }
+    // Start off dstInfo with srcInfo's values
+    memcpy(&dstInfo, &srcInfo, sizeof(dstInfo));
 
-        // Depth
-        dstDepth = params->bpp;
-        if (dstDepth == 0) {
-            dstDepth = srcImage->depth;
-        }
-        bestDepth = clFormatBestDepth(C, params->formatName, dstDepth);
-        if (dstDepth != bestDepth) {
-            clContextLog(C, "validate", 0, "Overriding output depth %d-bit -> %d-bit (format limitations)", dstDepth, bestDepth);
-            dstDepth = bestDepth;
-        }
-
-        if (!params->autoGrade) {
-            if (dstGamma == 0.0f) {
-                dstGamma = srcGamma;
-            }
-            if (dstLuminance == 0) {
-                dstLuminance = srcLuminance;
-            }
-        }
-
-        if ((params->resizeW > 0) || (params->resizeH > 0)) {
-            if (params->resizeW <= 0) {
-                dstWidth = (int)(((float)srcImage->width / (float)srcImage->height) * params->resizeH);
-                dstHeight = params->resizeH;
-            } else if (params->resizeH <= 0) {
-                dstWidth = params->resizeW;
-                dstHeight = (int)(((float)srcImage->height / (float)srcImage->width) * params->resizeW);
-            } else {
-                dstWidth = params->resizeW;
-                dstHeight = params->resizeH;
-            }
-            if (dstWidth <= 0)
-                dstWidth = 1;
-            if (dstHeight <= 0)
-                dstHeight = 1;
-        } else {
-            dstWidth = srcImage->width;
-            dstHeight = srcImage->height;
-        }
-        resizing = ((dstWidth != srcImage->width) || (dstHeight != srcImage->height)) ? clTrue : clFalse;
+    // Forget starting gamma and luminance if we're autograding (conversion params can still force values)
+    if (params->autoGrade) {
+        dstInfo.curve.type = CL_PCT_GAMMA;
+        dstInfo.curve.gamma = 0;
+        dstInfo.luminance = 0;
     }
 
     // Load output profile override, if any
     if (params->iccOverrideOut) {
+        if (params->autoGrade) {
+            clContextLogError(C, "Can't autograde (-a) along with a specified profile from disk (--iccout), please choose one or the other.");
+            FAIL();
+        }
+
         dstProfile = clProfileRead(C, params->iccOverrideOut);
         if (!dstProfile) {
             clContextLogError(C, "Invalid destination profile override: %s", params->iccOverrideOut);
             FAIL();
         }
 
-        // Pull dstLuminance out of the overridden profile, if present
-        clProfileQuery(C, dstProfile, NULL, NULL, &dstLuminance);
-        if (dstLuminance == 0) {
-            dstLuminance = srcLuminance;
+        clProfileQuery(C, dstProfile, &dstInfo.primaries, &dstInfo.curve, &dstInfo.luminance);
+        dstInfo.luminance = (dstInfo.luminance != 0) ? dstInfo.luminance : COLORIST_DEFAULT_LUMINANCE;
+        if ((dstInfo.curve.type != CL_PCT_GAMMA) && (dstInfo.curve.gamma > 0.0f)) {
+            clContextLog(C, "info", 0, "Estimated dst gamma: %g", dstInfo.curve.gamma);
         }
 
         clContextLog(C, "profile", 1, "Overriding dst profile with file: %s", params->iccOverrideOut);
+    } else {
+        // No output profile, allow profile overrides
+
+        // Override primaries
+        if (params->primaries[0] > 0.0f) {
+            dstInfo.primaries.red[0] = params->primaries[0];
+            dstInfo.primaries.red[1] = params->primaries[1];
+            dstInfo.primaries.green[0] = params->primaries[2];
+            dstInfo.primaries.green[1] = params->primaries[3];
+            dstInfo.primaries.blue[0] = params->primaries[4];
+            dstInfo.primaries.blue[1] = params->primaries[5];
+            dstInfo.primaries.white[0] = params->primaries[6];
+            dstInfo.primaries.white[1] = params->primaries[7];
+        }
+
+        // Override luminance
+        if (params->luminance > 0) {
+            dstInfo.luminance = params->luminance;
+        }
+
+        // Override gamma
+        if (params->gamma > 0.0f) {
+            dstInfo.curve.type = CL_PCT_GAMMA;
+            dstInfo.curve.gamma = params->gamma;
+        }
     }
 
-    // Decide whether or not to create intermediate float array or convert directly with Little CMS
-    if (srcLuminance != dstLuminance) {
-        // Luminance scaling is involved, floats needed
-        convertDirectly = clFalse;
+    // Override width and height
+    if ((params->resizeW > 0) || (params->resizeH > 0)) {
+        if (params->resizeW <= 0) {
+            dstInfo.width = (int)(((float)srcInfo.width / (float)srcInfo.height) * params->resizeH);
+            dstInfo.height = params->resizeH;
+        } else if (params->resizeH <= 0) {
+            dstInfo.width = params->resizeW;
+            dstInfo.height = (int)(((float)srcInfo.height / (float)srcInfo.width) * params->resizeW);
+        } else {
+            dstInfo.width = params->resizeW;
+            dstInfo.height = params->resizeH;
+        }
+        if (dstInfo.width <= 0)
+            dstInfo.width = 1;
+        if (dstInfo.height <= 0)
+            dstInfo.height = 1;
     }
-    if (resizing) {
-        // resizing occurs with floats
-        convertDirectly = clFalse;
+
+    // Override depth
+    {
+        int bestDepth;
+        if (params->bpp > 0) {
+            dstInfo.depth = params->bpp;
+        }
+        bestDepth = clFormatBestDepth(C, params->formatName, dstInfo.depth);
+        if (dstInfo.depth != bestDepth) {
+            clContextLog(C, "validate", 0, "Overriding output depth %d-bit -> %d-bit (format limitations)", dstInfo.depth, bestDepth);
+            dstInfo.depth = bestDepth;
+        }
     }
-    if (((srcImage->depth != 8) && (srcImage->depth != 16)) || ((dstDepth != 8) && (dstDepth != 16))) {
-        // LittleCMS can only directly convert from/to 8 or 16 bit formats
-        convertDirectly = clFalse;
-    }
+
+    // Load HALD, if any
     if (params->hald) {
         haldImage = clContextRead(C, params->hald, NULL, NULL);
         if (!haldImage) {
@@ -173,7 +171,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
             FAIL();
         }
 
-        // Find haldDims
+        // Calc haldDims
         {
             int i;
             for (i = 0; i < 32; ++i) {
@@ -190,111 +188,133 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
 
             clContextLog(C, "hald", 0, "Loaded %dx%dx%d Hald CLUT: %s", haldDims, haldDims, haldDims, params->hald);
         }
-
-        // Using a Hald CLUT, we need some source floats
-        convertDirectly = clFalse;
     }
 
-    // Create intermediate 1.0 gamma float32 pixel array if we're going to need it later.
-    if (!convertDirectly) {
-        cmsHTRANSFORM toLinear;
-        float * srcFloats; // original values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
+    // -----------------------------------------------------------------------
+    // Create intermediate pixels sets, if necessary
 
-        clProfileCurve gamma1;
-        gamma1.type = CL_PCT_GAMMA;
-        gamma1.gamma = 1.0f;
-        dstLinear = clProfileCreate(C, &dstPrimaries, &gamma1, 0, NULL);
+    {
+        needsColorConversion = (
+            memcmp(&srcInfo.primaries, &dstInfo.primaries, sizeof(srcInfo.primaries)) ||
+            memcmp(&srcInfo.curve, &dstInfo.curve, sizeof(srcInfo.curve)) ||
+            (srcInfo.luminance != dstInfo.luminance) ||
+            (dstProfile != NULL) ||
+            (haldImage != NULL)
+            ) ? clTrue : clFalse;
 
-        linearPixelsCount = srcImage->width * srcImage->height;
-        linearPixels = clAllocate(4 * sizeof(float) * linearPixelsCount);
-        toLinear = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, TYPE_RGBA_FLT, dstLinear->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+        needsResize = (
+            ((dstInfo.width != srcInfo.width) || (dstInfo.height != srcInfo.height))
+            ) ? clTrue : clFalse;
 
-        clContextLog(C, "convert", 0, "Calculating linear pixels...");
-        timerStart(&t);
-        srcFloats = clAllocate(4 * sizeof(float) * linearPixelsCount);
-        clPixelMathUNormToFloat(C, srcImage->pixels, srcImage->depth, srcFloats, linearPixelsCount);
-        doMultithreadedTransform(C, params->jobs, toLinear, (uint8_t *)srcFloats, 4 * sizeof(float), (uint8_t *)linearPixels, 4 * sizeof(float), linearPixelsCount);
-        cmsDeleteTransform(toLinear);
-        clFree(srcFloats);
-        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+        needsFloatRedepth = ( // LittleCMS can only directly convert from/to 8 or 16 bit formats
+            ((srcInfo.depth != 8) && (srcInfo.depth != 16)) ||
+            ((dstInfo.depth != 8) && (dstInfo.depth != 16))
+            ) ? clTrue : clFalse;
+
+        needsLinearPixels = (
+            needsColorConversion ||
+            needsResize ||    // Resizing modifies/replaces linearFloatsPixels, so srcFloatsPixels isn't sufficient
+            params->autoGrade // If autograding, we need linear pixels even if we don't need to color convert afterwards
+            ) ? clTrue : clFalse;
+
+        needsSrcFloats = (
+            needsLinearPixels || // linearFloatsPixels is converted from srcFloatsPixels
+            needsFloatRedepth
+            ) ? clTrue : clFalse;
+
+        if (needsSrcFloats) {
+            clContextLog(C, "convert", 0, "Creating source floats...");
+            timerStart(&t);
+            srcFloatsPixels = clAllocate(4 * sizeof(float) * pixelCount);
+            clPixelMathUNormToFloat(C, srcImage->pixels, srcImage->depth, srcFloatsPixels, pixelCount);
+            clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+        }
+
+        if (needsLinearPixels) {
+            cmsHTRANSFORM toLinear;
+
+            clProfileCurve gamma1;
+            gamma1.type = CL_PCT_GAMMA;
+            gamma1.gamma = 1.0f;
+            linearFloatsProfile = clProfileCreate(C, &dstInfo.primaries, &gamma1, 0, NULL);
+            toLinear = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, TYPE_RGBA_FLT, linearFloatsProfile->handle, TYPE_RGBA_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+
+            clContextLog(C, "convert", 0, "Calculating linear pixels...");
+            timerStart(&t);
+            linearFloatsPixels = clAllocate(4 * sizeof(float) * pixelCount);
+            doMultithreadedTransform(C, params->jobs, toLinear, (uint8_t *)srcFloatsPixels, 4 * sizeof(float), (uint8_t *)linearFloatsPixels, 4 * sizeof(float), pixelCount);
+            clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+
+            cmsDeleteTransform(toLinear);
+        }
     }
+
+    // -----------------------------------------------------------------------
+    // Color grading
 
     if (params->autoGrade) {
+        COLORIST_ASSERT(dstProfile == NULL);
+        COLORIST_ASSERT(linearFloatsPixels != NULL);
+
         clContextLog(C, "grading", 0, "Color grading...");
         timerStart(&t);
-        clPixelMathColorGrade(C, params->jobs, dstLinear, linearPixels, linearPixelsCount, srcImage->width, srcLuminance, dstDepth, &dstLuminance, &dstGamma, C->verbose);
-        clContextLog(C, "grading", 0, "Using maxLum: %d, gamma: %g", dstLuminance, dstGamma);
+        dstInfo.curve.type = CL_PCT_GAMMA;
+        clPixelMathColorGrade(C, params->jobs, linearFloatsProfile, linearFloatsPixels, pixelCount, srcInfo.width, srcInfo.luminance, dstInfo.depth, &dstInfo.luminance, &dstInfo.curve.gamma, C->verbose);
+        clContextLog(C, "grading", 0, "Using maxLum: %d, gamma: %g", dstInfo.luminance, dstInfo.curve.gamma);
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
 
-    // If we survive arg parsing and autoGrade mode and still don't have a reasonable luminance and gamma, bail out.
-    if ((dstLuminance == 0) || (dstGamma == 0.0f)) {
-        clContextLogError(C, "Can't create destination profile, luminance(%d) and/or gamma(%g) values are invalid", dstLuminance, dstGamma);
-        FAIL();
-    }
-
-    // Calculate luminance scale and tonemapping
-    COLORIST_ASSERT(srcLuminance > 0);
-    COLORIST_ASSERT(dstLuminance > 0);
-    luminanceScale = (float)srcLuminance / (float)dstLuminance;
-    if (params->autoGrade) {
-        // autoGrade ensures we're never scaling a pixel lower than the brighest
-        // pixel in the source image, tonemapping is unnecessary.
-        tonemap = clFalse;
-    } else {
-        // tonemap if we're scaling from a larger luminance range to a smaller range
-        tonemap = (luminanceScale > 1.0f) ? clTrue : clFalse;
-    }
-    if (params->tonemap != CL_TONEMAP_AUTO) {
-        tonemap = (params->tonemap == CL_TONEMAP_ON) ? clTrue : clFalse;
-    }
+    // -----------------------------------------------------------------------
+    // Profile params validation & profile creation
 
     // Create the destination profile, or clone the source one
     if (dstProfile == NULL) {
         if (
-            (params->primaries[0] > 0.0f) ||  // Custom primaries
-            (srcGamma != dstGamma) ||         // Custom gamma
-            (srcLuminance != dstLuminance) || // Custom luminance
-            (params->description) ||          // Custom description
-            (params->copyright)               // custom copyright
+            memcmp(&srcInfo.primaries, &dstInfo.primaries, sizeof(srcInfo.primaries)) || // Custom primaries
+            memcmp(&srcInfo.curve, &dstInfo.curve, sizeof(srcInfo.curve)) ||             // Custom curve
+            (srcInfo.luminance != dstInfo.luminance) ||                                  // Custom luminance
+            (params->description) ||                                                     // Custom description
+            (params->copyright)                                                          // custom copyright
             )
         {
-            clProfileCurve dstCurve;
             char * dstDescription = NULL;
 
             // Primaries
-            if ((dstPrimaries.red[0] <= 0.0f) || (dstPrimaries.red[1] <= 0.0f) ||
-                (dstPrimaries.green[0] <= 0.0f) || (dstPrimaries.green[1] <= 0.0f) ||
-                (dstPrimaries.blue[0] <= 0.0f) || (dstPrimaries.blue[1] <= 0.0f) ||
-                (dstPrimaries.white[0] <= 0.0f) || (dstPrimaries.white[1] <= 0.0f))
+            if ((dstInfo.primaries.red[0] <= 0.0f) || (dstInfo.primaries.red[1] <= 0.0f) ||
+                (dstInfo.primaries.green[0] <= 0.0f) || (dstInfo.primaries.green[1] <= 0.0f) ||
+                (dstInfo.primaries.blue[0] <= 0.0f) || (dstInfo.primaries.blue[1] <= 0.0f) ||
+                (dstInfo.primaries.white[0] <= 0.0f) || (dstInfo.primaries.white[1] <= 0.0f))
             {
                 clContextLogError(C, "Can't create destination profile, destination primaries are invalid");
                 FAIL();
             }
 
-            // Gamma
-            if (dstGamma == 0.0f) {
+            // Curve
+            if (dstInfo.curve.type != CL_PCT_GAMMA) {
                 // TODO: Support/pass-through any source curve
-                clContextLogError(C, "Can't create destination profile, source profile's curve cannot be re-created as it isn't just a simple gamma curve");
+                clContextLogError(C, "Can't create destination profile, tone curve cannot be created as it isn't just a simple gamma curve. Try choosing a new curve (-g) or autograding (-a)");
                 FAIL();
             }
-            dstCurve.type = CL_PCT_GAMMA;
-            dstCurve.gamma = dstGamma;
+            if (dstInfo.curve.gamma <= 0.0f) {
+                // TODO: Support/pass-through any source curve
+                clContextLogError(C, "Can't create destination profile, gamma(%g) is invalid", dstInfo.curve.gamma);
+                FAIL();
+            }
 
-            // Luminance
-            if (dstLuminance == 0) {
-                dstLuminance = srcLuminance;
+            if (dstInfo.luminance == 0) {
+                clContextLogError(C, "Can't create destination profile, luminance(%d) is invalid", dstInfo.luminance);
+                FAIL();
             }
 
             // Description
             if (params->description) {
                 dstDescription = clContextStrdup(C, params->description);
             } else {
-                dstDescription = clGenerateDescription(C, &dstPrimaries, &dstCurve, dstLuminance);
+                dstDescription = clGenerateDescription(C, &dstInfo.primaries, &dstInfo.curve, dstInfo.luminance);
             }
 
             clContextLog(C, "profile", 0, "Creating new destination ICC profile: \"%s\"", dstDescription);
-            dstProfile = clProfileCreate(C, &dstPrimaries, &dstCurve, dstLuminance, dstDescription);
+            dstProfile = clProfileCreate(C, &dstInfo.primaries, &dstInfo.curve, dstInfo.luminance, dstDescription);
             clFree(dstDescription);
 
             // Copyright
@@ -309,20 +329,25 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         }
     }
 
-    if (resizing) {
-        int resizedPixelsCount = dstWidth * dstHeight;
-        float * resizedPixels = clAllocate(4 * sizeof(float) * resizedPixelsCount);
-        clContextLog(C, "resize", 0, "Resizing %dx%d -> [filter:%s] -> %dx%d", srcImage->width, srcImage->height, clFilterToString(C, params->resizeFilter), dstWidth, dstHeight);
+    // -----------------------------------------------------------------------
+    // Resize, if necessary
+
+    if (needsResize) {
+        int resizedPixelCount = dstInfo.width * dstInfo.height;
+        float * resizedPixels = clAllocate(4 * sizeof(float) * resizedPixelCount);
+        clContextLog(C, "resize", 0, "Resizing %dx%d -> [filter:%s] -> %dx%d", srcInfo.width, srcInfo.height, clFilterToString(C, params->resizeFilter), dstInfo.width, dstInfo.height);
         timerStart(&t);
-        clPixelMathResize(C, srcImage->width, srcImage->height, linearPixels, dstWidth, dstHeight, resizedPixels, params->resizeFilter);
+        clPixelMathResize(C, srcImage->width, srcImage->height, linearFloatsPixels, dstInfo.width, dstInfo.height, resizedPixels, params->resizeFilter);
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
-        clFree(linearPixels);
-        linearPixels = resizedPixels;
-        linearPixelsCount = resizedPixelsCount;
+        clFree(linearFloatsPixels);
+        linearFloatsPixels = resizedPixels;
+        pixelCount = resizedPixelCount;
     }
 
-    // Create dstImage
-    dstImage = clImageCreate(C, dstWidth, dstHeight, dstDepth, dstProfile);
+    // -----------------------------------------------------------------------
+    // Create destination image
+
+    dstImage = clImageCreate(C, dstInfo.width, dstInfo.height, dstInfo.depth, dstProfile);
 
     // Show image details
     clContextLog(C, "details", 0, "Source:");
@@ -330,34 +355,45 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     clContextLog(C, "details", 0, "Destination:");
     clImageDebugDump(C, dstImage, 0, 0, 0, 0, 1);
 
-    // Convert srcImage -> dstImage
-    if (convertDirectly) {
-        cmsHTRANSFORM directTransform;
-        cmsUInt32Number srcFormat = (srcImage->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
-        cmsUInt32Number dstFormat = (dstImage->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
+    // -----------------------------------------------------------------------
+    // Image conversion
 
-        clContextLog(C, "convert", 0, "Converting directly...");
-        timerStart(&t);
-        directTransform = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, srcFormat, dstImage->profile->handle, dstFormat, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
-        doMultithreadedTransform(C, params->jobs, directTransform, srcImage->pixels, (srcImage->depth == 16) ? 8 : 4, dstImage->pixels, (dstImage->depth == 16) ? 8 : 4, dstImage->width * dstImage->height);
-        cmsDeleteTransform(directTransform);
-        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
-    } else {
-        cmsHTRANSFORM fromLinear = cmsCreateTransformTHR(C->lcms, dstLinear->handle, TYPE_RGBA_FLT, dstImage->profile->handle, TYPE_RGBA_FLT, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
-        float * dstFloats; // final values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
-        COLORIST_ASSERT(linearPixels);
+    // At this point, there are three possible ways to convert, based on which sets of pixels we have:
+    // * If we have linearFloatsPixels, we chose to do all of the heavy lifting
+    // * If we only have srcFloatsPixels, we can just repack floats (typically when only depth changes or an 'interesting' depth is used)
+    // * If we haven't made any intermediate pixel sets, we can just have LittleCMS do everything (direct conversion)
 
-        if (srcLuminance != dstLuminance) {
+    if (linearFloatsPixels) {
+        // Do everything!
+
+        cmsHTRANSFORM fromLinear = cmsCreateTransformTHR(C->lcms, linearFloatsProfile->handle, TYPE_RGBA_FLT, dstImage->profile->handle, TYPE_RGBA_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+        float * dstFloatsPixels; // final values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
+
+        if (srcInfo.luminance != dstInfo.luminance) {
+            float luminanceScale = (float)srcInfo.luminance / (float)dstInfo.luminance;
+            clBool tonemap;
+            if (params->autoGrade) {
+                // autoGrade ensures we're never scaling a pixel lower than the brighest
+                // pixel in the source image, tonemapping is unnecessary.
+                tonemap = clFalse;
+            } else {
+                // tonemap if we're scaling from a larger luminance range to a smaller range
+                tonemap = (luminanceScale > 1.0f) ? clTrue : clFalse;
+            }
+            if (params->tonemap != CL_TONEMAP_AUTO) {
+                tonemap = (params->tonemap == CL_TONEMAP_ON) ? clTrue : clFalse;
+            }
+
             clContextLog(C, "luminance", 0, "Scaling luminance (%gx, %s)...", luminanceScale, tonemap ? "tonemap" : "clip");
             timerStart(&t);
-            clPixelMathScaleLuminance(C, linearPixels, linearPixelsCount, luminanceScale, tonemap);
+            clPixelMathScaleLuminance(C, linearFloatsPixels, pixelCount, luminanceScale, tonemap);
             clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
         }
 
         clContextLog(C, "convert", 0, "Performing color conversion...");
         timerStart(&t);
-        dstFloats = clAllocate(4 * sizeof(float) * linearPixelsCount);
-        doMultithreadedTransform(C, params->jobs, fromLinear, (uint8_t *)linearPixels, 4 * sizeof(float), (uint8_t *)dstFloats, 4 * sizeof(float), linearPixelsCount);
+        dstFloatsPixels = clAllocate(4 * sizeof(float) * pixelCount);
+        doMultithreadedTransform(C, params->jobs, fromLinear, (uint8_t *)linearFloatsPixels, 4 * sizeof(float), (uint8_t *)dstFloatsPixels, 4 * sizeof(float), pixelCount);
         cmsDeleteTransform(fromLinear);
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
 
@@ -373,28 +409,56 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
             haldData = clAllocate(4 * sizeof(float) * haldDataCount);
             clPixelMathUNormToFloat(C, haldImage->pixels, haldImage->depth, haldData, haldDataCount);
 
-            haldSrcFloats = dstFloats;
-            dstFloats = clAllocate(4 * sizeof(float) * linearPixelsCount);
+            haldSrcFloats = dstFloatsPixels;
+            dstFloatsPixels = clAllocate(4 * sizeof(float) * pixelCount);
 
-            for (i = 0; i < linearPixelsCount; ++i) {
-                clPixelMathHaldCLUTLookup(C, haldData, haldDims, &haldSrcFloats[i * 4], &dstFloats[i * 4]);
+            for (i = 0; i < pixelCount; ++i) {
+                clPixelMathHaldCLUTLookup(C, haldData, haldDims, &haldSrcFloats[i * 4], &dstFloatsPixels[i * 4]);
             }
 
             clFree(haldData);
             clFree(haldSrcFloats);
             clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
         }
-        clPixelMathFloatToUNorm(C, dstFloats, dstImage->pixels, dstImage->depth, linearPixelsCount);
-        clFree(dstFloats);
+        clPixelMathFloatToUNorm(C, dstFloatsPixels, dstImage->pixels, dstImage->depth, pixelCount);
+        clFree(dstFloatsPixels);
+    } else if (srcFloatsPixels) {
+        // Just repackage source floats (typically just a re-depth)
+
+        clContextLog(C, "convert", 0, "Packing final pixels from source floats...");
+        timerStart(&t);
+        clPixelMathFloatToUNorm(C, srcFloatsPixels, dstImage->pixels, dstImage->depth, pixelCount);
+        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+    } else {
+        // Let LittleCMS directly convert
+        cmsHTRANSFORM directTransform;
+        cmsUInt32Number srcFormat = (srcInfo.depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
+        cmsUInt32Number dstFormat = (dstInfo.depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
+
+        COLORIST_ASSERT((srcInfo.depth == 8) || (srcInfo.depth == 16));
+        COLORIST_ASSERT((dstInfo.depth == 8) || (dstInfo.depth == 16));
+
+        clContextLog(C, "convert", 0, "Converting directly...");
+        timerStart(&t);
+        directTransform = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, srcFormat, dstImage->profile->handle, dstFormat, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+        doMultithreadedTransform(C, params->jobs, directTransform, srcImage->pixels, (srcImage->depth == 16) ? 8 : 4, dstImage->pixels, (dstImage->depth == 16) ? 8 : 4, dstImage->width * dstImage->height);
+        cmsDeleteTransform(directTransform);
+        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
 
+    // -----------------------------------------------------------------------
+    // Cleanup
+
 convertCleanup:
+
     if (dstProfile)
         clProfileDestroy(C, dstProfile);
-    if (dstLinear)
-        clProfileDestroy(C, dstLinear);
-    if (linearPixels)
-        clFree(linearPixels);
+    if (linearFloatsProfile)
+        clProfileDestroy(C, linearFloatsProfile);
+    if (srcFloatsPixels)
+        clFree(srcFloatsPixels);
+    if (linearFloatsPixels)
+        clFree(linearFloatsPixels);
     if (haldImage)
         clImageDestroy(C, haldImage);
 

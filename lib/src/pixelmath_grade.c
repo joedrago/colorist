@@ -130,7 +130,7 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
     }
 
     // Find best gamma
-    if (*outGamma == 0.0f) {
+    if (*outGamma <= 0.0f) {
         float luminanceScale = (float)srcLuminance / maxLuminance;
         int gammaInt;
         int minGammaInt;

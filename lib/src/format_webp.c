@@ -119,7 +119,7 @@ clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const cha
     picture.height = image->height;
     WebPPictureAlloc(&picture);
 
-    rgbTransform = cmsCreateTransformTHR(C->lcms, image->profile->handle, srcFormat, image->profile->handle, TYPE_BGRA_8, INTENT_PERCEPTUAL, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+    rgbTransform = cmsCreateTransformTHR(C->lcms, image->profile->handle, srcFormat, image->profile->handle, TYPE_BGRA_8, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
     COLORIST_ASSERT(rgbTransform);
     cmsDoTransform(rgbTransform, image->pixels, picture.argb, image->width * image->height);
     cmsDeleteTransform(rgbTransform);

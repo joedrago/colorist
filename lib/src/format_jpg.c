@@ -122,7 +122,7 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
     jpeg_mem_dest(&cinfo, &outbuffer, &outsize);
 
     jpegPixels = clAllocate(3 * image->width * image->height);
-    rgbTransform = cmsCreateTransformTHR(C->lcms, image->profile->handle, srcFormat, image->profile->handle, TYPE_RGB_8, INTENT_PERCEPTUAL, cmsFLAGS_NOOPTIMIZE);
+    rgbTransform = cmsCreateTransformTHR(C->lcms, image->profile->handle, srcFormat, image->profile->handle, TYPE_RGB_8, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
     COLORIST_ASSERT(rgbTransform);
     cmsDoTransform(rgbTransform, image->pixels, jpegPixels, image->width * image->height);
     cmsDeleteTransform(rgbTransform);
