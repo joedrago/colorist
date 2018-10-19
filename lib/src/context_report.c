@@ -157,13 +157,10 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     float overbrightScale;
     float * srcFloats;
     clProfilePrimaries srcPrimaries;
+    clProfileCurve srcCurve;
     int srcLuminance = 0;
     float * xyzPixels;
-    clProfileCurve gamma1;
-    cmsHTRANSFORM toLinear;
-    clProfile * linearFloatsProfile = NULL;
     int pixelCount = 0;
-    float * linearFloatsPixels = NULL;
     clImage * highlight = NULL;
     int i;
 
@@ -172,21 +169,13 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     cmsHTRANSFORM fromXYZ = cmsCreateTransformTHR(C->lcms, xyzProfile, TYPE_XYZ_FLT, srcImage->profile->handle, TYPE_RGB_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
 
     memset(stats, 0, sizeof(SRGBHighlightStats));
+    stats->pixelCount = pixelCount = srcImage->width * srcImage->height;
 
-    gamma1.type = CL_PCT_GAMMA;
-    gamma1.gamma = 1.0f;
-    clProfileQuery(C, srcImage->profile, &srcPrimaries, NULL, &srcLuminance);
-    linearFloatsProfile = clProfileCreate(C, &srcPrimaries, &gamma1, srcLuminance, NULL);
-
-    pixelCount = srcImage->width * srcImage->height;
-    linearFloatsPixels = clAllocate(4 * sizeof(float) * pixelCount);
-    toLinear = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, TYPE_RGBA_FLT, linearFloatsProfile->handle, TYPE_RGBA_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
-
-    stats->pixelCount = pixelCount;
+    clProfileQuery(C, srcImage->profile, &srcPrimaries, &srcCurve, &srcLuminance);
+    srcLuminance = (srcLuminance != 0) ? srcLuminance : COLORIST_DEFAULT_LUMINANCE;
 
     srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
     clPixelMathUNormToFloat(C, srcImage->pixels, srcImage->depth, srcFloats, pixelCount);
-    doMultithreadedTransform(C, C->params.jobs, toLinear, (uint8_t *)srcFloats, 4 * sizeof(float), (uint8_t *)linearFloatsPixels, 4 * sizeof(float), pixelCount);
 
     xyzPixels = clAllocate(3 * sizeof(float) * pixelCount);
     doMultithreadedTransform(C, C->params.jobs, toXYZ, (uint8_t *)srcFloats, 4 * sizeof(float), (uint8_t *)xyzPixels, 3 * sizeof(float), pixelCount);
@@ -194,8 +183,11 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     highlight = clImageCreate(C, srcImage->width, srcImage->height, 8, NULL);
     luminanceScale = (float)srcLuminance / 300.0f;
     overbrightScale = (float)srcLuminance / (float)srgbLuminance;
+    if (srcCurve.matrixCurveScale > 0.0f) {
+        // This handles crazy A2B* tags, somewhat
+        overbrightScale *= srcCurve.matrixCurveScale;
+    }
     for (i = 0; i < pixelCount; ++i) {
-        float * srcPixel = &linearFloatsPixels[i * 4];
         float * srcXYZ = &xyzPixels[i * 3];
         uint8_t * dstPixel = &highlight->pixels[i * 4];
         float baseIntensity;
@@ -223,7 +215,7 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
             stats->brightestPixelY = i / srcImage->width;
         }
 
-        baseIntensity = luminanceScale * (srcPixel[0] * 0.299f) + (srcPixel[1] * 0.587f) + (srcPixel[2] * 0.114f);
+        baseIntensity = luminanceScale * (float)xyY.Y;
         baseIntensity = CL_CLAMP(baseIntensity, 0.0f, 1.0f);
         intensity8 = intensityToU8(baseIntensity);
 
@@ -265,10 +257,7 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     cmsDeleteTransform(fromXYZ);
     cmsDeleteTransform(toXYZ);
     cmsCloseProfile(xyzProfile);
-    cmsDeleteTransform(toLinear);
-    clProfileDestroy(C, linearFloatsProfile);
     clFree(srcFloats);
-    clFree(linearFloatsPixels);
     clFree(xyzPixels);
     return highlight;
 }
@@ -416,6 +405,12 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
     cJSON_AddItemToObject(jsonICC, "description", cJSON_CreateString(text));
     clFree(text);
 
+    if (clProfileHasPQSignature(C, image->profile, &primaries)) {
+        curve.gamma = 0.0f;
+        maxLuminance = 10000;
+        cJSON_AddItemToObject(jsonICC, "pq", cJSON_CreateBool(clTrue));
+    }
+
     jsonPrimaries = cJSON_CreateArray();
     {
         cJSON_AddItemToArray(jsonPrimaries, cJSON_CreateNumber(primaries.red[0]));
@@ -433,12 +428,6 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
     cJSON_AddItemToObject(jsonICC, "luminance", cJSON_CreateNumber(maxLuminance));
     return clTrue;
 }
-
-// static clBool reportHeatMap(clContext * C, clImage * image, cJSON * payload)
-// {
-//     cJSON_AddItemToObject(payload, "heatmap_example_number", cJSON_CreateNumber(42));
-//     return clTrue;
-// }
 
 int clContextReport(clContext * C)
 {
@@ -469,16 +458,6 @@ int clContextReport(clContext * C)
             FAIL();
         }
     }
-
-    // // if "create heat map report" ...
-    // {
-    //     clContextLog(C, "heatmap", 0, "Generating heatmap...");
-    //     timerStart(&t);
-    //     if (!reportHeatMap(C, image, payload)) {
-    //         FAIL();
-    //     }
-    //     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
-    // }
 
     timerStart(&t);
     {

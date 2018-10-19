@@ -42,6 +42,7 @@ typedef struct clProfile
 {
     char * description;
     cmsHPROFILE handle;
+    uint8_t signature[16]; // Populated during clProfileParse()
 } clProfile;
 
 typedef enum clProfileStock
@@ -59,6 +60,7 @@ clProfile * clProfileRead(struct clContext * C, const char * filename);
 clBool clProfileReload(struct clContext * C, clProfile * profile);
 clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * filename);
 clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries, clProfileCurve * curve, int * maxLuminance);
+clBool clProfileHasPQSignature(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries);
 char * clProfileGetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3]);
 clBool clProfileSetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3], const char * ascii);
 clBool clProfilePack(struct clContext * C, clProfile * profile, struct clRaw * out);

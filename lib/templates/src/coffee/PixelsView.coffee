@@ -85,7 +85,10 @@ class PixelsView extends React.Component
       floatIG = cm.rawToFloat([pixel.r, pixel.g, pixel.b, pixel.a], COLORIST_DATA.depth)
 
       # floating point, linear space
-      floatLin = cm.vecPow(floatIG, COLORIST_DATA.icc.gamma)
+      if(COLORIST_DATA.icc.pq)
+        floatLin = cm.vecPQ_EOTF(floatIG)
+      else
+        floatLin = cm.vecPow(floatIG, COLORIST_DATA.icc.gamma)
 
       toXYZ = cm.matDeriveRGBToXYZ(COLORIST_DATA.icc.primaries)
       XYZ = cm.matEval(toXYZ, floatLin)

@@ -11,6 +11,7 @@
 #include "colorist/raw.h"
 
 #include "lcms2_plugin.h"
+#include "md5.h"
 
 #include <math.h>
 #include <string.h>
@@ -66,6 +67,7 @@ clProfile * clProfileClone(struct clContext * C, clProfile * profile)
         return NULL;
     }
     clone->description = profile->description ? strdup(profile->description) : NULL;
+    memcpy(clone->signature, profile->signature, 16);
     return clone;
 }
 
@@ -87,6 +89,14 @@ clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, int iccLen
         } else {
             profile->description = clContextStrdup(C, "Unknown");
         }
+    }
+
+    // Calculate signature
+    {
+        MD5_CTX ctx;
+        MD5_Init(&ctx);
+        MD5_Update(&ctx, icc, iccLen);
+        MD5_Final(profile->signature, &ctx);
     }
     return profile;
 }
@@ -131,6 +141,7 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
     if (profile->description) {
         clProfileSetMLU(C, profile, "desc", "en", "US", profile->description);
     }
+    memset(profile->signature, 0, 16);
     return profile;
 }
 

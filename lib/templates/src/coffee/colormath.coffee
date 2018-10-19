@@ -36,6 +36,23 @@ vecPow = (v, e) ->
     Math.pow(v[2], e)
   ]
 
+pqToLinear = (pqValue) ->
+  c1 = 0.8359375            # 3424.0 / 4096.0
+  c2 = 18.8515625           # 2413.0 / 4096.0 * 32.0
+  c3 = 18.6875              # 2392.0 / 4096.0 * 32.0
+  m1 = 0.1593017578125      # 2610.0 / 4096.0 / 4.0
+  m2 = 78.84375             # 2523.0 / 4096.0 * 128.0
+  M = c2 - c3 * Math.pow(pqValue, 1 / m2)
+  N = Math.max(Math.pow(pqValue, 1 / m2) - c1, 0)
+  return Math.pow(N / M, 1 / m1)
+
+vecPQ_EOTF = (v) ->
+  return [
+    pqToLinear(v[0])
+    pqToLinear(v[1])
+    pqToLinear(v[2])
+  ]
+
 vecSum = (v) ->
   return v[0] + v[1] + v[2]
 
@@ -267,6 +284,7 @@ module.exports =
   vecScaleK: vecScaleK
   vecMul: vecMul
   vecPow: vecPow
+  vecPQ_EOTF: vecPQ_EOTF
   vecSum: vecSum
 
   matTranspose: matTranspose

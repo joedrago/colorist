@@ -31,6 +31,7 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
     clProfileCurve curve;
     int luminance;
     char * tempStr;
+    int i;
 
     if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
         clContextLog(C, "profile", 0 + extraIndent, "Profile \"%s\"", profile->description);
@@ -52,6 +53,23 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
         if (curve.matrixCurveScale > 0.0f) {
             clContextLog(C, "profile", 1 + extraIndent, "Implicit matrix curve scale: %g", curve.matrixCurveScale);
             clContextLog(C, "profile", 1 + extraIndent, "Actual max luminance: %g", luminance * curve.matrixCurveScale);
+        }
+        for (i = 0; i < 16; ++i) {
+            if (profile->signature[i] != 0)
+                break;
+        }
+        if (i != 16) { // Signature exists
+            clProfilePrimaries pqPrimaries;
+            uint8_t * s = profile->signature;
+            clContextLog(C, "profile", 1 + extraIndent, "MD5: %x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x",
+                s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[10], s[11], s[12], s[13], s[14], s[15]);
+            if (clProfileHasPQSignature(C, profile, &pqPrimaries)) {
+                clContextLog(C, "profile", 1 + extraIndent, "PQ: (r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g)",
+                    primaries.red[0], primaries.red[1],
+                    primaries.green[0], primaries.green[1],
+                    primaries.blue[0], primaries.blue[1],
+                    primaries.white[0], primaries.white[1]);
+            }
         }
 
         if (dumpTags) {
@@ -118,6 +136,24 @@ void clProfileDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clP
             cJSON_AddNumberToObject(jsonOutput, "actualLuminance", luminance * curve.matrixCurveScale);
         } else {
             cJSON_AddNumberToObject(jsonOutput, "actualLuminance", luminance);
+        }
+        {
+            clProfilePrimaries pqPrimaries;
+            if (clProfileHasPQSignature(C, profile, &pqPrimaries)) {
+                jsonPrimaries = cJSON_AddObjectToObject(jsonOutput, "pq");
+                jsonPrimary = cJSON_AddObjectToObject(jsonPrimaries, "red");
+                cJSON_AddNumberToObject(jsonPrimary, "x", pqPrimaries.red[0]);
+                cJSON_AddNumberToObject(jsonPrimary, "y", pqPrimaries.red[1]);
+                jsonPrimary = cJSON_AddObjectToObject(jsonPrimaries, "green");
+                cJSON_AddNumberToObject(jsonPrimary, "x", pqPrimaries.green[0]);
+                cJSON_AddNumberToObject(jsonPrimary, "y", pqPrimaries.green[1]);
+                jsonPrimary = cJSON_AddObjectToObject(jsonPrimaries, "blue");
+                cJSON_AddNumberToObject(jsonPrimary, "x", pqPrimaries.blue[0]);
+                cJSON_AddNumberToObject(jsonPrimary, "y", pqPrimaries.blue[1]);
+                jsonPrimary = cJSON_AddObjectToObject(jsonPrimaries, "white");
+                cJSON_AddNumberToObject(jsonPrimary, "x", pqPrimaries.white[0]);
+                cJSON_AddNumberToObject(jsonPrimary, "y", pqPrimaries.white[1]);
+            }
         }
 
         if (dumpTags) {
