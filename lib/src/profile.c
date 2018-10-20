@@ -48,26 +48,15 @@ clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock)
 
 clProfile * clProfileClone(struct clContext * C, clProfile * profile)
 {
-    uint8_t * bytes;
-    cmsUInt32Number bytesNeeded;
+    clRaw packed;
     clProfile * clone;
-    if (!cmsSaveProfileToMem(profile->handle, NULL, &bytesNeeded)) {
+    memset(&packed, 0, sizeof(packed));
+    if (!clProfilePack(C, profile, &packed)) {
         return NULL;
     }
-    bytes = (uint8_t *)clAllocate(bytesNeeded);
-    if (!cmsSaveProfileToMem(profile->handle, bytes, &bytesNeeded)) {
-        clFree(bytes);
-        return NULL;
-    }
-    clone = clAllocateStruct(clProfile);
-    clone->handle = cmsOpenProfileFromMemTHR(C->lcms, bytes, bytesNeeded);
-    clFree(bytes);
-    if (!clone->handle) {
-        clFree(clone);
-        return NULL;
-    }
-    clone->description = profile->description ? strdup(profile->description) : NULL;
-    memcpy(clone->signature, profile->signature, 16);
+
+    clone = clProfileParse(C, packed.ptr, packed.size, profile->description);
+    clRawFree(C, &packed);
     return clone;
 }
 
@@ -90,6 +79,9 @@ clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, int iccLen
             profile->description = clContextStrdup(C, "Unknown");
         }
     }
+
+    // Save copy of packed data to keep a byte-for-byte payload unless the profile is modified
+    clRawSet(C, &profile->raw, icc, iccLen);
 
     // Calculate signature
     {
@@ -141,46 +133,25 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
     if (profile->description) {
         clProfileSetMLU(C, profile, "desc", "en", "US", profile->description);
     }
+    memset(&profile->raw, 0, sizeof(profile->raw));
     memset(profile->signature, 0, 16);
-    return profile;
-}
-
-clProfile * clProfileCreateLinear(struct clContext * C, clProfile * origProfile)
-{
-    clProfile * profile;
-    clProfilePrimaries primaries;
-    clProfileCurve curve;
-    char * description;
-    int descriptionLen;
-    int luminance;
-    if (!clProfileQuery(C, origProfile, &primaries, NULL, &luminance)) {
-        return NULL;
-    }
-    curve.type = CL_PCT_GAMMA;
-    curve.gamma = 1.0f;
-    descriptionLen = 20;
-    if (origProfile->description)
-        descriptionLen += strlen(origProfile->description);
-    description = (char *)clAllocate(descriptionLen);
-    description[0] = 0;
-    if (origProfile->description)
-        strcpy(description, origProfile->description);
-    strcat(description, " (Linear)");
-    profile = clProfileCreate(C, &primaries, &curve, luminance, description);
-    clFree(description);
     return profile;
 }
 
 clBool clProfilePack(struct clContext * C, clProfile * profile, clRaw * out)
 {
-    cmsUInt32Number bytesNeeded;
-    if (!cmsSaveProfileToMem(profile->handle, NULL, &bytesNeeded)) {
-        return clFalse;
-    }
-    clRawRealloc(C, out, bytesNeeded);
-    if (!cmsSaveProfileToMem(profile->handle, out->ptr, &bytesNeeded)) {
-        clRawFree(C, out);
-        return clFalse;
+    if (profile->raw.size > 0) {
+        clRawClone(C, out, &profile->raw);
+    } else {
+        cmsUInt32Number bytesNeeded;
+        if (!cmsSaveProfileToMem(profile->handle, NULL, &bytesNeeded)) {
+            return clFalse;
+        }
+        clRawRealloc(C, out, bytesNeeded);
+        if (!cmsSaveProfileToMem(profile->handle, out->ptr, &bytesNeeded)) {
+            clRawFree(C, out);
+            return clFalse;
+        }
     }
     return clTrue;
 }
@@ -188,13 +159,17 @@ clBool clProfilePack(struct clContext * C, clProfile * profile, clRaw * out)
 int clProfileSize(struct clContext * C, clProfile * profile)
 {
     int ret;
-    clRaw raw;
-    memset(&raw, 0, sizeof(raw));
-    if (!clProfilePack(C, profile, &raw)) {
-        return 0;
+    if (profile->raw.size > 0) {
+        ret = profile->raw.size;
+    } else {
+        clRaw raw;
+        memset(&raw, 0, sizeof(raw));
+        if (!clProfilePack(C, profile, &raw)) {
+            return 0;
+        }
+        ret = raw.size;
+        clRawFree(C, &raw);
     }
-    ret = raw.size;
-    clRawFree(C, &raw);
     return ret;
 }
 
@@ -278,6 +253,7 @@ void clProfileDestroy(struct clContext * C, clProfile * profile)
 {
     clFree(profile->description);
     cmsCloseProfile(profile->handle);
+    clRawFree(C, &profile->raw);
     clFree(profile);
 }
 
@@ -488,6 +464,7 @@ clBool clProfileSetMLU(struct clContext * C, clProfile * profile, const char tag
     cmsMLUsetASCII(mlu, languageCode, countryCode, ascii);
     cmsWriteTag(profile->handle, tagSignature, mlu);
     cmsMLUfree(mlu);
+    clRawFree(C, &profile->raw); // No longer valid
     return clTrue;
 }
 
@@ -506,6 +483,7 @@ clBool clProfileSetGamma(struct clContext * C, clProfile * profile, float gamma)
     }
 cleanup:
     cmsFreeToneCurve(gammaCurve);
+    clRawFree(C, &profile->raw); // No longer valid
     return clTrue;
 }
 
@@ -515,7 +493,26 @@ clBool clProfileSetLuminance(struct clContext * C, clProfile * profile, int lumi
     lumi.X = 0.0f;
     lumi.Y = (cmsFloat64Number)luminance;
     lumi.Z = 0.0f;
+    clRawFree(C, &profile->raw); // No longer valid
     return (cmsWriteTag(profile->handle, cmsSigLuminanceTag, &lumi)) ? clTrue : clFalse;
+}
+
+clBool clProfileRemoveTag(struct clContext * C, clProfile * profile, char * tag, const char * reason)
+{
+    uint8_t * tagPtr = (uint8_t *)tag;
+    cmsTagSignature sig = (tagPtr[0] << 24)
+                          + (tagPtr[1] << 16)
+                          + (tagPtr[2] << 8)
+                          + (tagPtr[3] << 0);
+    if (cmsIsTag(profile->handle, sig)) {
+        if (reason) {
+            clContextLog(C, "modify", 0, "WARNING: Removing tag \"%s\" (%s)", tag, reason);
+        }
+        cmsWriteTag(profile->handle, sig, NULL);
+        clRawFree(C, &profile->raw); // No longer valid
+        return clTrue;
+    }
+    return clFalse;
 }
 
 char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance)

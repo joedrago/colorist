@@ -37,7 +37,7 @@ void clRawFill(struct clContext * C, clRaw * raw, uint8_t fill)
 
 void clRawClone(struct clContext * C, clRaw * dst, const clRaw * src)
 {
-    clRawSet(C, dst, dst->ptr, dst->size);
+    clRawSet(C, dst, src->ptr, src->size);
 }
 
 clBool clRawDeflate(struct clContext * C, clRaw * dst, const clRaw * src)
@@ -222,8 +222,8 @@ clBool clRawWriteFile(struct clContext * C, clRaw * raw, const char * filename)
         clContextLogError(C, "Failed to open file for write: %s", filename);
         return clFalse;
     }
-    if(raw->size > 0) {
-        if(fwrite(raw->ptr, raw->size, 1, f) != 1) {
+    if (raw->size > 0) {
+        if (fwrite(raw->ptr, raw->size, 1, f) != 1) {
             fclose(f);
             clContextLogError(C, "Failed to write %d bytes to: %s", raw->size, filename);
             return clFalse;

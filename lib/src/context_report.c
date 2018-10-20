@@ -409,6 +409,12 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
         curve.gamma = 0.0f;
         maxLuminance = 10000;
         cJSON_AddItemToObject(jsonICC, "pq", cJSON_CreateBool(clTrue));
+    } else {
+        // Check for profiles that we can't make valid reports for
+        if (curve.type != CL_PCT_GAMMA) {
+            clContextLogError(C, "Can't create report: the supplied tone curve can't be interpreted by current report JS");
+            return clFalse;
+        }
     }
 
     jsonPrimaries = cJSON_CreateArray();

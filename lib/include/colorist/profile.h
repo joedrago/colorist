@@ -42,6 +42,7 @@ typedef struct clProfile
 {
     char * description;
     cmsHPROFILE handle;
+    clRaw raw;             // Populated during clProfileParse(), preferred during clProfilePack(), cleared on any clProfileSet*() call
     uint8_t signature[16]; // Populated during clProfileParse()
 } clProfile;
 
@@ -66,6 +67,7 @@ clBool clProfileSetMLU(struct clContext * C, clProfile * profile, const char tag
 clBool clProfilePack(struct clContext * C, clProfile * profile, struct clRaw * out);
 clBool clProfileSetGamma(struct clContext * C, clProfile * profile, float gamma);
 clBool clProfileSetLuminance(struct clContext * C, clProfile * profile, int luminance);
+clBool clProfileRemoveTag(struct clContext * C, clProfile * profile, char * tag, const char * reason);
 int clProfileSize(struct clContext * C, clProfile * profile);
 void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTags, int extraIndent);
 void clProfileDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clProfile * profile, clBool dumpTags);

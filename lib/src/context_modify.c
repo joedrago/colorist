@@ -11,23 +11,6 @@
 
 #include <string.h>
 
-static clBool removeTag(clContext * C, clProfile * profile, char * tag, const char * reason)
-{
-    uint8_t * tagPtr = (uint8_t *)tag;
-    cmsTagSignature sig = (tagPtr[0] << 24)
-                          + (tagPtr[1] << 16)
-                          + (tagPtr[2] << 8)
-                          + (tagPtr[3] << 0);
-    if (cmsIsTag(profile->handle, sig)) {
-        if (reason) {
-            clContextLog(C, "modify", 0, "WARNING: Removing tag \"%s\" (%s)", tag, reason);
-        }
-        cmsWriteTag(profile->handle, sig, NULL);
-        return clTrue;
-    }
-    return clFalse;
-}
-
 int clContextModify(clContext * C)
 {
     clProfile * profile = NULL;
@@ -64,10 +47,10 @@ int clContextModify(clContext * C)
     }
     if (C->params.gamma > 0.0f) {
         checkColorantsAndGamma = clTrue;
-        removeTag(C, profile, "A2B0", "changing gamma");
-        removeTag(C, profile, "A2B1", "changing gamma");
-        removeTag(C, profile, "B2A0", "changing gamma");
-        removeTag(C, profile, "B2A1", "changing gamma");
+        clProfileRemoveTag(C, profile, "A2B0", "changing gamma");
+        clProfileRemoveTag(C, profile, "A2B1", "changing gamma");
+        clProfileRemoveTag(C, profile, "B2A0", "changing gamma");
+        clProfileRemoveTag(C, profile, "B2A1", "changing gamma");
         clProfileReload(C, profile);
         clContextLog(C, "modify", 0, "Setting gamma: %g", C->params.gamma);
         if (!clProfileSetGamma(C, profile, C->params.gamma)) {
@@ -87,7 +70,7 @@ int clContextModify(clContext * C)
         char * tagsBuffer = clContextStrdup(C, C->params.stripTags);
         char * tagName;
         for (tagName = strtok(tagsBuffer, ","); tagName != NULL; tagName = strtok(NULL, ",")) {
-            if (removeTag(C, profile, tagName, NULL)) {
+            if (clProfileRemoveTag(C, profile, tagName, NULL)) {
                 clContextLog(C, "modify", 0, "Stripping tag: '%s'", tagName);
             } else {
                 clContextLog(C, "modify", 0, "Tag '%s' already absent, skipping strip", tagName);
