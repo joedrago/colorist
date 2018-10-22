@@ -65,7 +65,7 @@ void clTransformRun(struct clContext * C, clTransform * transform, int taskCount
     } else {
         // Use LittleCMS
         int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat);
-        int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat);
+        int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat);
         if (!transform->hTransform) {
             cmsUInt32Number srcFormat = clTransformFormatToLCMSFormat(C, transform->srcFormat);
             cmsUInt32Number dstFormat = clTransformFormatToLCMSFormat(C, transform->dstFormat);
