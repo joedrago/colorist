@@ -90,6 +90,20 @@ clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, int iccLen
         MD5_Update(&ctx, icc, iccLen);
         MD5_Final(profile->signature, &ctx);
     }
+
+    // See if colorist CMM can handle this profile
+    {
+        clProfilePrimaries primaries = { 0 };
+        clProfileCurve curve = { 0 };
+        int luminance = 0;
+        profile->ccmm = clFalse; // Start with unfriendly
+        if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
+            // TODO: Be way more restrictive here
+            if (curve.type == CL_PCT_GAMMA) {
+                profile->ccmm = clTrue;
+            }
+        }
+    }
     return profile;
 }
 
@@ -135,6 +149,7 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
     }
     memset(&profile->raw, 0, sizeof(profile->raw));
     memset(profile->signature, 0, 16);
+    profile->ccmm = clTrue; // Any profile made with cmsCreateRGBProfileTHR() can be handled by colorist CMM
     return profile;
 }
 

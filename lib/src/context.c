@@ -77,7 +77,7 @@ const char * clFormatDetect(struct clContext * C, const char * filename)
     ++ext; // skip past the period
 
     // Special case: icc profile (this might be bad)
-    if(!strcmp(ext, "icc")) {
+    if (!strcmp(ext, "icc")) {
         return "icc";
     }
 
@@ -286,6 +286,7 @@ clContext * clContextCreate(clContextSystem * system)
     C->help = clFalse;
     C->iccOverrideIn = NULL;
     C->verbose = clFalse;
+    C->ccmmAllowed = clFalse;
     C->inputFilename = NULL;
     C->outputFilename = NULL;
 
@@ -315,7 +316,7 @@ void clContextRegisterFormat(clContext * C, clFormat * format)
 
     if (C->formats) {
         clFormatRecord * prev = C->formats;
-        while(prev->next != NULL) {
+        while (prev->next != NULL) {
             prev = prev->next;
         }
         prev->next = record;
@@ -582,6 +583,8 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
                 C->params.tonemap = clTonemapFromString(C, arg);
             } else if (!strcmp(arg, "-v") || !strcmp(arg, "--verbose")) {
                 C->verbose = clTrue;
+            } else if (!strcmp(arg, "--ccmm")) {
+                C->ccmmAllowed = clTrue;
             } else if (!strcmp(arg, "-z") || !strcmp(arg, "--rect") || !strcmp(arg, "--crop")) {
                 NEXTARG();
                 if (!parseRect(C, C->params.rect, arg))
@@ -754,6 +757,7 @@ void clContextPrintArgs(clContext * C)
     clContextLog(C, "syntax", 1, "stripTags   : %s", C->params.stripTags ? C->params.stripTags : "--");
     clContextLog(C, "syntax", 1, "tonemap     : %s", clTonemapToString(C, C->params.tonemap));
     clContextLog(C, "syntax", 1, "verbose     : %s", C->verbose ? "enabled" : "disabled");
+    clContextLog(C, "syntax", 1, "Allow CCMM  : %s", C->ccmmAllowed ? "enabled" : "disabled");
     clContextLog(C, "syntax", 1, "input       : %s", C->inputFilename ? C->inputFilename : "--");
     clContextLog(C, "syntax", 1, "output      : %s", C->outputFilename ? C->outputFilename : "--");
     clContextLog(C, NULL, 0, "");
@@ -781,6 +785,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -h,--help                : Display this help");
     clContextLog(C, NULL, 0, "    -j,--jobs JOBS           : Number of jobs to use when working. 0 for as many as possible (default)");
     clContextLog(C, NULL, 0, "    -v,--verbose             : Verbose mode.");
+    clContextLog(C, NULL, 0, "    --ccmm                   : Allow/Prefer colorist's built-in Color Management Module over LittleCMS, when possible");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Input Options:");
     clContextLog(C, NULL, 0, "    -i,--iccin file.icc      : Override source ICC profile. default is to use embedded profile (if any), or sRGB@300");

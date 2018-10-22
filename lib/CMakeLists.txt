@@ -35,6 +35,7 @@ set(COLORIST_LIB_INCLUDES
     include/colorist/profile.h
     include/colorist/raw.h
     include/colorist/task.h
+    include/colorist/transform.h
     include/colorist/types.h
     include/colorist/version.h
     include/colorist/embedded.h
@@ -83,6 +84,7 @@ set(COLORIST_LIB_SRCS
     src/profile_pq.c
     src/raw.c
     src/task.c
+    src/transform.c
     src/types.c
 )
 

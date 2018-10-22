@@ -11,7 +11,7 @@
 #include "colorist/image.h"
 #include "colorist/pixelmath.h"
 #include "colorist/profile.h"
-#include "colorist/task.h"
+#include "colorist/transform.h"
 
 #include "cJSON.h"
 
@@ -20,10 +20,8 @@
 
 #define FAIL() { returnCode = 1; goto reportCleanup; }
 
-void doMultithreadedTransform(clContext * C, int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount);
-
 // Calculates the max Y for a given xy chromaticity, this is an awful hack
-static float calcMaxY(float x, float y, cmsHTRANSFORM fromXYZ, cmsHTRANSFORM toXYZ)
+static float calcMaxY(clContext * C, float x, float y, clTransform * fromXYZ, clTransform * toXYZ)
 {
     float floatXYZ[3];
     float floatRGB[3];
@@ -37,7 +35,7 @@ static float calcMaxY(float x, float y, cmsHTRANSFORM fromXYZ, cmsHTRANSFORM toX
     floatXYZ[0] = (float)XYZ.X;
     floatXYZ[1] = (float)XYZ.Y;
     floatXYZ[2] = (float)XYZ.Z;
-    cmsDoTransform(fromXYZ, floatXYZ, floatRGB, 1);
+    clTransformRun(C, fromXYZ, 1, floatXYZ, floatRGB, 1);
     maxChannel = floatRGB[0];
     if (maxChannel < floatRGB[1])
         maxChannel = floatRGB[1];
@@ -46,13 +44,13 @@ static float calcMaxY(float x, float y, cmsHTRANSFORM fromXYZ, cmsHTRANSFORM toX
     floatRGB[0] /= maxChannel;
     floatRGB[1] /= maxChannel;
     floatRGB[2] /= maxChannel;
-    cmsDoTransform(toXYZ, floatRGB, floatXYZ, 1);
+    clTransformRun(C, toXYZ, 1, floatRGB, floatXYZ, 1);
     return floatXYZ[1];
 }
 
-static float calcOverbright(float x, float y, float Y, float overbrightScale, cmsHTRANSFORM fromXYZ, cmsHTRANSFORM toXYZ)
+static float calcOverbright(clContext * C, float x, float y, float Y, float overbrightScale, clTransform * fromXYZ, clTransform * toXYZ)
 {
-    float maxY = calcMaxY(x, y, fromXYZ, toXYZ);
+    float maxY = calcMaxY(C, x, y, fromXYZ, toXYZ);
     float p = (Y / maxY) * overbrightScale;
     if (p > 1.0f) {
         p = (p - 1.0f) / (overbrightScale - 1.0f);
@@ -83,7 +81,7 @@ static void calcGamutDistances(float x, float y, const clProfilePrimaries * prim
     outDistances[2] = distFromRBEdge;
 }
 
-static float calcOutofSRGB(float x, float y, clProfilePrimaries * primaries)
+static float calcOutofSRGB(clContext * C, float x, float y, clProfilePrimaries * primaries)
 {
     static const clProfilePrimaries srgbPrimaries = { { 0.64f, 0.33f }, { 0.30f, 0.60f }, { 0.15f, 0.06f }, { 0.3127f, 0.3290f } };
 
@@ -164,9 +162,8 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     clImage * highlight = NULL;
     int i;
 
-    cmsHPROFILE xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
-    cmsHTRANSFORM toXYZ = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, TYPE_RGBA_FLT, xyzProfile, TYPE_XYZ_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
-    cmsHTRANSFORM fromXYZ = cmsCreateTransformTHR(C->lcms, xyzProfile, TYPE_XYZ_FLT, srcImage->profile->handle, TYPE_RGB_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
+    clTransform * toXYZ = clTransformCreate(C, srcImage->profile, CL_TF_RGBA_FLOAT, NULL, CL_TF_XYZ_FLOAT);
+    clTransform * fromXYZ = clTransformCreate(C, NULL, CL_TF_XYZ_FLOAT, srcImage->profile, CL_TF_RGB_FLOAT);
 
     memset(stats, 0, sizeof(SRGBHighlightStats));
     stats->pixelCount = pixelCount = srcImage->width * srcImage->height;
@@ -178,7 +175,7 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     clPixelMathUNormToFloat(C, srcImage->pixels, srcImage->depth, srcFloats, pixelCount);
 
     xyzPixels = clAllocate(3 * sizeof(float) * pixelCount);
-    doMultithreadedTransform(C, C->params.jobs, toXYZ, (uint8_t *)srcFloats, 4 * sizeof(float), (uint8_t *)xyzPixels, 3 * sizeof(float), pixelCount);
+    clTransformRun(C, toXYZ, C->params.jobs, (uint8_t *)srcFloats, (uint8_t *)xyzPixels, pixelCount);
 
     highlight = clImageCreate(C, srcImage->width, srcImage->height, 8, NULL);
     luminanceScale = (float)srcLuminance / 300.0f;
@@ -219,8 +216,8 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
         baseIntensity = CL_CLAMP(baseIntensity, 0.0f, 1.0f);
         intensity8 = intensityToU8(baseIntensity);
 
-        overbright = calcOverbright((float)xyY.x, (float)xyY.y, (float)xyY.Y, overbrightScale, fromXYZ, toXYZ);
-        outOfSRGB = calcOutofSRGB((float)xyY.x, (float)xyY.y, &srcPrimaries);
+        overbright = calcOverbright(C, (float)xyY.x, (float)xyY.y, (float)xyY.Y, overbrightScale, fromXYZ, toXYZ);
+        outOfSRGB = calcOutofSRGB(C, (float)xyY.x, (float)xyY.y, &srcPrimaries);
 
         if ((overbright > 0.0f) && (outOfSRGB > 0.0f)) {
             float biggerHighlight = (overbright > outOfSRGB) ? overbright : outOfSRGB;
@@ -254,9 +251,8 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     }
     stats->hdrPixelCount = stats->bothPixelCount + stats->overbrightPixelCount + stats->outOfGamutPixelCount;
 
-    cmsDeleteTransform(fromXYZ);
-    cmsDeleteTransform(toXYZ);
-    cmsCloseProfile(xyzProfile);
+    clTransformDestroy(C, fromXYZ);
+    clTransformDestroy(C, toXYZ);
     clFree(srcFloats);
     clFree(xyzPixels);
     return highlight;

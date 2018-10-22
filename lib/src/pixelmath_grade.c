@@ -3,6 +3,7 @@
 #include "colorist/context.h"
 #include "colorist/profile.h"
 #include "colorist/task.h"
+#include "colorist/transform.h"
 
 #include <math.h>
 
@@ -12,8 +13,6 @@
 #define GAMMA_INT_DIVISOR 20.0f
 
 // NOTE: This is a work in progress. There are probably lots of problems with this.
-
-void doMultithreadedTransform(clContext * C, int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount);
 
 // roundf() doesn't exist until C99
 float clPixelMathRoundf(float val)
@@ -87,8 +86,7 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
         float xyz[3];
         int pixelX, pixelY, pixelLuminance;
 
-        cmsHPROFILE xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
-        cmsHTRANSFORM toXYZ = cmsCreateTransformTHR(C->lcms, pixelProfile->handle, TYPE_RGBA_FLT, xyzProfile, TYPE_XYZ_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
+        clTransform * toXYZ = clTransformCreate(C, pixelProfile, CL_TF_RGBA_FLOAT, NULL, CL_TF_XYZ_FLOAT);
 
         pixel = pixels;
         for (i = 0; i < pixelCount; ++i) {
@@ -108,7 +106,7 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
             pixel += 4;
         }
 
-        cmsDoTransform(toXYZ, &pixels[indexWithMaxChannel * 4], xyz, 1);
+        clTransformRun(C, toXYZ, 1, &pixels[indexWithMaxChannel * 4], xyz, 1);
         pixelX = indexWithMaxChannel % imageWidth;
         pixelY = indexWithMaxChannel / imageWidth;
         pixelLuminance = (int)(xyz[1] * srcLuminance);
@@ -120,8 +118,7 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
         cmsDoTransform(toXYZ, maxPixel, xyz, 1);
         maxLuminance = (int)(xyz[1] * srcLuminance);
 
-        cmsDeleteTransform(toXYZ);
-        cmsCloseProfile(xyzProfile);
+        clTransformDestroy(C, toXYZ);
 
         clContextLog(C, "grading", 1, "Found pixel (%d,%d) with largest single RGB channel (%d nits, %d nits if white).", pixelX, pixelY, pixelLuminance, maxLuminance, maxLuminance);
     } else {

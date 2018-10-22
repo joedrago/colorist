@@ -9,12 +9,13 @@
 
 #include "colorist/context.h"
 #include "colorist/profile.h"
+#include "colorist/transform.h"
 
 #include "cJSON.h"
 
 #include <string.h>
 
-static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, float maxLuminance, int x, int y, int extraIndent, cJSON * jsonPixels);
+static void dumpPixel(struct clContext * C, clImage * image, clTransform * toXYZ, float maxLuminance, int x, int y, int extraIndent, cJSON * jsonPixels);
 
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent)
 {
@@ -22,8 +23,7 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
     int maxLuminance;
     float maxLuminanceFloat;
 
-    cmsHPROFILE xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
-    cmsHTRANSFORM toXYZ = cmsCreateTransformTHR(C->lcms, image->profile->handle, TYPE_RGB_FLT, xyzProfile, TYPE_XYZ_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
+    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_TF_RGBA_FLOAT, NULL, CL_TF_XYZ_FLOAT);
 
     clContextLog(C, "image", 0 + extraIndent, "Image: %dx%d %d-bit", image->width, image->height, image->depth);
     clProfileDebugDump(C, image->profile, C->verbose, 1 + extraIndent);
@@ -45,8 +45,7 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
         }
     }
 
-    cmsDeleteTransform(toXYZ);
-    cmsCloseProfile(xyzProfile);
+    clTransformDestroy(C, toXYZ);
 }
 
 void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clImage * image, int x, int y, int w, int h)
@@ -57,8 +56,7 @@ void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clIma
     int maxLuminance;
     float maxLuminanceFloat;
 
-    cmsHPROFILE xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
-    cmsHTRANSFORM toXYZ = cmsCreateTransformTHR(C->lcms, image->profile->handle, TYPE_RGB_FLT, xyzProfile, TYPE_XYZ_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
+    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_TF_RGBA_FLOAT, NULL, CL_TF_XYZ_FLOAT);
 
     cJSON_AddNumberToObject(jsonOutput, "width", image->width);
     cJSON_AddNumberToObject(jsonOutput, "height", image->height);
@@ -87,15 +85,14 @@ void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clIma
         }
     }
 
-    cmsDeleteTransform(toXYZ);
-    cmsCloseProfile(xyzProfile);
+    clTransformDestroy(C, toXYZ);
 }
 
-static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ, float maxLuminance, int x, int y, int extraIndent, cJSON * jsonPixels)
+static void dumpPixel(struct clContext * C, clImage * image, clTransform * toXYZ, float maxLuminance, int x, int y, int extraIndent, cJSON * jsonPixels)
 {
     int intRGB[4];
     float maxChannel = (float)((1 << image->depth) - 1);
-    float floatRGB[4];
+    float floatRGBA[4];
     float floatXYZ[3];
     cmsCIEXYZ XYZ;
     cmsCIExyY xyY;
@@ -117,11 +114,11 @@ static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ
         intRGB[3] = pixel[3];
     }
 
-    floatRGB[0] = intRGB[0] / maxChannel;
-    floatRGB[1] = intRGB[1] / maxChannel;
-    floatRGB[2] = intRGB[2] / maxChannel;
-    floatRGB[3] = intRGB[3] / maxChannel;
-    cmsDoTransform(toXYZ, floatRGB, floatXYZ, 1);
+    floatRGBA[0] = intRGB[0] / maxChannel;
+    floatRGBA[1] = intRGB[1] / maxChannel;
+    floatRGBA[2] = intRGB[2] / maxChannel;
+    floatRGBA[3] = intRGB[3] / maxChannel;
+    clTransformRun(C, toXYZ, 1, floatRGBA, floatXYZ, 1);
     XYZ.X = floatXYZ[0];
     XYZ.Y = floatXYZ[1];
     XYZ.Z = floatXYZ[2];
@@ -146,10 +143,10 @@ static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ
         cJSON_AddNumberToObject(t, "a", intRGB[3]);
 
         t = cJSON_AddObjectToObject(jsonPixel, "float");
-        cJSON_AddNumberToObject(t, "r", floatRGB[0]);
-        cJSON_AddNumberToObject(t, "g", floatRGB[1]);
-        cJSON_AddNumberToObject(t, "b", floatRGB[2]);
-        cJSON_AddNumberToObject(t, "a", floatRGB[3]);
+        cJSON_AddNumberToObject(t, "r", floatRGBA[0]);
+        cJSON_AddNumberToObject(t, "g", floatRGBA[1]);
+        cJSON_AddNumberToObject(t, "b", floatRGBA[2]);
+        cJSON_AddNumberToObject(t, "a", floatRGBA[3]);
 
         t = cJSON_AddObjectToObject(jsonPixel, "XYZ");
         cJSON_AddNumberToObject(t, "X", XYZ.X);
@@ -168,7 +165,7 @@ static void dumpPixel(struct clContext * C, clImage * image, cmsHTRANSFORM toXYZ
         clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): rgba%d(%u, %u, %u, %u), f(%g, %g, %g, %g), XYZ(%g, %g, %g), xyY(%g, %g, %g), %g nits",
             x, y, image->depth,
             intRGB[0], intRGB[1], intRGB[2], intRGB[3],
-            floatRGB[0], floatRGB[1], floatRGB[2], floatRGB[3],
+            floatRGBA[0], floatRGBA[1], floatRGBA[2], floatRGBA[3],
             XYZ.X, XYZ.Y, XYZ.Z,
             xyY.x, xyY.y, xyY.Y,
             xyY.Y * maxLuminance);

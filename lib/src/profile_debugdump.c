@@ -54,6 +54,7 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
             clContextLog(C, "profile", 1 + extraIndent, "Implicit matrix curve scale: %g", curve.matrixCurveScale);
             clContextLog(C, "profile", 1 + extraIndent, "Actual max luminance: %g", luminance * curve.matrixCurveScale);
         }
+        clContextLog(C, "profile", 1 + extraIndent, "CCMM friendly: %s", profile->ccmm ? "true" : "false");
         for (i = 0; i < 16; ++i) {
             if (profile->signature[i] != 0)
                 break;
@@ -137,6 +138,7 @@ void clProfileDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clP
         } else {
             cJSON_AddNumberToObject(jsonOutput, "actualLuminance", luminance);
         }
+        cJSON_AddBoolToObject(jsonOutput, "ccmm", profile->ccmm);
         {
             clProfilePrimaries pqPrimaries;
             if (clProfileHasPQSignature(C, profile, &pqPrimaries)) {

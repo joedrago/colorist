@@ -167,6 +167,7 @@ typedef struct clContext
     clBool help;                 // -h
     const char * iccOverrideIn;  // -i
     clBool verbose;              // -v
+    clBool ccmmAllowed;          // --ccmm
     const char * inputFilename;  // index 0
     const char * outputFilename; // index 1
 } clContext;

@@ -10,6 +10,7 @@
 #include "colorist/context.h"
 #include "colorist/pixelmath.h"
 #include "colorist/profile.h"
+#include "colorist/transform.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -138,7 +139,7 @@ static const char * parseHashColor(struct clContext * C, const char * s, clColor
     return NULL;
 }
 
-static const char * parseParenColor(struct clContext * C, const char * s, int depth, clColor * parsedColor, cmsHTRANSFORM fromXYZ, clBool isXYY)
+static const char * parseParenColor(struct clContext * C, const char * s, int depth, clColor * parsedColor, clTransform * fromXYZ, clBool isXYY)
 {
     char * buffer;
     const char * end;
@@ -214,7 +215,7 @@ static const char * parseParenColor(struct clContext * C, const char * s, int de
             src[0] = parsedColor->fr;
             src[1] = parsedColor->fg;
             src[2] = parsedColor->fb;
-            cmsDoTransform(fromXYZ, src, dst, 1);
+            clTransformRun(C, fromXYZ, 1, src, dst, 1);
             parsedColor->fr = dst[0];
             parsedColor->fg = dst[1];
             parsedColor->fb = dst[2];
@@ -256,7 +257,7 @@ static void finishColor(struct clContext * C, clColor * parsedColor)
     parsedColor->fa = CL_CLAMP(parsedColor->fa, 0.0f, 1.0f);
 }
 
-static const char * parseColor(struct clContext * C, const char * s, clColor * parsedColor, cmsHTRANSFORM fromXYZ)
+static const char * parseColor(struct clContext * C, const char * s, clColor * parsedColor, clTransform * fromXYZ)
 {
     if (*s == '#') {
         s = parseHashColor(C, s, parsedColor);
@@ -454,7 +455,7 @@ static const char * parseRepeat(struct clContext * C, const char * s, clToken * 
     token->repeat = atoi(buffer);
     return end;
 }
-static const char * parseNext(struct clContext * C, const char * s, clToken * token, cmsHTRANSFORM fromXYZ)
+static const char * parseNext(struct clContext * C, const char * s, clToken * token, clTransform * fromXYZ)
 {
     memset(token, 0, sizeof(clToken));
     if (!strncmp(s, "ccw", 3)) {
@@ -539,8 +540,7 @@ static clImage * clImageParseStripe(struct clContext * C, const char * s, int de
     clToken * lastToken = NULL;
     clToken * token;
 
-    cmsHPROFILE xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
-    cmsHTRANSFORM fromXYZ = cmsCreateTransformTHR(C->lcms, xyzProfile, TYPE_XYZ_FLT, profile->handle, TYPE_RGB_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
+    clTransform * fromXYZ = clTransformCreate(C, NULL, CL_TF_XYZ_FLOAT, profile, CL_TF_RGB_FLOAT);
 
     if (s[0] == '@') {
         // It's a response file. Read it all in.
@@ -615,8 +615,7 @@ static clImage * clImageParseStripe(struct clContext * C, const char * s, int de
     image = interpretTokens(C, tokens, depth, profile, defaultW, defaultH);
 
 parseCleanup:
-    cmsDeleteTransform(fromXYZ);
-    cmsCloseProfile(xyzProfile);
+    clTransformDestroy(C, fromXYZ);
     clFree(sanitizedString);
     if (tokens) {
         clToken * t = tokens;

@@ -11,13 +11,11 @@
 #include "colorist/image.h"
 #include "colorist/pixelmath.h"
 #include "colorist/profile.h"
-#include "colorist/task.h"
+#include "colorist/transform.h"
 
 #include <string.h>
 
 #define FAIL() { result = clFalse; goto convertCleanup; }
-
-void doMultithreadedTransform(clContext * C, int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount);
 
 struct ImageInfo
 {
@@ -231,21 +229,21 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         }
 
         if (needsLinearPixels) {
-            cmsHTRANSFORM toLinear;
+            clTransform * toLinear;
 
             clProfileCurve gamma1;
             gamma1.type = CL_PCT_GAMMA;
             gamma1.gamma = 1.0f;
             linearFloatsProfile = clProfileCreate(C, &dstInfo.primaries, &gamma1, 0, NULL);
-            toLinear = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, TYPE_RGBA_FLT, linearFloatsProfile->handle, TYPE_RGBA_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+            toLinear = clTransformCreate(C, srcImage->profile, CL_TF_RGBA_FLOAT, linearFloatsProfile, CL_TF_RGBA_FLOAT);
 
             clContextLog(C, "convert", 0, "Calculating linear pixels...");
             timerStart(&t);
             linearFloatsPixels = clAllocate(4 * sizeof(float) * pixelCount);
-            doMultithreadedTransform(C, params->jobs, toLinear, (uint8_t *)srcFloatsPixels, 4 * sizeof(float), (uint8_t *)linearFloatsPixels, 4 * sizeof(float), pixelCount);
+            clTransformRun(C, toLinear, params->jobs, (uint8_t *)srcFloatsPixels, (uint8_t *)linearFloatsPixels, pixelCount);
             clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
 
-            cmsDeleteTransform(toLinear);
+            clTransformDestroy(C, toLinear);
         }
     }
 
@@ -366,7 +364,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     if (linearFloatsPixels) {
         // Do everything!
 
-        cmsHTRANSFORM fromLinear = cmsCreateTransformTHR(C->lcms, linearFloatsProfile->handle, TYPE_RGBA_FLT, dstImage->profile->handle, TYPE_RGBA_FLT, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+        clTransform * fromLinear = clTransformCreate(C, linearFloatsProfile, CL_TF_RGBA_FLOAT, dstImage->profile, CL_TF_RGBA_FLOAT);
         float * dstFloatsPixels; // final values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
 
         if (srcInfo.luminance != dstInfo.luminance) {
@@ -393,8 +391,8 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         clContextLog(C, "convert", 0, "Performing color conversion...");
         timerStart(&t);
         dstFloatsPixels = clAllocate(4 * sizeof(float) * pixelCount);
-        doMultithreadedTransform(C, params->jobs, fromLinear, (uint8_t *)linearFloatsPixels, 4 * sizeof(float), (uint8_t *)dstFloatsPixels, 4 * sizeof(float), pixelCount);
-        cmsDeleteTransform(fromLinear);
+        clTransformRun(C, fromLinear, params->jobs, (uint8_t *)linearFloatsPixels, (uint8_t *)dstFloatsPixels, pixelCount);
+        clTransformDestroy(C, fromLinear);
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
 
         if (haldImage) {
@@ -431,18 +429,18 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     } else {
         // Let LittleCMS directly convert
-        cmsHTRANSFORM directTransform;
-        cmsUInt32Number srcFormat = (srcInfo.depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
-        cmsUInt32Number dstFormat = (dstInfo.depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
+        clTransform * directTransform;
+        clTransformFormat srcFormat = (srcInfo.depth == 16) ? CL_TF_RGBA_16 : CL_TF_RGBA_8;
+        clTransformFormat dstFormat = (dstInfo.depth == 16) ? CL_TF_RGBA_16 : CL_TF_RGBA_8;
 
         COLORIST_ASSERT((srcInfo.depth == 8) || (srcInfo.depth == 16));
         COLORIST_ASSERT((dstInfo.depth == 8) || (dstInfo.depth == 16));
 
         clContextLog(C, "convert", 0, "Converting directly...");
         timerStart(&t);
-        directTransform = cmsCreateTransformTHR(C->lcms, srcImage->profile->handle, srcFormat, dstImage->profile->handle, dstFormat, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
-        doMultithreadedTransform(C, params->jobs, directTransform, srcImage->pixels, (srcImage->depth == 16) ? 8 : 4, dstImage->pixels, (dstImage->depth == 16) ? 8 : 4, dstImage->width * dstImage->height);
-        cmsDeleteTransform(directTransform);
+        directTransform = clTransformCreate(C, srcImage->profile, srcFormat, dstImage->profile, dstFormat);
+        clTransformRun(C, directTransform, params->jobs, srcImage->pixels, dstImage->pixels, dstImage->width * dstImage->height);
+        clTransformDestroy(C, directTransform);
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
 
@@ -469,55 +467,4 @@ convertCleanup:
         }
     }
     return dstImage;
-}
-
-typedef struct clTransformTask
-{
-    cmsHTRANSFORM transform;
-    void * inPixels;
-    void * outPixels;
-    int pixelCount;
-} clTransformTask;
-
-static void transformTaskFunc(clTransformTask * info)
-{
-    cmsDoTransform(info->transform, info->inPixels, info->outPixels, info->pixelCount);
-}
-
-void doMultithreadedTransform(clContext * C, int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
-{
-    if (taskCount > pixelCount) {
-        // This is a dumb corner case I'm not too worried about.
-        taskCount = pixelCount;
-    }
-
-    if (taskCount == 1) {
-        // Don't bother making any new threads
-        cmsDoTransform(transform, srcPixels, dstPixels, pixelCount);
-    } else {
-        int pixelsPerTask = pixelCount / taskCount;
-        int lastTaskPixelCount = pixelCount - (pixelsPerTask * (taskCount - 1));
-        clTask ** tasks;
-        clTransformTask * infos;
-        int i;
-
-        clContextLog(C, "convert", 1, "Using %d thread%s to pixel transform.", taskCount, (taskCount == 1) ? "" : "s");
-
-        tasks = clAllocate(taskCount * sizeof(clTask *));
-        infos = clAllocate(taskCount * sizeof(clTransformTask));
-        for (i = 0; i < taskCount; ++i) {
-            infos[i].transform = transform;
-            infos[i].inPixels = &srcPixels[i * pixelsPerTask * srcPixelBytes];
-            infos[i].outPixels = &dstPixels[i * pixelsPerTask * dstPixelBytes];
-            infos[i].pixelCount = (i == (taskCount - 1)) ? lastTaskPixelCount : pixelsPerTask;
-            tasks[i] = clTaskCreate(C, (clTaskFunc)transformTaskFunc, &infos[i]);
-        }
-
-        for (i = 0; i < taskCount; ++i) {
-            clTaskDestroy(C, tasks[i]);
-        }
-
-        clFree(tasks);
-        clFree(infos);
-    }
 }

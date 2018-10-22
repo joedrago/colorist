@@ -17,7 +17,6 @@
 #define FAIL() { returnCode = 1; goto convertCleanup; }
 
 static int fileSize(const char * filename);
-static void doMultithreadedTransform(clContext * C, int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount);
 
 int clContextConvert(clContext * C)
 {
@@ -49,8 +48,6 @@ int clContextConvert(clContext * C)
         return 1;
     }
     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
-
-
 
     if (!strcmp(params.formatName, "icc")) {
         // Just dump out the profile to disk and bail out
