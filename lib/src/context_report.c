@@ -368,6 +368,7 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
         if (!visual) {
             return clFalse;
         }
+        clContextLog(C, "encode", 1, "Generating Base64 encoded PNG...");
         pngB64 = clContextWriteURI(C, visual, "png", 0, 0);
         clImageDestroy(C, visual);
         if (!pngB64) {
