@@ -5,5 +5,15 @@
 #                  http://www.boost.org/LICENSE_1_0.txt)
 # ---------------------------------------------------------------------------
 
-add_subdirectory(colorist)
-add_subdirectory(colorist-test)
+if(NOT COLORIST_EMSCRIPTEN)
+
+set(COLORIST_TEST_SRCS
+    main.c
+)
+
+add_executable(colorist-test
+     ${COLORIST_TEST_SRCS}
+)
+target_link_libraries(colorist-test colorist)
+
+endif()
