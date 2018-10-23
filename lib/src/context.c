@@ -583,8 +583,16 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
                 C->params.tonemap = clTonemapFromString(C, arg);
             } else if (!strcmp(arg, "-v") || !strcmp(arg, "--verbose")) {
                 C->verbose = clTrue;
-            } else if (!strcmp(arg, "--noccmm")) {
-                C->ccmmAllowed = clFalse;
+            } else if (!strcmp(arg, "--cmm") || !strcmp(arg, "--cms")) {
+                NEXTARG();
+                if (!strcmp(arg, "auto") || !strcmp(arg, "colorist") || !strcmp(arg, "ccmm")) {
+                    C->ccmmAllowed = clTrue;
+                } else if (!strcmp(arg, "lcms") || !strcmp(arg, "littlecms")) {
+                    C->ccmmAllowed = clFalse;
+                } else {
+                    clContextLogError(C, "Unknown CMM: %s", arg);
+                    return clFalse;
+                }
             } else if (!strcmp(arg, "-z") || !strcmp(arg, "--rect") || !strcmp(arg, "--crop")) {
                 NEXTARG();
                 if (!parseRect(C, C->params.rect, arg))
@@ -785,7 +793,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -h,--help                : Display this help");
     clContextLog(C, NULL, 0, "    -j,--jobs JOBS           : Number of jobs to use when working. 0 for as many as possible (default)");
     clContextLog(C, NULL, 0, "    -v,--verbose             : Verbose mode.");
-    clContextLog(C, NULL, 0, "    --noccmm                 : Disallow colorist's built-in Color Management Module (always use LittleCMS)");
+    clContextLog(C, NULL, 0, "    --cmm WHICH,--cms WHICH  : Choose Color Management Module/System: auto (default), lcms, colorist (built-in, uses when possible)");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Input Options:");
     clContextLog(C, NULL, 0, "    -i,--iccin file.icc      : Override source ICC profile. default is to use embedded profile (if any), or sRGB@300");
