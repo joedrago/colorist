@@ -45,6 +45,22 @@ static cmsUInt32Number clTransformFormatToLCMSFormat(struct clContext * C, clTra
     return TYPE_RGBA_FLT;
 }
 
+clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format)
+{
+    switch (format) {
+        case CL_TF_XYZ_FLOAT:
+        case CL_TF_RGB_FLOAT:
+        case CL_TF_RGBA_FLOAT:
+            return clTrue;
+
+        default:
+        case CL_TF_RGBA_8:
+        case CL_TF_RGBA_16:
+            break;
+    }
+    return clFalse;
+}
+
 int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format)
 {
     switch (format) {
@@ -59,11 +75,8 @@ int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format
     return sizeof(float) * 4;
 }
 
-void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount)
+clBool clTransformUsesCCMM(struct clContext * C, clTransform * transform)
 {
-    int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat);
-    int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat);
-
     clBool useCCMM = C->ccmmAllowed;
     if (transform->srcProfile && !transform->srcProfile->ccmm) {
         useCCMM = clFalse;
@@ -71,8 +84,17 @@ void clTransformRun(struct clContext * C, clTransform * transform, int taskCount
     if (transform->dstProfile && !transform->dstProfile->ccmm) {
         useCCMM = clFalse;
     }
+    return useCCMM;
+}
 
-    if(taskCount > 1) {
+void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount)
+{
+    int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat);
+    int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat);
+
+    clBool useCCMM = clTransformUsesCCMM(C, transform);
+
+    if (taskCount > 1) {
         clContextLog(C, "convert", 1, "Using %d threads to pixel transform. (via %s)", taskCount, useCCMM ? "CCMM" : "LittleCMS");
     }
 
@@ -126,7 +148,7 @@ typedef struct clTransformTask
 
 static void transformTaskFunc(clTransformTask * info)
 {
-    if(info->useCCMM)
+    if (info->useCCMM)
         clCCMMTransform(info->C, info->transform, info->inPixels, info->outPixels, info->pixelCount);
     else
         cmsDoTransform(info->transform->hTransform, info->inPixels, info->outPixels, info->pixelCount);

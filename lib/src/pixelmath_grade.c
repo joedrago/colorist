@@ -88,6 +88,8 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
 
         clTransform * toXYZ = clTransformCreate(C, pixelProfile, CL_TF_RGBA_FLOAT, NULL, CL_TF_XYZ_FLOAT);
 
+        clContextLog(C, "grading", 1, "Grading CMM: %s", clTransformUsesCCMM(C, toXYZ) ? "CCMM" : "LittleCMS");
+
         pixel = pixels;
         for (i = 0; i < pixelCount; ++i) {
             clBool foundBigger = clFalse;
@@ -115,7 +117,7 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
         maxPixel[1] = maxChannel;
         maxPixel[2] = maxChannel;
         maxPixel[3] = 1.0f;
-        cmsDoTransform(toXYZ, maxPixel, xyz, 1);
+        clTransformRun(C, toXYZ, 1, maxPixel, xyz, 1);
         maxLuminance = (int)(xyz[1] * srcLuminance);
 
         clTransformDestroy(C, toXYZ);
