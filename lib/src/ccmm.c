@@ -131,9 +131,21 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, void 
     COLORIST_ASSERT(!transform->srcProfile || transform->srcProfile->ccmm);
     COLORIST_ASSERT(!transform->dstProfile || transform->dstProfile->ccmm);
 
-
     if (!transform->ccmmReady) {
+        clContextLogError(C, "clCCMMTransform called without a call to clCCMMPrepareTransform");
         return;
+    }
+
+    if(clProfileMatches(C, transform->srcProfile, transform->dstProfile)) {
+        // No color conversion necessary, just format conversion
+
+        if(transform->srcFormat == transform->dstFormat) {
+            // Everything is identical, no format conversion, just memcpy
+            memcpy(dstPixels, srcPixels, srcPixelBytes * pixelCount);
+            return;
+        }
+
+        COLORIST_ASSERT(0);
     }
 
     // TODO: Add support for all formats

@@ -530,6 +530,20 @@ clBool clProfileRemoveTag(struct clContext * C, clProfile * profile, char * tag,
     return clFalse;
 }
 
+clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * profile2)
+{
+    if(profile1 == profile2) {
+        return clTrue;
+    } else if(!profile1 || !profile2) {
+        return clFalse;
+    }
+    if(!memcmp(profile1->signature, profile2->signature, 16)) {
+        return clTrue;
+    }
+    // TODO: fallback to doing a double clProfilePack and comparison? tag comparisons?
+    return clFalse;
+}
+
 char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance)
 {
     char * tmp = clAllocate(1024);
