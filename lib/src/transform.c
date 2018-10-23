@@ -1,6 +1,7 @@
 #include "colorist/transform.h"
 
 #include "colorist/context.h"
+#include "colorist/ccmm.h"
 #include "colorist/profile.h"
 #include "colorist/task.h"
 
@@ -13,6 +14,7 @@ clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProf
     transform->dstProfile = dstProfile;
     transform->srcFormat = srcFormat;
     transform->dstFormat = dstFormat;
+    transform->ccmmReady = clFalse;
     transform->xyzProfile = NULL;
     transform->hTransform = NULL;
     return transform;
@@ -43,7 +45,7 @@ static cmsUInt32Number clTransformFormatToLCMSFormat(struct clContext * C, clTra
     return TYPE_RGBA_FLT;
 }
 
-static int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format)
+int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format)
 {
     switch (format) {
         case CL_TF_XYZ_FLOAT:  return sizeof(float) * 3;
@@ -59,9 +61,17 @@ static int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat
 
 void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount)
 {
-    clBool ccmmFriendly = clFalse;
-    if (ccmmFriendly) {
+    clBool useCCMM = C->ccmmAllowed;
+    if (transform->srcProfile && !transform->srcProfile->ccmm) {
+        useCCMM = clFalse;
+    }
+    if (transform->dstProfile && !transform->dstProfile->ccmm) {
+        useCCMM = clFalse;
+    }
+
+    if (useCCMM) {
         // Use colorist CMM
+        clCCMMTransform(C, transform, taskCount, srcPixels, dstPixels, pixelCount);
     } else {
         // Use LittleCMS
         int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat);

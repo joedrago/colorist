@@ -28,6 +28,7 @@ ENDMACRO(generate_headers)
 include(${CMAKE_CURRENT_SOURCE_DIR}/bin2h.cmake)
 
 set(COLORIST_LIB_INCLUDES
+    include/colorist/ccmm.h
     include/colorist/colorist.h
     include/colorist/context.h
     include/colorist/image.h
@@ -54,6 +55,7 @@ else()
 endif()
 
 set(COLORIST_LIB_SRCS
+    src/ccmm.c
     src/context.c
     src/context_convert.c
     src/context_formats.c

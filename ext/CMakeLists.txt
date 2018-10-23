@@ -31,6 +31,12 @@ add_library(stb
     stb/stb_image_resize.h
 )
 
+include_directories(gb)
+add_library(gb
+    gb/gb_math.c
+    gb/gb_math.h
+)
+
 add_subdirectory(genHeader)
 
 if(COLORIST_EMSCRIPTEN)
@@ -125,6 +131,7 @@ add_library(jpeg
 set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/cJSON"
     "${CMAKE_CURRENT_SOURCE_DIR}/stb"
+    "${CMAKE_CURRENT_SOURCE_DIR}/gb"
 #    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/image/sys"
 #    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/jxrgluelib"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/liblcms2/include"
@@ -154,6 +161,7 @@ set(COLORIST_EXT_LIBS
     md5
 #    jxrlib
     stb
+    gb
     tiff
     z
     webp
@@ -172,6 +180,7 @@ macro(set_folder_safe target folder)
 endmacro()
 
 set_folder_safe(cjson "ext")
+set_folder_safe(gb "ext")
 set_folder_safe(genHeader "ext")
 set_folder_safe(jpeg "ext")
 set_folder_safe(md5 "ext")

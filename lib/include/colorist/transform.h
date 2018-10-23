@@ -10,6 +10,9 @@
 
 #include "colorist/types.h"
 
+// for gbMat3
+#include "gb_math.h"
+
 // for cmsHPROFILE, cmsHTRANSFORM
 #include "lcms2.h"
 
@@ -33,6 +36,14 @@ typedef struct clTransform
     clTransformFormat srcFormat;
     clTransformFormat dstFormat;
 
+    // Cache for CCMM objects
+    clBool srcHasGamma;
+    clBool dstHasGamma;
+    float srcGamma;
+    float dstInvGamma;
+    gbMat3 matSrcToDst;
+    clBool ccmmReady;
+
     // Cache for LittleCMS objects
     cmsHPROFILE xyzProfile;
     cmsHTRANSFORM hTransform;
@@ -40,7 +51,8 @@ typedef struct clTransform
 
 clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, struct clProfile * dstProfile, clTransformFormat dstFormat);
 void clTransformDestroy(struct clContext * C, clTransform * transform);
-
 void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount);
+
+int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format);
 
 #endif // ifndef COLORIST_TRANSFORM_H
