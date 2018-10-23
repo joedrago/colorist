@@ -463,7 +463,8 @@ void clCCMMPrepareTransform(struct clContext * C, struct clTransform * transform
             transform->dstInvGamma = 1.0f / transform->dstInvGamma;
         }
         gb_mat3_inverse(&XYZtoDst, &dstToXYZ);
-        gb_mat3_mul(&transform->matSrcToDst, &XYZtoDst, &srcToXYZ);
+        gb_mat3_transpose(&XYZtoDst);
+        gb_mat3_mul(&transform->matSrcToDst, &srcToXYZ, &XYZtoDst);
         gb_mat3_transpose(&transform->matSrcToDst);
 
         transform->ccmmReady = clTrue;
