@@ -11,8 +11,18 @@ int main(int argc, char * argv[])
 {
     {
         clContext * C = clContextCreate(NULL);
-        clImage * image = clImageParseString(C, "(255,0,0)", 8, NULL);
+        clConversionParams params;
+        clImage * image;
+        clImage * conv;
+
+        clConversionParamsSetDefaults(C, &params);
+        params.formatName = "png";
+
+        image = clImageParseString(C, "(255,0,0)", 8, NULL);
+        conv = clImageConvert(C, image, &params);
+
         clImageDestroy(C, image);
+        clImageDestroy(C, conv);
         clContextDestroy(C);
     }
     return 0;

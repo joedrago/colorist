@@ -328,6 +328,8 @@ void clContextRegisterFormat(clContext * C, clFormat * format)
 struct clFormat * clContextFindFormat(struct clContext * C, const char * formatName)
 {
     clFormatRecord * record = C->formats;
+    if (formatName == NULL)
+        return NULL;
     for (; record != NULL; record = record->next) {
         if (!strcmp(record->format.name, formatName)) {
             return &record->format;

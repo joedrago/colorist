@@ -148,8 +148,7 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
         clProfileSetMLU(C, profile, "desc", "en", "US", profile->description);
     }
     memset(&profile->raw, 0, sizeof(profile->raw));
-    memset(profile->signature, 0, 16);
-    profile->ccmm = clTrue; // Any profile made with cmsCreateRGBProfileTHR() can be handled by colorist CMM
+    clProfileReload(C, profile);
     return profile;
 }
 
@@ -532,12 +531,24 @@ clBool clProfileRemoveTag(struct clContext * C, clProfile * profile, char * tag,
 
 clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * profile2)
 {
-    if(profile1 == profile2) {
+    int i;
+    if (profile1 == profile2) {
         return clTrue;
-    } else if(!profile1 || !profile2) {
+    } else if (!profile1 || !profile2) {
         return clFalse;
     }
-    if(!memcmp(profile1->signature, profile2->signature, 16)) {
+    // Make sure one of them actually has a signature
+    for (i = 0; i < 16; ++i) {
+        if (profile1->signature[i] != 0)
+            break;
+        if (profile2->signature[i] != 0)
+            break;
+    }
+    if (i == 16) {
+        // No signatures, consider them not a match for now
+        return clFalse;
+    }
+    if (!memcmp(profile1->signature, profile2->signature, 16)) {
         return clTrue;
     }
     // TODO: fallback to doing a double clProfilePack and comparison? tag comparisons?
