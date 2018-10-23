@@ -53,7 +53,6 @@ static clBool deriveXYZMatrixAndGamma(struct clContext * C, struct clProfile * p
         D.col[2].z = U.z / W.y;
 
         gb_mat3_mul(toXYZ, &P, &D);
-        gb_mat3_transpose(toXYZ);
     } else {
         // No profile; we're already XYZ!
         *hasGamma = clFalse;
@@ -124,6 +123,7 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, int t
         }
         gb_mat3_inverse(&XYZtoDst, &dstToXYZ);
         gb_mat3_mul(&transform->matSrcToDst, &srcToXYZ, &XYZtoDst);
+        gb_mat3_transpose(&transform->matSrcToDst);
 
         transform->ccmmReady = clTrue;
     }
