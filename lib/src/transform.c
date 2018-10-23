@@ -5,7 +5,7 @@
 #include "colorist/profile.h"
 #include "colorist/task.h"
 
-static void doMultithreadedLCMSTransform(clContext * C, int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount);
+static void doMultithreadedTransform(clContext * C, int taskCount, clTransform * transform, clBool useCCMM, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount);
 
 clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, struct clProfile * dstProfile, clTransformFormat dstFormat)
 {
@@ -51,8 +51,8 @@ int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format
         case CL_TF_XYZ_FLOAT:  return sizeof(float) * 3;
         case CL_TF_RGB_FLOAT:  return sizeof(float) * 3;
         case CL_TF_RGBA_FLOAT: return sizeof(float) * 4;
-        case CL_TF_RGBA_8:     4;
-        case CL_TF_RGBA_16:    8;
+        case CL_TF_RGBA_8:     return 4;
+        case CL_TF_RGBA_16:    return 8;
     }
 
     COLORIST_FAILURE("clTransformFormatToPixelBytes: Unknown transform format");
@@ -61,6 +61,9 @@ int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format
 
 void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount)
 {
+    int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat);
+    int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat);
+
     clBool useCCMM = C->ccmmAllowed;
     if (transform->srcProfile && !transform->srcProfile->ccmm) {
         useCCMM = clFalse;
@@ -75,11 +78,9 @@ void clTransformRun(struct clContext * C, clTransform * transform, int taskCount
 
     if (useCCMM) {
         // Use colorist CMM
-        clCCMMTransform(C, transform, taskCount, srcPixels, dstPixels, pixelCount);
+        clCCMMPrepareTransform(C, transform);
     } else {
         // Use LittleCMS
-        int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat);
-        int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat);
         if (!transform->hTransform) {
             cmsUInt32Number srcFormat = clTransformFormatToLCMSFormat(C, transform->srcFormat);
             cmsUInt32Number dstFormat = clTransformFormatToLCMSFormat(C, transform->dstFormat);
@@ -109,25 +110,29 @@ void clTransformRun(struct clContext * C, clTransform * transform, int taskCount
             // Lazily create hTransform
             transform->hTransform = cmsCreateTransformTHR(C->lcms, srcProfileHandle, srcFormat, dstProfileHandle, dstFormat, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
         }
-        doMultithreadedLCMSTransform(C, taskCount, transform->hTransform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
     }
-
+    doMultithreadedTransform(C, taskCount, transform, useCCMM, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
 }
 
 typedef struct clTransformTask
 {
-    cmsHTRANSFORM transform;
+    clContext * C;
+    clTransform * transform;
     void * inPixels;
     void * outPixels;
     int pixelCount;
+    clBool useCCMM;
 } clTransformTask;
 
-static void lcmsTransformTaskFunc(clTransformTask * info)
+static void transformTaskFunc(clTransformTask * info)
 {
-    cmsDoTransform(info->transform, info->inPixels, info->outPixels, info->pixelCount);
+    if(info->useCCMM)
+        clCCMMTransform(info->C, info->transform, info->inPixels, info->outPixels, info->pixelCount);
+    else
+        cmsDoTransform(info->transform->hTransform, info->inPixels, info->outPixels, info->pixelCount);
 }
 
-static void doMultithreadedLCMSTransform(clContext * C, int taskCount, cmsHTRANSFORM transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
+static void doMultithreadedTransform(clContext * C, int taskCount, clTransform * transform, clBool useCCMM, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
 {
     if (taskCount > pixelCount) {
         // This is a dumb corner case I'm not too worried about.
@@ -136,7 +141,14 @@ static void doMultithreadedLCMSTransform(clContext * C, int taskCount, cmsHTRANS
 
     if (taskCount == 1) {
         // Don't bother making any new threads
-        cmsDoTransform(transform, srcPixels, dstPixels, pixelCount);
+        clTransformTask info;
+        info.C = C;
+        info.transform = transform;
+        info.inPixels = srcPixels;
+        info.outPixels = dstPixels;
+        info.pixelCount = pixelCount;
+        info.useCCMM = useCCMM;
+        transformTaskFunc(&info);
     } else {
         int pixelsPerTask = pixelCount / taskCount;
         int lastTaskPixelCount = pixelCount - (pixelsPerTask * (taskCount - 1));
@@ -147,11 +159,13 @@ static void doMultithreadedLCMSTransform(clContext * C, int taskCount, cmsHTRANS
         tasks = clAllocate(taskCount * sizeof(clTask *));
         infos = clAllocate(taskCount * sizeof(clTransformTask));
         for (i = 0; i < taskCount; ++i) {
+            infos[i].C = C;
             infos[i].transform = transform;
             infos[i].inPixels = &srcPixels[i * pixelsPerTask * srcPixelBytes];
             infos[i].outPixels = &dstPixels[i * pixelsPerTask * dstPixelBytes];
             infos[i].pixelCount = (i == (taskCount - 1)) ? lastTaskPixelCount : pixelsPerTask;
-            tasks[i] = clTaskCreate(C, (clTaskFunc)lcmsTransformTaskFunc, &infos[i]);
+            infos[i].useCCMM = useCCMM;
+            tasks[i] = clTaskCreate(C, (clTaskFunc)transformTaskFunc, &infos[i]);
         }
 
         for (i = 0; i < taskCount; ++i) {

@@ -103,14 +103,8 @@ void transformFloatToFloat(struct clContext * C, struct clTransform * transform,
     }
 }
 
-void clCCMMTransform(struct clContext * C, struct clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount)
+void clCCMMPrepareTransform(struct clContext * C, struct clTransform * transform)
 {
-    int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat);
-    int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat);
-
-    COLORIST_ASSERT(!transform->srcProfile || transform->srcProfile->ccmm);
-    COLORIST_ASSERT(!transform->dstProfile || transform->dstProfile->ccmm);
-
     if (!transform->ccmmReady) {
         gbMat3 srcToXYZ;
         gbMat3 dstToXYZ;
@@ -126,6 +120,20 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, int t
         gb_mat3_transpose(&transform->matSrcToDst);
 
         transform->ccmmReady = clTrue;
+    }
+}
+
+void clCCMMTransform(struct clContext * C, struct clTransform * transform, void * srcPixels, void * dstPixels, int pixelCount)
+{
+    int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat);
+    int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat);
+
+    COLORIST_ASSERT(!transform->srcProfile || transform->srcProfile->ccmm);
+    COLORIST_ASSERT(!transform->dstProfile || transform->dstProfile->ccmm);
+
+
+    if (!transform->ccmmReady) {
+        return;
     }
 
     // TODO: Add support for all formats

@@ -13,6 +13,7 @@
 struct clContext;
 struct clTransform;
 
-void clCCMMTransform(struct clContext * C, struct clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount);
+void clCCMMPrepareTransform(struct clContext * C, struct clTransform * transform);
+void clCCMMTransform(struct clContext * C, struct clTransform * transform, void * srcPixels, void * dstPixels, int pixelCount);
 
 #endif
