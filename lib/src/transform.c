@@ -69,6 +69,10 @@ void clTransformRun(struct clContext * C, clTransform * transform, int taskCount
         useCCMM = clFalse;
     }
 
+    if(taskCount > 1) {
+        clContextLog(C, "convert", 1, "Using %d threads to pixel transform. (via %s)", taskCount, useCCMM ? "CCMM" : "LittleCMS");
+    }
+
     if (useCCMM) {
         // Use colorist CMM
         clCCMMTransform(C, transform, taskCount, srcPixels, dstPixels, pixelCount);
@@ -139,8 +143,6 @@ static void doMultithreadedLCMSTransform(clContext * C, int taskCount, cmsHTRANS
         clTask ** tasks;
         clTransformTask * infos;
         int i;
-
-        clContextLog(C, "convert", 1, "Using %d thread%s to pixel transform.", taskCount, (taskCount == 1) ? "" : "s");
 
         tasks = clAllocate(taskCount * sizeof(clTask *));
         infos = clAllocate(taskCount * sizeof(clTransformTask));

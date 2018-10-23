@@ -70,18 +70,18 @@ void transformFloatToFloat(struct clContext * C, struct clTransform * transform,
         float * dstPixel = (float *)&dstPixels[i * dstPixelBytes];
         gbVec3 src;
         if (transform->srcHasGamma) {
-            src.x = powf(fabsf(srcPixel[0]), transform->srcGamma);
-            src.y = powf(fabsf(srcPixel[1]), transform->srcGamma);
-            src.z = powf(fabsf(srcPixel[2]), transform->srcGamma);
+            src.x = powf((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f, transform->srcGamma);
+            src.y = powf((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f, transform->srcGamma);
+            src.z = powf((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f, transform->srcGamma);
         } else {
             memcpy(&src, srcPixel, sizeof(src));
         }
         if (transform->dstHasGamma) {
             float tmp[3];
             gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->matSrcToDst, src);
-            dstPixel[0] = powf(fabsf(tmp[0]), transform->dstInvGamma);
-            dstPixel[1] = powf(fabsf(tmp[1]), transform->dstInvGamma);
-            dstPixel[2] = powf(fabsf(tmp[2]), transform->dstInvGamma);
+            dstPixel[0] = powf((tmp[0] >= 0.0f) ? tmp[0] : 0.0f, transform->dstInvGamma);
+            dstPixel[1] = powf((tmp[1] >= 0.0f) ? tmp[1] : 0.0f, transform->dstInvGamma);
+            dstPixel[2] = powf((tmp[2] >= 0.0f) ? tmp[2] : 0.0f, transform->dstInvGamma);
         } else {
             gb_mat3_mul_vec3((gbVec3 *)dstPixel, &transform->matSrcToDst, src);
         }
