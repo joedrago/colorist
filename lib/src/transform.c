@@ -110,13 +110,18 @@ int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format
 clBool clTransformUsesCCMM(struct clContext * C, clTransform * transform)
 {
     clBool useCCMM = C->ccmmAllowed;
-    if (transform->srcProfile && !transform->srcProfile->ccmm) {
+    if (!clProfileUsesCCMM(C, transform->srcProfile)) {
         useCCMM = clFalse;
     }
-    if (transform->dstProfile && !transform->dstProfile->ccmm) {
+    if (!clProfileUsesCCMM(C, transform->dstProfile)) {
         useCCMM = clFalse;
     }
     return useCCMM;
+}
+
+const char * clTransformCMMName(struct clContext * C, clTransform * transform)
+{
+    return clTransformUsesCCMM(C, transform) ? "CCMM" : "LCMS";
 }
 
 void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount)
@@ -127,7 +132,7 @@ void clTransformRun(struct clContext * C, clTransform * transform, int taskCount
     clBool useCCMM = clTransformUsesCCMM(C, transform);
 
     if (taskCount > 1) {
-        clContextLog(C, "convert", 1, "Using %d threads to pixel transform. (via %s)", taskCount, useCCMM ? "CCMM" : "LittleCMS");
+        clContextLog(C, "convert", 1, "Using %d threads to pixel transform.", taskCount);
     }
 
     if (useCCMM) {

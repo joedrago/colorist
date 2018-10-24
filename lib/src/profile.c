@@ -558,6 +558,20 @@ clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * 
     return clFalse;
 }
 
+clBool clProfileUsesCCMM(struct clContext * C, clProfile * profile)
+{
+    if (!profile)
+        return C->ccmmAllowed;
+    if (!C->ccmmAllowed)
+        return clFalse;
+    return profile->ccmm;
+}
+
+const char * clProfileCMMName(struct clContext * C, clProfile * profile)
+{
+    return clProfileUsesCCMM(C, profile) ? "CCMM" : "LCMS";
+}
+
 char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance)
 {
     char * tmp = clAllocate(1024);

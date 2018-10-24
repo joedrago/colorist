@@ -54,6 +54,7 @@ typedef struct clTransform
 clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, struct clProfile * dstProfile, clTransformFormat dstFormat);
 void clTransformDestroy(struct clContext * C, clTransform * transform);
 clBool clTransformUsesCCMM(struct clContext * C, clTransform * transform);
+const char * clTransformCMMName(struct clContext * C, clTransform * transform); // Convenience function
 void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount);
 
 clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format);

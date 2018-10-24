@@ -237,7 +237,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
             linearFloatsProfile = clProfileCreate(C, &dstInfo.primaries, &gamma1, 0, NULL);
             toLinear = clTransformCreate(C, srcImage->profile, CL_TF_RGBA_FLOAT, linearFloatsProfile, CL_TF_RGBA_FLOAT);
 
-            clContextLog(C, "convert", 0, "Calculating linear pixels...");
+            clContextLog(C, "convert", 0, "Calculating linear pixels (%s)...", clTransformCMMName(C, toLinear));
             timerStart(&t);
             linearFloatsPixels = clAllocate(4 * sizeof(float) * pixelCount);
             clTransformRun(C, toLinear, params->jobs, (uint8_t *)srcFloatsPixels, (uint8_t *)linearFloatsPixels, pixelCount);
@@ -254,7 +254,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         COLORIST_ASSERT(dstProfile == NULL);
         COLORIST_ASSERT(linearFloatsPixels != NULL);
 
-        clContextLog(C, "grading", 0, "Color grading...");
+        clContextLog(C, "grading", 0, "Color grading (%s)...", clProfileCMMName(C, linearFloatsProfile));
         timerStart(&t);
         dstInfo.curve.type = CL_PCT_GAMMA;
         clPixelMathColorGrade(C, params->jobs, linearFloatsProfile, linearFloatsPixels, pixelCount, srcInfo.width, srcInfo.luminance, dstInfo.depth, &dstInfo.luminance, &dstInfo.curve.gamma, C->verbose);
@@ -388,7 +388,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
             clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
         }
 
-        clContextLog(C, "convert", 0, "Performing color conversion...");
+        clContextLog(C, "convert", 0, "Performing color conversion (%s)...", clTransformCMMName(C, fromLinear));
         timerStart(&t);
         dstFloatsPixels = clAllocate(4 * sizeof(float) * pixelCount);
         clTransformRun(C, fromLinear, params->jobs, (uint8_t *)linearFloatsPixels, (uint8_t *)dstFloatsPixels, pixelCount);
@@ -432,13 +432,13 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         clTransform * directTransform;
         clTransformFormat srcFormat = (srcInfo.depth == 16) ? CL_TF_RGBA_16 : CL_TF_RGBA_8;
         clTransformFormat dstFormat = (dstInfo.depth == 16) ? CL_TF_RGBA_16 : CL_TF_RGBA_8;
+        directTransform = clTransformCreate(C, srcImage->profile, srcFormat, dstImage->profile, dstFormat);
 
         COLORIST_ASSERT((srcInfo.depth == 8) || (srcInfo.depth == 16));
         COLORIST_ASSERT((dstInfo.depth == 8) || (dstInfo.depth == 16));
 
-        clContextLog(C, "convert", 0, "Converting directly...");
+        clContextLog(C, "convert", 0, "Converting directly (%s)...", clTransformCMMName(C, directTransform));
         timerStart(&t);
-        directTransform = clTransformCreate(C, srcImage->profile, srcFormat, dstImage->profile, dstFormat);
         clTransformRun(C, directTransform, params->jobs, srcImage->pixels, dstImage->pixels, dstImage->width * dstImage->height);
         clTransformDestroy(C, directTransform);
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));

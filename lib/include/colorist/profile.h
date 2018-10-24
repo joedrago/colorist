@@ -70,6 +70,8 @@ clBool clProfileSetGamma(struct clContext * C, clProfile * profile, float gamma)
 clBool clProfileSetLuminance(struct clContext * C, clProfile * profile, int luminance);
 clBool clProfileRemoveTag(struct clContext * C, clProfile * profile, char * tag, const char * reason);
 clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * profile2);
+clBool clProfileUsesCCMM(struct clContext * C, clProfile * profile);
+const char * clProfileCMMName(struct clContext * C, clProfile * profile); // Convenience function
 int clProfileSize(struct clContext * C, clProfile * profile);
 void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTags, int extraIndent);
 void clProfileDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clProfile * profile, clBool dumpTags);

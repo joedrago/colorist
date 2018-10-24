@@ -651,7 +651,7 @@ clImage * clImageParseString(struct clContext * C, const char * s, int depth, st
     int depthBytes = clDepthToBytes(C, depth);
     clTransform * fromXYZ = clTransformCreate(C, NULL, CL_TF_XYZ_FLOAT, profile, CL_TF_RGB_FLOAT);
 
-    clContextLog(C, "parse", 0, "Parsing image string (%s)...", clTransformUsesCCMM(C, fromXYZ) ? "CCMM" : "LCMS");
+    clContextLog(C, "parse", 0, "Parsing image string (%s)...", clTransformCMMName(C, fromXYZ));
 
     for (stripeString = strtok(buffer, stripeDelims); stripeString != NULL; stripeString = strtok(NULL, stripeDelims)) {
         stripe = clAllocateStruct(Stripe);

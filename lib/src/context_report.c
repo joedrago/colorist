@@ -165,6 +165,8 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     clTransform * toXYZ = clTransformCreate(C, srcImage->profile, CL_TF_RGBA_FLOAT, NULL, CL_TF_XYZ_FLOAT);
     clTransform * fromXYZ = clTransformCreate(C, NULL, CL_TF_XYZ_FLOAT, srcImage->profile, CL_TF_RGB_FLOAT);
 
+    clContextLog(C, "encode", 1, "Creating sRGB highlight (%d nits, %s)...", srgbLuminance, clTransformCMMName(C, toXYZ));
+
     memset(stats, 0, sizeof(SRGBHighlightStats));
     stats->pixelCount = pixelCount = srcImage->width * srcImage->height;
 
@@ -265,7 +267,6 @@ static clBool addSRGBHighlight(clContext * C, clImage * image, int maxLuminance,
     SRGBHighlightStats stats;
     cJSON * base;
 
-    clContextLog(C, "encode", 1, "Creating sRGB highlight (%d nits)...", maxLuminance);
     highlight = createSRGBHighlight(C, image, maxLuminance, &stats);
     if (!highlight) {
         return clFalse;
