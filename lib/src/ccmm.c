@@ -197,6 +197,51 @@ static void transformRGBA16ToFloat(struct clContext * C, struct clTransform * tr
     }
 }
 
+static void transformRGBA8ToRGBA8(struct clContext * C, struct clTransform * transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
+{
+    const float srcRescale = 1.0f / 255.0f;
+    const float dstRescale = 255.0f;
+    int i;
+    for (i = 0; i < pixelCount; ++i) {
+        float tmpSrc[4];
+        float tmpDst[4];
+        uint8_t * srcPixel = &srcPixels[i * srcPixelBytes];
+        uint8_t * dstPixel = &dstPixels[i * dstPixelBytes];
+        int tmpSrcBytes;
+        int tmpDstBytes;
+
+        tmpSrc[0] = (float)srcPixel[0] * srcRescale;
+        tmpSrc[1] = (float)srcPixel[1] * srcRescale;
+        tmpSrc[2] = (float)srcPixel[2] * srcRescale;
+        if (srcPixelBytes > 3) {
+            tmpSrc[3] = (float)srcPixel[3] * srcRescale;
+            tmpSrcBytes = 16;
+        } else {
+            tmpSrcBytes = 12;
+        }
+        if (dstPixelBytes > 3) {
+            tmpDstBytes = 16;
+        } else {
+            tmpDstBytes = 12;
+        }
+
+        transformFloatToFloat(C, transform, (uint8_t *)tmpSrc, tmpSrcBytes, (uint8_t *)tmpDst, tmpDstBytes, 1);
+
+        dstPixel[0] = (uint8_t)clPixelMathRoundf((float)tmpDst[0] * dstRescale);
+        dstPixel[1] = (uint8_t)clPixelMathRoundf((float)tmpDst[1] * dstRescale);
+        dstPixel[2] = (uint8_t)clPixelMathRoundf((float)tmpDst[2] * dstRescale);
+        if ((srcPixelBytes > 3) && (dstPixelBytes > 3)) {
+            // reformat alpha
+            dstPixel[3] = (uint8_t)clPixelMathRoundf((float)tmpDst[3] * dstRescale);
+        } else if (srcPixelBytes > 3) {
+            // RGBA -> RGB, nothing to do
+        } else if (dstPixelBytes > 3) {
+            // RGB -> RGBA, set full opacity
+            dstPixel[3] = 255;
+        }
+    }
+}
+
 static void transformRGBA8ToRGBA16(struct clContext * C, struct clTransform * transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
 {
     const float srcRescale = 1.0f / 255.0f;
@@ -283,6 +328,51 @@ static void transformRGBA16ToRGBA8(struct clContext * C, struct clTransform * tr
         } else if (dstPixelBytes > 3) {
             // RGB -> RGBA, set full opacity
             dstPixel[3] = 255;
+        }
+    }
+}
+
+static void transformRGBA16ToRGBA16(struct clContext * C, struct clTransform * transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
+{
+    const float srcRescale = 1.0f / 65535.0f;
+    const float dstRescale = 65535.0f;
+    int i;
+    for (i = 0; i < pixelCount; ++i) {
+        float tmpSrc[4];
+        float tmpDst[4];
+        uint16_t * srcPixel = (uint16_t *)&srcPixels[i * srcPixelBytes];
+        uint16_t * dstPixel = (uint16_t *)&dstPixels[i * dstPixelBytes];
+        int tmpSrcBytes;
+        int tmpDstBytes;
+
+        tmpSrc[0] = (float)srcPixel[0] * srcRescale;
+        tmpSrc[1] = (float)srcPixel[1] * srcRescale;
+        tmpSrc[2] = (float)srcPixel[2] * srcRescale;
+        if (srcPixelBytes > 6) {
+            tmpSrc[3] = (float)srcPixel[3] * srcRescale;
+            tmpSrcBytes = 16;
+        } else {
+            tmpSrcBytes = 12;
+        }
+        if (dstPixelBytes > 6) {
+            tmpDstBytes = 16;
+        } else {
+            tmpDstBytes = 12;
+        }
+
+        transformFloatToFloat(C, transform, (uint8_t *)tmpSrc, tmpSrcBytes, (uint8_t *)tmpDst, tmpDstBytes, 1);
+
+        dstPixel[0] = (uint16_t)clPixelMathRoundf((float)tmpDst[0] * dstRescale);
+        dstPixel[1] = (uint16_t)clPixelMathRoundf((float)tmpDst[1] * dstRescale);
+        dstPixel[2] = (uint16_t)clPixelMathRoundf((float)tmpDst[2] * dstRescale);
+        if ((srcPixelBytes > 6) && (dstPixelBytes > 6)) {
+            // reformat alpha
+            dstPixel[3] = (uint16_t)clPixelMathRoundf((float)tmpDst[3] * dstRescale);
+        } else if (srcPixelBytes > 6) {
+            // RGBA -> RGB, nothing to do
+        } else if (dstPixelBytes > 6) {
+            // RGB -> RGBA, set full opacity
+            dstPixel[3] = 65535;
         }
     }
 }
@@ -487,6 +577,7 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, void 
 
         if (transform->srcFormat == transform->dstFormat) {
             // Everything is identical, no format conversion, just memcpy
+            // This is why reformatRGBA8ToRGBA8 and reformatRGBA16ToRGBA16 don't exist (they'd just be memcpy)
             memcpy(dstPixels, srcPixels, srcPixelBytes * pixelCount);
             return;
         }
@@ -500,7 +591,7 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, void 
             if (transform->dstFormat == CL_TF_RGBA_8) {
                 reformatFloatToRGBA8(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else {
+            } else if (transform->dstFormat == CL_TF_RGBA_16) {
                 reformatFloatToRGBA16(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
             }
@@ -509,7 +600,7 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, void 
             if (transform->srcFormat == CL_TF_RGBA_8) {
                 reformatRGBA8ToFloat(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else {
+            } else if (transform->srcFormat == CL_TF_RGBA_16) {
                 reformatRGBA16ToFloat(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
             }
@@ -518,7 +609,7 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, void 
             if (transform->srcFormat == CL_TF_RGBA_8) {
                 reformatRGBA8ToRGBA16(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else {
+            } else if (transform->srcFormat == CL_TF_RGBA_16) {
                 reformatRGBA16ToRGBA8(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
             }
@@ -535,7 +626,7 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, void 
             if (transform->dstFormat == CL_TF_RGBA_8) {
                 transformFloatToRGBA8(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else {
+            } else if (transform->dstFormat == CL_TF_RGBA_16) {
                 transformFloatToRGBA16(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
             }
@@ -544,17 +635,23 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, void 
             if (transform->srcFormat == CL_TF_RGBA_8) {
                 transformRGBA8ToFloat(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else {
+            } else if (transform->srcFormat == CL_TF_RGBA_16) {
                 transformRGBA16ToFloat(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
             }
         } else {
             // 8 or 16 -> 8 or 16
-            if (transform->srcFormat == CL_TF_RGBA_8) {
+            if ((transform->srcFormat == CL_TF_RGBA_8) && (transform->dstFormat == CL_TF_RGBA_8)) {
+                transformRGBA8ToRGBA8(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
+                return;
+            } else if ((transform->srcFormat == CL_TF_RGBA_8) && (transform->dstFormat == CL_TF_RGBA_16)) {
                 transformRGBA8ToRGBA16(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else {
+            } else if ((transform->srcFormat == CL_TF_RGBA_16) && (transform->dstFormat == CL_TF_RGBA_8)) {
                 transformRGBA16ToRGBA8(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
+                return;
+            } else if ((transform->srcFormat == CL_TF_RGBA_16) && (transform->dstFormat == CL_TF_RGBA_16)) {
+                transformRGBA16ToRGBA16(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
             }
         }
