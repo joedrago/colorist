@@ -532,15 +532,13 @@ static char * sanitizeString(char * s)
 
 static clImage * interpretTokens(struct clContext * C, clToken * tokens, int depth, struct clProfile * profile, int defaultW, int defaultH);
 
-static clImage * clImageParseStripe(struct clContext * C, const char * s, int depth, struct clProfile * profile, int defaultW, int defaultH)
+static clImage * clImageParseStripe(struct clContext * C, const char * s, int depth, struct clProfile * profile, struct clTransform * fromXYZ, int defaultW, int defaultH)
 {
     char * sanitizedString;
     clImage * image = NULL;
     clToken * tokens = NULL;
     clToken * lastToken = NULL;
     clToken * token;
-
-    clTransform * fromXYZ = clTransformCreate(C, NULL, CL_TF_XYZ_FLOAT, profile, CL_TF_RGB_FLOAT);
 
     if (s[0] == '@') {
         // It's a response file. Read it all in.
@@ -615,7 +613,6 @@ static clImage * clImageParseStripe(struct clContext * C, const char * s, int de
     image = interpretTokens(C, tokens, depth, profile, defaultW, defaultH);
 
 parseCleanup:
-    clTransformDestroy(C, fromXYZ);
     clFree(sanitizedString);
     if (tokens) {
         clToken * t = tokens;
@@ -652,8 +649,9 @@ clImage * clImageParseString(struct clContext * C, const char * s, int depth, st
     char * stripeString;
     uint8_t * pixelPos;
     int depthBytes = clDepthToBytes(C, depth);
+    clTransform * fromXYZ = clTransformCreate(C, NULL, CL_TF_XYZ_FLOAT, profile, CL_TF_RGB_FLOAT);
 
-    clContextLog(C, "parse", 0, "Parsing image string...");
+    clContextLog(C, "parse", 0, "Parsing image string (%s)...", clTransformUsesCCMM(C, fromXYZ) ? "CCMM" : "LCMS");
 
     for (stripeString = strtok(buffer, stripeDelims); stripeString != NULL; stripeString = strtok(NULL, stripeDelims)) {
         stripe = clAllocateStruct(Stripe);
@@ -671,7 +669,7 @@ clImage * clImageParseString(struct clContext * C, const char * s, int depth, st
 
     for (stripe = stripes; stripe != NULL; stripe = stripe->next) {
         clContextLog(C, "parse", 0, "Parsing stripe index: %d", stripeIndex);
-        stripe->image = clImageParseStripe(C, stripe->s, depth, profile, prevW, prevH);
+        stripe->image = clImageParseStripe(C, stripe->s, depth, profile, fromXYZ, prevW, prevH);
         if (!stripe->image) {
             goto parseCleanup;
         }
@@ -712,6 +710,7 @@ parseCleanup:
         clFree(deleteme);
     }
     clFree(buffer);
+    clTransformDestroy(C, fromXYZ);
     return image;
 }
 
