@@ -24,7 +24,9 @@ typedef enum clTransformFormat
     CL_TF_XYZ_FLOAT = 0,
     CL_TF_RGB_FLOAT,
     CL_TF_RGBA_FLOAT,
+    CL_TF_RGB_8,
     CL_TF_RGBA_8,
+    CL_TF_RGB_16,
     CL_TF_RGBA_16
 } clTransformFormat;
 

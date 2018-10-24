@@ -37,7 +37,9 @@ static cmsUInt32Number clTransformFormatToLCMSFormat(struct clContext * C, clTra
         case CL_TF_XYZ_FLOAT:  return TYPE_XYZ_FLT;
         case CL_TF_RGB_FLOAT:  return TYPE_RGB_FLT;
         case CL_TF_RGBA_FLOAT: return TYPE_RGBA_FLT;
+        case CL_TF_RGB_8:     return TYPE_RGB_8;
         case CL_TF_RGBA_8:     return TYPE_RGBA_8;
+        case CL_TF_RGB_16:    return TYPE_RGB_16;
         case CL_TF_RGBA_16:    return TYPE_RGBA_16;
     }
 
@@ -53,8 +55,9 @@ clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format)
         case CL_TF_RGBA_FLOAT:
             return clTrue;
 
-        default:
+        case CL_TF_RGB_8:
         case CL_TF_RGBA_8:
+        case CL_TF_RGB_16:
         case CL_TF_RGBA_16:
             break;
     }
@@ -67,8 +70,10 @@ int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format
         case CL_TF_XYZ_FLOAT:  return sizeof(float) * 3;
         case CL_TF_RGB_FLOAT:  return sizeof(float) * 3;
         case CL_TF_RGBA_FLOAT: return sizeof(float) * 4;
-        case CL_TF_RGBA_8:     return 4;
-        case CL_TF_RGBA_16:    return 8;
+        case CL_TF_RGB_8:      return sizeof(uint8_t) * 3;
+        case CL_TF_RGBA_8:     return sizeof(uint8_t) * 4;
+        case CL_TF_RGB_16:     return sizeof(uint16_t) * 3;
+        case CL_TF_RGBA_16:    return sizeof(uint16_t) * 4;
     }
 
     COLORIST_FAILURE("clTransformFormatToPixelBytes: Unknown transform format");
