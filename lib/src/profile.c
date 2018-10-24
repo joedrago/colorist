@@ -478,7 +478,7 @@ clBool clProfileSetMLU(struct clContext * C, clProfile * profile, const char tag
     cmsMLUsetASCII(mlu, languageCode, countryCode, ascii);
     cmsWriteTag(profile->handle, tagSignature, mlu);
     cmsMLUfree(mlu);
-    clRawFree(C, &profile->raw); // No longer valid
+    clProfileReload(C, profile); // Rebuild raw and signature
     return clTrue;
 }
 
@@ -497,18 +497,20 @@ clBool clProfileSetGamma(struct clContext * C, clProfile * profile, float gamma)
     }
 cleanup:
     cmsFreeToneCurve(gammaCurve);
-    clRawFree(C, &profile->raw); // No longer valid
+    clProfileReload(C, profile); // Rebuild raw and signature
     return clTrue;
 }
 
 clBool clProfileSetLuminance(struct clContext * C, clProfile * profile, int luminance)
 {
+    clBool ret;
     cmsCIEXYZ lumi;
     lumi.X = 0.0f;
     lumi.Y = (cmsFloat64Number)luminance;
     lumi.Z = 0.0f;
-    clRawFree(C, &profile->raw); // No longer valid
-    return (cmsWriteTag(profile->handle, cmsSigLuminanceTag, &lumi)) ? clTrue : clFalse;
+    ret = cmsWriteTag(profile->handle, cmsSigLuminanceTag, &lumi) ? clTrue : clFalse;
+    clProfileReload(C, profile); // Rebuild raw and signature
+    return ret;
 }
 
 clBool clProfileRemoveTag(struct clContext * C, clProfile * profile, char * tag, const char * reason)
@@ -523,7 +525,7 @@ clBool clProfileRemoveTag(struct clContext * C, clProfile * profile, char * tag,
             clContextLog(C, "modify", 0, "WARNING: Removing tag \"%s\" (%s)", tag, reason);
         }
         cmsWriteTag(profile->handle, sig, NULL);
-        clRawFree(C, &profile->raw); // No longer valid
+        clProfileReload(C, profile); // Rebuild raw and signature
         return clTrue;
     }
     return clFalse;
@@ -537,6 +539,7 @@ clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * 
     } else if (!profile1 || !profile2) {
         return clFalse;
     }
+
     // Make sure one of them actually has a signature
     for (i = 0; i < 16; ++i) {
         if (profile1->signature[i] != 0)

@@ -28,12 +28,8 @@ static clBool deriveXYZMatrixAndGamma(struct clContext * C, struct clProfile * p
             return clFalse;
         }
 
+        *hasGamma = clTrue;
         *gamma = curve.gamma;
-        if (fabsf(curve.gamma - 1.0f) < 0.0001f) {
-            *hasGamma = clFalse;
-        } else {
-            *hasGamma = clTrue;
-        }
 
         P.col[0].x = primaries.red[0];
         P.col[0].y = primaries.red[1];
