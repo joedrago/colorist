@@ -64,22 +64,27 @@ include_directories(lib/include)
 
 add_subdirectory(bin)
 
+set(LLVM_PREFIX "")
+if(APPLE)
+  set(LLVM_PREFIX "/usr/bin/xcrun")
+endif()
+
 if(COLORIST_COVERAGE)
   add_custom_target(colorist-test-ccov-preprocessing
       COMMAND LLVM_PROFILE_FILE=colorist-test.profraw $<TARGET_FILE:colorist-test>
-      COMMAND llvm-profdata merge -sparse colorist-test.profraw -o colorist-test.profdata
+      COMMAND ${LLVM_PREFIX} llvm-profdata merge -sparse colorist-test.profraw -o colorist-test.profdata
       DEPENDS colorist-test)
 
   add_custom_target(colorist-test-ccov-show
-      COMMAND llvm-cov show $<TARGET_FILE:colorist-test> -instr-profile=colorist-test.profdata -show-line-counts-or-regions
+      COMMAND ${LLVM_PREFIX} llvm-cov show $<TARGET_FILE:colorist-test> -instr-profile=colorist-test.profdata -show-line-counts-or-regions
       DEPENDS colorist-test-ccov-preprocessing)
 
   add_custom_target(colorist-test-ccov-report
-      COMMAND llvm-cov report $<TARGET_FILE:colorist-test> -instr-profile=colorist-test.profdata
+      COMMAND ${LLVM_PREFIX} llvm-cov report $<TARGET_FILE:colorist-test> -instr-profile=colorist-test.profdata
       DEPENDS colorist-test-ccov-preprocessing)
 
   add_custom_target(colorist-test-ccov
-      COMMAND llvm-cov show $<TARGET_FILE:colorist-test> -instr-profile=colorist-test.profdata -show-line-counts-or-regions -output-dir=${CMAKE_BINARY_DIR}/colorist-test-llvm-cov -format="html"
+      COMMAND ${LLVM_PREFIX} llvm-cov show $<TARGET_FILE:colorist-test> -instr-profile=colorist-test.profdata -show-line-counts-or-regions -output-dir=${CMAKE_BINARY_DIR}/colorist-test-llvm-cov -format="html"
       DEPENDS colorist-test-ccov-preprocessing)
 
   add_custom_command(TARGET colorist-test-ccov POST_BUILD
