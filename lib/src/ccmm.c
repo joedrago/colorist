@@ -611,16 +611,16 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, void 
             }
         } else {
             // 8 or 16 -> 8 or 16
-            if ((transform->srcFormat == CL_TF_RGBA_8) && (transform->srcFormat == CL_TF_RGBA_8)) {
+            if ((transform->srcFormat == CL_TF_RGBA_8) && (transform->dstFormat == CL_TF_RGBA_8)) {
                 reformatRGBA8ToRGBA8(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else if ((transform->srcFormat == CL_TF_RGBA_8) && (transform->srcFormat == CL_TF_RGBA_16)) {
+            } else if ((transform->srcFormat == CL_TF_RGBA_8) && (transform->dstFormat == CL_TF_RGBA_16)) {
                 reformatRGBA8ToRGBA16(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else if ((transform->srcFormat == CL_TF_RGBA_16) && (transform->srcFormat == CL_TF_RGBA_8)) {
+            } else if ((transform->srcFormat == CL_TF_RGBA_16) && (transform->dstFormat == CL_TF_RGBA_8)) {
                 reformatRGBA16ToRGBA8(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else if ((transform->srcFormat == CL_TF_RGBA_16) && (transform->srcFormat == CL_TF_RGBA_16)) {
+            } else if ((transform->srcFormat == CL_TF_RGBA_16) && (transform->dstFormat == CL_TF_RGBA_16)) {
                 reformatRGBA16ToRGBA16(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
             }
