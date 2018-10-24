@@ -13,6 +13,7 @@
 struct clContext;
 struct clTransform;
 
+// This is internally used by clTransform; use that API
 void clCCMMPrepareTransform(struct clContext * C, struct clTransform * transform);
 void clCCMMTransform(struct clContext * C, struct clTransform * transform, void * srcPixels, void * dstPixels, int pixelCount);
 
