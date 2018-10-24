@@ -111,6 +111,20 @@ int main(int argc, char * argv[])
         printf("RGB16(%u, %u, %u, %u) -> RGBA16(%u, %u, %u)\n", srcRGBA16[0], srcRGBA16[1], srcRGBA16[2], srcRGBA16[3], dstRGBA16[0], dstRGBA16[1], dstRGBA16[2]);
         clTransformDestroy(C, transform);
 
+        // RGB8 -> RGBA16
+        setRGBA8_4(srcRGBA8, 255, 0, 0, 0);
+        transform = clTransformCreate(C, srcProfile, CL_TF_RGB_8, srcProfile, CL_TF_RGBA_16);
+        clTransformRun(C, transform, 1, srcRGBA8, dstRGBA16, 1);
+        printf("RGB8(%u, %u, %u) -> RGBA16(%u, %u, %u, %u)\n", srcRGBA8[0], srcRGBA8[1], srcRGBA8[2], dstRGBA16[0], dstRGBA16[1], dstRGBA16[2], dstRGBA16[3]);
+        clTransformDestroy(C, transform);
+
+        // RGB16 -> RGBA8
+        setRGBA16_4(srcRGBA16, 65535, 0, 0, 0);
+        transform = clTransformCreate(C, srcProfile, CL_TF_RGB_16, srcProfile, CL_TF_RGBA_8);
+        clTransformRun(C, transform, 1, srcRGBA16, dstRGBA8, 1);
+        printf("RGB16(%u, %u, %u) -> RGBA8(%u, %u, %u, %u)\n", srcRGBA16[0], srcRGBA16[1], srcRGBA16[2], dstRGBA8[0], dstRGBA8[1], dstRGBA8[2], dstRGBA8[3]);
+        clTransformDestroy(C, transform);
+
         clProfileDestroy(C, srcProfile);
         clContextDestroy(C);
     }
