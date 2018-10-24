@@ -489,6 +489,18 @@ static void reformatRGBA16ToFloat(struct clContext * C, uint8_t * srcPixels, int
     }
 }
 
+static void reformatRGBA8ToRGBA8(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
+{
+    COLORIST_ASSERT(srcPixelBytes == dstPixelBytes);
+    memcpy(dstPixels, srcPixels, srcPixelBytes * pixelCount);
+}
+
+static void reformatRGBA16ToRGBA16(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
+{
+    COLORIST_ASSERT(srcPixelBytes == dstPixelBytes);
+    memcpy(dstPixels, srcPixels, srcPixelBytes * pixelCount);
+}
+
 static void reformatRGBA8ToRGBA16(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
 {
     const float rescale = 65535.0f / 255.0f;
@@ -575,13 +587,6 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, void 
     if (clProfileMatches(C, transform->srcProfile, transform->dstProfile)) {
         // No color conversion necessary, just format conversion
 
-        if (transform->srcFormat == transform->dstFormat) {
-            // Everything is identical, no format conversion, just memcpy
-            // This is why reformatRGBA8ToRGBA8 and reformatRGBA16ToRGBA16 don't exist (they'd just be memcpy)
-            memcpy(dstPixels, srcPixels, srcPixelBytes * pixelCount);
-            return;
-        }
-
         if (clTransformFormatIsFloat(C, transform->srcFormat) && clTransformFormatIsFloat(C, transform->dstFormat)) {
             // Float to Float, losing or gaining alpha
             reformatFloatToFloat(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
@@ -606,11 +611,17 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, void 
             }
         } else {
             // 8 or 16 -> 8 or 16
-            if (transform->srcFormat == CL_TF_RGBA_8) {
+            if ((transform->srcFormat == CL_TF_RGBA_8) && (transform->srcFormat == CL_TF_RGBA_8)) {
+                reformatRGBA8ToRGBA8(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
+                return;
+            } else if ((transform->srcFormat == CL_TF_RGBA_8) && (transform->srcFormat == CL_TF_RGBA_16)) {
                 reformatRGBA8ToRGBA16(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else if (transform->srcFormat == CL_TF_RGBA_16) {
+            } else if ((transform->srcFormat == CL_TF_RGBA_16) && (transform->srcFormat == CL_TF_RGBA_8)) {
                 reformatRGBA16ToRGBA8(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
+                return;
+            } else if ((transform->srcFormat == CL_TF_RGBA_16) && (transform->srcFormat == CL_TF_RGBA_16)) {
+                reformatRGBA16ToRGBA16(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
             }
         }
