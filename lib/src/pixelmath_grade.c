@@ -84,11 +84,10 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
         float maxChannel = 0.0f;
         float maxPixel[4];
         float xyz[3];
-        int pixelX, pixelY, pixelLuminance;
+        int pixelX, pixelY;
+        float pixelLuminance, maxLuminanceFloat;
 
         clTransform * toXYZ = clTransformCreate(C, pixelProfile, CL_TF_RGBA_FLOAT, NULL, CL_TF_XYZ_FLOAT);
-
-        clContextLog(C, "grading", 1, "Grading CMM: %s", clTransformUsesCCMM(C, toXYZ) ? "CCMM" : "LittleCMS");
 
         pixel = pixels;
         for (i = 0; i < pixelCount; ++i) {
@@ -111,18 +110,19 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
         clTransformRun(C, toXYZ, 1, &pixels[indexWithMaxChannel * 4], xyz, 1);
         pixelX = indexWithMaxChannel % imageWidth;
         pixelY = indexWithMaxChannel / imageWidth;
-        pixelLuminance = (int)(xyz[1] * srcLuminance);
+        pixelLuminance = xyz[1] * srcLuminance;
 
         maxPixel[0] = maxChannel;
         maxPixel[1] = maxChannel;
         maxPixel[2] = maxChannel;
         maxPixel[3] = 1.0f;
         clTransformRun(C, toXYZ, 1, maxPixel, xyz, 1);
-        maxLuminance = (int)(xyz[1] * srcLuminance);
+        maxLuminanceFloat = xyz[1] * srcLuminance;
+        maxLuminance = (int)clPixelMathRoundf(maxLuminanceFloat);
 
         clTransformDestroy(C, toXYZ);
 
-        clContextLog(C, "grading", 1, "Found pixel (%d,%d) with largest single RGB channel (%d nits, %d nits if white).", pixelX, pixelY, pixelLuminance, maxLuminance, maxLuminance);
+        clContextLog(C, "grading", 1, "Found pixel (%d,%d) with largest single RGB channel (%g nits, %g nits if white).", pixelX, pixelY, pixelLuminance, maxLuminanceFloat);
     } else {
         maxLuminance = *outLuminance;
         clContextLog(C, "grading", 1, "Using requested max luminance: %d nits", maxLuminance);
