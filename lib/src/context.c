@@ -523,6 +523,10 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
             } else if (!strcmp(arg, "-b") || !strcmp(arg, "--bpp")) {
                 NEXTARG();
                 C->params.bpp = atoi(arg);
+                if (C->params.bpp <= 0) {
+                    clContextLogError(C, "Invalid --bpp: %s", arg);
+                    return clFalse;
+                }
             } else if (!strcmp(arg, "-c") || !strcmp(arg, "--copyright")) {
                 NEXTARG();
                 C->params.copyright = arg;
