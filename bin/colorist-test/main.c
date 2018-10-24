@@ -9,31 +9,33 @@
 
 int main(int argc, char * argv[])
 {
-    {
-        clContext * C = clContextCreate(NULL);
-        clConversionParams params;
-        clImage * image;
-        clImage * conv;
+    clContext * C = clContextCreate(NULL);
+    clConversionParams params;
+    clImage * src;
+    clImage * dst;
 
+    {
+        C = clContextCreate(NULL);
         clConversionParamsSetDefaults(C, &params);
-        params.formatName = "png";
+        params.jobs = 1;
 
-        image = clImageParseString(C, "8x8,(255,0,0)", 8, NULL);
-        conv = clImageConvert(C, image, &params);
+        src = clImageParseString(C, "(255,0,0)", 8, NULL);
+        dst = clImageConvert(C, src, &params);
 
-        clImageDestroy(C, image);
-        clImageDestroy(C, conv);
+        clImageDestroy(C, src);
+        clImageDestroy(C, dst);
         clContextDestroy(C);
     }
     {
-        clContext * C = clContextCreate(NULL);
-        clImage * image;
+        C = clContextCreate(NULL);
 
-        image = clImageParseString(C, "8x8,(255,0,0)", 8, NULL);
-        clImageDebugDump(C, image, 0, 0, 1, 1, 0);
+        src = clImageParseString(C, "8x8,(255,0,0)", 8, NULL);
+        clImageDebugDump(C, src, 0, 0, 1, 1, 0);
 
-        clImageDestroy(C, image);
+        clImageDestroy(C, src);
         clContextDestroy(C);
     }
+
+    printf("colorist-test Complete.\n");
     return 0;
 }
