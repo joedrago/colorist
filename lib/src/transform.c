@@ -7,6 +7,33 @@
 
 static void doMultithreadedTransform(clContext * C, int taskCount, clTransform * transform, clBool useCCMM, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount);
 
+void clTransformXYZToXYY(struct clContext * C, float * dstXYY, float * srcXYZ, float whitePointX, float whitePointY)
+{
+    float sum = srcXYZ[0] + srcXYZ[1] + srcXYZ[2];
+    if (sum <= 0.0f) {
+        dstXYY[0] = whitePointX;
+        dstXYY[1] = whitePointY;
+        dstXYY[2] = 0.0f;
+        return;
+    }
+    dstXYY[0] = srcXYZ[0] / sum;
+    dstXYY[1] = srcXYZ[1] / sum;
+    dstXYY[2] = srcXYZ[1];
+}
+
+void clTransformXYYToXYZ(struct clContext * C, float * dstXYZ, float * srcXYY)
+{
+    if (srcXYY[2] <= 0.0f) {
+        dstXYZ[0] = 0.0f;
+        dstXYZ[1] = 0.0f;
+        dstXYZ[2] = 0.0f;
+        return;
+    }
+    dstXYZ[0] = (srcXYY[0] * srcXYY[2]) / srcXYY[1];
+    dstXYZ[1] = srcXYY[2];
+    dstXYZ[2] = ((1 - srcXYY[0] - srcXYY[1]) * srcXYY[2]) / srcXYY[1];
+}
+
 clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, struct clProfile * dstProfile, clTransformFormat dstFormat)
 {
     clTransform * transform = clAllocateStruct(clTransform);

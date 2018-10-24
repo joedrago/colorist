@@ -59,4 +59,8 @@ void clTransformRun(struct clContext * C, clTransform * transform, int taskCount
 clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format);
 int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format);
 
+// if X+Y+Z is 0, clTransformXYZToXYY() returns (whitePointX, whitePointY, 0)
+void clTransformXYZToXYY(struct clContext * C, float * dstXYY, float * srcXYZ, float whitePointX, float whitePointY);
+void clTransformXYYToXYZ(struct clContext * C, float * dstXYZ, float * srcXYY);
+
 #endif // ifndef COLORIST_TRANSFORM_H
