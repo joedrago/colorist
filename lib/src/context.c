@@ -114,17 +114,20 @@ int clFormatMaxDepth(struct clContext * C, const char * formatName)
 
 int clFormatBestDepth(struct clContext * C, const char * formatName, int reqDepth)
 {
-    clFormat * format = clContextFindFormat(C, formatName);
-    if (!format) {
-        clContextLogError(C, "clFormatBestDepth() called on unknown format");
-        return 8;
+    clFormatDepth formatDepth = CL_FORMAT_DEPTH_8_TO_16; // start with no restrictions
+    if (formatName) {
+        clFormat * format = clContextFindFormat(C, formatName);
+        if (!format) {
+            clContextLogError(C, "clFormatBestDepth() called on unknown format");
+            return 8;
+        }
     }
 
     if (reqDepth < 8) {
         return 8;
     }
 
-    switch (format->depth) {
+    switch (formatDepth) {
         case CL_FORMAT_DEPTH_8:
             break;
         case CL_FORMAT_DEPTH_8_OR_10:
