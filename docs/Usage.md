@@ -13,6 +13,7 @@ Basic Options:
     -h,--help                : Display this help
     -j,--jobs JOBS           : Number of jobs to use when working. 0 for as many as possible (default)
     -v,--verbose             : Verbose mode.
+    --cmm WHICH,--cms WHICH  : Choose Color Management Module/System: auto (default), lcms, colorist (built-in, uses when possible)
 
 Input Options:
     -i,--iccin file.icc      : Override source ICC profile. default is to use embedded profile (if any), or sRGB@300
@@ -27,8 +28,8 @@ Output Profile Options:
     -p,--primaries PRIMARIES : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy
 
 Output Format Options:
-    -b,--bpp BPP             : Output bits-per-pixel. 8, 16, or 0 for auto (default)
-    -f,--format FORMAT       : Output format. auto (default), bmp, icc, j2k, jp2, jpg, png, tiff, webp
+    -b,--bpp BPP             : Output bits-per-pixel. 8 - 16, or 0 for auto (default)
+    -f,--format FORMAT       : Output format. auto (default), bmp, jpg, jp2, j2k, png, tiff, webp
     -q,--quality QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -2 below). (default: 90)
     -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 0)
     -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off
@@ -49,6 +50,14 @@ Modify Options:
 ---
 
 # Options
+
+### --cmm, --cms
+
+Choose which color management module to use when performing color math
+(`colorist`/`ccmm` or `littlecms`/`lcms`). By default, colorist will try to
+use its own internal CMM whenever possible, but will fall back to LittleCMS'
+conversion code if the profile contains unsupported tone curves or A2B tags,
+etc.
 
 ### -a, --autograde
 
