@@ -43,7 +43,7 @@ static void DEBUG_PRINT_VECTOR(const char * name, gbVec3 * v)
 // Color Conversion Math
 
 // From http://docs-hoffmann.de/ciexyz29082000.pdf, Section 11.4
-static clBool deriveXYZMatrixAndGamma(struct clContext * C, struct clProfile * profile, gbMat3 * toXYZ, clBool * hasGamma, float * gamma)
+static clBool deriveXYZMatrixAndXTF(struct clContext * C, struct clProfile * profile, gbMat3 * toXYZ, clTransformTransferFunction * xtf, float * gamma)
 {
     if (profile) {
         clProfilePrimaries primaries = { 0 };
@@ -53,13 +53,16 @@ static clBool deriveXYZMatrixAndGamma(struct clContext * C, struct clProfile * p
         gbVec3 U, W;
         gbMat3 P, PInv, D;
 
-        if (!clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
+        if (clProfileHasPQSignature(C, profile, &primaries)) {
+            *xtf = CL_XTF_PQ;
+            *gamma = 0.0f;
+        } else if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
+            *xtf = CL_XTF_GAMMA;
+            *gamma = curve.gamma;
+        } else {
             clContextLogError(C, "deriveXYZMatrix: fatal error querying profile");
             return clFalse;
         }
-
-        *hasGamma = clTrue;
-        *gamma = curve.gamma;
 
         P.col[0].x = primaries.red[0];
         P.col[0].y = primaries.red[1];
@@ -94,7 +97,7 @@ static clBool deriveXYZMatrixAndGamma(struct clContext * C, struct clProfile * p
         DEBUG_PRINT_MATRIX("Cxr", toXYZ);
     } else {
         // No profile; we're already XYZ!
-        *hasGamma = clFalse;
+        *xtf = CL_XTF_NONE;
         *gamma = 0.0f;
         gb_mat3_identity(toXYZ);
     }
@@ -108,9 +111,9 @@ void clCCMMPrepareTransform(struct clContext * C, struct clTransform * transform
         gbMat3 dstToXYZ;
         gbMat3 XYZtoDst;
 
-        deriveXYZMatrixAndGamma(C, transform->srcProfile, &srcToXYZ, &transform->srcHasGamma, &transform->srcGamma);
-        deriveXYZMatrixAndGamma(C, transform->dstProfile, &dstToXYZ, &transform->dstHasGamma, &transform->dstInvGamma);
-        if (transform->dstHasGamma && (transform->dstInvGamma != 0.0f)) {
+        deriveXYZMatrixAndXTF(C, transform->srcProfile, &srcToXYZ, &transform->srcEOTF, &transform->srcGamma);
+        deriveXYZMatrixAndXTF(C, transform->dstProfile, &dstToXYZ, &transform->dstOETF, &transform->dstInvGamma);
+        if ((transform->dstOETF == CL_XTF_GAMMA) && (transform->dstInvGamma != 0.0f)) {
             transform->dstInvGamma = 1.0f / transform->dstInvGamma;
         }
         gb_mat3_inverse(&XYZtoDst, &dstToXYZ);
@@ -127,6 +130,40 @@ void clCCMMPrepareTransform(struct clContext * C, struct clTransform * transform
     }
 }
 
+// SMPTE ST.2084: https://ieeexplore.ieee.org/servlet/opac?punumber=7291450
+
+static const float PQ_C1 = 0.8359375;       // 3424.0 / 4096.0
+static const float PQ_C2 = 18.8515625;      // 2413.0 / 4096.0 * 32.0
+static const float PQ_C3 = 18.6875;         // 2392.0 / 4096.0 * 32.0
+static const float PQ_M1 = 0.1593017578125; // 2610.0 / 4096.0 / 4.0
+static const float PQ_M2 = 78.84375;        // 2523.0 / 4096.0 * 128.0
+
+// SMPTE ST.2084: Equation 4.1
+// L = ( (max(N^(1/m2) - c1, 0)) / (c2 - c3*N^(1/m2)) )^(1/m1)
+static float PQ_EOTF(float N)
+{
+    float N1m2, N1m2c1, c2c3N1m2;
+
+    N1m2 = powf(N, 1 / PQ_M2);
+    N1m2c1 = N1m2 - PQ_C1;
+    if (N1m2c1 < 0.0f)
+        N1m2c1 = 0.0f;
+    c2c3N1m2 = PQ_C2 - (PQ_C3 * N1m2);
+    return powf(N1m2c1 / c2c3N1m2, 1 / PQ_M1);
+}
+
+// SMPTE ST.2084: Equation 5.2
+// N = ( (c1 + (c2 * L^m1)) / (1 + (c3 * L^m1)) )^m2
+static float PQ_OETF(float L)
+{
+    float Lm1, c2Lm1, c3Lm1;
+
+    Lm1 = powf(L, PQ_M1);
+    c2Lm1 = PQ_C2 * Lm1;
+    c3Lm1 = PQ_C3 * Lm1;
+    return powf((PQ_C1 + c2Lm1) / (1 + c3Lm1), PQ_M2);
+}
+
 // The real color conversion function
 static void transformFloatToFloat(struct clContext * C, struct clTransform * transform, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
 {
@@ -135,21 +172,38 @@ static void transformFloatToFloat(struct clContext * C, struct clTransform * tra
         float * srcPixel = (float *)&srcPixels[i * srcPixelBytes];
         float * dstPixel = (float *)&dstPixels[i * dstPixelBytes];
         gbVec3 src;
-        if (transform->srcHasGamma) {
-            src.x = powf((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f, transform->srcGamma);
-            src.y = powf((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f, transform->srcGamma);
-            src.z = powf((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f, transform->srcGamma);
-        } else {
-            memcpy(&src, srcPixel, sizeof(src));
+        float tmp[3];
+        switch (transform->srcEOTF) {
+            case CL_XTF_NONE:
+                memcpy(&src, srcPixel, sizeof(src));
+                break;
+            case CL_XTF_GAMMA:
+                src.x = powf((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f, transform->srcGamma);
+                src.y = powf((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f, transform->srcGamma);
+                src.z = powf((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f, transform->srcGamma);
+                break;
+            case CL_XTF_PQ:
+                src.x = PQ_EOTF((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f);
+                src.y = PQ_EOTF((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f);
+                src.z = PQ_EOTF((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f);
+                break;
         }
-        if (transform->dstHasGamma) {
-            float tmp[3];
-            gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->matSrcToDst, src);
-            dstPixel[0] = powf((tmp[0] >= 0.0f) ? tmp[0] : 0.0f, transform->dstInvGamma);
-            dstPixel[1] = powf((tmp[1] >= 0.0f) ? tmp[1] : 0.0f, transform->dstInvGamma);
-            dstPixel[2] = powf((tmp[2] >= 0.0f) ? tmp[2] : 0.0f, transform->dstInvGamma);
-        } else {
-            gb_mat3_mul_vec3((gbVec3 *)dstPixel, &transform->matSrcToDst, src);
+        switch (transform->dstOETF) {
+            case CL_XTF_NONE:
+                gb_mat3_mul_vec3((gbVec3 *)dstPixel, &transform->matSrcToDst, src);
+                break;
+            case CL_XTF_GAMMA:
+                gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->matSrcToDst, src);
+                dstPixel[0] = powf((tmp[0] >= 0.0f) ? tmp[0] : 0.0f, transform->dstInvGamma);
+                dstPixel[1] = powf((tmp[1] >= 0.0f) ? tmp[1] : 0.0f, transform->dstInvGamma);
+                dstPixel[2] = powf((tmp[2] >= 0.0f) ? tmp[2] : 0.0f, transform->dstInvGamma);
+                break;
+            case CL_XTF_PQ:
+                gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->matSrcToDst, src);
+                dstPixel[0] = PQ_OETF((tmp[0] >= 0.0f) ? tmp[0] : 0.0f);
+                dstPixel[1] = PQ_OETF((tmp[1] >= 0.0f) ? tmp[1] : 0.0f);
+                dstPixel[2] = PQ_OETF((tmp[2] >= 0.0f) ? tmp[2] : 0.0f);
+                break;
         }
         if (DST_FLOAT_HAS_ALPHA()) {
             if (SRC_FLOAT_HAS_ALPHA()) {
@@ -658,41 +712,41 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, void 
             return;
         } else if (clTransformFormatIsFloat(C, transform->srcFormat)) {
             // Float -> 8 or 16
-            if ((transform->dstFormat == CL_TF_RGB_8) || (transform->dstFormat == CL_TF_RGBA_8)) {
+            if ((transform->dstFormat == CL_XF_RGB_8) || (transform->dstFormat == CL_XF_RGBA_8)) {
                 reformatFloatToRGB8(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else if ((transform->dstFormat == CL_TF_RGB_16) || (transform->dstFormat == CL_TF_RGBA_16)) {
+            } else if ((transform->dstFormat == CL_XF_RGB_16) || (transform->dstFormat == CL_XF_RGBA_16)) {
                 reformatFloatToRGB16(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
             }
         } else if (clTransformFormatIsFloat(C, transform->dstFormat)) {
             // 8 or 16 -> Float
-            if ((transform->srcFormat == CL_TF_RGB_8) || (transform->srcFormat == CL_TF_RGBA_8)) {
+            if ((transform->srcFormat == CL_XF_RGB_8) || (transform->srcFormat == CL_XF_RGBA_8)) {
                 reformatRGB8ToFloat(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else if ((transform->srcFormat == CL_TF_RGB_16) || (transform->srcFormat == CL_TF_RGBA_16)) {
+            } else if ((transform->srcFormat == CL_XF_RGB_16) || (transform->srcFormat == CL_XF_RGBA_16)) {
                 reformatRGB16ToFloat(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
             }
         } else {
             // 8 or 16 -> 8 or 16
-            if (((transform->srcFormat == CL_TF_RGB_8) || (transform->srcFormat == CL_TF_RGBA_8))
-                && ((transform->dstFormat == CL_TF_RGB_8) || (transform->dstFormat == CL_TF_RGBA_8)))
+            if (((transform->srcFormat == CL_XF_RGB_8) || (transform->srcFormat == CL_XF_RGBA_8))
+                && ((transform->dstFormat == CL_XF_RGB_8) || (transform->dstFormat == CL_XF_RGBA_8)))
             {
                 reformatRGB8ToRGB8(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else if (((transform->srcFormat == CL_TF_RGB_8) || (transform->srcFormat == CL_TF_RGBA_8))
-                       && ((transform->dstFormat == CL_TF_RGB_16) || (transform->dstFormat == CL_TF_RGBA_16)))
+            } else if (((transform->srcFormat == CL_XF_RGB_8) || (transform->srcFormat == CL_XF_RGBA_8))
+                       && ((transform->dstFormat == CL_XF_RGB_16) || (transform->dstFormat == CL_XF_RGBA_16)))
             {
                 reformatRGB8ToRGB16(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else if (((transform->srcFormat == CL_TF_RGB_16) || (transform->srcFormat == CL_TF_RGBA_16))
-                       && ((transform->dstFormat == CL_TF_RGB_8) || (transform->dstFormat == CL_TF_RGBA_8)))
+            } else if (((transform->srcFormat == CL_XF_RGB_16) || (transform->srcFormat == CL_XF_RGBA_16))
+                       && ((transform->dstFormat == CL_XF_RGB_8) || (transform->dstFormat == CL_XF_RGBA_8)))
             {
                 reformatRGB16ToRGB8(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else if (((transform->srcFormat == CL_TF_RGB_16) || (transform->srcFormat == CL_TF_RGBA_16))
-                       && ((transform->dstFormat == CL_TF_RGB_16) || (transform->dstFormat == CL_TF_RGBA_16)))
+            } else if (((transform->srcFormat == CL_XF_RGB_16) || (transform->srcFormat == CL_XF_RGBA_16))
+                       && ((transform->dstFormat == CL_XF_RGB_16) || (transform->dstFormat == CL_XF_RGBA_16)))
             {
                 reformatRGB16ToRGB16(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
@@ -707,41 +761,41 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, void 
             return;
         } else if (clTransformFormatIsFloat(C, transform->srcFormat)) {
             // Float -> 8 or 16
-            if ((transform->dstFormat == CL_TF_RGB_8) || (transform->dstFormat == CL_TF_RGBA_8)) {
+            if ((transform->dstFormat == CL_XF_RGB_8) || (transform->dstFormat == CL_XF_RGBA_8)) {
                 transformFloatToRGB8(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else if ((transform->dstFormat == CL_TF_RGB_16) || (transform->dstFormat == CL_TF_RGBA_16)) {
+            } else if ((transform->dstFormat == CL_XF_RGB_16) || (transform->dstFormat == CL_XF_RGBA_16)) {
                 transformFloatToRGB16(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
             }
         } else if (clTransformFormatIsFloat(C, transform->dstFormat)) {
             // 8 or 16 -> Float
-            if ((transform->srcFormat == CL_TF_RGB_8) || (transform->srcFormat == CL_TF_RGBA_8)) {
+            if ((transform->srcFormat == CL_XF_RGB_8) || (transform->srcFormat == CL_XF_RGBA_8)) {
                 transformRGB8ToFloat(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else if ((transform->srcFormat == CL_TF_RGB_16) || (transform->srcFormat == CL_TF_RGBA_16)) {
+            } else if ((transform->srcFormat == CL_XF_RGB_16) || (transform->srcFormat == CL_XF_RGBA_16)) {
                 transformRGB16ToFloat(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
             }
         } else {
             // 8 or 16 -> 8 or 16
-            if (((transform->srcFormat == CL_TF_RGB_8) || (transform->srcFormat == CL_TF_RGBA_8))
-                && ((transform->dstFormat == CL_TF_RGB_8) || (transform->dstFormat == CL_TF_RGBA_8)))
+            if (((transform->srcFormat == CL_XF_RGB_8) || (transform->srcFormat == CL_XF_RGBA_8))
+                && ((transform->dstFormat == CL_XF_RGB_8) || (transform->dstFormat == CL_XF_RGBA_8)))
             {
                 transformRGB8ToRGB8(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else if (((transform->srcFormat == CL_TF_RGB_8) || (transform->srcFormat == CL_TF_RGBA_8))
-                       && ((transform->dstFormat == CL_TF_RGB_16) || (transform->dstFormat == CL_TF_RGBA_16)))
+            } else if (((transform->srcFormat == CL_XF_RGB_8) || (transform->srcFormat == CL_XF_RGBA_8))
+                       && ((transform->dstFormat == CL_XF_RGB_16) || (transform->dstFormat == CL_XF_RGBA_16)))
             {
                 transformRGB8ToRGB16(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else if (((transform->srcFormat == CL_TF_RGB_16) || (transform->srcFormat == CL_TF_RGBA_16))
-                       && ((transform->dstFormat == CL_TF_RGB_8) || (transform->dstFormat == CL_TF_RGBA_8)))
+            } else if (((transform->srcFormat == CL_XF_RGB_16) || (transform->srcFormat == CL_XF_RGBA_16))
+                       && ((transform->dstFormat == CL_XF_RGB_8) || (transform->dstFormat == CL_XF_RGBA_8)))
             {
                 transformRGB16ToRGB8(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;
-            } else if (((transform->srcFormat == CL_TF_RGB_16) || (transform->srcFormat == CL_TF_RGBA_16))
-                       && ((transform->dstFormat == CL_TF_RGB_16) || (transform->dstFormat == CL_TF_RGBA_16)))
+            } else if (((transform->srcFormat == CL_XF_RGB_16) || (transform->srcFormat == CL_XF_RGBA_16))
+                       && ((transform->dstFormat == CL_XF_RGB_16) || (transform->dstFormat == CL_XF_RGBA_16)))
             {
                 transformRGB16ToRGB16(C, transform, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
                 return;

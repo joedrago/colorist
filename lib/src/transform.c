@@ -61,13 +61,13 @@ void clTransformDestroy(struct clContext * C, clTransform * transform)
 static cmsUInt32Number clTransformFormatToLCMSFormat(struct clContext * C, clTransformFormat format)
 {
     switch (format) {
-        case CL_TF_XYZ_FLOAT:  return TYPE_XYZ_FLT;
-        case CL_TF_RGB_FLOAT:  return TYPE_RGB_FLT;
-        case CL_TF_RGBA_FLOAT: return TYPE_RGBA_FLT;
-        case CL_TF_RGB_8:     return TYPE_RGB_8;
-        case CL_TF_RGBA_8:     return TYPE_RGBA_8;
-        case CL_TF_RGB_16:    return TYPE_RGB_16;
-        case CL_TF_RGBA_16:    return TYPE_RGBA_16;
+        case CL_XF_XYZ_FLOAT:  return TYPE_XYZ_FLT;
+        case CL_XF_RGB_FLOAT:  return TYPE_RGB_FLT;
+        case CL_XF_RGBA_FLOAT: return TYPE_RGBA_FLT;
+        case CL_XF_RGB_8:     return TYPE_RGB_8;
+        case CL_XF_RGBA_8:     return TYPE_RGBA_8;
+        case CL_XF_RGB_16:    return TYPE_RGB_16;
+        case CL_XF_RGBA_16:    return TYPE_RGBA_16;
     }
 
     COLORIST_FAILURE("clTransformFormatToLCMSFormat: Unknown transform format");
@@ -77,15 +77,15 @@ static cmsUInt32Number clTransformFormatToLCMSFormat(struct clContext * C, clTra
 clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format)
 {
     switch (format) {
-        case CL_TF_XYZ_FLOAT:
-        case CL_TF_RGB_FLOAT:
-        case CL_TF_RGBA_FLOAT:
+        case CL_XF_XYZ_FLOAT:
+        case CL_XF_RGB_FLOAT:
+        case CL_XF_RGBA_FLOAT:
             return clTrue;
 
-        case CL_TF_RGB_8:
-        case CL_TF_RGBA_8:
-        case CL_TF_RGB_16:
-        case CL_TF_RGBA_16:
+        case CL_XF_RGB_8:
+        case CL_XF_RGBA_8:
+        case CL_XF_RGB_16:
+        case CL_XF_RGBA_16:
             break;
     }
     return clFalse;
@@ -94,13 +94,13 @@ clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format)
 int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format)
 {
     switch (format) {
-        case CL_TF_XYZ_FLOAT:  return sizeof(float) * 3;
-        case CL_TF_RGB_FLOAT:  return sizeof(float) * 3;
-        case CL_TF_RGBA_FLOAT: return sizeof(float) * 4;
-        case CL_TF_RGB_8:      return sizeof(uint8_t) * 3;
-        case CL_TF_RGBA_8:     return sizeof(uint8_t) * 4;
-        case CL_TF_RGB_16:     return sizeof(uint16_t) * 3;
-        case CL_TF_RGBA_16:    return sizeof(uint16_t) * 4;
+        case CL_XF_XYZ_FLOAT:  return sizeof(float) * 3;
+        case CL_XF_RGB_FLOAT:  return sizeof(float) * 3;
+        case CL_XF_RGBA_FLOAT: return sizeof(float) * 4;
+        case CL_XF_RGB_8:      return sizeof(uint8_t) * 3;
+        case CL_XF_RGBA_8:     return sizeof(uint8_t) * 4;
+        case CL_XF_RGB_16:     return sizeof(uint16_t) * 3;
+        case CL_XF_RGBA_16:    return sizeof(uint16_t) * 4;
     }
 
     COLORIST_FAILURE("clTransformFormatToPixelBytes: Unknown transform format");

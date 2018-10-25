@@ -30,7 +30,9 @@ clBool clProfileHasPQSignature(struct clContext * C, clProfile * profile, clProf
     for (i = 0; i < pqProfileCount; ++i) {
         struct PQProfile * pqProfile = &pqProfiles_[i];
         if (!memcmp(pqProfile->signature, profile->signature, 16)) {
-            clContextGetStockPrimaries(C, pqProfile->stockPrimariesName, primaries);
+            if (primaries) {
+                clContextGetStockPrimaries(C, pqProfile->stockPrimariesName, primaries);
+            }
             return clTrue;
         }
     }

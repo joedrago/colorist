@@ -97,7 +97,10 @@ clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, int iccLen
         clProfileCurve curve = { 0 };
         int luminance = 0;
         profile->ccmm = clFalse; // Start with unfriendly
-        if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
+        if (clProfileHasPQSignature(C, profile, NULL)) {
+            // CCMM specifically supports any special profiles recognized as PQ
+            profile->ccmm = clTrue;
+        } else if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
             // TODO: Be way more restrictive here
             if (curve.type == CL_PCT_GAMMA) {
                 profile->ccmm = clTrue;
