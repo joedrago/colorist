@@ -21,7 +21,7 @@
 // Debug Helpers
 
 #if defined(DEBUG_MATRIX_MATH)
-static void DEBUG_PRINT_MATRIX(const char *name, gbMat3 *m)
+static void DEBUG_PRINT_MATRIX(const char * name, gbMat3 * m)
 {
     printf("mat: %s\n", name);
     printf("  %g    %g    %g\n", m->x.x, m->y.x, m->z.x);
@@ -29,7 +29,7 @@ static void DEBUG_PRINT_MATRIX(const char *name, gbMat3 *m)
     printf("  %g    %g    %g\n", m->x.z, m->y.z, m->z.z);
 }
 
-static void DEBUG_PRINT_VECTOR(const char *name, gbVec3 *v)
+static void DEBUG_PRINT_VECTOR(const char * name, gbVec3 * v)
 {
     printf("vec: %s\n", name);
     printf("  %g    %g    %g\n", v->x, v->y, v->z);

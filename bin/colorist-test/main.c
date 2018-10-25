@@ -31,8 +31,8 @@ int main(int argc, char * argv[])
 
 #if defined(DEBUG_MATRIX_MATH)
     {
-        clProfile *bt709;
-        clProfile *bt2020;
+        clProfile * bt709;
+        clProfile * bt2020;
         C = clContextCreate(NULL);
 
         clContextGetStockPrimaries(C, "bt709", &primaries);
