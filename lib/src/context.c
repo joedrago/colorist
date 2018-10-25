@@ -289,7 +289,7 @@ clContext * clContextCreate(clContextSystem * system)
     C->help = clFalse;
     C->iccOverrideIn = NULL;
     C->verbose = clFalse;
-    C->ccmmAllowed = clFalse; // It's not ready yet
+    C->ccmmAllowed = clTrue;
     C->inputFilename = NULL;
     C->outputFilename = NULL;
 
