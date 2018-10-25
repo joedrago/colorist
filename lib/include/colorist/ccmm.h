@@ -17,4 +17,7 @@ struct clTransform;
 void clCCMMPrepareTransform(struct clContext * C, struct clTransform * transform);
 void clCCMMTransform(struct clContext * C, struct clTransform * transform, void * srcPixels, void * dstPixels, int pixelCount);
 
+// Uncomment to debug CCMM matrix math via colorist-test
+// #define DEBUG_MATRIX_MATH 1
+
 #endif

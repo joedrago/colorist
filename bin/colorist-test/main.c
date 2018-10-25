@@ -8,6 +8,7 @@
 #include "colorist/colorist.h"
 
 #include "colorist/transform.h"
+#include "colorist/ccmm.h"
 
 static void setFloat4(float c[4], float v0, float v1, float v2, float v3) { c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; }
 static void setFloat3(float c[3], float v0, float v1, float v2) { c[0] = v0; c[1] = v1; c[2] = v2; }
@@ -27,6 +28,31 @@ int main(int argc, char * argv[])
     struct clProfile * dstProfile;
     clImage * srcImage;
     clImage * dstImage;
+
+#if defined(DEBUG_MATRIX_MATH)
+    {
+        clProfile *bt709;
+        clProfile *bt2020;
+        C = clContextCreate(NULL);
+
+        clContextGetStockPrimaries(C, "bt709", &primaries);
+        curve.type = CL_PCT_GAMMA;
+        curve.gamma = 1.0f;
+        bt709 = clProfileCreate(C, &primaries, &curve, 0, NULL);
+
+        clContextGetStockPrimaries(C, "bt2020", &primaries);
+        curve.type = CL_PCT_GAMMA;
+        curve.gamma = 1.0f;
+        bt2020 = clProfileCreate(C, &primaries, &curve, 0, NULL);
+
+        transform = clTransformCreate(C, bt709, CL_TF_RGBA_FLOAT, bt2020, CL_TF_RGBA_FLOAT);
+        clCCMMPrepareTransform(C, transform);
+        clTransformDestroy(C, transform);
+
+        clContextDestroy(C);
+        return 0;
+    }
+#endif
 
     // Basic clImageDebugDump test
     {

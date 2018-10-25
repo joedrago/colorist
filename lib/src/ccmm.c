@@ -18,6 +18,28 @@
 #define DST_FLOAT_HAS_ALPHA() (dstPixelBytes > 15)
 
 // ----------------------------------------------------------------------------
+// Debug Helpers
+
+#if defined(DEBUG_MATRIX_MATH)
+static void DEBUG_PRINT_MATRIX(const char *name, gbMat3 *m)
+{
+    printf("mat: %s\n", name);
+    printf("  %g    %g    %g\n", m->x.x, m->y.x, m->z.x);
+    printf("  %g    %g    %g\n", m->x.y, m->y.y, m->z.y);
+    printf("  %g    %g    %g\n", m->x.z, m->y.z, m->z.z);
+}
+
+static void DEBUG_PRINT_VECTOR(const char *name, gbVec3 *v)
+{
+    printf("vec: %s\n", name);
+    printf("  %g    %g    %g\n", v->x, v->y, v->z);
+}
+#else
+#define DEBUG_PRINT_MATRIX(NAME, M)
+#define DEBUG_PRINT_VECTOR(NAME, V)
+#endif
+
+// ----------------------------------------------------------------------------
 // Color Conversion Math
 
 // From http://docs-hoffmann.de/ciexyz29082000.pdf, Section 11.4
@@ -48,19 +70,28 @@ static clBool deriveXYZMatrixAndGamma(struct clContext * C, struct clProfile * p
         P.col[2].x = primaries.blue[0];
         P.col[2].y = primaries.blue[1];
         P.col[2].z = 1 - primaries.blue[0] - primaries.blue[1];
+        DEBUG_PRINT_MATRIX("P", &P);
+
         gb_mat3_inverse(&PInv, &P);
+        DEBUG_PRINT_MATRIX("PInv", &PInv);
 
         W.x = primaries.white[0];
         W.y = primaries.white[1];
         W.z = 1 - primaries.white[0] - primaries.white[1];
+        DEBUG_PRINT_VECTOR("W", &W);
+
         gb_mat3_mul_vec3(&U, &PInv, W);
+        DEBUG_PRINT_VECTOR("U", &U);
 
         memset(&D, 0, sizeof(D));
         D.col[0].x = U.x / W.y;
         D.col[1].y = U.y / W.y;
         D.col[2].z = U.z / W.y;
+        DEBUG_PRINT_MATRIX("D", &D);
 
         gb_mat3_mul(toXYZ, &P, &D);
+        gb_mat3_transpose(toXYZ);
+        DEBUG_PRINT_MATRIX("Cxr", toXYZ);
     } else {
         // No profile; we're already XYZ!
         *hasGamma = clFalse;
@@ -68,6 +99,32 @@ static clBool deriveXYZMatrixAndGamma(struct clContext * C, struct clProfile * p
         gb_mat3_identity(toXYZ);
     }
     return clTrue;
+}
+
+void clCCMMPrepareTransform(struct clContext * C, struct clTransform * transform)
+{
+    if (!transform->ccmmReady) {
+        gbMat3 srcToXYZ;
+        gbMat3 dstToXYZ;
+        gbMat3 XYZtoDst;
+
+        deriveXYZMatrixAndGamma(C, transform->srcProfile, &srcToXYZ, &transform->srcHasGamma, &transform->srcGamma);
+        deriveXYZMatrixAndGamma(C, transform->dstProfile, &dstToXYZ, &transform->dstHasGamma, &transform->dstInvGamma);
+        if (transform->dstHasGamma && (transform->dstInvGamma != 0.0f)) {
+            transform->dstInvGamma = 1.0f / transform->dstInvGamma;
+        }
+        gb_mat3_inverse(&XYZtoDst, &dstToXYZ);
+        gb_mat3_transpose(&XYZtoDst);
+
+        DEBUG_PRINT_MATRIX("XYZtoDst", &XYZtoDst);
+        DEBUG_PRINT_MATRIX("MA", &srcToXYZ);
+        DEBUG_PRINT_MATRIX("MB", &XYZtoDst);
+        gb_mat3_mul(&transform->matSrcToDst, &srcToXYZ, &XYZtoDst);
+        // gb_mat3_transpose(&transform->matSrcToDst);
+        DEBUG_PRINT_MATRIX("MA*MB", &transform->matSrcToDst);
+
+        transform->ccmmReady = clTrue;
+    }
 }
 
 // The real color conversion function
@@ -579,28 +636,7 @@ static void reformatRGB16ToRGB8(struct clContext * C, uint8_t * srcPixels, int s
 }
 
 // ----------------------------------------------------------------------------
-// Transform API
-
-void clCCMMPrepareTransform(struct clContext * C, struct clTransform * transform)
-{
-    if (!transform->ccmmReady) {
-        gbMat3 srcToXYZ;
-        gbMat3 dstToXYZ;
-        gbMat3 XYZtoDst;
-
-        deriveXYZMatrixAndGamma(C, transform->srcProfile, &srcToXYZ, &transform->srcHasGamma, &transform->srcGamma);
-        deriveXYZMatrixAndGamma(C, transform->dstProfile, &dstToXYZ, &transform->dstHasGamma, &transform->dstInvGamma);
-        if (transform->dstHasGamma && (transform->dstInvGamma != 0.0f)) {
-            transform->dstInvGamma = 1.0f / transform->dstInvGamma;
-        }
-        gb_mat3_inverse(&XYZtoDst, &dstToXYZ);
-        gb_mat3_transpose(&XYZtoDst);
-        gb_mat3_mul(&transform->matSrcToDst, &srcToXYZ, &XYZtoDst);
-        gb_mat3_transpose(&transform->matSrcToDst);
-
-        transform->ccmmReady = clTrue;
-    }
-}
+// Transform entry point
 
 void clCCMMTransform(struct clContext * C, struct clTransform * transform, void * srcPixels, void * dstPixels, int pixelCount)
 {
