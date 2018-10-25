@@ -121,6 +121,7 @@ int clFormatBestDepth(struct clContext * C, const char * formatName, int reqDept
             clContextLogError(C, "clFormatBestDepth() called on unknown format");
             return 8;
         }
+        formatDepth = format->depth;
     }
 
     if (reqDepth < 8) {
