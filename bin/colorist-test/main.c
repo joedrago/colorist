@@ -47,27 +47,27 @@ int main(int argc, char * argv[])
 
         // RGBA8 -> RGBA8
         srcImage = clImageParseString(C, "8x8,(255,0,0)", 8, NULL);
-        dstImage = clImageConvert(C, srcImage, &params);
+        dstImage = clImageConvert(C, srcImage, &params, NULL);
         clImageDestroy(C, srcImage);
         clImageDestroy(C, dstImage);
 
         // RGBA16 -> RGBA16
         srcImage = clImageParseString(C, "8x8,(255,0,0)", 16, NULL);
-        dstImage = clImageConvert(C, srcImage, &params);
+        dstImage = clImageConvert(C, srcImage, &params, NULL);
         clImageDestroy(C, srcImage);
         clImageDestroy(C, dstImage);
 
         // RGBA16 -> RGBA8
         params.bpp = 8;
         srcImage = clImageParseString(C, "8x8,(255,0,0)", 16, NULL);
-        dstImage = clImageConvert(C, srcImage, &params);
+        dstImage = clImageConvert(C, srcImage, &params, NULL);
         clImageDestroy(C, srcImage);
         clImageDestroy(C, dstImage);
 
         // RGBA8 -> RGBA16
         params.bpp = 16;
         srcImage = clImageParseString(C, "8x8,(255,0,0)", 8, NULL);
-        dstImage = clImageConvert(C, srcImage, &params);
+        dstImage = clImageConvert(C, srcImage, &params, NULL);
         clImageDestroy(C, srcImage);
         clImageDestroy(C, dstImage);
 
@@ -432,6 +432,63 @@ int main(int argc, char * argv[])
         clTransformDestroy(C, transform);
 
         clProfileDestroy(C, srcProfile);
+        clContextDestroy(C);
+    }
+
+    // Compare CCMM and LittleCMS, continued
+    {
+        float colors[][3] = {
+            { 1.0f, 0.0f, 0.0f },
+            { 0.0f, 1.0f, 0.0f },
+            { 0.0f, 0.0f, 1.0f },
+            { 1.0f, 1.0f, 0.0f },
+            { 0.0f, 1.0f, 1.0f },
+            { 1.0f, 0.0f, 1.0f },
+            { 1.0f, 0.5f, 0.0f },
+            { 1.0f, 1.0f, 1.0f },
+        };
+        const int colorCount = sizeof(colors) / sizeof(colors[0]);
+        int i;
+
+        uint16_t * srcU16;
+        uint16_t * dstU16;
+        C = clContextCreate(NULL);
+        curve.type = CL_PCT_GAMMA;
+        curve.gamma = 2.2f;
+        char imageString[512];
+
+        clContextGetStockPrimaries(C, "bt709", &primaries);
+        srcProfile = clProfileCreate(C, &primaries, &curve, 300, "sRGB");
+
+        clContextGetStockPrimaries(C, "bt2020", &primaries);
+        dstProfile = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G22");
+
+        i = 0;
+        sprintf(imageString, "f(%g,%g,%g)", colors[i][0], colors[i][1], colors[i][2]);
+        srcImage = clImageParseString(C, imageString, 16, srcProfile);
+
+        C->ccmmAllowed = clTrue;
+        clConversionParamsSetDefaults(C, &params);
+        dstImage = clImageConvert(C, srcImage, &params, dstProfile);
+        srcU16 = (uint16_t *)srcImage->pixels;
+        dstU16 = (uint16_t *)dstImage->pixels;
+        printf("\n\nCCMM: bt709_300(%u,%u,%u) -> bt2020_10000(%u,%u,%u)\n", srcU16[0], srcU16[1], srcU16[2], dstU16[0], dstU16[1], dstU16[2]);
+        clImageDebugDump(C, dstImage, 0, 0, 1, 1, 0);
+        printf("\n");
+        clImageDestroy(C, dstImage);
+
+        C->ccmmAllowed = clFalse;
+        clConversionParamsSetDefaults(C, &params);
+        dstImage = clImageConvert(C, srcImage, &params, dstProfile);
+        srcU16 = (uint16_t *)srcImage->pixels;
+        dstU16 = (uint16_t *)dstImage->pixels;
+        printf("\n\nLCMS: bt709_300(%u,%u,%u) -> bt2020_10000(%u,%u,%u)\n", srcU16[0], srcU16[1], srcU16[2], dstU16[0], dstU16[1], dstU16[2]);
+        clImageDebugDump(C, dstImage, 0, 0, 1, 1, 0);
+        printf("\n");
+        clImageDestroy(C, dstImage);
+
+        clProfileDestroy(C, srcProfile);
+        clProfileDestroy(C, dstProfile);
         clContextDestroy(C);
     }
 

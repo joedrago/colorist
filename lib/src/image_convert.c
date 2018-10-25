@@ -28,7 +28,7 @@ struct ImageInfo
     int luminance;
 };
 
-clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConversionParams * params)
+clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConversionParams * params, struct clProfile * dstProfileOverride)
 {
     // -----------------------------------------------------------------------
     // Variables
@@ -79,50 +79,61 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         dstInfo.luminance = 0;
     }
 
-    // Load output profile override, if any
-    if (params->iccOverrideOut) {
-        if (params->autoGrade) {
-            clContextLogError(C, "Can't autograde (-a) along with a specified profile from disk (--iccout), please choose one or the other.");
-            FAIL();
-        }
-
-        dstProfile = clProfileRead(C, params->iccOverrideOut);
-        if (!dstProfile) {
-            clContextLogError(C, "Invalid destination profile override: %s", params->iccOverrideOut);
-            FAIL();
-        }
+    if (dstProfileOverride) {
+        clContextLog(C, "profile", 0, "Using passed-in dst profile");
+        dstProfile = clProfileClone(C, dstProfileOverride);
 
         clProfileQuery(C, dstProfile, &dstInfo.primaries, &dstInfo.curve, &dstInfo.luminance);
         dstInfo.luminance = (dstInfo.luminance != 0) ? dstInfo.luminance : COLORIST_DEFAULT_LUMINANCE;
         if ((dstInfo.curve.type != CL_PCT_GAMMA) && (dstInfo.curve.gamma > 0.0f)) {
             clContextLog(C, "info", 0, "Estimated dst gamma: %g", dstInfo.curve.gamma);
         }
-
-        clContextLog(C, "profile", 1, "Overriding dst profile with file: %s", params->iccOverrideOut);
     } else {
-        // No output profile, allow profile overrides
+        // Load output profile override, if any
+        if (params->iccOverrideOut) {
+            if (params->autoGrade) {
+                clContextLogError(C, "Can't autograde (-a) along with a specified profile from disk (--iccout), please choose one or the other.");
+                FAIL();
+            }
 
-        // Override primaries
-        if (params->primaries[0] > 0.0f) {
-            dstInfo.primaries.red[0] = params->primaries[0];
-            dstInfo.primaries.red[1] = params->primaries[1];
-            dstInfo.primaries.green[0] = params->primaries[2];
-            dstInfo.primaries.green[1] = params->primaries[3];
-            dstInfo.primaries.blue[0] = params->primaries[4];
-            dstInfo.primaries.blue[1] = params->primaries[5];
-            dstInfo.primaries.white[0] = params->primaries[6];
-            dstInfo.primaries.white[1] = params->primaries[7];
-        }
+            dstProfile = clProfileRead(C, params->iccOverrideOut);
+            if (!dstProfile) {
+                clContextLogError(C, "Invalid destination profile override: %s", params->iccOverrideOut);
+                FAIL();
+            }
 
-        // Override luminance
-        if (params->luminance > 0) {
-            dstInfo.luminance = params->luminance;
-        }
+            clProfileQuery(C, dstProfile, &dstInfo.primaries, &dstInfo.curve, &dstInfo.luminance);
+            dstInfo.luminance = (dstInfo.luminance != 0) ? dstInfo.luminance : COLORIST_DEFAULT_LUMINANCE;
+            if ((dstInfo.curve.type != CL_PCT_GAMMA) && (dstInfo.curve.gamma > 0.0f)) {
+                clContextLog(C, "info", 0, "Estimated dst gamma: %g", dstInfo.curve.gamma);
+            }
 
-        // Override gamma
-        if (params->gamma > 0.0f) {
-            dstInfo.curve.type = CL_PCT_GAMMA;
-            dstInfo.curve.gamma = params->gamma;
+            clContextLog(C, "profile", 1, "Overriding dst profile with file: %s", params->iccOverrideOut);
+        } else {
+            // No output profile, allow profile overrides
+
+            // Override primaries
+            if (params->primaries[0] > 0.0f) {
+                dstInfo.primaries.red[0] = params->primaries[0];
+                dstInfo.primaries.red[1] = params->primaries[1];
+                dstInfo.primaries.green[0] = params->primaries[2];
+                dstInfo.primaries.green[1] = params->primaries[3];
+                dstInfo.primaries.blue[0] = params->primaries[4];
+                dstInfo.primaries.blue[1] = params->primaries[5];
+                dstInfo.primaries.white[0] = params->primaries[6];
+                dstInfo.primaries.white[1] = params->primaries[7];
+            }
+
+            // Override luminance
+            if (params->luminance > 0) {
+                dstInfo.luminance = params->luminance;
+            }
+
+            // Override gamma
+            if (params->gamma > 0.0f) {
+                dstInfo.curve.type = CL_PCT_GAMMA;
+                dstInfo.curve.gamma = params->gamma;
+            }
         }
     }
 
@@ -234,7 +245,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
             clProfileCurve gamma1;
             gamma1.type = CL_PCT_GAMMA;
             gamma1.gamma = 1.0f;
-            linearFloatsProfile = clProfileCreate(C, &dstInfo.primaries, &gamma1, 0, NULL);
+            linearFloatsProfile = clProfileCreate(C, &dstInfo.primaries, &gamma1, 0, "toLinear");
             toLinear = clTransformCreate(C, srcImage->profile, CL_TF_RGBA_FLOAT, linearFloatsProfile, CL_TF_RGBA_FLOAT);
 
             clContextLog(C, "convert", 0, "Calculating linear pixels (%s)...", clTransformCMMName(C, toLinear));

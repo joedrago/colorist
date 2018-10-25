@@ -365,7 +365,7 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
         params.luminance = COLORIST_DEFAULT_LUMINANCE;
         params.quality = 95;
         params.jobs = C->params.jobs;
-        visual = clImageConvert(C, image, &params);
+        visual = clImageConvert(C, image, &params, NULL);
         if (!visual) {
             return clFalse;
         }

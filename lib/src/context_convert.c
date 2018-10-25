@@ -69,7 +69,7 @@ int clContextConvert(clContext * C)
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
 
-    dstImage = clImageConvert(C, srcImage, &params);
+    dstImage = clImageConvert(C, srcImage, &params, NULL);
     if (!dstImage) {
         FAIL();
     }
