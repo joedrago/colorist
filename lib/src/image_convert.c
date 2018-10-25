@@ -377,10 +377,19 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
 
         clTransform * fromLinear = clTransformCreate(C, linearFloatsProfile, CL_XF_RGBA_FLOAT, dstImage->profile, CL_XF_RGBA_FLOAT);
         float * dstFloatsPixels; // final values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
+        int srcLuminance = srcInfo.luminance;
 
-        if (srcInfo.luminance != dstInfo.luminance) {
-            float luminanceScale = (float)srcInfo.luminance / (float)dstInfo.luminance;
+        if (clTransformUsesCCMM(C, fromLinear)) {
+            if (srcInfo.curve.matrixCurveScale > 0.0f) {
+                // This handles crazy A2B* tags, somewhat (when using CCMM)
+                srcLuminance *= (int)srcInfo.curve.matrixCurveScale;
+            }
+        }
+
+        if (srcLuminance != dstInfo.luminance) {
+            float luminanceScale = (float)srcLuminance / (float)dstInfo.luminance;
             clBool tonemap;
+
             if (params->autoGrade) {
                 // autoGrade ensures we're never scaling a pixel lower than the brighest
                 // pixel in the source image, tonemapping is unnecessary.
