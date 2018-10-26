@@ -17,6 +17,8 @@
 #define DST_16_HAS_ALPHA() (dstPixelBytes > 7)
 #define DST_FLOAT_HAS_ALPHA() (dstPixelBytes > 15)
 
+static cmsUInt32Number clTransformFormatToLCMSFormat(struct clContext * C, clTransformFormat format);
+
 // ----------------------------------------------------------------------------
 // Debug Helpers
 
@@ -106,27 +108,62 @@ static clBool deriveXYZMatrixAndXTF(struct clContext * C, struct clProfile * pro
 
 void clTransformPrepare(struct clContext * C, struct clTransform * transform)
 {
-    if (!transform->ccmmReady) {
-        gbMat3 srcToXYZ;
-        gbMat3 dstToXYZ;
-        gbMat3 XYZtoDst;
+    clBool useCCMM = clTransformUsesCCMM(C, transform);
+    if (useCCMM) {
+        // Use CCMM
+        if (!transform->ccmmReady) {
+            gbMat3 srcToXYZ;
+            gbMat3 dstToXYZ;
+            gbMat3 XYZtoDst;
 
-        deriveXYZMatrixAndXTF(C, transform->srcProfile, &srcToXYZ, &transform->ccmmSrcEOTF, &transform->ccmmSrcGamma);
-        deriveXYZMatrixAndXTF(C, transform->dstProfile, &dstToXYZ, &transform->ccmmDstOETF, &transform->ccmmDstInvGamma);
-        if ((transform->ccmmDstOETF == CL_XTF_GAMMA) && (transform->ccmmDstInvGamma != 0.0f)) {
-            transform->ccmmDstInvGamma = 1.0f / transform->ccmmDstInvGamma;
+            deriveXYZMatrixAndXTF(C, transform->srcProfile, &srcToXYZ, &transform->ccmmSrcEOTF, &transform->ccmmSrcGamma);
+            deriveXYZMatrixAndXTF(C, transform->dstProfile, &dstToXYZ, &transform->ccmmDstOETF, &transform->ccmmDstInvGamma);
+            if ((transform->ccmmDstOETF == CL_XTF_GAMMA) && (transform->ccmmDstInvGamma != 0.0f)) {
+                transform->ccmmDstInvGamma = 1.0f / transform->ccmmDstInvGamma;
+            }
+            gb_mat3_inverse(&XYZtoDst, &dstToXYZ);
+            gb_mat3_transpose(&XYZtoDst);
+
+            DEBUG_PRINT_MATRIX("XYZtoDst", &XYZtoDst);
+            DEBUG_PRINT_MATRIX("MA", &srcToXYZ);
+            DEBUG_PRINT_MATRIX("MB", &XYZtoDst);
+            gb_mat3_mul(&transform->ccmmCombined, &srcToXYZ, &XYZtoDst);
+            // gb_mat3_transpose(&transform->ccmmCombined);
+            DEBUG_PRINT_MATRIX("MA*MB", &transform->ccmmCombined);
+
+            transform->ccmmReady = clTrue;
         }
-        gb_mat3_inverse(&XYZtoDst, &dstToXYZ);
-        gb_mat3_transpose(&XYZtoDst);
+    } else {
+        // Use LittleCMS
+        if (!transform->lcmsCombined) {
+            cmsUInt32Number srcFormat = clTransformFormatToLCMSFormat(C, transform->srcFormat);
+            cmsUInt32Number dstFormat = clTransformFormatToLCMSFormat(C, transform->dstFormat);
+            cmsHPROFILE srcProfileHandle;
+            cmsHPROFILE dstProfileHandle;
 
-        DEBUG_PRINT_MATRIX("XYZtoDst", &XYZtoDst);
-        DEBUG_PRINT_MATRIX("MA", &srcToXYZ);
-        DEBUG_PRINT_MATRIX("MB", &XYZtoDst);
-        gb_mat3_mul(&transform->ccmmCombined, &srcToXYZ, &XYZtoDst);
-        // gb_mat3_transpose(&transform->ccmmCombined);
-        DEBUG_PRINT_MATRIX("MA*MB", &transform->ccmmCombined);
+            // Choose src profile handle
+            if (transform->srcProfile) {
+                srcProfileHandle = transform->srcProfile->handle;
+            } else {
+                if (!transform->lcmsXYZProfile) {
+                    transform->lcmsXYZProfile = cmsCreateXYZProfileTHR(C->lcms);
+                }
+                srcProfileHandle = transform->lcmsXYZProfile;
+            }
 
-        transform->ccmmReady = clTrue;
+            // Choose dst profile handle
+            if (transform->dstProfile) {
+                dstProfileHandle = transform->dstProfile->handle;
+            } else {
+                if (!transform->lcmsXYZProfile) {
+                    transform->lcmsXYZProfile = cmsCreateXYZProfileTHR(C->lcms);
+                }
+                dstProfileHandle = transform->lcmsXYZProfile;
+            }
+
+            // Lazily create hTransform
+            transform->lcmsCombined = cmsCreateTransformTHR(C->lcms, srcProfileHandle, srcFormat, dstProfileHandle, dstFormat, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+        }
     }
 }
 
@@ -936,58 +973,6 @@ const char * clTransformCMMName(struct clContext * C, clTransform * transform)
     return clTransformUsesCCMM(C, transform) ? "CCMM" : "LCMS";
 }
 
-// Perhaps kill this function and just merge it with clTransformRun?
-static void doMultithreadedTransform(clContext * C, int taskCount, clTransform * transform, clBool useCCMM, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount);
-
-void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount)
-{
-    int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat, transform->srcDepth);
-    int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat, transform->dstDepth);
-
-    clBool useCCMM = clTransformUsesCCMM(C, transform);
-
-    if (taskCount > 1) {
-        clContextLog(C, "convert", 1, "Using %d threads to pixel transform.", taskCount);
-    }
-
-    if (useCCMM) {
-        // Use colorist CMM
-        clTransformPrepare(C, transform);
-    } else {
-        // Use LittleCMS
-        if (!transform->lcmsCombined) {
-            cmsUInt32Number srcFormat = clTransformFormatToLCMSFormat(C, transform->srcFormat);
-            cmsUInt32Number dstFormat = clTransformFormatToLCMSFormat(C, transform->dstFormat);
-            cmsHPROFILE srcProfileHandle;
-            cmsHPROFILE dstProfileHandle;
-
-            // Choose src profile handle
-            if (transform->srcProfile) {
-                srcProfileHandle = transform->srcProfile->handle;
-            } else {
-                if (!transform->lcmsXYZProfile) {
-                    transform->lcmsXYZProfile = cmsCreateXYZProfileTHR(C->lcms);
-                }
-                srcProfileHandle = transform->lcmsXYZProfile;
-            }
-
-            // Choose dst profile handle
-            if (transform->dstProfile) {
-                dstProfileHandle = transform->dstProfile->handle;
-            } else {
-                if (!transform->lcmsXYZProfile) {
-                    transform->lcmsXYZProfile = cmsCreateXYZProfileTHR(C->lcms);
-                }
-                dstProfileHandle = transform->lcmsXYZProfile;
-            }
-
-            // Lazily create hTransform
-            transform->lcmsCombined = cmsCreateTransformTHR(C->lcms, srcProfileHandle, srcFormat, dstProfileHandle, dstFormat, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
-        }
-    }
-    doMultithreadedTransform(C, taskCount, transform, useCCMM, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
-}
-
 typedef struct clTransformTask
 {
     clContext * C;
@@ -1006,11 +991,21 @@ static void transformTaskFunc(clTransformTask * info)
         cmsDoTransform(info->transform->lcmsCombined, info->inPixels, info->outPixels, info->pixelCount);
 }
 
-static void doMultithreadedTransform(clContext * C, int taskCount, clTransform * transform, clBool useCCMM, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
+void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount)
 {
+    int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat, transform->srcDepth);
+    int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat, transform->dstDepth);
+    clBool useCCMM = clTransformUsesCCMM(C, transform);
+
+    clTransformPrepare(C, transform);
+
     if (taskCount > pixelCount) {
         // This is a dumb corner case I'm not too worried about.
         taskCount = pixelCount;
+    }
+
+    if (taskCount > 1) {
+        clContextLog(C, "convert", 1, "Using %d threads to pixel transform.", taskCount);
     }
 
     if (taskCount == 1) {
@@ -1024,6 +1019,8 @@ static void doMultithreadedTransform(clContext * C, int taskCount, clTransform *
         info.useCCMM = useCCMM;
         transformTaskFunc(&info);
     } else {
+        uint8_t * uSrcPixels = (uint8_t *)srcPixels;
+        uint8_t * uDstPixels = (uint8_t *)dstPixels;
         int pixelsPerTask = pixelCount / taskCount;
         int lastTaskPixelCount = pixelCount - (pixelsPerTask * (taskCount - 1));
         clTask ** tasks;
@@ -1035,8 +1032,8 @@ static void doMultithreadedTransform(clContext * C, int taskCount, clTransform *
         for (i = 0; i < taskCount; ++i) {
             infos[i].C = C;
             infos[i].transform = transform;
-            infos[i].inPixels = &srcPixels[i * pixelsPerTask * srcPixelBytes];
-            infos[i].outPixels = &dstPixels[i * pixelsPerTask * dstPixelBytes];
+            infos[i].inPixels = &uSrcPixels[i * pixelsPerTask * srcPixelBytes];
+            infos[i].outPixels = &uDstPixels[i * pixelsPerTask * dstPixelBytes];
             infos[i].pixelCount = (i == (taskCount - 1)) ? lastTaskPixelCount : pixelsPerTask;
             infos[i].useCCMM = useCCMM;
             tasks[i] = clTaskCreate(C, (clTaskFunc)transformTaskFunc, &infos[i]);
