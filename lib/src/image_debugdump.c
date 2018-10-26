@@ -23,7 +23,7 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
     int maxLuminance;
     float maxLuminanceFloat;
 
-    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA_FLOAT, NULL, CL_XF_XYZ_FLOAT);
+    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32);
 
     clContextLog(C, "image", 0 + extraIndent, "Image: %dx%d %d-bit", image->width, image->height, image->depth);
     clProfileDebugDump(C, image->profile, C->verbose, 1 + extraIndent);
@@ -56,7 +56,7 @@ void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clIma
     int maxLuminance;
     float maxLuminanceFloat;
 
-    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA_FLOAT, NULL, CL_XF_XYZ_FLOAT);
+    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32);
 
     cJSON_AddNumberToObject(jsonOutput, "width", image->width);
     cJSON_AddNumberToObject(jsonOutput, "height", image->height);

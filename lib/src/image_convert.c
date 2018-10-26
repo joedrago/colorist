@@ -246,7 +246,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
             gamma1.type = CL_PCT_GAMMA;
             gamma1.gamma = 1.0f;
             linearFloatsProfile = clProfileCreate(C, &dstInfo.primaries, &gamma1, 0, "toLinear");
-            toLinear = clTransformCreate(C, srcImage->profile, CL_XF_RGBA_FLOAT, linearFloatsProfile, CL_XF_RGBA_FLOAT);
+            toLinear = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, 32, linearFloatsProfile, CL_XF_RGBA, 32);
 
             clContextLog(C, "convert", 0, "Calculating linear pixels (%s)...", clTransformCMMName(C, toLinear));
             timerStart(&t);
@@ -375,7 +375,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     if (linearFloatsPixels) {
         // Do everything!
 
-        clTransform * fromLinear = clTransformCreate(C, linearFloatsProfile, CL_XF_RGBA_FLOAT, dstImage->profile, CL_XF_RGBA_FLOAT);
+        clTransform * fromLinear = clTransformCreate(C, linearFloatsProfile, CL_XF_RGBA, 32, dstImage->profile, CL_XF_RGBA, 32);
         float * dstFloatsPixels; // final values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
         int srcLuminance = srcInfo.luminance;
 
@@ -449,10 +449,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     } else {
         // Let LittleCMS directly convert
-        clTransform * directTransform;
-        clTransformFormat srcFormat = (srcInfo.depth == 16) ? CL_XF_RGBA_16 : CL_XF_RGBA_8;
-        clTransformFormat dstFormat = (dstInfo.depth == 16) ? CL_XF_RGBA_16 : CL_XF_RGBA_8;
-        directTransform = clTransformCreate(C, srcImage->profile, srcFormat, dstImage->profile, dstFormat);
+        clTransform * directTransform = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, srcInfo.depth, dstImage->profile, CL_XF_RGBA, dstInfo.depth);
 
         COLORIST_ASSERT((srcInfo.depth == 8) || (srcInfo.depth == 16));
         COLORIST_ASSERT((dstInfo.depth == 8) || (dstInfo.depth == 16));

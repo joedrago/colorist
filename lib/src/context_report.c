@@ -162,8 +162,8 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     clImage * highlight = NULL;
     int i;
 
-    clTransform * toXYZ = clTransformCreate(C, srcImage->profile, CL_XF_RGBA_FLOAT, NULL, CL_XF_XYZ_FLOAT);
-    clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ_FLOAT, srcImage->profile, CL_XF_RGB_FLOAT);
+    clTransform * toXYZ = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32);
+    clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, 32, srcImage->profile, CL_XF_RGB, 32);
 
     clContextLog(C, "encode", 1, "Creating sRGB highlight (%d nits, %s)...", srgbLuminance, clTransformCMMName(C, toXYZ));
 

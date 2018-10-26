@@ -23,13 +23,9 @@ struct clProfile;
 
 typedef enum clTransformFormat
 {
-    CL_XF_XYZ_FLOAT = 0,
-    CL_XF_RGB_FLOAT,
-    CL_XF_RGBA_FLOAT,
-    CL_XF_RGB_8,
-    CL_XF_RGBA_8,
-    CL_XF_RGB_16,
-    CL_XF_RGBA_16
+    CL_XF_XYZ = 0, // 3 component, 32bit float
+    CL_XF_RGB,     // 3 component, 32bit == float, 8bit == uint8_t, 9-16bit == uint16_t
+    CL_XF_RGBA     // 4 component, 32bit == float, 8bit == uint8_t, 9-16bit == uint16_t
 } clTransformFormat;
 
 typedef enum clTransformTransferFunction
@@ -46,6 +42,8 @@ typedef struct clTransform
     struct clProfile * dstProfile; // If NULL, is XYZ profile
     clTransformFormat srcFormat;
     clTransformFormat dstFormat;
+    int srcDepth;
+    int dstDepth;
 
     // Cache for CCMM objects
     clTransformTransferFunction srcEOTF;
@@ -60,14 +58,14 @@ typedef struct clTransform
     cmsHTRANSFORM hTransform;
 } clTransform;
 
-clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, struct clProfile * dstProfile, clTransformFormat dstFormat);
+clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, struct clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth);
 void clTransformDestroy(struct clContext * C, clTransform * transform);
 clBool clTransformUsesCCMM(struct clContext * C, clTransform * transform);
 const char * clTransformCMMName(struct clContext * C, clTransform * transform); // Convenience function
 void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount);
 
-clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format);
-int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format);
+clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format, int depth);
+int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format, int depth);
 
 // if X+Y+Z is 0, clTransformXYZToXYY() returns (whitePointX, whitePointY, 0)
 void clTransformXYZToXYY(struct clContext * C, float * dstXYY, float * srcXYZ, float whitePointX, float whitePointY);

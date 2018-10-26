@@ -34,13 +34,15 @@ void clTransformXYYToXYZ(struct clContext * C, float * dstXYZ, float * srcXYY)
     dstXYZ[2] = ((1 - srcXYY[0] - srcXYY[1]) * srcXYY[2]) / srcXYY[1];
 }
 
-clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, struct clProfile * dstProfile, clTransformFormat dstFormat)
+clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, struct clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth)
 {
     clTransform * transform = clAllocateStruct(clTransform);
     transform->srcProfile = srcProfile;
     transform->dstProfile = dstProfile;
     transform->srcFormat = srcFormat;
     transform->dstFormat = dstFormat;
+    transform->srcDepth = srcDepth;
+    transform->dstDepth = dstDepth;
     transform->ccmmReady = clFalse;
     transform->xyzProfile = NULL;
     transform->hTransform = NULL;
@@ -61,46 +63,50 @@ void clTransformDestroy(struct clContext * C, clTransform * transform)
 static cmsUInt32Number clTransformFormatToLCMSFormat(struct clContext * C, clTransformFormat format)
 {
     switch (format) {
-        case CL_XF_XYZ_FLOAT:  return TYPE_XYZ_FLT;
-        case CL_XF_RGB_FLOAT:  return TYPE_RGB_FLT;
-        case CL_XF_RGBA_FLOAT: return TYPE_RGBA_FLT;
-        case CL_XF_RGB_8:     return TYPE_RGB_8;
-        case CL_XF_RGBA_8:     return TYPE_RGBA_8;
-        case CL_XF_RGB_16:    return TYPE_RGB_16;
-        case CL_XF_RGBA_16:    return TYPE_RGBA_16;
+        case CL_XF_XYZ:  return TYPE_XYZ_FLT;
+        case CL_XF_RGB:
+            return TYPE_RGB_FLT;
+        case CL_XF_RGBA:
+            return TYPE_RGBA_FLT;
     }
 
     COLORIST_FAILURE("clTransformFormatToLCMSFormat: Unknown transform format");
     return TYPE_RGBA_FLT;
 }
 
-clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format)
+clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format, int depth)
 {
     switch (format) {
-        case CL_XF_XYZ_FLOAT:
-        case CL_XF_RGB_FLOAT:
-        case CL_XF_RGBA_FLOAT:
+        case CL_XF_XYZ:
             return clTrue;
-
-        case CL_XF_RGB_8:
-        case CL_XF_RGBA_8:
-        case CL_XF_RGB_16:
-        case CL_XF_RGBA_16:
-            break;
+        case CL_XF_RGB:
+        case CL_XF_RGBA:
+            return depth == 32;
     }
     return clFalse;
 }
 
-int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format)
+int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format, int depth)
 {
     switch (format) {
-        case CL_XF_XYZ_FLOAT:  return sizeof(float) * 3;
-        case CL_XF_RGB_FLOAT:  return sizeof(float) * 3;
-        case CL_XF_RGBA_FLOAT: return sizeof(float) * 4;
-        case CL_XF_RGB_8:      return sizeof(uint8_t) * 3;
-        case CL_XF_RGBA_8:     return sizeof(uint8_t) * 4;
-        case CL_XF_RGB_16:     return sizeof(uint16_t) * 3;
-        case CL_XF_RGBA_16:    return sizeof(uint16_t) * 4;
+        case CL_XF_XYZ:
+            return sizeof(float) * 3;
+
+        case CL_XF_RGB:
+            if (depth == 32)
+                return sizeof(float) * 3;
+            else if (depth > 8)
+                return sizeof(uint16_t) * 3;
+            else
+                return sizeof(uint8_t) * 3;
+
+        case CL_XF_RGBA:
+            if (depth == 32)
+                return sizeof(float) * 4;
+            else if (depth > 8)
+                return sizeof(uint16_t) * 4;
+            else
+                return sizeof(uint8_t) * 4;
     }
 
     COLORIST_FAILURE("clTransformFormatToPixelBytes: Unknown transform format");
@@ -126,8 +132,8 @@ const char * clTransformCMMName(struct clContext * C, clTransform * transform)
 
 void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount)
 {
-    int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat);
-    int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat);
+    int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat, transform->srcDepth);
+    int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat, transform->dstDepth);
 
     clBool useCCMM = clTransformUsesCCMM(C, transform);
 
