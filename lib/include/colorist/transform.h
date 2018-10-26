@@ -46,16 +46,16 @@ typedef struct clTransform
     int dstDepth;
 
     // Cache for CCMM objects
-    clTransformTransferFunction srcEOTF;
-    clTransformTransferFunction dstOETF;
-    float srcGamma;
-    float dstInvGamma;
-    gbMat3 matSrcToDst;
+    clTransformTransferFunction ccmmSrcEOTF;
+    clTransformTransferFunction ccmmDstOETF;
+    float ccmmSrcGamma;
+    float ccmmDstInvGamma;
+    gbMat3 ccmmCombined;
     clBool ccmmReady;
 
     // Cache for LittleCMS objects
-    cmsHPROFILE xyzProfile;
-    cmsHTRANSFORM hTransform;
+    cmsHPROFILE lcmsXYZProfile;
+    cmsHTRANSFORM lcmsCombined;
 } clTransform;
 
 clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, struct clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth);

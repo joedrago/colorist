@@ -111,10 +111,10 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
         gbMat3 dstToXYZ;
         gbMat3 XYZtoDst;
 
-        deriveXYZMatrixAndXTF(C, transform->srcProfile, &srcToXYZ, &transform->srcEOTF, &transform->srcGamma);
-        deriveXYZMatrixAndXTF(C, transform->dstProfile, &dstToXYZ, &transform->dstOETF, &transform->dstInvGamma);
-        if ((transform->dstOETF == CL_XTF_GAMMA) && (transform->dstInvGamma != 0.0f)) {
-            transform->dstInvGamma = 1.0f / transform->dstInvGamma;
+        deriveXYZMatrixAndXTF(C, transform->srcProfile, &srcToXYZ, &transform->ccmmSrcEOTF, &transform->ccmmSrcGamma);
+        deriveXYZMatrixAndXTF(C, transform->dstProfile, &dstToXYZ, &transform->ccmmDstOETF, &transform->ccmmDstInvGamma);
+        if ((transform->ccmmDstOETF == CL_XTF_GAMMA) && (transform->ccmmDstInvGamma != 0.0f)) {
+            transform->ccmmDstInvGamma = 1.0f / transform->ccmmDstInvGamma;
         }
         gb_mat3_inverse(&XYZtoDst, &dstToXYZ);
         gb_mat3_transpose(&XYZtoDst);
@@ -122,9 +122,9 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
         DEBUG_PRINT_MATRIX("XYZtoDst", &XYZtoDst);
         DEBUG_PRINT_MATRIX("MA", &srcToXYZ);
         DEBUG_PRINT_MATRIX("MB", &XYZtoDst);
-        gb_mat3_mul(&transform->matSrcToDst, &srcToXYZ, &XYZtoDst);
-        // gb_mat3_transpose(&transform->matSrcToDst);
-        DEBUG_PRINT_MATRIX("MA*MB", &transform->matSrcToDst);
+        gb_mat3_mul(&transform->ccmmCombined, &srcToXYZ, &XYZtoDst);
+        // gb_mat3_transpose(&transform->ccmmCombined);
+        DEBUG_PRINT_MATRIX("MA*MB", &transform->ccmmCombined);
 
         transform->ccmmReady = clTrue;
     }
@@ -173,14 +173,14 @@ static void transformFloatToFloat(struct clContext * C, struct clTransform * tra
         float * dstPixel = (float *)&dstPixels[i * dstPixelBytes];
         gbVec3 src;
         float tmp[3];
-        switch (transform->srcEOTF) {
+        switch (transform->ccmmSrcEOTF) {
             case CL_XTF_NONE:
                 memcpy(&src, srcPixel, sizeof(src));
                 break;
             case CL_XTF_GAMMA:
-                src.x = powf((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f, transform->srcGamma);
-                src.y = powf((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f, transform->srcGamma);
-                src.z = powf((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f, transform->srcGamma);
+                src.x = powf((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f, transform->ccmmSrcGamma);
+                src.y = powf((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f, transform->ccmmSrcGamma);
+                src.z = powf((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f, transform->ccmmSrcGamma);
                 break;
             case CL_XTF_PQ:
                 src.x = PQ_EOTF((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f);
@@ -188,18 +188,18 @@ static void transformFloatToFloat(struct clContext * C, struct clTransform * tra
                 src.z = PQ_EOTF((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f);
                 break;
         }
-        switch (transform->dstOETF) {
+        switch (transform->ccmmDstOETF) {
             case CL_XTF_NONE:
-                gb_mat3_mul_vec3((gbVec3 *)dstPixel, &transform->matSrcToDst, src);
+                gb_mat3_mul_vec3((gbVec3 *)dstPixel, &transform->ccmmCombined, src);
                 break;
             case CL_XTF_GAMMA:
-                gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->matSrcToDst, src);
-                dstPixel[0] = powf((tmp[0] >= 0.0f) ? tmp[0] : 0.0f, transform->dstInvGamma);
-                dstPixel[1] = powf((tmp[1] >= 0.0f) ? tmp[1] : 0.0f, transform->dstInvGamma);
-                dstPixel[2] = powf((tmp[2] >= 0.0f) ? tmp[2] : 0.0f, transform->dstInvGamma);
+                gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->ccmmCombined, src);
+                dstPixel[0] = powf((tmp[0] >= 0.0f) ? tmp[0] : 0.0f, transform->ccmmDstInvGamma);
+                dstPixel[1] = powf((tmp[1] >= 0.0f) ? tmp[1] : 0.0f, transform->ccmmDstInvGamma);
+                dstPixel[2] = powf((tmp[2] >= 0.0f) ? tmp[2] : 0.0f, transform->ccmmDstInvGamma);
                 break;
             case CL_XTF_PQ:
-                gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->matSrcToDst, src);
+                gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->ccmmCombined, src);
                 dstPixel[0] = PQ_OETF((tmp[0] >= 0.0f) ? tmp[0] : 0.0f);
                 dstPixel[1] = PQ_OETF((tmp[1] >= 0.0f) ? tmp[1] : 0.0f);
                 dstPixel[2] = PQ_OETF((tmp[2] >= 0.0f) ? tmp[2] : 0.0f);
@@ -850,18 +850,18 @@ clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProf
     transform->srcDepth = srcDepth;
     transform->dstDepth = dstDepth;
     transform->ccmmReady = clFalse;
-    transform->xyzProfile = NULL;
-    transform->hTransform = NULL;
+    transform->lcmsXYZProfile = NULL;
+    transform->lcmsCombined = NULL;
     return transform;
 }
 
 void clTransformDestroy(struct clContext * C, clTransform * transform)
 {
-    if (transform->hTransform) {
-        cmsDeleteTransform(transform->hTransform);
+    if (transform->lcmsCombined) {
+        cmsDeleteTransform(transform->lcmsCombined);
     }
-    if (transform->xyzProfile) {
-        cmsCloseProfile(transform->xyzProfile);
+    if (transform->lcmsXYZProfile) {
+        cmsCloseProfile(transform->lcmsXYZProfile);
     }
     clFree(transform);
 }
@@ -955,7 +955,7 @@ void clTransformRun(struct clContext * C, clTransform * transform, int taskCount
         clTransformPrepare(C, transform);
     } else {
         // Use LittleCMS
-        if (!transform->hTransform) {
+        if (!transform->lcmsCombined) {
             cmsUInt32Number srcFormat = clTransformFormatToLCMSFormat(C, transform->srcFormat);
             cmsUInt32Number dstFormat = clTransformFormatToLCMSFormat(C, transform->dstFormat);
             cmsHPROFILE srcProfileHandle;
@@ -965,24 +965,24 @@ void clTransformRun(struct clContext * C, clTransform * transform, int taskCount
             if (transform->srcProfile) {
                 srcProfileHandle = transform->srcProfile->handle;
             } else {
-                if (!transform->xyzProfile) {
-                    transform->xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
+                if (!transform->lcmsXYZProfile) {
+                    transform->lcmsXYZProfile = cmsCreateXYZProfileTHR(C->lcms);
                 }
-                srcProfileHandle = transform->xyzProfile;
+                srcProfileHandle = transform->lcmsXYZProfile;
             }
 
             // Choose dst profile handle
             if (transform->dstProfile) {
                 dstProfileHandle = transform->dstProfile->handle;
             } else {
-                if (!transform->xyzProfile) {
-                    transform->xyzProfile = cmsCreateXYZProfileTHR(C->lcms);
+                if (!transform->lcmsXYZProfile) {
+                    transform->lcmsXYZProfile = cmsCreateXYZProfileTHR(C->lcms);
                 }
-                dstProfileHandle = transform->xyzProfile;
+                dstProfileHandle = transform->lcmsXYZProfile;
             }
 
             // Lazily create hTransform
-            transform->hTransform = cmsCreateTransformTHR(C->lcms, srcProfileHandle, srcFormat, dstProfileHandle, dstFormat, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+            transform->lcmsCombined = cmsCreateTransformTHR(C->lcms, srcProfileHandle, srcFormat, dstProfileHandle, dstFormat, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
         }
     }
     doMultithreadedTransform(C, taskCount, transform, useCCMM, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
@@ -1003,7 +1003,7 @@ static void transformTaskFunc(clTransformTask * info)
     if (info->useCCMM)
         clCCMMTransform(info->C, info->transform, info->inPixels, info->outPixels, info->pixelCount);
     else
-        cmsDoTransform(info->transform->hTransform, info->inPixels, info->outPixels, info->pixelCount);
+        cmsDoTransform(info->transform->lcmsCombined, info->inPixels, info->outPixels, info->pixelCount);
 }
 
 static void doMultithreadedTransform(clContext * C, int taskCount, clTransform * transform, clBool useCCMM, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
