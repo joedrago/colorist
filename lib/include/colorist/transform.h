@@ -57,6 +57,8 @@ typedef struct clTransform
 
     // Cache for LittleCMS objects
     cmsHPROFILE lcmsXYZProfile;
+    cmsHTRANSFORM lcmsSrcToXYZ;
+    cmsHTRANSFORM lcmsXYZToDst;
     cmsHTRANSFORM lcmsCombined;
 } clTransform;
 
