@@ -50,6 +50,8 @@ typedef struct clTransform
     clTransformTransferFunction ccmmDstOETF;
     float ccmmSrcGamma;
     float ccmmDstInvGamma;
+    gbMat3 ccmmSrcToXYZ;
+    gbMat3 ccmmXYZToDst;
     gbMat3 ccmmCombined;
     clBool ccmmReady;
 

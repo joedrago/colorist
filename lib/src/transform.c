@@ -112,23 +112,20 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
     if (useCCMM) {
         // Use CCMM
         if (!transform->ccmmReady) {
-            gbMat3 srcToXYZ;
             gbMat3 dstToXYZ;
-            gbMat3 XYZtoDst;
 
-            deriveXYZMatrixAndXTF(C, transform->srcProfile, &srcToXYZ, &transform->ccmmSrcEOTF, &transform->ccmmSrcGamma);
+            deriveXYZMatrixAndXTF(C, transform->srcProfile, &transform->ccmmSrcToXYZ, &transform->ccmmSrcEOTF, &transform->ccmmSrcGamma);
             deriveXYZMatrixAndXTF(C, transform->dstProfile, &dstToXYZ, &transform->ccmmDstOETF, &transform->ccmmDstInvGamma);
             if ((transform->ccmmDstOETF == CL_XTF_GAMMA) && (transform->ccmmDstInvGamma != 0.0f)) {
                 transform->ccmmDstInvGamma = 1.0f / transform->ccmmDstInvGamma;
             }
-            gb_mat3_inverse(&XYZtoDst, &dstToXYZ);
-            gb_mat3_transpose(&XYZtoDst);
+            gb_mat3_inverse(&transform->ccmmXYZToDst, &dstToXYZ);
+            gb_mat3_transpose(&transform->ccmmXYZToDst);
 
-            DEBUG_PRINT_MATRIX("XYZtoDst", &XYZtoDst);
+            DEBUG_PRINT_MATRIX("XYZtoDst", &transform->ccmmXYZToDst);
             DEBUG_PRINT_MATRIX("MA", &srcToXYZ);
-            DEBUG_PRINT_MATRIX("MB", &XYZtoDst);
-            gb_mat3_mul(&transform->ccmmCombined, &srcToXYZ, &XYZtoDst);
-            // gb_mat3_transpose(&transform->ccmmCombined);
+            DEBUG_PRINT_MATRIX("MB", &transform->ccmmXYZToDst);
+            gb_mat3_mul(&transform->ccmmCombined, &transform->ccmmSrcToXYZ, &transform->ccmmXYZToDst);
             DEBUG_PRINT_MATRIX("MA*MB", &transform->ccmmCombined);
 
             transform->ccmmReady = clTrue;
