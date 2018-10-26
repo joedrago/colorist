@@ -199,6 +199,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         }
     }
 
+#if 0
     // -----------------------------------------------------------------------
     // Create intermediate pixels sets, if necessary
 
@@ -246,7 +247,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
             gamma1.type = CL_PCT_GAMMA;
             gamma1.gamma = 1.0f;
             linearFloatsProfile = clProfileCreate(C, &dstInfo.primaries, &gamma1, 0, "toLinear");
-            toLinear = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, 32, linearFloatsProfile, CL_XF_RGBA, 32);
+            toLinear = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, 32, linearFloatsProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
 
             clContextLog(C, "convert", 0, "Calculating linear pixels (%s)...", clTransformCMMName(C, toLinear));
             timerStart(&t);
@@ -257,10 +258,11 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
             clTransformDestroy(C, toLinear);
         }
     }
+#endif /* if 0 */
 
     // -----------------------------------------------------------------------
     // Color grading
-
+#if 0
     if (params->autoGrade) {
         COLORIST_ASSERT(dstProfile == NULL);
         COLORIST_ASSERT(linearFloatsPixels != NULL);
@@ -272,6 +274,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         clContextLog(C, "grading", 0, "Using maxLum: %d, gamma: %g", dstInfo.luminance, dstInfo.curve.gamma);
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
+#endif /* if 0 */
 
     // -----------------------------------------------------------------------
     // Profile params validation & profile creation
@@ -341,6 +344,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     // -----------------------------------------------------------------------
     // Resize, if necessary
 
+#if 0
     if (needsResize) {
         int resizedPixelCount = dstInfo.width * dstInfo.height;
         float * resizedPixels = clAllocate(4 * sizeof(float) * resizedPixelCount);
@@ -352,6 +356,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
         linearFloatsPixels = resizedPixels;
         pixelCount = resizedPixelCount;
     }
+#endif
 
     // -----------------------------------------------------------------------
     // Create destination image
@@ -367,100 +372,52 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, struct clConv
     // -----------------------------------------------------------------------
     // Image conversion
 
-    // At this point, there are three possible ways to convert, based on which sets of pixels we have:
-    // * If we have linearFloatsPixels, we chose to do all of the heavy lifting
-    // * If we only have srcFloatsPixels, we can just repack floats (typically when only depth changes or an 'interesting' depth is used)
-    // * If we haven't made any intermediate pixel sets, we can just have LittleCMS do everything (direct conversion)
-
-    if (linearFloatsPixels) {
-        // Do everything!
-
-        clTransform * fromLinear = clTransformCreate(C, linearFloatsProfile, CL_XF_RGBA, 32, dstImage->profile, CL_XF_RGBA, 32);
-        float * dstFloatsPixels; // final values in floating point, manually created to avoid cms eval'ing on a 16-bit basis for floats (yuck)
-        int srcLuminance = srcInfo.luminance;
-
-        if (clTransformUsesCCMM(C, fromLinear)) {
-            if (srcInfo.curve.matrixCurveScale > 0.0f) {
-                // This handles crazy A2B* tags, somewhat (when using CCMM)
-                srcLuminance *= (int)srcInfo.curve.matrixCurveScale;
-            }
+    {
+        clTransform * transform;
+        clBool tonemap = params->tonemap;
+        float luminanceScale;
+        if (params->autoGrade) {
+            // autoGrade ensures we're never scaling a pixel lower than the brighest
+            // pixel in the source image, tonemapping is unnecessary.
+            tonemap = clFalse;
         }
 
-        if (srcLuminance != dstInfo.luminance) {
-            float luminanceScale = (float)srcLuminance / (float)dstInfo.luminance;
-            clBool tonemap;
+        transform = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, srcImage->depth, dstProfile, CL_XF_RGBA, dstInfo.depth, params->tonemap);
+        clTransformPrepare(C, transform);
+        luminanceScale = clTransformGetLuminanceScale(C, transform);
 
-            if (params->autoGrade) {
-                // autoGrade ensures we're never scaling a pixel lower than the brighest
-                // pixel in the source image, tonemapping is unnecessary.
-                tonemap = clFalse;
-            } else {
-                // tonemap if we're scaling from a larger luminance range to a smaller range
-                tonemap = (luminanceScale > 1.0f) ? clTrue : clFalse;
-            }
-            if (params->tonemap != CL_TONEMAP_AUTO) {
-                tonemap = (params->tonemap == CL_TONEMAP_ON) ? clTrue : clFalse;
-            }
-
-            clContextLog(C, "luminance", 0, "Scaling luminance (%gx, %s)...", luminanceScale, tonemap ? "tonemap" : "clip");
-            timerStart(&t);
-            clPixelMathScaleLuminance(C, linearFloatsPixels, pixelCount, luminanceScale, tonemap);
-            clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
-        }
-
-        clContextLog(C, "convert", 0, "Performing color conversion (%s)...", clTransformCMMName(C, fromLinear));
+        clContextLog(C, "convert", 0, "Converting (%s, lum scale %gx, %s)...", clTransformCMMName(C, transform), luminanceScale, transform->tonemapEnabled ? "tonemap" : "clip");
         timerStart(&t);
-        dstFloatsPixels = clAllocate(4 * sizeof(float) * pixelCount);
-        clTransformRun(C, fromLinear, params->jobs, (uint8_t *)linearFloatsPixels, (uint8_t *)dstFloatsPixels, pixelCount);
-        clTransformDestroy(C, fromLinear);
+        clTransformRun(C, transform, params->jobs, srcImage->pixels, dstImage->pixels, pixelCount);
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
-
-        if (haldImage) {
-            int i;
-            int haldDataCount = haldImage->width * haldImage->height;
-            float * haldSrcFloats;
-            float * haldData;
-
-            clContextLog(C, "hald", 0, "Performing Hald CLUT postprocessing...");
-            timerStart(&t);
-
-            haldData = clAllocate(4 * sizeof(float) * haldDataCount);
-            clPixelMathUNormToFloat(C, haldImage->pixels, haldImage->depth, haldData, haldDataCount);
-
-            haldSrcFloats = dstFloatsPixels;
-            dstFloatsPixels = clAllocate(4 * sizeof(float) * pixelCount);
-
-            for (i = 0; i < pixelCount; ++i) {
-                clPixelMathHaldCLUTLookup(C, haldData, haldDims, &haldSrcFloats[i * 4], &dstFloatsPixels[i * 4]);
-            }
-
-            clFree(haldData);
-            clFree(haldSrcFloats);
-            clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
-        }
-        clPixelMathFloatToUNorm(C, dstFloatsPixels, dstImage->pixels, dstImage->depth, pixelCount);
-        clFree(dstFloatsPixels);
-    } else if (srcFloatsPixels) {
-        // Just repackage source floats (typically just a re-depth)
-
-        clContextLog(C, "convert", 0, "Packing final pixels from source floats...");
-        timerStart(&t);
-        clPixelMathFloatToUNorm(C, srcFloatsPixels, dstImage->pixels, dstImage->depth, pixelCount);
-        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
-    } else {
-        // Let LittleCMS directly convert
-        clTransform * directTransform = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, srcInfo.depth, dstImage->profile, CL_XF_RGBA, dstInfo.depth);
-
-        COLORIST_ASSERT((srcInfo.depth == 8) || (srcInfo.depth == 16));
-        COLORIST_ASSERT((dstInfo.depth == 8) || (dstInfo.depth == 16));
-
-        clContextLog(C, "convert", 0, "Converting directly (%s)...", clTransformCMMName(C, directTransform));
-        timerStart(&t);
-        clTransformRun(C, directTransform, params->jobs, srcImage->pixels, dstImage->pixels, dstImage->width * dstImage->height);
-        clTransformDestroy(C, directTransform);
-        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+        clTransformDestroy(C, transform);
     }
 
+#if 0
+    if (haldImage) {
+        int i;
+        int haldDataCount = haldImage->width * haldImage->height;
+        float * haldSrcFloats;
+        float * haldData;
+
+        clContextLog(C, "hald", 0, "Performing Hald CLUT postprocessing...");
+        timerStart(&t);
+
+        haldData = clAllocate(4 * sizeof(float) * haldDataCount);
+        clPixelMathUNormToFloat(C, haldImage->pixels, haldImage->depth, haldData, haldDataCount);
+
+        haldSrcFloats = dstFloatsPixels;
+        dstFloatsPixels = clAllocate(4 * sizeof(float) * pixelCount);
+
+        for (i = 0; i < pixelCount; ++i) {
+            clPixelMathHaldCLUTLookup(C, haldData, haldDims, &haldSrcFloats[i * 4], &dstFloatsPixels[i * 4]);
+        }
+
+        clFree(haldData);
+        clFree(haldSrcFloats);
+        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+    }
+#endif
     // -----------------------------------------------------------------------
     // Cleanup
 

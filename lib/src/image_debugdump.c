@@ -23,7 +23,7 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
     int maxLuminance;
     float maxLuminanceFloat;
 
-    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32);
+    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
 
     clContextLog(C, "image", 0 + extraIndent, "Image: %dx%d %d-bit", image->width, image->height, image->depth);
     clProfileDebugDump(C, image->profile, C->verbose, 1 + extraIndent);
@@ -56,7 +56,7 @@ void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clIma
     int maxLuminance;
     float maxLuminanceFloat;
 
-    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32);
+    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
 
     cJSON_AddNumberToObject(jsonOutput, "width", image->width);
     cJSON_AddNumberToObject(jsonOutput, "height", image->height);
@@ -149,14 +149,14 @@ static void dumpPixel(struct clContext * C, clImage * image, clTransform * toXYZ
         cJSON_AddNumberToObject(t, "a", floatRGBA[3]);
 
         t = cJSON_AddObjectToObject(jsonPixel, "XYZ");
-        cJSON_AddNumberToObject(t, "X", XYZ.X);
-        cJSON_AddNumberToObject(t, "Y", XYZ.Y);
-        cJSON_AddNumberToObject(t, "Z", XYZ.Z);
+        cJSON_AddNumberToObject(t, "X", XYZ.X / maxLuminance);
+        cJSON_AddNumberToObject(t, "Y", XYZ.Y / maxLuminance);
+        cJSON_AddNumberToObject(t, "Z", XYZ.Z / maxLuminance);
 
         t = cJSON_AddObjectToObject(jsonPixel, "xyY");
         cJSON_AddNumberToObject(t, "x", xyY.x);
         cJSON_AddNumberToObject(t, "y", xyY.y);
-        cJSON_AddNumberToObject(t, "Y", xyY.Y);
+        cJSON_AddNumberToObject(t, "Y", xyY.Y / maxLuminance);
 
         cJSON_AddNumberToObject(jsonPixel, "nits", xyY.Y * maxLuminance);
 
@@ -166,8 +166,8 @@ static void dumpPixel(struct clContext * C, clImage * image, clTransform * toXYZ
             x, y, image->depth,
             intRGB[0], intRGB[1], intRGB[2], intRGB[3],
             floatRGBA[0], floatRGBA[1], floatRGBA[2], floatRGBA[3],
-            XYZ.X, XYZ.Y, XYZ.Z,
-            xyY.x, xyY.y, xyY.Y,
-            xyY.Y * maxLuminance);
+            XYZ.X / maxLuminance, XYZ.Y / maxLuminance, XYZ.Z / maxLuminance,
+            xyY.x, xyY.y, xyY.Y / maxLuminance,
+            xyY.Y);
     }
 }

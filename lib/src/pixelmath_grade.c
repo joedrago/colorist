@@ -87,7 +87,7 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
         int pixelX, pixelY;
         float pixelLuminance, maxLuminanceFloat;
 
-        clTransform * toXYZ = clTransformCreate(C, pixelProfile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32);
+        clTransform * toXYZ = clTransformCreate(C, pixelProfile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
 
         pixel = pixels;
         for (i = 0; i < pixelCount; ++i) {

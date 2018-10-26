@@ -649,7 +649,7 @@ clImage * clImageParseString(struct clContext * C, const char * s, int depth, st
     char * stripeString;
     uint8_t * pixelPos;
     int depthBytes = clDepthToBytes(C, depth);
-    clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, 32, profile, CL_XF_RGB, 32);
+    clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, 32, profile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
 
     clContextLog(C, "parse", 0, "Parsing image string (%s)...", clTransformCMMName(C, fromXYZ));
 
