@@ -60,6 +60,7 @@ typedef struct clTransform
 
 clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, struct clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth);
 void clTransformDestroy(struct clContext * C, clTransform * transform);
+void clTransformPrepare(struct clContext * C, struct clTransform * transform);
 clBool clTransformUsesCCMM(struct clContext * C, clTransform * transform);
 const char * clTransformCMMName(struct clContext * C, clTransform * transform); // Convenience function
 void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount);

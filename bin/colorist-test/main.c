@@ -8,7 +8,6 @@
 #include "colorist/colorist.h"
 
 #include "colorist/transform.h"
-#include "colorist/ccmm.h"
 
 static void setFloat4(float c[4], float v0, float v1, float v2, float v3) { c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; }
 static void setFloat3(float c[3], float v0, float v1, float v2) { c[0] = v0; c[1] = v1; c[2] = v2; }
@@ -46,7 +45,7 @@ int main(int argc, char * argv[])
         bt2020 = clProfileCreate(C, &primaries, &curve, 0, NULL);
 
         transform = clTransformCreate(C, bt709, CL_XF_RGBA, 32, bt2020, CL_XF_RGBA, 32);
-        clCCMMPrepareTransform(C, transform);
+        clTransformPrepare(C, transform);
         clTransformDestroy(C, transform);
 
         clContextDestroy(C);
