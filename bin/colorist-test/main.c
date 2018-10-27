@@ -44,7 +44,7 @@ int main(int argc, char * argv[])
         curve.gamma = 1.0f;
         bt2020 = clProfileCreate(C, &primaries, &curve, 0, NULL);
 
-        transform = clTransformCreate(C, bt709, CL_XF_RGBA, 32, bt2020, CL_XF_RGBA, 32);
+        transform = clTransformCreate(C, bt709, CL_XF_RGBA, 32, bt2020, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
         clTransformPrepare(C, transform);
         clTransformDestroy(C, transform);
 
@@ -67,32 +67,28 @@ int main(int argc, char * argv[])
     // Test all CCMM RGBA reformat paths
     {
         C = clContextCreate(NULL);
-        clConversionParamsSetDefaults(C, &params);
-        params.jobs = 1;
 
         // RGBA8 -> RGBA8
         srcImage = clImageParseString(C, "8x8,(255,0,0)", 8, NULL);
-        dstImage = clImageConvert(C, srcImage, &params, NULL);
+        dstImage = clImageConvert(C, srcImage, 1, srcImage->width, srcImage->height, 8, NULL, CL_TONEMAP_AUTO);
         clImageDestroy(C, srcImage);
         clImageDestroy(C, dstImage);
 
         // RGBA16 -> RGBA16
         srcImage = clImageParseString(C, "8x8,(255,0,0)", 16, NULL);
-        dstImage = clImageConvert(C, srcImage, &params, NULL);
+        dstImage = clImageConvert(C, srcImage, 1, srcImage->width, srcImage->height, 16, NULL, CL_TONEMAP_AUTO);
         clImageDestroy(C, srcImage);
         clImageDestroy(C, dstImage);
 
         // RGBA16 -> RGBA8
-        params.bpp = 8;
         srcImage = clImageParseString(C, "8x8,(255,0,0)", 16, NULL);
-        dstImage = clImageConvert(C, srcImage, &params, NULL);
+        dstImage = clImageConvert(C, srcImage, 1, srcImage->width, srcImage->height, 8, NULL, CL_TONEMAP_AUTO);
         clImageDestroy(C, srcImage);
         clImageDestroy(C, dstImage);
 
         // RGBA8 -> RGBA16
-        params.bpp = 16;
         srcImage = clImageParseString(C, "8x8,(255,0,0)", 8, NULL);
-        dstImage = clImageConvert(C, srcImage, &params, NULL);
+        dstImage = clImageConvert(C, srcImage, 1, srcImage->width, srcImage->height, 16, NULL, CL_TONEMAP_AUTO);
         clImageDestroy(C, srcImage);
         clImageDestroy(C, dstImage);
 
@@ -110,42 +106,42 @@ int main(int argc, char * argv[])
 
         // RGB8 -> RGBA8
         setRGBA8_4(srcRGBA8, 255, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, srcProfile, CL_XF_RGBA, 8);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, srcProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA8, dstRGBA8, 1);
         printf("RGB8(%u, %u, %u) -> RGBA8(%u, %u, %u, %u)\n", srcRGBA8[0], srcRGBA8[1], srcRGBA8[2], dstRGBA8[0], dstRGBA8[1], dstRGBA8[2], dstRGBA8[3]);
         clTransformDestroy(C, transform);
 
         // RGBA8 -> RGB8
         setRGBA8_4(srcRGBA8, 255, 0, 0, 255);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, srcProfile, CL_XF_RGBA, 8);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, srcProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA8, dstRGBA8, 1);
         printf("RGB8(%u, %u, %u, %u) -> RGBA8(%u, %u, %u)\n", srcRGBA8[0], srcRGBA8[1], srcRGBA8[2], srcRGBA8[3], dstRGBA8[0], dstRGBA8[1], dstRGBA8[2]);
         clTransformDestroy(C, transform);
 
         // RGB16 -> RGBA16
         setRGBA16_4(srcRGBA16, 65535, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, srcProfile, CL_XF_RGBA, 16);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, srcProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA16, dstRGBA16, 1);
         printf("RGB16(%u, %u, %u) -> RGBA16(%u, %u, %u, %u)\n", srcRGBA16[0], srcRGBA16[1], srcRGBA16[2], dstRGBA16[0], dstRGBA16[1], dstRGBA16[2], dstRGBA16[3]);
         clTransformDestroy(C, transform);
 
         // RGBA16 -> RGB16
         setRGBA16_4(srcRGBA16, 65535, 0, 0, 65535);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, srcProfile, CL_XF_RGBA, 16);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, srcProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA16, dstRGBA16, 1);
         printf("RGB16(%u, %u, %u, %u) -> RGBA16(%u, %u, %u)\n", srcRGBA16[0], srcRGBA16[1], srcRGBA16[2], srcRGBA16[3], dstRGBA16[0], dstRGBA16[1], dstRGBA16[2]);
         clTransformDestroy(C, transform);
 
         // RGB8 -> RGBA16
         setRGBA8_4(srcRGBA8, 255, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, srcProfile, CL_XF_RGBA, 16);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, srcProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA8, dstRGBA16, 1);
         printf("RGB8(%u, %u, %u) -> RGBA16(%u, %u, %u, %u)\n", srcRGBA8[0], srcRGBA8[1], srcRGBA8[2], dstRGBA16[0], dstRGBA16[1], dstRGBA16[2], dstRGBA16[3]);
         clTransformDestroy(C, transform);
 
         // RGB16 -> RGBA8
         setRGBA16_4(srcRGBA16, 65535, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, srcProfile, CL_XF_RGBA, 8);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, srcProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA16, dstRGBA8, 1);
         printf("RGB16(%u, %u, %u) -> RGBA8(%u, %u, %u, %u)\n", srcRGBA16[0], srcRGBA16[1], srcRGBA16[2], dstRGBA8[0], dstRGBA8[1], dstRGBA8[2], dstRGBA8[3]);
         clTransformDestroy(C, transform);
@@ -169,73 +165,73 @@ int main(int argc, char * argv[])
 
         // RGB8 -> RGBA8
         setRGBA8_4(srcRGBA8, 255, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, dstProfile, CL_XF_RGBA, 8);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, dstProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA8, dstRGBA8, 1);
         clTransformDestroy(C, transform);
 
         // RGBA8 -> RGBA8
         setRGBA8_4(srcRGBA8, 255, 0, 0, 255);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGBA, 8);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA8, dstRGBA8, 1);
         clTransformDestroy(C, transform);
 
         // RGBA8 -> RGB8
         setRGBA8_4(srcRGBA8, 255, 0, 0, 255);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGB, 8);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGB, 8, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA8, dstRGBA8, 1);
         clTransformDestroy(C, transform);
 
         // RGB16 -> RGBA16
         setRGBA16_4(srcRGBA16, 65535, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, dstProfile, CL_XF_RGBA, 16);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, dstProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA16, dstRGBA16, 1);
         clTransformDestroy(C, transform);
 
         // RGBA16 -> RGB16
         setRGBA16_4(srcRGBA16, 65535, 0, 0, 65535);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGB, 16);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGB, 16, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA16, dstRGBA16, 1);
         clTransformDestroy(C, transform);
 
         // RGBA16 -> RGBA16
         setRGBA16_4(srcRGBA16, 65535, 0, 0, 65535);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGBA, 16);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA16, dstRGBA16, 1);
         clTransformDestroy(C, transform);
 
         // RGBA16 -> RGBA8
         setRGBA16_4(srcRGBA16, 65535, 0, 0, 65535);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGBA, 8);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA16, dstRGBA8, 1);
         clTransformDestroy(C, transform);
 
         // RGBA8 -> RGBA16
         setRGBA8_4(srcRGBA8, 255, 0, 0, 255);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGBA, 16);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA8, dstRGBA16, 1);
         clTransformDestroy(C, transform);
 
         // RGBA16 -> RGB8
         setRGBA16_4(srcRGBA16, 65535, 0, 0, 65535);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGB, 8);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGB, 8, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA16, dstRGBA8, 1);
         clTransformDestroy(C, transform);
 
         // RGB8 -> RGBA16
         setRGBA8_4(srcRGBA8, 255, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, dstProfile, CL_XF_RGBA, 16);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, dstProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA8, dstRGBA16, 1);
         clTransformDestroy(C, transform);
 
         // RGBA8 -> RGB16
         setRGBA8_4(srcRGBA8, 255, 0, 0, 255);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGB, 16);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGB, 16, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA8, dstRGBA16, 1);
         clTransformDestroy(C, transform);
 
         // RGB16 -> RGBA8
         setRGBA16_4(srcRGBA16, 65535, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, dstProfile, CL_XF_RGBA, 8);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, dstProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA16, dstRGBA8, 1);
         printf("RGB16(%u, %u, %u) -> RGBA8(%u, %u, %u, %u)\n", srcRGBA16[0], srcRGBA16[1], srcRGBA16[2], dstRGBA8[0], dstRGBA8[1], dstRGBA8[2], dstRGBA8[3]);
         clTransformDestroy(C, transform);
@@ -254,42 +250,42 @@ int main(int argc, char * argv[])
         srcProfile = clProfileCreateStock(C, CL_PS_SRGB);
 
         setRGBA8_4(rgba8, 255, 0, 0, 255);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, srcProfile, CL_XF_RGBA, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, srcProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba8, rgba, 1);
         clTransformDestroy(C, transform);
 
         setRGBA8_4(rgba8, 255, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, srcProfile, CL_XF_RGBA, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, srcProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba8, rgba, 1);
         clTransformDestroy(C, transform);
 
         setRGBA16_4(rgba16, 65535, 0, 0, 65535);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, srcProfile, CL_XF_RGBA, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, srcProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba16, rgba, 1);
         clTransformDestroy(C, transform);
 
         setRGBA16_4(rgba16, 65535, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, srcProfile, CL_XF_RGBA, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, srcProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba16, rgba, 1);
         clTransformDestroy(C, transform);
 
         setFloat4(rgba, 1.0f, 0.0f, 0.0f, 1.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, srcProfile, CL_XF_RGBA, 8);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, srcProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba, rgba8, 1);
         clTransformDestroy(C, transform);
 
         setFloat4(rgba, 1.0f, 0.0f, 0.0f, 0.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, srcProfile, CL_XF_RGBA, 8);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, srcProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba, rgba8, 1);
         clTransformDestroy(C, transform);
 
         setFloat4(rgba, 1.0f, 0.0f, 0.0f, 1.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, srcProfile, CL_XF_RGBA, 16);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, srcProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba, rgba16, 1);
         clTransformDestroy(C, transform);
 
         setFloat4(rgba, 1.0f, 0.0f, 0.0f, 0.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, srcProfile, CL_XF_RGBA, 16);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, srcProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba, rgba16, 1);
         clTransformDestroy(C, transform);
 
@@ -309,42 +305,42 @@ int main(int argc, char * argv[])
         dstProfile = clProfileCreate(C, &primaries, &curve, 10000, NULL);
 
         setRGBA8_4(rgba8, 255, 0, 0, 255);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGBA, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba8, rgba, 1);
         clTransformDestroy(C, transform);
 
         setRGBA8_4(rgba8, 255, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, dstProfile, CL_XF_RGBA, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, dstProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba8, rgba, 1);
         clTransformDestroy(C, transform);
 
         setRGBA16_4(rgba16, 65535, 0, 0, 65535);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGBA, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba16, rgba, 1);
         clTransformDestroy(C, transform);
 
         setRGBA16_4(rgba16, 65535, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, dstProfile, CL_XF_RGBA, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, dstProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba16, rgba, 1);
         clTransformDestroy(C, transform);
 
         setFloat4(rgba, 1.0f, 0.0f, 0.0f, 1.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, dstProfile, CL_XF_RGBA, 8);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, dstProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba, rgba8, 1);
         clTransformDestroy(C, transform);
 
         setFloat4(rgba, 1.0f, 0.0f, 0.0f, 0.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, dstProfile, CL_XF_RGBA, 8);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, dstProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba, rgba8, 1);
         clTransformDestroy(C, transform);
 
         setFloat4(rgba, 1.0f, 0.0f, 0.0f, 1.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, dstProfile, CL_XF_RGBA, 16);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, dstProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba, rgba16, 1);
         clTransformDestroy(C, transform);
 
         setFloat4(rgba, 1.0f, 0.0f, 0.0f, 0.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, dstProfile, CL_XF_RGBA, 16);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, dstProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, rgba, rgba16, 1);
         clTransformDestroy(C, transform);
 
@@ -368,14 +364,14 @@ int main(int argc, char * argv[])
 
         // as close to a noop as float->float gets
         setFloat4(srcRGBA, 1.0f, 0.0f, 0.0f, 1.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, srcProfile, CL_XF_RGBA, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, srcProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA, dstRGBA, 1);
         printf("sRGBA(%g,%g,%g,%g) -> sRGBA(%g,%g,%g,%g)\n", srcRGBA[0], srcRGBA[1], srcRGBA[2], srcRGBA[3], dstRGBA[0], dstRGBA[1], dstRGBA[2], dstRGBA[3]);
         clTransformDestroy(C, transform);
 
         // sRGBA -> XYZ
         setFloat4(srcRGBA, 1.0f, 0.0f, 0.0f, 1.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA, xyz, 1);
         printf("sRGBA(%g,%g,%g,%g) -> XYZ(%g,%g,%g)\n", srcRGBA[0], srcRGBA[1], srcRGBA[2], srcRGBA[3], xyz[0], xyz[1], xyz[2]);
         clTransformDestroy(C, transform);
@@ -383,14 +379,14 @@ int main(int argc, char * argv[])
         // XYZ -> BT.2020 10k nits G2.2
         setFloat3(xyy, primaries.white[0], primaries.white[1], 1.0f);
         clTransformXYYToXYZ(C, xyz, xyy);
-        transform = clTransformCreate(C, NULL, CL_XF_XYZ, 32, dstProfile, CL_XF_RGBA, 32);
+        transform = clTransformCreate(C, NULL, CL_XF_XYZ, 32, dstProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, xyz, srcRGBA, 1);
         printf("xyY(%g,%g,%g) -> XYZ(%g,%g,%g) -> BT2020_10k_G22(%g,%g,%g,%g)\n", xyy[0], xyy[1], xyy[2], xyz[0], xyz[1], xyz[2], srcRGBA[0], srcRGBA[1], srcRGBA[2], srcRGBA[3]);
         clTransformDestroy(C, transform);
 
         // sRGBA -> BT.2020 10k nits G2.2
         setFloat4(srcRGBA, 1.0f, 0.0f, 0.0f, 1.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, dstProfile, CL_XF_RGBA, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, dstProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA, dstRGBA, 1);
         printf("sRGBA(%g,%g,%g,%g) -> BT2020_10k_G22(%g,%g,%g,%g)\n", srcRGBA[0], srcRGBA[1], srcRGBA[2], srcRGBA[3], dstRGBA[0], dstRGBA[1], dstRGBA[2], dstRGBA[3]);
         clTransformDestroy(C, transform);
@@ -398,14 +394,14 @@ int main(int argc, char * argv[])
         // sRGBA -> sRGB
         setFloat4(srcRGBA, 1.0f, 0.0f, 0.0f, 1.0f);
         setFloat4(dstRGBA, 0.0f, 0.0f, 0.0f, 0.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, srcProfile, CL_XF_RGB, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, srcProfile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA, dstRGBA, 1);
         printf("sRGBA(%g,%g,%g) -> sRGB(%g,%g,%g) (%g == 0)\n", srcRGBA[0], srcRGBA[1], srcRGBA[2], dstRGBA[0], dstRGBA[1], dstRGBA[2], dstRGBA[3]);
         clTransformDestroy(C, transform);
 
         // sRGB -> sRGBA
         setFloat4(srcRGBA, 1.0f, 0.0f, 0.0f, 0.0f); // set alpha to 0 to prove it doesn't carry over
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, srcProfile, CL_XF_RGBA, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, srcProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
         clTransformRun(C, transform, 1, srcRGBA, dstRGBA, 1);
         printf("sRGB(%g,%g,%g) -> sRGBA(%g,%g,%g,%g)\n", srcRGBA[0], srcRGBA[1], srcRGBA[2], dstRGBA[0], dstRGBA[1], dstRGBA[2], dstRGBA[3]);
         clTransformDestroy(C, transform);
@@ -439,7 +435,7 @@ int main(int argc, char * argv[])
         curve.gamma = 2.2f;
         srcProfile = clProfileCreate(C, &primaries, &curve, 10000, NULL);
 
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, NULL, CL_XF_XYZ, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
         for (i = 0; i < colorCount; ++i) {
             setFloat3(srcRGB, colors[i][0], colors[i][1], colors[i][2]);
             printf("---\n");
@@ -494,7 +490,7 @@ int main(int argc, char * argv[])
 
         C->ccmmAllowed = clTrue;
         clConversionParamsSetDefaults(C, &params);
-        dstImage = clImageConvert(C, srcImage, &params, dstProfile);
+        dstImage = clImageConvert(C, srcImage, 1, srcImage->width, srcImage->height, srcImage->depth, dstProfile, CL_TONEMAP_AUTO);
         srcU16 = (uint16_t *)srcImage->pixels;
         dstU16 = (uint16_t *)dstImage->pixels;
         printf("\n\nCCMM: bt709_300(%u,%u,%u) -> bt2020_10000(%u,%u,%u)\n", srcU16[0], srcU16[1], srcU16[2], dstU16[0], dstU16[1], dstU16[2]);
@@ -504,7 +500,7 @@ int main(int argc, char * argv[])
 
         C->ccmmAllowed = clFalse;
         clConversionParamsSetDefaults(C, &params);
-        dstImage = clImageConvert(C, srcImage, &params, dstProfile);
+        dstImage = clImageConvert(C, srcImage, 1, srcImage->width, srcImage->height, srcImage->depth, dstProfile, CL_TONEMAP_AUTO);
         srcU16 = (uint16_t *)srcImage->pixels;
         dstU16 = (uint16_t *)dstImage->pixels;
         printf("\n\nLCMS: bt709_300(%u,%u,%u) -> bt2020_10000(%u,%u,%u)\n", srcU16[0], srcU16[1], srcU16[2], dstU16[0], dstU16[1], dstU16[2]);
@@ -517,7 +513,6 @@ int main(int argc, char * argv[])
         clContextDestroy(C);
     }
 
-#if 0
     // Compare CCMM and LittleCMS, continued again
     {
         const float MIN_CMM_DIFFERENTIAL = 0.0001f;
@@ -537,8 +532,62 @@ int main(int argc, char * argv[])
 
         clContextGetStockPrimaries(C, "bt2020", &primaries);
         dstProfile = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G22");
+        // dstProfile = clProfileClone(C, srcProfile);
 
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, dstProfile, CL_XF_RGB, 32);
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, dstProfile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
+
+        for (r = 255; r < 256; ++r) {
+            printf("R: %d\n", r);
+            for (g = 255; g < 256; ++g) {
+                for (b = 255; b < 256; ++b) {
+                    // setFloat3(src, r / 255.0f, g / 255.0f, b / 255.0f);
+                    setFloat3(src, r / 255.0f, 1.0f, 1.0f);
+
+                    C->ccmmAllowed = clTrue;
+                    clTransformRun(C, transform, 1, src, dstCCMM, 1);
+                    C->ccmmAllowed = clFalse;
+                    clTransformRun(C, transform, 1, src, dstLCMS, 1);
+
+                    // if ((fabsf(dstCCMM[0] - dstLCMS[0]) > MIN_CMM_DIFFERENTIAL)
+                    //     || (fabsf(dstCCMM[1] - dstLCMS[1]) > MIN_CMM_DIFFERENTIAL)
+                    //     || (fabsf(dstCCMM[2] - dstLCMS[2]) > MIN_CMM_DIFFERENTIAL))
+                    {
+                        printf("SRC(%g,%g,%g) CCMM(%g,%g,%g) LCMS(%g,%g,%g)\n",
+                            src[0], src[1], src[2],
+                            dstCCMM[0], dstCCMM[1], dstCCMM[2],
+                            dstLCMS[0], dstLCMS[1], dstLCMS[2]);
+                    }
+                }
+            }
+        }
+
+        clProfileDestroy(C, srcProfile);
+        clProfileDestroy(C, dstProfile);
+        clContextDestroy(C);
+    }
+
+#if 0
+    // Compare CCMM and LittleCMS, continued again again
+    {
+        const float MIN_CMM_DIFFERENTIAL = 0.0001f;
+        int r, g, b;
+        float src[3];
+        float dstCCMM[3];
+        float dstLCMS[3];
+
+        C = clContextCreate(NULL);
+
+        curve.type = CL_PCT_GAMMA;
+        curve.gamma = 2.2f;
+
+        clContextGetStockPrimaries(C, "bt709", &primaries);
+        srcProfile = clProfileCreate(C, &primaries, &curve, 300, "BT709 300 G22");
+        // srcProfile = clProfileRead(C, "HDR_P3_D65_ST2084.icc");
+
+        clContextGetStockPrimaries(C, "bt2020", &primaries);
+        dstProfile = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G22");
+
+        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, dstProfile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
 
         for (r = 0; r < 256; ++r) {
             printf("R: %d\n", r);

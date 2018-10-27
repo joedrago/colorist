@@ -162,8 +162,8 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     clImage * highlight = NULL;
     int i;
 
-    clTransform * toXYZ = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32);
-    clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, 32, srcImage->profile, CL_XF_RGB, 32);
+    clTransform * toXYZ = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
+    clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, 32, srcImage->profile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
 
     clContextLog(C, "encode", 1, "Creating sRGB highlight (%d nits, %s)...", srgbLuminance, clTransformCMMName(C, toXYZ));
 
@@ -207,14 +207,14 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
             xyY.Y = 0.0f;
         }
 
-        pixelNits = (float)xyY.Y * (float)srcLuminance;
+        pixelNits = (float)xyY.Y;
         if (stats->brightestPixelNits < pixelNits) {
             stats->brightestPixelNits = pixelNits;
             stats->brightestPixelX = i % srcImage->width;
             stats->brightestPixelY = i / srcImage->width;
         }
 
-        baseIntensity = luminanceScale * (float)xyY.Y;
+        baseIntensity = luminanceScale * (float)xyY.Y / (float)srcLuminance;
         baseIntensity = CL_CLAMP(baseIntensity, 0.0f, 1.0f);
         intensity8 = intensityToU8(baseIntensity);
 
@@ -352,20 +352,11 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
     }
 
     {
-        clConversionParams params;
         clImage * visual;
         char * pngB64;
         clContextLog(C, "encode", 0, "Creating raw pixels visual...");
         timerStart(&t);
-        clConversionParamsSetDefaults(C, &params);
-        params.formatName = "jpg";
-        params.bpp = 8;
-        clContextGetRawStockPrimaries(C, "bt709", params.primaries);
-        params.gamma = COLORIST_SRGB_GAMMA;
-        params.luminance = COLORIST_DEFAULT_LUMINANCE;
-        params.quality = 95;
-        params.jobs = C->params.jobs;
-        visual = clImageConvert(C, image, &params, NULL);
+        visual = clImageConvert(C, image, C->params.jobs, image->width, image->height, 8, NULL, CL_TONEMAP_AUTO);
         if (!visual) {
             return clFalse;
         }

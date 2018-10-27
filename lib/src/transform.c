@@ -9,6 +9,12 @@
 
 #include <string.h>
 
+// Due to matrixCurveScale being calculated as an exponent (a^g), there's a chance we'll
+// end up with a luminance scale of 1.00000119 instead of exactly 1 (which is correct),
+// so we end up tonemapping for no reason. The small amount after the 1.0 here buys us
+// a little imprecision wiggle room on an automatic tonemap.
+#define AUTO_TONEMAP_LUMINANCE_SCALE_THRESHOLD (1.001f)
+
 #define SRC_8_HAS_ALPHA() (srcPixelBytes > 3)
 #define SRC_16_HAS_ALPHA() (srcPixelBytes > 7)
 #define SRC_FLOAT_HAS_ALPHA() (srcPixelBytes > 15)
@@ -109,6 +115,61 @@ static clBool deriveXYZMatrixAndXTF(struct clContext * C, struct clProfile * pro
 void clTransformPrepare(struct clContext * C, struct clTransform * transform)
 {
     clBool useCCMM = clTransformUsesCCMM(C, transform);
+    if ((useCCMM && !transform->ccmmReady) || (!useCCMM && !transform->lcmsReady)) {
+        // Calculate luminance scaling
+
+        int srcLuminance, dstLuminance;
+        float srcLuminanceScale = 1.0f;
+        float dstLuminanceScale = 1.0f;
+        float luminanceScale;
+        clProfilePrimaries srcPrimaries;
+        clProfileCurve srcCurve, dstCurve;
+
+        if (transform->srcProfile) {
+            clProfileQuery(C, transform->srcProfile, &srcPrimaries, &srcCurve, &srcLuminance);
+            srcLuminance = (srcLuminance != 0) ? srcLuminance : COLORIST_DEFAULT_LUMINANCE;
+            srcLuminanceScale = (float)srcLuminance;
+            if (useCCMM && (srcCurve.matrixCurveScale > 0.0f)) {
+                // This handles crazy A2B* tags, somewhat (when using CCMM)
+                srcLuminanceScale *= srcCurve.matrixCurveScale;
+            }
+
+            transform->whitePointX = srcPrimaries.white[0];
+            transform->whitePointY = srcPrimaries.white[1];
+        }
+
+        if (transform->dstProfile) {
+            clProfileQuery(C, transform->dstProfile, NULL, &dstCurve, &dstLuminance);
+            dstLuminance = (dstLuminance != 0) ? dstLuminance : COLORIST_DEFAULT_LUMINANCE;
+            dstLuminanceScale = (float)dstLuminance;
+            if (useCCMM && (dstCurve.matrixCurveScale > 0.0f)) {
+                // This handles crazy A2B* tags, somewhat (when using CCMM)
+                dstLuminanceScale *= dstCurve.matrixCurveScale;
+            }
+        }
+
+        luminanceScale = srcLuminanceScale / dstLuminanceScale;
+        switch (transform->tonemap) {
+            case CL_TONEMAP_AUTO:
+                transform->tonemapEnabled = (luminanceScale > AUTO_TONEMAP_LUMINANCE_SCALE_THRESHOLD) ? clTrue : clFalse;
+                break;
+            case CL_TONEMAP_ON:
+                transform->tonemapEnabled = clTrue;
+                break;
+            case CL_TONEMAP_OFF:
+                transform->tonemapEnabled = clFalse;
+                break;
+        }
+
+        if (useCCMM) {
+            transform->ccmmLuminanceScale = luminanceScale;
+            // printf("CCMM luminance scale: %g\n", transform->ccmmLuminanceScale);
+        } else {
+            transform->lcmsLuminanceScale = luminanceScale;
+            // printf("LCMS luminance scale: %g\n", transform->lcmsLuminanceScale);
+        }
+    }
+
     if (useCCMM) {
         // Prepare CCMM
         if (!transform->ccmmReady) {
@@ -132,7 +193,7 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
         }
     } else {
         // Prepare LittleCMS
-        if (!transform->lcmsXYZProfile) {
+        if (!transform->lcmsReady) {
             cmsUInt32Number srcFormat = clTransformFormatToLCMSFormat(C, transform->srcFormat);
             cmsUInt32Number dstFormat = clTransformFormatToLCMSFormat(C, transform->dstFormat);
             cmsHPROFILE srcProfileHandle;
@@ -168,6 +229,8 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
                 srcProfileHandle, srcFormat,
                 dstProfileHandle, dstFormat,
                 INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+
+            transform->lcmsReady = clTrue;
         }
     }
 }
@@ -214,39 +277,94 @@ static void transformFloatToFloat(struct clContext * C, struct clTransform * tra
         float * srcPixel = (float *)&srcPixels[i * srcPixelBytes];
         float * dstPixel = (float *)&dstPixels[i * dstPixelBytes];
         gbVec3 src;
-        float tmp[3];
-        switch (transform->ccmmSrcEOTF) {
-            case CL_XTF_NONE:
-                memcpy(&src, srcPixel, sizeof(src));
-                break;
-            case CL_XTF_GAMMA:
-                src.x = powf((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f, transform->ccmmSrcGamma);
-                src.y = powf((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f, transform->ccmmSrcGamma);
-                src.z = powf((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f, transform->ccmmSrcGamma);
-                break;
-            case CL_XTF_PQ:
-                src.x = PQ_EOTF((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f);
-                src.y = PQ_EOTF((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f);
-                src.z = PQ_EOTF((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f);
-                break;
+        float XYZ[3];
+        float xyY[3];
+        float luminanceScale = (useCCMM) ? transform->ccmmLuminanceScale : transform->lcmsLuminanceScale;
+
+        if (useCCMM) {
+            switch (transform->ccmmSrcEOTF) {
+                case CL_XTF_NONE:
+                    memcpy(&src, srcPixel, sizeof(src));
+                    break;
+                case CL_XTF_GAMMA:
+                    src.x = powf((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f, transform->ccmmSrcGamma);
+                    src.y = powf((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f, transform->ccmmSrcGamma);
+                    src.z = powf((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f, transform->ccmmSrcGamma);
+                    break;
+                case CL_XTF_PQ:
+                    src.x = PQ_EOTF((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f);
+                    src.y = PQ_EOTF((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f);
+                    src.z = PQ_EOTF((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f);
+                    break;
+            }
+
+            gb_mat3_mul_vec3((gbVec3 *)XYZ, &transform->ccmmSrcToXYZ, src);
+        } else {
+            // Use LCMS
+            cmsDoTransform(transform->lcmsSrcToXYZ, srcPixel, XYZ, 1);
         }
-        switch (transform->ccmmDstOETF) {
-            case CL_XTF_NONE:
-                gb_mat3_mul_vec3((gbVec3 *)dstPixel, &transform->ccmmCombined, src);
-                break;
-            case CL_XTF_GAMMA:
-                gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->ccmmCombined, src);
-                dstPixel[0] = powf((tmp[0] >= 0.0f) ? tmp[0] : 0.0f, transform->ccmmDstInvGamma);
-                dstPixel[1] = powf((tmp[1] >= 0.0f) ? tmp[1] : 0.0f, transform->ccmmDstInvGamma);
-                dstPixel[2] = powf((tmp[2] >= 0.0f) ? tmp[2] : 0.0f, transform->ccmmDstInvGamma);
-                break;
-            case CL_XTF_PQ:
-                gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->ccmmCombined, src);
-                dstPixel[0] = PQ_OETF((tmp[0] >= 0.0f) ? tmp[0] : 0.0f);
-                dstPixel[1] = PQ_OETF((tmp[1] >= 0.0f) ? tmp[1] : 0.0f);
-                dstPixel[2] = PQ_OETF((tmp[2] >= 0.0f) ? tmp[2] : 0.0f);
-                break;
+
+        // Convert to xyY
+        clTransformXYZToXYY(C, xyY, XYZ, transform->whitePointX, transform->whitePointY);
+
+        // Luminance scale
+        xyY[2] *= luminanceScale;
+
+        // Tonemap
+        if (transform->tonemapEnabled) {
+            // reinhard tonemap
+            xyY[2] = xyY[2] / (1.0f + xyY[2]);
         }
+
+        // // Clip
+        // if (xyY[2] > luminanceScale) {
+        //     xyY[2] = luminanceScale;
+        // }
+
+        // Convert to XYZ
+        clTransformXYYToXYZ(C, XYZ, xyY);
+
+        if (useCCMM) {
+            float tmp[3];
+            memcpy(&src, XYZ, sizeof(src));
+
+            switch (transform->ccmmDstOETF) {
+                case CL_XTF_NONE:
+                    gb_mat3_mul_vec3((gbVec3 *)dstPixel, &transform->ccmmXYZToDst, src);
+                    if (transform->dstProfile) {                         // don't clamp XYZ
+                        dstPixel[0] = CL_CLAMP(dstPixel[0], 0.0f, 1.0f); // clamp
+                        dstPixel[1] = CL_CLAMP(dstPixel[1], 0.0f, 1.0f); // clamp
+                        dstPixel[2] = CL_CLAMP(dstPixel[2], 0.0f, 1.0f); // clamp
+                    }
+                    break;
+                case CL_XTF_GAMMA:
+                    gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->ccmmXYZToDst, src);
+                    if (transform->dstProfile) {               // don't clamp XYZ
+                        tmp[0] = CL_CLAMP(tmp[0], 0.0f, 1.0f); // clamp
+                        tmp[1] = CL_CLAMP(tmp[1], 0.0f, 1.0f); // clamp
+                        tmp[2] = CL_CLAMP(tmp[2], 0.0f, 1.0f); // clamp
+                    }
+                    dstPixel[0] = powf((tmp[0] >= 0.0f) ? tmp[0] : 0.0f, transform->ccmmDstInvGamma);
+                    dstPixel[1] = powf((tmp[1] >= 0.0f) ? tmp[1] : 0.0f, transform->ccmmDstInvGamma);
+                    dstPixel[2] = powf((tmp[2] >= 0.0f) ? tmp[2] : 0.0f, transform->ccmmDstInvGamma);
+                    break;
+                case CL_XTF_PQ:
+                    gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->ccmmXYZToDst, src);
+                    if (transform->dstProfile) {               // don't clamp XYZ
+                        tmp[0] = CL_CLAMP(tmp[0], 0.0f, 1.0f); // clamp
+                        tmp[1] = CL_CLAMP(tmp[1], 0.0f, 1.0f); // clamp
+                        tmp[2] = CL_CLAMP(tmp[2], 0.0f, 1.0f); // clamp
+                    }
+                    dstPixel[0] = PQ_OETF((tmp[0] >= 0.0f) ? tmp[0] : 0.0f);
+                    dstPixel[1] = PQ_OETF((tmp[1] >= 0.0f) ? tmp[1] : 0.0f);
+                    dstPixel[2] = PQ_OETF((tmp[2] >= 0.0f) ? tmp[2] : 0.0f);
+                    break;
+            }
+        } else {
+            // LittleCMS
+            cmsDoTransform(transform->lcmsXYZToDst, XYZ, dstPixel, 1);
+        }
+
         if (DST_FLOAT_HAS_ALPHA()) {
             if (SRC_FLOAT_HAS_ALPHA()) {
                 // Copy alpha
@@ -761,7 +879,6 @@ void clCCMMTransform(struct clContext * C, struct clTransform * transform, clBoo
 
     COLORIST_ASSERT(!transform->srcProfile || transform->srcProfile->ccmm);
     COLORIST_ASSERT(!transform->dstProfile || transform->dstProfile->ccmm);
-    COLORIST_ASSERT(transform->ccmmReady);
 
     // After this point, find a single valid return point from this function, or die
 
@@ -882,7 +999,7 @@ void clTransformXYYToXYZ(struct clContext * C, float * dstXYZ, float * srcXYY)
     dstXYZ[2] = ((1 - srcXYY[0] - srcXYY[1]) * srcXYY[2]) / srcXYY[1];
 }
 
-clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, struct clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth)
+clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, struct clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth, clTonemap tonemap)
 {
     clTransform * transform = clAllocateStruct(clTransform);
     transform->srcProfile = srcProfile;
@@ -891,6 +1008,7 @@ clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProf
     transform->dstFormat = dstFormat;
     transform->srcDepth = srcDepth;
     transform->dstDepth = dstDepth;
+    transform->tonemap = tonemap;
 
     transform->ccmmReady = clFalse;
 
@@ -898,6 +1016,7 @@ clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProf
     transform->lcmsSrcToXYZ = NULL;
     transform->lcmsXYZToDst = NULL;
     transform->lcmsCombined = NULL;
+    transform->lcmsReady = clFalse;
     return transform;
 }
 
@@ -923,7 +1042,7 @@ static cmsUInt32Number clTransformFormatToLCMSFormat(struct clContext * C, clTra
     switch (format) {
         case CL_XF_XYZ:  return TYPE_XYZ_FLT;
         case CL_XF_RGB:  return TYPE_RGB_FLT;
-        case CL_XF_RGBA: return TYPE_RGBA_FLT;
+        case CL_XF_RGBA: return TYPE_RGB_FLT; // CCMM deals with the alpha
     }
 
     COLORIST_FAILURE("clTransformFormatToLCMSFormat: Unknown transform format");
@@ -986,6 +1105,15 @@ const char * clTransformCMMName(struct clContext * C, clTransform * transform)
     return clTransformUsesCCMM(C, transform) ? "CCMM" : "LCMS";
 }
 
+float clTransformGetLuminanceScale(struct clContext * C, clTransform * transform)
+{
+    clTransformPrepare(C, transform);
+    if (clTransformUsesCCMM(C, transform)) {
+        return transform->ccmmLuminanceScale;
+    }
+    return transform->lcmsLuminanceScale;
+}
+
 typedef struct clTransformTask
 {
     clContext * C;
@@ -998,10 +1126,7 @@ typedef struct clTransformTask
 
 static void transformTaskFunc(clTransformTask * info)
 {
-    if (info->useCCMM)
-        clCCMMTransform(info->C, info->transform, info->useCCMM, info->inPixels, info->outPixels, info->pixelCount);
-    else
-        cmsDoTransform(info->transform->lcmsCombined, info->inPixels, info->outPixels, info->pixelCount);
+    clCCMMTransform(info->C, info->transform, info->useCCMM, info->inPixels, info->outPixels, info->pixelCount);
 }
 
 void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount)

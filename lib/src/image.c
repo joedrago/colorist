@@ -8,7 +8,9 @@
 #include "colorist/image.h"
 
 #include "colorist/context.h"
+#include "colorist/pixelmath.h"
 #include "colorist/profile.h"
+#include "colorist/transform.h"
 
 #include <string.h>
 
@@ -64,6 +66,49 @@ clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, in
         clImageDestroy(C, srcImage);
     }
     return dstImage;
+}
+
+clImage * clImageApplyHALD(struct clContext * C, clImage * image, clImage * hald, int haldDims)
+{
+    clImage * appliedImage = clImageCreate(C, image->width, image->height, image->depth, image->profile);
+    int i;
+    int pixelCount = image->width * image->height;
+    int haldDataCount = hald->width * hald->height;
+    float * haldData;
+    float * srcFloats;
+    float * dstFloats;
+
+    haldData = clAllocate(4 * sizeof(float) * haldDataCount);
+    clPixelMathUNormToFloat(C, hald->pixels, hald->depth, haldData, haldDataCount);
+    srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
+    clPixelMathUNormToFloat(C, image->pixels, image->depth, srcFloats, pixelCount);
+    dstFloats = clAllocate(4 * sizeof(float) * pixelCount);
+
+    for (i = 0; i < pixelCount; ++i) {
+        clPixelMathHaldCLUTLookup(C, haldData, haldDims, &srcFloats[i * 4], &dstFloats[i * 4]);
+    }
+    clPixelMathFloatToUNorm(C, dstFloats, appliedImage->pixels, appliedImage->depth, pixelCount);
+
+    clFree(dstFloats);
+    clFree(srcFloats);
+    clFree(haldData);
+    return appliedImage;
+}
+
+clImage * clImageResize(struct clContext * C, clImage * image, int width, int height, clFilter resizeFilter)
+{
+    clImage * resizedImage = clImageCreate(C, width, height, image->depth, image->profile);
+    int pixelCount = image->width * image->height;
+    int resizedPixelCount = resizedImage->width * resizedImage->height;
+    float * srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
+    float * dstFloats = clAllocate(4 * sizeof(float) * resizedPixelCount);
+
+    clPixelMathUNormToFloat(C, image->pixels, image->depth, srcFloats, pixelCount);
+    clPixelMathResize(C, image->width, image->height, srcFloats, resizedImage->width, resizedImage->height, dstFloats, resizeFilter);
+    clPixelMathFloatToUNorm(C, dstFloats, resizedImage->pixels, resizedImage->depth, resizedPixelCount);
+    clFree(dstFloats);
+    clFree(srcFloats);
+    return resizedImage;
 }
 
 clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y, int * w, int * h)
@@ -149,6 +194,53 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
             break;
     }
     return rotated;
+}
+
+clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount, int width, int height, int depth, struct clProfile * dstProfile, clTonemap tonemap)
+{
+    Timer t;
+    clImage * dstImage = NULL;
+    clTransform * transform = NULL;
+    float luminanceScale;
+
+    // Create destination image
+    dstImage = clImageCreate(C, width, height, depth, dstProfile);
+
+    // Show image details
+    clContextLog(C, "details", 0, "Source:");
+    clImageDebugDump(C, srcImage, 0, 0, 0, 0, 1);
+    clContextLog(C, "details", 0, "Destination:");
+    clImageDebugDump(C, dstImage, 0, 0, 0, 0, 1);
+
+    // Create the transform
+    transform = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, srcImage->depth, dstImage->profile, CL_XF_RGBA, depth, tonemap);
+    clTransformPrepare(C, transform);
+    luminanceScale = clTransformGetLuminanceScale(C, transform);
+
+    // Perform conversion
+    clContextLog(C, "convert", 0, "Converting (%s, lum scale %gx, %s)...", clTransformCMMName(C, transform), luminanceScale, transform->tonemapEnabled ? "tonemap" : "clip");
+    timerStart(&t);
+    clTransformRun(C, transform, taskCount, srcImage->pixels, dstImage->pixels, srcImage->width * srcImage->height);
+    clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+
+    // Cleanup
+    clTransformDestroy(C, transform);
+    return dstImage;
+}
+
+void clImageColorGrade(struct clContext * C, clImage * image, int taskCount, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose)
+{
+    float * floatPixels = NULL;
+    int pixelCount = image->width * image->height;
+    int srcLuminance = 0;
+
+    clProfileQuery(C, image->profile, NULL, NULL, &srcLuminance);
+    srcLuminance = (srcLuminance != 0) ? srcLuminance : COLORIST_DEFAULT_LUMINANCE;
+
+    floatPixels = clAllocate(4 * sizeof(float) * pixelCount);
+    clPixelMathUNormToFloat(C, image->pixels, image->depth, floatPixels, pixelCount);
+    clPixelMathColorGrade(C, taskCount, image->profile, floatPixels, pixelCount, image->width, srcLuminance, dstColorDepth, outLuminance, outGamma, verbose);
+    clFree(floatPixels);
 }
 
 void clImageDestroy(clContext * C, clImage * image)

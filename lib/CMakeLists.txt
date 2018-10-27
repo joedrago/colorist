@@ -73,7 +73,6 @@ set(COLORIST_LIB_SRCS
     src/format_tiff.c
     src/format_webp.c
     src/image.c
-    src/image_convert.c
     src/image_debugdump.c
     src/image_string.c
     src/pixelmath_grade.c

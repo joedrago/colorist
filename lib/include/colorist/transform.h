@@ -9,6 +9,7 @@
 #define COLORIST_TRANSFORM_H
 
 #include "colorist/types.h"
+#include "colorist/context.h"
 
 // for gbMat3
 #include "gb_math.h"
@@ -44,6 +45,10 @@ typedef struct clTransform
     clTransformFormat dstFormat;
     int srcDepth;
     int dstDepth;
+    float whitePointX;
+    float whitePointY;
+    clTonemap tonemap;
+    clBool tonemapEnabled; // calculated from incoming tonemap value
 
     // Cache for CCMM objects
     clTransformTransferFunction ccmmSrcEOTF;
@@ -53,6 +58,7 @@ typedef struct clTransform
     gbMat3 ccmmSrcToXYZ;
     gbMat3 ccmmXYZToDst;
     gbMat3 ccmmCombined;
+    float ccmmLuminanceScale;
     clBool ccmmReady;
 
     // Cache for LittleCMS objects
@@ -60,13 +66,16 @@ typedef struct clTransform
     cmsHTRANSFORM lcmsSrcToXYZ;
     cmsHTRANSFORM lcmsXYZToDst;
     cmsHTRANSFORM lcmsCombined;
+    float lcmsLuminanceScale; // this might be different from ccmmLuminanceScale due to matrixCurveScale
+    clBool lcmsReady;
 } clTransform;
 
-clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, struct clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth);
+clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, struct clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth, clTonemap tonemap);
 void clTransformDestroy(struct clContext * C, clTransform * transform);
 void clTransformPrepare(struct clContext * C, struct clTransform * transform);
 clBool clTransformUsesCCMM(struct clContext * C, clTransform * transform);
-const char * clTransformCMMName(struct clContext * C, clTransform * transform); // Convenience function
+const char * clTransformCMMName(struct clContext * C, clTransform * transform);    // Convenience function
+float clTransformGetLuminanceScale(struct clContext * C, clTransform * transform); // Convenience function
 void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount);
 
 clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format, int depth);
