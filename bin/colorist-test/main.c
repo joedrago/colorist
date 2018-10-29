@@ -24,13 +24,14 @@ static void setRGBA16_3(uint16_t c[3], uint16_t v0, uint16_t v1, uint16_t v2) { 
 static int diffTransform(clContext * C, int steps, clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth, clTonemap tonemap, float thresholdF)
 {
 #if defined(DEBUG_SINGLE_DIFF)
-    clBool printProgress = clTrue;
+    clBool printProgress = clFalse;
     clBool printMatches = clFalse;
+    clBool printMismatches = clTrue;
 #else
     clBool printProgress = clFalse;
     clBool printMatches = clFalse;
-#endif
     clBool printMismatches = clFalse;
+#endif
 
     int diffCount = 0;
 
@@ -205,6 +206,45 @@ int main(int argc, char * argv[])
     clProfilePrimaries primaries;
     clProfileCurve curve;
 
+#if 0
+    // Local hacks
+    {
+        struct clProfile * BT2020;
+        struct clProfile * P3PQ;
+        clTransform * transform;
+        float src[3];
+        float dst[3];
+        uint16_t src16[3];
+        uint16_t dst16[3];
+
+        C = clContextCreate(NULL);
+
+        curve.type = CL_PCT_GAMMA;
+        curve.gamma = 2.2f;
+        clContextGetStockPrimaries(C, "bt2020", &primaries);
+        BT2020 = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G22");
+
+        P3PQ = clProfileRead(C, "../docs/profiles/HDR_P3_D65_ST2084.icc");
+        if (!P3PQ) {
+            return -1;
+        }
+
+        // transform = clTransformCreate(C, P3PQ, CL_XF_RGB, 32, BT2020, CL_XF_RGB, 32, CL_TONEMAP_OFF);
+        // setFloat3(src, 1.0f, 1.0f, 1.0f);
+        // clTransformRun(C, transform, 1, src, dst, 1);
+        // C->ccmmAllowed = clFalse;
+        // clTransformRun(C, transform, 1, src, dst, 1);
+
+        transform = clTransformCreate(C, P3PQ, CL_XF_RGB, 16, BT2020, CL_XF_RGB, 16, CL_TONEMAP_OFF);
+        setRGBA16_3(src16, 65535, 65535, 65535);
+        clTransformRun(C, transform, 1, src16, dst16, 1);
+        C->ccmmAllowed = clFalse;
+        clTransformRun(C, transform, 1, src16, dst16, 1);
+
+        return 0;
+    }
+#endif /* if 1 */
+
 #if defined(DEBUG_MATRIX_MATH)
     {
         clProfile * bt709;
@@ -229,111 +269,117 @@ int main(int argc, char * argv[])
         clContextDestroy(C);
         return 0;
     }
-#endif
+#else
+    {
+        static const int steps = 16;
 
-    static const int steps = 16;
+        struct clProfile * BT709;
+        struct clProfile * BT2020;
+        struct clProfile * P3PQ;
+        struct clProfile * profiles[4];
+        int profilesCount = 0; // set later
 
-    struct clProfile * BT709;
-    struct clProfile * BT2020;
-    struct clProfile * P3PQ;
-    struct clProfile * profiles[4];
-    int profilesCount = 0; // set later
+        // const int depths[]     = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 32 };
+        const int depths[]     = { 8, 16, 32 };
+        const int depthsCount = sizeof(depths) / sizeof(depths[0]);
+        int srcProfileIndex, srcDepthIndex, dstProfileIndex, dstDepthIndex, tonemapIndex;
 
-    // const int depths[]     = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 32 };
-    const int depths[]     = { 8, 16, 32 };
-    const int depthsCount = sizeof(depths) / sizeof(depths[0]);
-    int srcProfileIndex, srcDepthIndex, dstProfileIndex, dstDepthIndex, tonemapIndex;
+        C = clContextCreate(NULL);
 
-    C = clContextCreate(NULL);
+        curve.type = CL_PCT_GAMMA;
+        curve.gamma = 2.2f;
 
-    curve.type = CL_PCT_GAMMA;
-    curve.gamma = 2.2f;
-
-    clContextGetStockPrimaries(C, "bt709", &primaries);
-    BT709 = clProfileCreate(C, &primaries, &curve, 300, "BT709 300 G22");
-    clContextGetStockPrimaries(C, "bt2020", &primaries);
-    BT2020 = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G22");
-    P3PQ = clProfileRead(C, "../docs/profiles/HDR_P3_D65_ST2084.icc");
-    if (!P3PQ) {
-        return -1;
-    }
-    profiles[0] = BT2020;
-    profiles[1] = BT709;
-    profiles[2] = P3PQ;
-    profiles[3] = NULL; // XYZ
-    profilesCount = 4;
+        clContextGetStockPrimaries(C, "bt709", &primaries);
+        BT709 = clProfileCreate(C, &primaries, &curve, 300, "BT709 300 G22");
+        clContextGetStockPrimaries(C, "bt2020", &primaries);
+        BT2020 = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G22");
+        P3PQ = clProfileRead(C, "../docs/profiles/HDR_P3_D65_ST2084.icc");
+        if (!P3PQ) {
+            return -1;
+        }
+        profiles[0] = BT2020;
+        profiles[1] = BT709;
+        profiles[2] = P3PQ;
+        profiles[3] = NULL; // XYZ
+        profilesCount = 4;
 
 #if defined(DEBUG_SINGLE_DIFF)
-    diffTransform(C, steps, P3PQ, CL_XF_RGB, 16, BT2020, CL_XF_RGB, 16, CL_TONEMAP_OFF, 1);
+        diffTransform(C, steps, NULL, CL_XF_XYZ, 32, P3PQ, CL_XF_RGB, 32, CL_TONEMAP_OFF, 0.01);
 #else
-    for (srcProfileIndex = 0; srcProfileIndex < profilesCount; ++srcProfileIndex) {
-        for (srcDepthIndex = 0; srcDepthIndex < depthsCount; ++srcDepthIndex) {
-            for (dstProfileIndex = 0; dstProfileIndex < profilesCount; ++dstProfileIndex) {
-                for (dstDepthIndex = 0; dstDepthIndex < depthsCount; ++dstDepthIndex) {
-                    for (tonemapIndex = 0; tonemapIndex < 3; ++tonemapIndex) {
-                        clProfile * srcProfile = profiles[srcProfileIndex];
-                        int srcDepth = depths[srcDepthIndex];
-                        clTransformFormat srcFormat = CL_XF_RGB;
+        for (srcProfileIndex = 0; srcProfileIndex < profilesCount; ++srcProfileIndex) {
+            for (srcDepthIndex = 0; srcDepthIndex < depthsCount; ++srcDepthIndex) {
+                for (dstProfileIndex = 0; dstProfileIndex < profilesCount; ++dstProfileIndex) {
+                    for (dstDepthIndex = 0; dstDepthIndex < depthsCount; ++dstDepthIndex) {
+                        for (tonemapIndex = 0; tonemapIndex < 3; ++tonemapIndex) {
+                            clProfile * srcProfile = profiles[srcProfileIndex];
+                            int srcDepth = depths[srcDepthIndex];
+                            clTransformFormat srcFormat = CL_XF_RGB;
 
-                        clProfile * dstProfile = profiles[dstProfileIndex];
-                        int dstDepth = depths[dstDepthIndex];
-                        clTransformFormat dstFormat = CL_XF_RGB;
+                            clProfile * dstProfile = profiles[dstProfileIndex];
+                            int dstDepth = depths[dstDepthIndex];
+                            clTransformFormat dstFormat = CL_XF_RGB;
 
-                        clTonemap tonemap = (clTonemap)tonemapIndex; // Naughty!
-                        float threshold = 0.00001f;
-                        if (dstDepth < 32) {
-                            threshold = 1.0f;
-                        }
-
-                        if (srcProfile == NULL) {
-                            if (srcDepth == 32) {
-                                srcFormat = CL_XF_XYZ;
-                            } else {
-                                // Only do 32bit XYZ
-                                continue;
+                            clTonemap tonemap = (clTonemap)tonemapIndex; // Naughty!
+                            float threshold = 0.01f;
+                            if (dstDepth < 32) {
+                                threshold = 5.0f;
+                                if (dstDepth > 12) {
+                                    threshold *= 256;
+                                }
                             }
-                        }
 
-                        if (dstProfile == NULL) {
-                            if (dstDepth == 32) {
-                                dstFormat = CL_XF_XYZ;
-                            } else {
-                                // Only do 32bit XYZ
-                                continue;
+                            if (srcProfile == NULL) {
+                                if (srcDepth == 32) {
+                                    srcFormat = CL_XF_XYZ;
+                                } else {
+                                    // Only do 32bit XYZ
+                                    continue;
+                                }
                             }
-                        }
 
-                        if (diffTransform(C, steps, srcProfile, srcFormat, srcDepth, dstProfile, dstFormat, dstDepth, tonemap, threshold) > 0) {
-                            // FAIL();
-                        }
-                        if (srcFormat == CL_XF_RGB) {
-                            if (diffTransform(C, steps, srcProfile, CL_XF_RGBA, srcDepth, dstProfile, dstFormat, dstDepth, tonemap, threshold) > 0) {
+                            if (dstProfile == NULL) {
+                                if (dstDepth == 32) {
+                                    dstFormat = CL_XF_XYZ;
+                                } else {
+                                    // Only do 32bit XYZ
+                                    continue;
+                                }
+                            }
+
+                            if (diffTransform(C, steps, srcProfile, srcFormat, srcDepth, dstProfile, dstFormat, dstDepth, tonemap, threshold) > 0) {
                                 // FAIL();
                             }
-                        }
-                        if (dstFormat == CL_XF_RGB) {
-                            if (diffTransform(C, steps, srcProfile, srcFormat, srcDepth, dstProfile, CL_XF_RGBA, dstDepth, tonemap, threshold) > 0) {
-                                // FAIL();
+                            if (srcFormat == CL_XF_RGB) {
+                                if (diffTransform(C, steps, srcProfile, CL_XF_RGBA, srcDepth, dstProfile, dstFormat, dstDepth, tonemap, threshold) > 0) {
+                                    // FAIL();
+                                }
                             }
-                        }
-                        if ((srcFormat == CL_XF_RGB) && (dstFormat == CL_XF_RGB)) {
-                            if (diffTransform(C, steps, srcProfile, CL_XF_RGBA, srcDepth, dstProfile, CL_XF_RGBA, dstDepth, tonemap, threshold) > 0) {
-                                // FAIL();
+                            if (dstFormat == CL_XF_RGB) {
+                                if (diffTransform(C, steps, srcProfile, srcFormat, srcDepth, dstProfile, CL_XF_RGBA, dstDepth, tonemap, threshold) > 0) {
+                                    // FAIL();
+                                }
+                            }
+                            if ((srcFormat == CL_XF_RGB) && (dstFormat == CL_XF_RGB)) {
+                                if (diffTransform(C, steps, srcProfile, CL_XF_RGBA, srcDepth, dstProfile, CL_XF_RGBA, dstDepth, tonemap, threshold) > 0) {
+                                    // FAIL();
+                                }
                             }
                         }
                     }
                 }
             }
         }
-    }
 
 // foundMismatch:
-#endif /* if 0 */
+#endif  /* if 0 */
 
-    clProfileDestroy(C, BT709);
-    clProfileDestroy(C, P3PQ);
-    clProfileDestroy(C, BT2020);
-    clContextDestroy(C);
+        clProfileDestroy(C, BT709);
+        clProfileDestroy(C, P3PQ);
+        clProfileDestroy(C, BT2020);
+        clContextDestroy(C);
+    }
+
+#endif /* if defined(DEBUG_MATRIX_MATH) */
 
     printf("colorist-test Complete.\n");
     return 0;
