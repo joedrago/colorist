@@ -9,6 +9,9 @@
 
 #include "colorist/transform.h"
 
+#include <stdlib.h>
+#include <string.h>
+
 static void setFloat4(float c[4], float v0, float v1, float v2, float v3) { c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; }
 static void setFloat3(float c[3], float v0, float v1, float v2) { c[0] = v0; c[1] = v1; c[2] = v2; }
 static void setRGBA8_4(uint8_t c[4], uint8_t v0, uint8_t v1, uint8_t v2, uint8_t v3) { c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; }
@@ -16,22 +19,197 @@ static void setRGBA8_3(uint8_t c[3], uint8_t v0, uint8_t v1, uint8_t v2) { c[0] 
 static void setRGBA16_4(uint16_t c[4], uint16_t v0, uint16_t v1, uint16_t v2, uint16_t v3) { c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; }
 static void setRGBA16_3(uint16_t c[3], uint16_t v0, uint16_t v1, uint16_t v2) { c[0] = v0; c[1] = v1; c[2] = v2; }
 
+// #define DEBUG_SINGLE_DIFF
+
+static int diffTransform(clContext * C, int steps, clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth, clTonemap tonemap, float thresholdF)
+{
+#if defined(DEBUG_SINGLE_DIFF)
+    clBool printProgress = clTrue;
+    clBool printMatches = clFalse;
+#else
+    clBool printProgress = clFalse;
+    clBool printMatches = clFalse;
+#endif
+    clBool printMismatches = clFalse;
+
+    int diffCount = 0;
+
+    float srcFloat[4];
+    float dstFloatCCMM[4];
+    float dstFloatLCMS[4];
+
+    uint8_t src8[4];
+    uint8_t dst8CCMM[4];
+    uint8_t dst8LCMS[4];
+
+    uint16_t src16[4];
+    uint16_t dst16CCMM[4];
+    uint16_t dst16LCMS[4];
+
+    void * srcRaw;
+    void * dstRawCCMM;
+    void * dstRawLCMS;
+
+    float channelDiv = (float)(steps - 1);
+    int srcMaxChannel = 0;
+    float srcScale = 1.0f;
+    int r, g, b;
+
+    int thresholdI = (int)thresholdF;
+
+    char title[512];
+    char errorPrefix[512];
+
+    clTransform * transform = clTransformCreate(C, srcProfile, srcFormat, srcDepth, dstProfile, dstFormat, dstDepth, tonemap);
+
+    if (srcDepth <= 16) {
+        srcMaxChannel = (1 << srcDepth) - 1;
+        srcScale = (float)srcMaxChannel;
+    }
+
+    sprintf(title, "'%s' (%d bit, %s) --%s--> '%s' (%d bit, %s)",
+        srcProfile ? srcProfile->description : "XYZ", srcDepth, (srcFormat == CL_XF_RGBA) ? "alpha" : "noalpha",
+        (tonemap == CL_TONEMAP_AUTO) ? "auto" : (tonemap == CL_TONEMAP_ON) ? "tonemap" : "clip",
+        dstProfile ? dstProfile->description : "XYZ", dstDepth, (dstFormat == CL_XF_RGBA) ? "alpha" : "noalpha");
+    if (printProgress) {
+        strcpy(errorPrefix, " * ");
+        printf("%s - ->\n", title);
+    } else {
+        strcpy(errorPrefix, title);
+        strcat(errorPrefix, " - ");
+    }
+
+    for (r = 0; r < steps; ++r) {
+        if (printProgress) {
+            printf(" * %s - %d/%d\n", title, r + 1, steps);
+        }
+        for (g = 0; g < steps; ++g) {
+            for (b = 0; b < steps; ++b) {
+                clBool differs = clFalse;
+
+                setFloat4(srcFloat, r / channelDiv, g / channelDiv, b / channelDiv, 1.0f);
+
+                if (srcDepth == 32) {
+                    srcRaw = srcFloat;
+                } else if (srcDepth > 8) {
+                    setRGBA16_4(src16,
+                        (uint16_t)clPixelMathRoundf(srcFloat[0] * srcScale),
+                        (uint16_t)clPixelMathRoundf(srcFloat[1] * srcScale),
+                        (uint16_t)clPixelMathRoundf(srcFloat[2] * srcScale),
+                        srcMaxChannel
+                        );
+                    srcRaw = src16;
+                } else {
+                    setRGBA8_4(src8,
+                        (uint8_t)clPixelMathRoundf(srcFloat[0] * srcScale),
+                        (uint8_t)clPixelMathRoundf(srcFloat[1] * srcScale),
+                        (uint8_t)clPixelMathRoundf(srcFloat[2] * srcScale),
+                        255
+                        );
+                    srcRaw = src8;
+                }
+
+                if (dstDepth == 32) {
+                    dstRawCCMM = dstFloatCCMM;
+                    dstRawLCMS = dstFloatLCMS;
+                } else if (dstDepth > 8) {
+                    dstRawCCMM = dst16CCMM;
+                    dstRawLCMS = dst16LCMS;
+                } else {
+                    dstRawCCMM = dst8CCMM;
+                    dstRawLCMS = dst8LCMS;
+                }
+
+                C->ccmmAllowed = clTrue;
+                clTransformRun(C, transform, 1, srcRaw, dstRawCCMM, 1);
+                C->ccmmAllowed = clFalse;
+                clTransformRun(C, transform, 1, srcRaw, dstRawLCMS, 1);
+
+                if (dstDepth == 32) {
+                    if ((fabsf(dstFloatCCMM[0] - dstFloatLCMS[0]) > thresholdF)
+                        || (fabsf(dstFloatCCMM[1] - dstFloatLCMS[1]) > thresholdF)
+                        || (fabsf(dstFloatCCMM[2] - dstFloatLCMS[2]) > thresholdF))
+                    {
+                        differs = clTrue;
+                    }
+                } else if (dstDepth > 8) {
+                    if ((abs((int)dst16CCMM[0] - (int)dst16LCMS[0]) > thresholdI)
+                        || (abs((int)dst16CCMM[1] - (int)dst16LCMS[1]) > thresholdI)
+                        || (abs((int)dst16CCMM[2] - (int)dst16LCMS[2]) > thresholdI))
+                    {
+                        differs = clTrue;
+                    }
+                } else {
+                    if ((abs((int)dst8CCMM[0] - (int)dst8LCMS[0]) > thresholdI)
+                        || (abs((int)dst8CCMM[1] - (int)dst8LCMS[1]) > thresholdI)
+                        || (abs((int)dst8CCMM[2] - (int)dst8LCMS[2]) > thresholdI))
+                    {
+                        differs = clTrue;
+                    }
+                }
+
+                if (differs) {
+                    ++diffCount;
+                }
+
+                if ((printMatches && !differs) || (printMismatches && differs)) {
+                    const char * prefix = "Match";
+                    if (differs) {
+                        prefix = "Mismatch";
+                    }
+                    if (srcDepth == 32) {
+                        printf("%s%s: SRC(%g,%g,%g)", errorPrefix, prefix, srcFloat[0], srcFloat[1], srcFloat[2]);
+                    } else if (srcDepth > 8) {
+                        printf("%s%s: SRC(%u,%u,%u)", errorPrefix, prefix, src16[0], src16[1], src16[2]);
+                    } else {
+                        printf("%s%s: SRC(%u,%u,%u)", errorPrefix, prefix, src8[0], src8[1], src8[2]);
+                    }
+
+                    if (dstDepth == 32) {
+                        printf(" CCMM(%g,%g,%g) LCMS(%g,%g,%g)\n",
+                            dstFloatCCMM[0], dstFloatCCMM[1], dstFloatCCMM[2],
+                            dstFloatLCMS[0], dstFloatLCMS[1], dstFloatLCMS[2]);
+                    } else if (dstDepth > 8) {
+                        printf(" CCMM(%u,%u,%u) LCMS(%u,%u,%u)\n",
+                            dst16CCMM[0], dst16CCMM[1], dst16CCMM[2],
+                            dst16LCMS[0], dst16LCMS[1], dst16LCMS[2]);
+                    } else {
+                        printf(" CCMM(%u,%u,%u) LCMS(%u,%u,%u)\n",
+                            dst8CCMM[0], dst8CCMM[1], dst8CCMM[2],
+                            dst8LCMS[0], dst8LCMS[1], dst8LCMS[2]);
+                    }
+
+                    // if (differs) {
+                    // goto bailOut;
+                    // }
+                }
+            }
+        }
+    }
+
+// bailOut:
+
+    if (diffCount > 0) {
+        printf("%s - %d differences\n", title, diffCount);
+    }
+
+    clTransformDestroy(C, transform);
+    return diffCount;
+}
+
+#define FAIL() printf("ERROR: found mismatches, bailing out\n"); goto foundMismatch;
+
 int main(int argc, char * argv[])
 {
     clContext * C = clContextCreate(NULL);
-    clConversionParams params;
     clProfilePrimaries primaries;
     clProfileCurve curve;
-    clTransform * transform;
-    struct clProfile * srcProfile;
-    struct clProfile * dstProfile;
-    clImage * srcImage;
-    clImage * dstImage;
 
 #if defined(DEBUG_MATRIX_MATH)
     {
         clProfile * bt709;
         clProfile * bt2020;
+        clTransform * transform;
         C = clContextCreate(NULL);
 
         clContextGetStockPrimaries(C, "bt709", &primaries);
@@ -53,575 +231,109 @@ int main(int argc, char * argv[])
     }
 #endif
 
-    // Basic clImageDebugDump test
-    {
-        C = clContextCreate(NULL);
+    static const int steps = 16;
 
-        srcImage = clImageParseString(C, "8x8,(255,0,0)", 8, NULL);
-        clImageDebugDump(C, srcImage, 0, 0, 1, 1, 0);
+    struct clProfile * BT709;
+    struct clProfile * BT2020;
+    struct clProfile * P3PQ;
+    struct clProfile * profiles[4];
+    int profilesCount = 0; // set later
 
-        clImageDestroy(C, srcImage);
-        clContextDestroy(C);
+    // const int depths[]     = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 32 };
+    const int depths[]     = { 8, 16, 32 };
+    const int depthsCount = sizeof(depths) / sizeof(depths[0]);
+    int srcProfileIndex, srcDepthIndex, dstProfileIndex, dstDepthIndex, tonemapIndex;
+
+    C = clContextCreate(NULL);
+
+    curve.type = CL_PCT_GAMMA;
+    curve.gamma = 2.2f;
+
+    clContextGetStockPrimaries(C, "bt709", &primaries);
+    BT709 = clProfileCreate(C, &primaries, &curve, 300, "BT709 300 G22");
+    clContextGetStockPrimaries(C, "bt2020", &primaries);
+    BT2020 = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G22");
+    P3PQ = clProfileRead(C, "../docs/profiles/HDR_P3_D65_ST2084.icc");
+    if (!P3PQ) {
+        return -1;
     }
-
-    // Test all CCMM RGBA reformat paths
-    {
-        C = clContextCreate(NULL);
-
-        // RGBA8 -> RGBA8
-        srcImage = clImageParseString(C, "8x8,(255,0,0)", 8, NULL);
-        dstImage = clImageConvert(C, srcImage, 1, srcImage->width, srcImage->height, 8, NULL, CL_TONEMAP_AUTO);
-        clImageDestroy(C, srcImage);
-        clImageDestroy(C, dstImage);
-
-        // RGBA16 -> RGBA16
-        srcImage = clImageParseString(C, "8x8,(255,0,0)", 16, NULL);
-        dstImage = clImageConvert(C, srcImage, 1, srcImage->width, srcImage->height, 16, NULL, CL_TONEMAP_AUTO);
-        clImageDestroy(C, srcImage);
-        clImageDestroy(C, dstImage);
-
-        // RGBA16 -> RGBA8
-        srcImage = clImageParseString(C, "8x8,(255,0,0)", 16, NULL);
-        dstImage = clImageConvert(C, srcImage, 1, srcImage->width, srcImage->height, 8, NULL, CL_TONEMAP_AUTO);
-        clImageDestroy(C, srcImage);
-        clImageDestroy(C, dstImage);
-
-        // RGBA8 -> RGBA16
-        srcImage = clImageParseString(C, "8x8,(255,0,0)", 8, NULL);
-        dstImage = clImageConvert(C, srcImage, 1, srcImage->width, srcImage->height, 16, NULL, CL_TONEMAP_AUTO);
-        clImageDestroy(C, srcImage);
-        clImageDestroy(C, dstImage);
-
-        clContextDestroy(C);
-    }
-
-    // Directly test RGB(A) -> RGB(A) reformats
-    {
-        uint8_t srcRGBA8[4];
-        uint8_t dstRGBA8[4];
-        uint16_t srcRGBA16[4];
-        uint16_t dstRGBA16[4];
-        C = clContextCreate(NULL);
-        srcProfile = clProfileCreateStock(C, CL_PS_SRGB);
-
-        // RGB8 -> RGBA8
-        setRGBA8_4(srcRGBA8, 255, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, srcProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA8, dstRGBA8, 1);
-        printf("RGB8(%u, %u, %u) -> RGBA8(%u, %u, %u, %u)\n", srcRGBA8[0], srcRGBA8[1], srcRGBA8[2], dstRGBA8[0], dstRGBA8[1], dstRGBA8[2], dstRGBA8[3]);
-        clTransformDestroy(C, transform);
-
-        // RGBA8 -> RGB8
-        setRGBA8_4(srcRGBA8, 255, 0, 0, 255);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, srcProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA8, dstRGBA8, 1);
-        printf("RGB8(%u, %u, %u, %u) -> RGBA8(%u, %u, %u)\n", srcRGBA8[0], srcRGBA8[1], srcRGBA8[2], srcRGBA8[3], dstRGBA8[0], dstRGBA8[1], dstRGBA8[2]);
-        clTransformDestroy(C, transform);
-
-        // RGB16 -> RGBA16
-        setRGBA16_4(srcRGBA16, 65535, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, srcProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA16, dstRGBA16, 1);
-        printf("RGB16(%u, %u, %u) -> RGBA16(%u, %u, %u, %u)\n", srcRGBA16[0], srcRGBA16[1], srcRGBA16[2], dstRGBA16[0], dstRGBA16[1], dstRGBA16[2], dstRGBA16[3]);
-        clTransformDestroy(C, transform);
-
-        // RGBA16 -> RGB16
-        setRGBA16_4(srcRGBA16, 65535, 0, 0, 65535);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, srcProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA16, dstRGBA16, 1);
-        printf("RGB16(%u, %u, %u, %u) -> RGBA16(%u, %u, %u)\n", srcRGBA16[0], srcRGBA16[1], srcRGBA16[2], srcRGBA16[3], dstRGBA16[0], dstRGBA16[1], dstRGBA16[2]);
-        clTransformDestroy(C, transform);
-
-        // RGB8 -> RGBA16
-        setRGBA8_4(srcRGBA8, 255, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, srcProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA8, dstRGBA16, 1);
-        printf("RGB8(%u, %u, %u) -> RGBA16(%u, %u, %u, %u)\n", srcRGBA8[0], srcRGBA8[1], srcRGBA8[2], dstRGBA16[0], dstRGBA16[1], dstRGBA16[2], dstRGBA16[3]);
-        clTransformDestroy(C, transform);
-
-        // RGB16 -> RGBA8
-        setRGBA16_4(srcRGBA16, 65535, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, srcProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA16, dstRGBA8, 1);
-        printf("RGB16(%u, %u, %u) -> RGBA8(%u, %u, %u, %u)\n", srcRGBA16[0], srcRGBA16[1], srcRGBA16[2], dstRGBA8[0], dstRGBA8[1], dstRGBA8[2], dstRGBA8[3]);
-        clTransformDestroy(C, transform);
-
-        clProfileDestroy(C, srcProfile);
-        clContextDestroy(C);
-    }
-
-    // Directly test RGB(A) -> RGB(A) transforms
-    {
-        uint8_t srcRGBA8[4];
-        uint8_t dstRGBA8[4];
-        uint16_t srcRGBA16[4];
-        uint16_t dstRGBA16[4];
-        C = clContextCreate(NULL);
-        srcProfile = clProfileCreateStock(C, CL_PS_SRGB);
-        clContextGetStockPrimaries(C, "bt2020", &primaries);
-        curve.type = CL_PCT_GAMMA;
-        curve.gamma = 2.2f;
-        dstProfile = clProfileCreate(C, &primaries, &curve, 10000, NULL);
-
-        // RGB8 -> RGBA8
-        setRGBA8_4(srcRGBA8, 255, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, dstProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA8, dstRGBA8, 1);
-        clTransformDestroy(C, transform);
-
-        // RGBA8 -> RGBA8
-        setRGBA8_4(srcRGBA8, 255, 0, 0, 255);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA8, dstRGBA8, 1);
-        clTransformDestroy(C, transform);
-
-        // RGBA8 -> RGB8
-        setRGBA8_4(srcRGBA8, 255, 0, 0, 255);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGB, 8, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA8, dstRGBA8, 1);
-        clTransformDestroy(C, transform);
-
-        // RGB16 -> RGBA16
-        setRGBA16_4(srcRGBA16, 65535, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, dstProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA16, dstRGBA16, 1);
-        clTransformDestroy(C, transform);
-
-        // RGBA16 -> RGB16
-        setRGBA16_4(srcRGBA16, 65535, 0, 0, 65535);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGB, 16, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA16, dstRGBA16, 1);
-        clTransformDestroy(C, transform);
-
-        // RGBA16 -> RGBA16
-        setRGBA16_4(srcRGBA16, 65535, 0, 0, 65535);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA16, dstRGBA16, 1);
-        clTransformDestroy(C, transform);
-
-        // RGBA16 -> RGBA8
-        setRGBA16_4(srcRGBA16, 65535, 0, 0, 65535);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA16, dstRGBA8, 1);
-        clTransformDestroy(C, transform);
-
-        // RGBA8 -> RGBA16
-        setRGBA8_4(srcRGBA8, 255, 0, 0, 255);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA8, dstRGBA16, 1);
-        clTransformDestroy(C, transform);
-
-        // RGBA16 -> RGB8
-        setRGBA16_4(srcRGBA16, 65535, 0, 0, 65535);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGB, 8, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA16, dstRGBA8, 1);
-        clTransformDestroy(C, transform);
-
-        // RGB8 -> RGBA16
-        setRGBA8_4(srcRGBA8, 255, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, dstProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA8, dstRGBA16, 1);
-        clTransformDestroy(C, transform);
-
-        // RGBA8 -> RGB16
-        setRGBA8_4(srcRGBA8, 255, 0, 0, 255);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGB, 16, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA8, dstRGBA16, 1);
-        clTransformDestroy(C, transform);
-
-        // RGB16 -> RGBA8
-        setRGBA16_4(srcRGBA16, 65535, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, dstProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA16, dstRGBA8, 1);
-        printf("RGB16(%u, %u, %u) -> RGBA8(%u, %u, %u, %u)\n", srcRGBA16[0], srcRGBA16[1], srcRGBA16[2], dstRGBA8[0], dstRGBA8[1], dstRGBA8[2], dstRGBA8[3]);
-        clTransformDestroy(C, transform);
-
-        clProfileDestroy(C, srcProfile);
-        clProfileDestroy(C, dstProfile);
-        clContextDestroy(C);
-    }
-
-    // Directly test RGB float to 8/16 reformatting (and back)
-    {
-        float rgba[4];
-        uint8_t rgba8[4];
-        uint16_t rgba16[4];
-        C = clContextCreate(NULL);
-        srcProfile = clProfileCreateStock(C, CL_PS_SRGB);
-
-        setRGBA8_4(rgba8, 255, 0, 0, 255);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, srcProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba8, rgba, 1);
-        clTransformDestroy(C, transform);
-
-        setRGBA8_4(rgba8, 255, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, srcProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba8, rgba, 1);
-        clTransformDestroy(C, transform);
-
-        setRGBA16_4(rgba16, 65535, 0, 0, 65535);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, srcProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba16, rgba, 1);
-        clTransformDestroy(C, transform);
-
-        setRGBA16_4(rgba16, 65535, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, srcProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba16, rgba, 1);
-        clTransformDestroy(C, transform);
-
-        setFloat4(rgba, 1.0f, 0.0f, 0.0f, 1.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, srcProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba, rgba8, 1);
-        clTransformDestroy(C, transform);
-
-        setFloat4(rgba, 1.0f, 0.0f, 0.0f, 0.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, srcProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba, rgba8, 1);
-        clTransformDestroy(C, transform);
-
-        setFloat4(rgba, 1.0f, 0.0f, 0.0f, 1.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, srcProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba, rgba16, 1);
-        clTransformDestroy(C, transform);
-
-        setFloat4(rgba, 1.0f, 0.0f, 0.0f, 0.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, srcProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba, rgba16, 1);
-        clTransformDestroy(C, transform);
-
-        clContextDestroy(C);
-    }
-
-    // Directly test RGB float to 8/16 transforms (and back)
-    {
-        float rgba[4];
-        uint8_t rgba8[4];
-        uint16_t rgba16[4];
-        C = clContextCreate(NULL);
-        srcProfile = clProfileCreateStock(C, CL_PS_SRGB);
-        clContextGetStockPrimaries(C, "bt2020", &primaries);
-        curve.type = CL_PCT_GAMMA;
-        curve.gamma = 2.2f;
-        dstProfile = clProfileCreate(C, &primaries, &curve, 10000, NULL);
-
-        setRGBA8_4(rgba8, 255, 0, 0, 255);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 8, dstProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba8, rgba, 1);
-        clTransformDestroy(C, transform);
-
-        setRGBA8_4(rgba8, 255, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 8, dstProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba8, rgba, 1);
-        clTransformDestroy(C, transform);
-
-        setRGBA16_4(rgba16, 65535, 0, 0, 65535);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 16, dstProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba16, rgba, 1);
-        clTransformDestroy(C, transform);
-
-        setRGBA16_4(rgba16, 65535, 0, 0, 0);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 16, dstProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba16, rgba, 1);
-        clTransformDestroy(C, transform);
-
-        setFloat4(rgba, 1.0f, 0.0f, 0.0f, 1.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, dstProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba, rgba8, 1);
-        clTransformDestroy(C, transform);
-
-        setFloat4(rgba, 1.0f, 0.0f, 0.0f, 0.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, dstProfile, CL_XF_RGBA, 8, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba, rgba8, 1);
-        clTransformDestroy(C, transform);
-
-        setFloat4(rgba, 1.0f, 0.0f, 0.0f, 1.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, dstProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba, rgba16, 1);
-        clTransformDestroy(C, transform);
-
-        setFloat4(rgba, 1.0f, 0.0f, 0.0f, 0.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, dstProfile, CL_XF_RGBA, 16, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, rgba, rgba16, 1);
-        clTransformDestroy(C, transform);
-
-        clProfileDestroy(C, srcProfile);
-        clProfileDestroy(C, dstProfile);
-        clContextDestroy(C);
-    }
-
-    // Directly test floating point transforms
-    {
-        float srcRGBA[4];
-        float dstRGBA[4];
-        float xyy[3];
-        float xyz[3];
-        C = clContextCreate(NULL);
-        srcProfile = clProfileCreateStock(C, CL_PS_SRGB);
-        clContextGetStockPrimaries(C, "bt2020", &primaries);
-        curve.type = CL_PCT_GAMMA;
-        curve.gamma = 2.2f;
-        dstProfile = clProfileCreate(C, &primaries, &curve, 10000, NULL);
-
-        // as close to a noop as float->float gets
-        setFloat4(srcRGBA, 1.0f, 0.0f, 0.0f, 1.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, srcProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA, dstRGBA, 1);
-        printf("sRGBA(%g,%g,%g,%g) -> sRGBA(%g,%g,%g,%g)\n", srcRGBA[0], srcRGBA[1], srcRGBA[2], srcRGBA[3], dstRGBA[0], dstRGBA[1], dstRGBA[2], dstRGBA[3]);
-        clTransformDestroy(C, transform);
-
-        // sRGBA -> XYZ
-        setFloat4(srcRGBA, 1.0f, 0.0f, 0.0f, 1.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA, xyz, 1);
-        printf("sRGBA(%g,%g,%g,%g) -> XYZ(%g,%g,%g)\n", srcRGBA[0], srcRGBA[1], srcRGBA[2], srcRGBA[3], xyz[0], xyz[1], xyz[2]);
-        clTransformDestroy(C, transform);
-
-        // XYZ -> BT.2020 10k nits G2.2
-        setFloat3(xyy, primaries.white[0], primaries.white[1], 1.0f);
-        clTransformXYYToXYZ(C, xyz, xyy);
-        transform = clTransformCreate(C, NULL, CL_XF_XYZ, 32, dstProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, xyz, srcRGBA, 1);
-        printf("xyY(%g,%g,%g) -> XYZ(%g,%g,%g) -> BT2020_10k_G22(%g,%g,%g,%g)\n", xyy[0], xyy[1], xyy[2], xyz[0], xyz[1], xyz[2], srcRGBA[0], srcRGBA[1], srcRGBA[2], srcRGBA[3]);
-        clTransformDestroy(C, transform);
-
-        // sRGBA -> BT.2020 10k nits G2.2
-        setFloat4(srcRGBA, 1.0f, 0.0f, 0.0f, 1.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, dstProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA, dstRGBA, 1);
-        printf("sRGBA(%g,%g,%g,%g) -> BT2020_10k_G22(%g,%g,%g,%g)\n", srcRGBA[0], srcRGBA[1], srcRGBA[2], srcRGBA[3], dstRGBA[0], dstRGBA[1], dstRGBA[2], dstRGBA[3]);
-        clTransformDestroy(C, transform);
-
-        // sRGBA -> sRGB
-        setFloat4(srcRGBA, 1.0f, 0.0f, 0.0f, 1.0f);
-        setFloat4(dstRGBA, 0.0f, 0.0f, 0.0f, 0.0f);
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGBA, 32, srcProfile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA, dstRGBA, 1);
-        printf("sRGBA(%g,%g,%g) -> sRGB(%g,%g,%g) (%g == 0)\n", srcRGBA[0], srcRGBA[1], srcRGBA[2], dstRGBA[0], dstRGBA[1], dstRGBA[2], dstRGBA[3]);
-        clTransformDestroy(C, transform);
-
-        // sRGB -> sRGBA
-        setFloat4(srcRGBA, 1.0f, 0.0f, 0.0f, 0.0f); // set alpha to 0 to prove it doesn't carry over
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, srcProfile, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
-        clTransformRun(C, transform, 1, srcRGBA, dstRGBA, 1);
-        printf("sRGB(%g,%g,%g) -> sRGBA(%g,%g,%g,%g)\n", srcRGBA[0], srcRGBA[1], srcRGBA[2], dstRGBA[0], dstRGBA[1], dstRGBA[2], dstRGBA[3]);
-        clTransformDestroy(C, transform);
-
-        clProfileDestroy(C, srcProfile);
-        clProfileDestroy(C, dstProfile);
-        clContextDestroy(C);
-    }
-
-    // Compare CCMM and LittleCMS
-    {
-        float colors[][3] = {
-            { 1.0f, 0.0f, 0.0f },
-            { 0.0f, 1.0f, 0.0f },
-            { 0.0f, 0.0f, 1.0f },
-            { 1.0f, 1.0f, 0.0f },
-            { 0.0f, 1.0f, 1.0f },
-            { 1.0f, 0.0f, 1.0f },
-            { 1.0f, 0.5f, 0.0f },
-            { 1.0f, 1.0f, 1.0f },
-        };
-        const int colorCount = sizeof(colors) / sizeof(colors[0]);
-        int i;
-
-        float srcRGB[3];
-        float xyz[3];
-        float xyy[3];
-        C = clContextCreate(NULL);
-        clContextGetStockPrimaries(C, "bt2020", &primaries);
-        curve.type = CL_PCT_GAMMA;
-        curve.gamma = 2.2f;
-        srcProfile = clProfileCreate(C, &primaries, &curve, 10000, NULL);
-
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
-        for (i = 0; i < colorCount; ++i) {
-            setFloat3(srcRGB, colors[i][0], colors[i][1], colors[i][2]);
-            printf("---\n");
-
-            C->ccmmAllowed = clTrue;
-            clTransformRun(C, transform, 1, srcRGB, xyz, 1);
-            clTransformXYZToXYY(C, xyy, xyz, primaries.white[0], primaries.white[1]);
-            printf("CCMM: RGB(%g,%g,%g) -> xyY(%g,%g,%g)\n", srcRGB[0], srcRGB[1], srcRGB[2], xyy[0], xyy[1], xyy[2]);
-
-            C->ccmmAllowed = clFalse;
-            clTransformRun(C, transform, 1, srcRGB, xyz, 1);
-            clTransformXYZToXYY(C, xyy, xyz, primaries.white[0], primaries.white[1]);
-            printf("LCMS: RGB(%g,%g,%g) -> xyY(%g,%g,%g)\n", srcRGB[0], srcRGB[1], srcRGB[2], xyy[0], xyy[1], xyy[2]);
-        }
-        clTransformDestroy(C, transform);
-
-        clProfileDestroy(C, srcProfile);
-        clContextDestroy(C);
-    }
-
-    // Compare CCMM and LittleCMS, continued
-    {
-        float colors[][3] = {
-            { 1.0f, 0.0f, 0.0f },
-            { 0.0f, 1.0f, 0.0f },
-            { 0.0f, 0.0f, 1.0f },
-            { 1.0f, 1.0f, 0.0f },
-            { 0.0f, 1.0f, 1.0f },
-            { 1.0f, 0.0f, 1.0f },
-            { 1.0f, 0.5f, 0.0f },
-            { 1.0f, 1.0f, 1.0f },
-        };
-        const int colorCount = sizeof(colors) / sizeof(colors[0]);
-        int i;
-
-        uint16_t * srcU16;
-        uint16_t * dstU16;
-        C = clContextCreate(NULL);
-        curve.type = CL_PCT_GAMMA;
-        curve.gamma = 2.2f;
-        char imageString[512];
-
-        clContextGetStockPrimaries(C, "bt709", &primaries);
-        srcProfile = clProfileCreate(C, &primaries, &curve, 300, "sRGB");
-
-        clContextGetStockPrimaries(C, "bt2020", &primaries);
-        dstProfile = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G22");
-
-        i = 0;
-        sprintf(imageString, "f(%g,%g,%g)", colors[i][0], colors[i][1], colors[i][2]);
-        srcImage = clImageParseString(C, imageString, 16, srcProfile);
-
-        C->ccmmAllowed = clTrue;
-        clConversionParamsSetDefaults(C, &params);
-        dstImage = clImageConvert(C, srcImage, 1, srcImage->width, srcImage->height, srcImage->depth, dstProfile, CL_TONEMAP_AUTO);
-        srcU16 = (uint16_t *)srcImage->pixels;
-        dstU16 = (uint16_t *)dstImage->pixels;
-        printf("\n\nCCMM: bt709_300(%u,%u,%u) -> bt2020_10000(%u,%u,%u)\n", srcU16[0], srcU16[1], srcU16[2], dstU16[0], dstU16[1], dstU16[2]);
-        clImageDebugDump(C, dstImage, 0, 0, 1, 1, 0);
-        printf("\n");
-        clImageDestroy(C, dstImage);
-
-        C->ccmmAllowed = clFalse;
-        clConversionParamsSetDefaults(C, &params);
-        dstImage = clImageConvert(C, srcImage, 1, srcImage->width, srcImage->height, srcImage->depth, dstProfile, CL_TONEMAP_AUTO);
-        srcU16 = (uint16_t *)srcImage->pixels;
-        dstU16 = (uint16_t *)dstImage->pixels;
-        printf("\n\nLCMS: bt709_300(%u,%u,%u) -> bt2020_10000(%u,%u,%u)\n", srcU16[0], srcU16[1], srcU16[2], dstU16[0], dstU16[1], dstU16[2]);
-        clImageDebugDump(C, dstImage, 0, 0, 1, 1, 0);
-        printf("\n");
-        clImageDestroy(C, dstImage);
-
-        clProfileDestroy(C, srcProfile);
-        clProfileDestroy(C, dstProfile);
-        clContextDestroy(C);
-    }
-
-    // Compare CCMM and LittleCMS, continued again
-    {
-        const float MIN_CMM_DIFFERENTIAL = 0.0001f;
-        int r, g, b;
-        float src[3];
-        float dstCCMM[3];
-        float dstLCMS[3];
-
-        C = clContextCreate(NULL);
-
-        curve.type = CL_PCT_GAMMA;
-        curve.gamma = 2.2f;
-
-        clContextGetStockPrimaries(C, "bt709", &primaries);
-        srcProfile = clProfileCreate(C, &primaries, &curve, 300, "BT709 300 G22");
-        // srcProfile = clProfileRead(C, "HDR_P3_D65_ST2084.icc");
-
-        clContextGetStockPrimaries(C, "bt2020", &primaries);
-        dstProfile = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G22");
-        // dstProfile = clProfileClone(C, srcProfile);
-
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, dstProfile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
-
-        for (r = 255; r < 256; ++r) {
-            printf("R: %d\n", r);
-            for (g = 255; g < 256; ++g) {
-                for (b = 255; b < 256; ++b) {
-                    // setFloat3(src, r / 255.0f, g / 255.0f, b / 255.0f);
-                    setFloat3(src, r / 255.0f, 1.0f, 1.0f);
-
-                    C->ccmmAllowed = clTrue;
-                    clTransformRun(C, transform, 1, src, dstCCMM, 1);
-                    C->ccmmAllowed = clFalse;
-                    clTransformRun(C, transform, 1, src, dstLCMS, 1);
-
-                    // if ((fabsf(dstCCMM[0] - dstLCMS[0]) > MIN_CMM_DIFFERENTIAL)
-                    //     || (fabsf(dstCCMM[1] - dstLCMS[1]) > MIN_CMM_DIFFERENTIAL)
-                    //     || (fabsf(dstCCMM[2] - dstLCMS[2]) > MIN_CMM_DIFFERENTIAL))
-                    {
-                        printf("SRC(%g,%g,%g) CCMM(%g,%g,%g) LCMS(%g,%g,%g)\n",
-                            src[0], src[1], src[2],
-                            dstCCMM[0], dstCCMM[1], dstCCMM[2],
-                            dstLCMS[0], dstLCMS[1], dstLCMS[2]);
+    profiles[0] = BT2020;
+    profiles[1] = BT709;
+    profiles[2] = P3PQ;
+    profiles[3] = NULL; // XYZ
+    profilesCount = 4;
+
+#if defined(DEBUG_SINGLE_DIFF)
+    diffTransform(C, steps, P3PQ, CL_XF_RGB, 16, BT2020, CL_XF_RGB, 16, CL_TONEMAP_OFF, 1);
+#else
+    for (srcProfileIndex = 0; srcProfileIndex < profilesCount; ++srcProfileIndex) {
+        for (srcDepthIndex = 0; srcDepthIndex < depthsCount; ++srcDepthIndex) {
+            for (dstProfileIndex = 0; dstProfileIndex < profilesCount; ++dstProfileIndex) {
+                for (dstDepthIndex = 0; dstDepthIndex < depthsCount; ++dstDepthIndex) {
+                    for (tonemapIndex = 0; tonemapIndex < 3; ++tonemapIndex) {
+                        clProfile * srcProfile = profiles[srcProfileIndex];
+                        int srcDepth = depths[srcDepthIndex];
+                        clTransformFormat srcFormat = CL_XF_RGB;
+
+                        clProfile * dstProfile = profiles[dstProfileIndex];
+                        int dstDepth = depths[dstDepthIndex];
+                        clTransformFormat dstFormat = CL_XF_RGB;
+
+                        clTonemap tonemap = (clTonemap)tonemapIndex; // Naughty!
+                        float threshold = 0.00001f;
+                        if (dstDepth < 32) {
+                            threshold = 1.0f;
+                        }
+
+                        if (srcProfile == NULL) {
+                            if (srcDepth == 32) {
+                                srcFormat = CL_XF_XYZ;
+                            } else {
+                                // Only do 32bit XYZ
+                                continue;
+                            }
+                        }
+
+                        if (dstProfile == NULL) {
+                            if (dstDepth == 32) {
+                                dstFormat = CL_XF_XYZ;
+                            } else {
+                                // Only do 32bit XYZ
+                                continue;
+                            }
+                        }
+
+                        if (diffTransform(C, steps, srcProfile, srcFormat, srcDepth, dstProfile, dstFormat, dstDepth, tonemap, threshold) > 0) {
+                            // FAIL();
+                        }
+                        if (srcFormat == CL_XF_RGB) {
+                            if (diffTransform(C, steps, srcProfile, CL_XF_RGBA, srcDepth, dstProfile, dstFormat, dstDepth, tonemap, threshold) > 0) {
+                                // FAIL();
+                            }
+                        }
+                        if (dstFormat == CL_XF_RGB) {
+                            if (diffTransform(C, steps, srcProfile, srcFormat, srcDepth, dstProfile, CL_XF_RGBA, dstDepth, tonemap, threshold) > 0) {
+                                // FAIL();
+                            }
+                        }
+                        if ((srcFormat == CL_XF_RGB) && (dstFormat == CL_XF_RGB)) {
+                            if (diffTransform(C, steps, srcProfile, CL_XF_RGBA, srcDepth, dstProfile, CL_XF_RGBA, dstDepth, tonemap, threshold) > 0) {
+                                // FAIL();
+                            }
+                        }
                     }
                 }
             }
         }
-
-        clProfileDestroy(C, srcProfile);
-        clProfileDestroy(C, dstProfile);
-        clContextDestroy(C);
     }
 
-#if 0
-    // Compare CCMM and LittleCMS, continued again again
-    {
-        const float MIN_CMM_DIFFERENTIAL = 0.0001f;
-        int r, g, b;
-        float src[3];
-        float dstCCMM[3];
-        float dstLCMS[3];
+// foundMismatch:
+#endif /* if 0 */
 
-        C = clContextCreate(NULL);
-
-        curve.type = CL_PCT_GAMMA;
-        curve.gamma = 2.2f;
-
-        clContextGetStockPrimaries(C, "bt709", &primaries);
-        srcProfile = clProfileCreate(C, &primaries, &curve, 300, "BT709 300 G22");
-        // srcProfile = clProfileRead(C, "HDR_P3_D65_ST2084.icc");
-
-        clContextGetStockPrimaries(C, "bt2020", &primaries);
-        dstProfile = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G22");
-
-        transform = clTransformCreate(C, srcProfile, CL_XF_RGB, 32, dstProfile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
-
-        for (r = 0; r < 256; ++r) {
-            printf("R: %d\n", r);
-            for (g = 0; g < 256; ++g) {
-                for (b = 0; b < 256; ++b) {
-                    setFloat3(src, r / 255.0f, g / 255.0f, b / 255.0f);
-
-                    C->ccmmAllowed = clTrue;
-                    clTransformRun(C, transform, 1, src, dstCCMM, 1);
-                    C->ccmmAllowed = clFalse;
-                    clTransformRun(C, transform, 1, src, dstLCMS, 1);
-
-                    dstLCMS[0] /= 100.0f;
-                    dstLCMS[1] /= 100.0f;
-                    dstLCMS[2] /= 100.0f;
-
-                    if ((fabsf(dstCCMM[0] - dstLCMS[0]) > MIN_CMM_DIFFERENTIAL)
-                        || (fabsf(dstCCMM[1] - dstLCMS[1]) > MIN_CMM_DIFFERENTIAL)
-                        || (fabsf(dstCCMM[2] - dstLCMS[2]) > MIN_CMM_DIFFERENTIAL))
-                    {
-                        printf("SRC(%g,%g,%g) CCMM(%g,%g,%g) LCMS(%g,%g,%g)\n",
-                            src[0], src[1], src[2],
-                            dstCCMM[0], dstCCMM[1], dstCCMM[2],
-                            dstLCMS[0], dstLCMS[1], dstLCMS[2]);
-                    }
-                }
-            }
-        }
-
-        clProfileDestroy(C, srcProfile);
-        clProfileDestroy(C, dstProfile);
-        clContextDestroy(C);
-    }
-#endif /* if 1 */
+    clProfileDestroy(C, BT709);
+    clProfileDestroy(C, P3PQ);
+    clProfileDestroy(C, BT2020);
+    clContextDestroy(C);
 
     printf("colorist-test Complete.\n");
     return 0;
