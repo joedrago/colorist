@@ -25,6 +25,12 @@ float clPixelMathFloorf(float val)
     return floorf(val);
 }
 
+float clPixelMathRoundNormalized(float normalizedValue, float factor)
+{
+    normalizedValue = CL_CLAMP(normalizedValue, 0.0f, 1.0f);
+    return clPixelMathRoundf(normalizedValue * factor);
+}
+
 static float gammaErrorTerm(float gamma, float * pixels, int pixelCount, float maxChannel, float luminanceScale)
 {
     float invGamma = 1.0f / gamma;
