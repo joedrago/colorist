@@ -85,4 +85,7 @@ int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format
 void clTransformXYZToXYY(struct clContext * C, float * dstXYY, float * srcXYZ, float whitePointX, float whitePointY);
 void clTransformXYYToXYZ(struct clContext * C, float * dstXYZ, float * srcXYY);
 
+// define to debug transform matrix math in colorist-test
+// #define DEBUG_MATRIX_MATH
+
 #endif // ifndef COLORIST_TRANSFORM_H

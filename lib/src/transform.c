@@ -184,7 +184,7 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
             gb_mat3_transpose(&transform->ccmmXYZToDst);
 
             DEBUG_PRINT_MATRIX("XYZtoDst", &transform->ccmmXYZToDst);
-            DEBUG_PRINT_MATRIX("MA", &srcToXYZ);
+            DEBUG_PRINT_MATRIX("MA", &transform->ccmmSrcToXYZ);
             DEBUG_PRINT_MATRIX("MB", &transform->ccmmXYZToDst);
             gb_mat3_mul(&transform->ccmmCombined, &transform->ccmmSrcToXYZ, &transform->ccmmXYZToDst);
             DEBUG_PRINT_MATRIX("MA*MB", &transform->ccmmCombined);
