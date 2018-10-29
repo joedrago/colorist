@@ -316,11 +316,6 @@ static void transformFloatToFloat(struct clContext * C, struct clTransform * tra
             xyY[2] = xyY[2] / (1.0f + xyY[2]);
         }
 
-        // // Clip
-        // if (xyY[2] > luminanceScale) {
-        //     xyY[2] = luminanceScale;
-        // }
-
         // Convert to XYZ
         clTransformXYYToXYZ(C, XYZ, xyY);
 
