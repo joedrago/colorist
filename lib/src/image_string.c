@@ -654,7 +654,11 @@ clImage * clImageParseString(struct clContext * C, const char * s, int depth, st
 
     clContextLog(C, "parse", 0, "Parsing image string (%s)...", clTransformCMMName(C, fromXYZ));
 
-    clProfileQuery(C, profile, NULL, NULL, &luminance);
+    if (profile) {
+        clProfileQuery(C, profile, NULL, NULL, &luminance);
+    } else {
+        luminance = COLORIST_DEFAULT_LUMINANCE;
+    }
 
     for (stripeString = strtok(buffer, stripeDelims); stripeString != NULL; stripeString = strtok(NULL, stripeDelims)) {
         stripe = clAllocateStruct(Stripe);
