@@ -190,7 +190,7 @@ static int diffTransform(clContext * C, int steps, clProfile * srcProfile, clTra
 
 // bailOut:
 
-    if (diffCount > 0) {
+    if (diffCount > 100) {
         printf("%s - %d differences\n", title, diffCount);
     }
 
@@ -210,12 +210,18 @@ int main(int argc, char * argv[])
     // Local hacks
     {
         struct clProfile * BT2020;
+        struct clProfile * BT709;
         struct clProfile * P3PQ;
         clTransform * transform;
-        float src[3];
-        float dst[3];
+        // float src[3];
+        // float dst[3];
         uint16_t src16[3];
-        uint16_t dst16[3];
+        uint16_t dst16_C[3];
+        uint16_t dst16_L[3];
+        int i;
+        FILE * f;
+        int depth;
+        int maxChannel;
 
         C = clContextCreate(NULL);
 
@@ -223,6 +229,9 @@ int main(int argc, char * argv[])
         curve.gamma = 2.2f;
         clContextGetStockPrimaries(C, "bt2020", &primaries);
         BT2020 = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G22");
+
+        clContextGetStockPrimaries(C, "bt709", &primaries);
+        BT709 = clProfileCreate(C, &primaries, &curve, 300, "BT709 300 G22");
 
         P3PQ = clProfileRead(C, "../docs/profiles/HDR_P3_D65_ST2084.icc");
         if (!P3PQ) {
@@ -235,11 +244,19 @@ int main(int argc, char * argv[])
         // C->ccmmAllowed = clFalse;
         // clTransformRun(C, transform, 1, src, dst, 1);
 
-        transform = clTransformCreate(C, P3PQ, CL_XF_RGB, 16, BT2020, CL_XF_RGB, 16, CL_TONEMAP_OFF);
-        setRGBA16_3(src16, 65535, 65535, 65535);
-        clTransformRun(C, transform, 1, src16, dst16, 1);
-        C->ccmmAllowed = clFalse;
-        clTransformRun(C, transform, 1, src16, dst16, 1);
+        f = fopen("out.txt", "w");
+        depth = 16;
+        maxChannel = (1 << depth) - 1;
+        transform = clTransformCreate(C, BT709, CL_XF_RGB, depth, P3PQ, CL_XF_RGB, depth, CL_TONEMAP_OFF);
+        for (i = 0; i <= maxChannel; ++i) {
+            setRGBA16_3(src16, i, i, i);
+            C->ccmmAllowed = clTrue;
+            clTransformRun(C, transform, 1, src16, dst16_C, 1);
+            C->ccmmAllowed = clFalse;
+            clTransformRun(C, transform, 1, src16, dst16_L, 1);
+            fprintf(f, "code %u CCMM %u LCMS %u\n", i, dst16_C[0], dst16_L[0]);
+        }
+        fclose(f);
 
         return 0;
     }
@@ -301,10 +318,10 @@ int main(int argc, char * argv[])
         profiles[1] = BT709;
         profiles[2] = P3PQ;
         profiles[3] = NULL; // XYZ
-        profilesCount = 4;
+        profilesCount = 3;
 
 #if defined(DEBUG_SINGLE_DIFF)
-        diffTransform(C, steps, NULL, CL_XF_XYZ, 32, P3PQ, CL_XF_RGB, 32, CL_TONEMAP_OFF, 0.01);
+        diffTransform(C, steps, BT709, CL_XF_RGB, 32, P3PQ, CL_XF_RGB, 32, CL_TONEMAP_ON, 0.01);
 #else
         for (srcProfileIndex = 0; srcProfileIndex < profilesCount; ++srcProfileIndex) {
             for (srcDepthIndex = 0; srcDepthIndex < depthsCount; ++srcDepthIndex) {

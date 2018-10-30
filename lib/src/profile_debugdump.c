@@ -8,6 +8,7 @@
 #include "colorist/profile.h"
 
 #include "colorist/context.h"
+#include "colorist/pixelmath.h"
 
 #include <string.h>
 
@@ -50,9 +51,9 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
             primaries.white[0], primaries.white[1]);
         clContextLog(C, "profile", 1 + extraIndent, "Max Luminance: %d", luminance);
         clContextLog(C, "profile", 1 + extraIndent, "Curve: %s(%.3g)", curveTypeToString(curve.type), curve.gamma);
-        if (curve.matrixCurveScale > 0.0f) {
-            clContextLog(C, "profile", 1 + extraIndent, "Implicit matrix curve scale: %g", curve.matrixCurveScale);
-            clContextLog(C, "profile", 1 + extraIndent, "Actual max luminance: %g", luminance * curve.matrixCurveScale);
+        if (!clPixelMathEqualsf(curve.implicitScale, 1.0f)) {
+            clContextLog(C, "profile", 1 + extraIndent, "Implicit matrix curve scale: %g", curve.implicitScale);
+            clContextLog(C, "profile", 1 + extraIndent, "Actual max luminance: %g", luminance * curve.implicitScale);
         }
         clContextLog(C, "profile", 1 + extraIndent, "CCMM friendly: %s", profile->ccmm ? "true" : "false");
         for (i = 0; i < 16; ++i) {
@@ -132,12 +133,8 @@ void clProfileDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clP
         jsonCurve = cJSON_AddObjectToObject(jsonOutput, "curve");
         cJSON_AddStringToObject(jsonCurve, "type", curveTypeToString(curve.type));
         cJSON_AddNumberToObject(jsonCurve, "gamma", curve.gamma);
-        cJSON_AddNumberToObject(jsonCurve, "matrixCurveScale", curve.matrixCurveScale);
-        if (curve.matrixCurveScale > 0.0f) {
-            cJSON_AddNumberToObject(jsonOutput, "actualLuminance", luminance * curve.matrixCurveScale);
-        } else {
-            cJSON_AddNumberToObject(jsonOutput, "actualLuminance", luminance);
-        }
+        cJSON_AddNumberToObject(jsonCurve, "implicitScale", curve.implicitScale);
+        cJSON_AddNumberToObject(jsonOutput, "actualLuminance", luminance * curve.implicitScale);
         cJSON_AddBoolToObject(jsonOutput, "ccmm", profile->ccmm);
         {
             clProfilePrimaries pqPrimaries;

@@ -34,7 +34,7 @@ typedef enum clProfileCurveType
 typedef struct clProfileCurve
 {
     clProfileCurveType type;
-    float matrixCurveScale; // currently only used for reporting
+    float implicitScale;
     float gamma;
 } clProfileCurve;
 

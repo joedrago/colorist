@@ -9,10 +9,9 @@
 
 #include <string.h>
 
-// Due to matrixCurveScale being calculated as an exponent (a^g), there's a chance we'll
-// end up with a luminance scale of 1.00000119 instead of exactly 1 (which is correct),
-// so we end up tonemapping for no reason. The small amount after the 1.0 here buys us
-// a little imprecision wiggle room on an automatic tonemap.
+// The small amount after the 1.0 here buys us  a little imprecision wiggle
+// room on an automatic tonemap. (It's ok to clip if our luminance scale is
+// this close.)
 #define AUTO_TONEMAP_LUMINANCE_SCALE_THRESHOLD (1.001f)
 
 #define SRC_8_HAS_ALPHA() (srcPixelBytes > 3)
@@ -118,40 +117,45 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
     if ((useCCMM && !transform->ccmmReady) || (!useCCMM && !transform->lcmsReady)) {
         // Calculate luminance scaling
 
-        int srcLuminance, dstLuminance;
-        float srcLuminanceScale = 1.0f;
-        float dstLuminanceScale = 1.0f;
-        float luminanceScale;
-        clProfilePrimaries srcPrimaries;
-        clProfileCurve srcCurve, dstCurve;
+        // Default to D65, allow either profile to override it, with the priority: dst > src > D65
+        transform->whitePointX = 0.3127f;
+        transform->whitePointX = 0.3290f;
 
         if (transform->srcProfile) {
+            clProfilePrimaries srcPrimaries;
+            clProfileCurve srcCurve;
+            int srcLuminance;
+
             clProfileQuery(C, transform->srcProfile, &srcPrimaries, &srcCurve, &srcLuminance);
             srcLuminance = (srcLuminance != 0) ? srcLuminance : COLORIST_DEFAULT_LUMINANCE;
-            srcLuminanceScale = (float)srcLuminance;
-            if (useCCMM && (srcCurve.matrixCurveScale > 0.0f)) {
-                // This handles crazy A2B* tags, somewhat (when using CCMM)
-                srcLuminanceScale *= srcCurve.matrixCurveScale;
-            }
-
+            transform->srcLuminanceScale = (float)srcLuminance;
+            transform->srcCurveScale = srcCurve.implicitScale;
             transform->whitePointX = srcPrimaries.white[0];
             transform->whitePointY = srcPrimaries.white[1];
+        } else {
+            transform->srcLuminanceScale = 1.0f;
+            transform->srcCurveScale = 1.0f;
         }
 
         if (transform->dstProfile) {
-            clProfileQuery(C, transform->dstProfile, NULL, &dstCurve, &dstLuminance);
+            clProfilePrimaries dstPrimaries;
+            clProfileCurve dstCurve;
+            int dstLuminance;
+
+            clProfileQuery(C, transform->dstProfile, &dstPrimaries, &dstCurve, &dstLuminance);
             dstLuminance = (dstLuminance != 0) ? dstLuminance : COLORIST_DEFAULT_LUMINANCE;
-            dstLuminanceScale = (float)dstLuminance;
-            if (useCCMM && (dstCurve.matrixCurveScale > 0.0f)) {
-                // This handles crazy A2B* tags, somewhat (when using CCMM)
-                dstLuminanceScale *= dstCurve.matrixCurveScale;
-            }
+            transform->dstLuminanceScale = (float)dstLuminance;
+            transform->dstCurveScale = dstCurve.implicitScale;
+            transform->whitePointX = dstPrimaries.white[0];
+            transform->whitePointY = dstPrimaries.white[1];
+        } else {
+            transform->dstLuminanceScale = 1.0f;
+            transform->dstCurveScale = 1.0f;
         }
 
-        luminanceScale = srcLuminanceScale / dstLuminanceScale;
         switch (transform->tonemap) {
             case CL_TONEMAP_AUTO:
-                transform->tonemapEnabled = (luminanceScale > AUTO_TONEMAP_LUMINANCE_SCALE_THRESHOLD) ? clTrue : clFalse;
+                transform->tonemapEnabled = ((transform->srcLuminanceScale / transform->dstLuminanceScale) > AUTO_TONEMAP_LUMINANCE_SCALE_THRESHOLD) ? clTrue : clFalse;
                 break;
             case CL_TONEMAP_ON:
                 transform->tonemapEnabled = clTrue;
@@ -159,14 +163,6 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
             case CL_TONEMAP_OFF:
                 transform->tonemapEnabled = clFalse;
                 break;
-        }
-
-        if (useCCMM) {
-            transform->ccmmLuminanceScale = luminanceScale;
-            // printf("CCMM luminance scale: %g\n", transform->ccmmLuminanceScale);
-        } else {
-            transform->lcmsLuminanceScale = luminanceScale;
-            // printf("LCMS luminance scale: %g\n", transform->lcmsLuminanceScale);
         }
     }
 
@@ -279,7 +275,6 @@ static void transformFloatToFloat(struct clContext * C, struct clTransform * tra
         gbVec3 src;
         float XYZ[3];
         float xyY[3];
-        float luminanceScale = (useCCMM) ? transform->ccmmLuminanceScale : transform->lcmsLuminanceScale;
 
         if (useCCMM) {
             switch (transform->ccmmSrcEOTF) {
@@ -307,13 +302,27 @@ static void transformFloatToFloat(struct clContext * C, struct clTransform * tra
         // Convert to xyY
         clTransformXYZToXYY(C, xyY, XYZ, transform->whitePointX, transform->whitePointY);
 
+        // Apply srcCurveScale as CCMM, if any (LCMS implicitly does this)
+        if (useCCMM) {
+            xyY[2] *= transform->srcCurveScale;
+        }
+
         // Luminance scale
-        xyY[2] *= luminanceScale;
+        xyY[2] *= transform->srcLuminanceScale;
+        xyY[2] /= transform->dstLuminanceScale;
+
+        // Apply inverse dstCurveScale prior to tonemapping to ensure tonemap gets [0-1] range
+        xyY[2] /= transform->dstCurveScale;
 
         // Tonemap
         if (transform->tonemapEnabled) {
             // reinhard tonemap
             xyY[2] = xyY[2] / (1.0f + xyY[2]);
+        }
+
+        if (!useCCMM) {
+            // Re-apply dst scale for LCMS as it expects the XYZ->Dst input to be overranged
+            xyY[2] *= transform->dstCurveScale;
         }
 
         // Convert to XYZ
@@ -1108,10 +1117,7 @@ const char * clTransformCMMName(struct clContext * C, clTransform * transform)
 float clTransformGetLuminanceScale(struct clContext * C, clTransform * transform)
 {
     clTransformPrepare(C, transform);
-    if (clTransformUsesCCMM(C, transform)) {
-        return transform->ccmmLuminanceScale;
-    }
-    return transform->lcmsLuminanceScale;
+    return transform->srcLuminanceScale / transform->dstLuminanceScale * transform->srcCurveScale / transform->dstCurveScale;
 }
 
 typedef struct clTransformTask

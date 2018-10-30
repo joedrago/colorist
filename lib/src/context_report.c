@@ -181,11 +181,7 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
 
     highlight = clImageCreate(C, srcImage->width, srcImage->height, 8, NULL);
     luminanceScale = (float)srcLuminance / 300.0f;
-    overbrightScale = (float)srcLuminance / (float)srgbLuminance;
-    if (srcCurve.matrixCurveScale > 0.0f) {
-        // This handles crazy A2B* tags, somewhat
-        overbrightScale *= srcCurve.matrixCurveScale;
-    }
+    overbrightScale = (float)srcLuminance / (float)srgbLuminance * srcCurve.implicitScale;
     for (i = 0; i < pixelCount; ++i) {
         float * srcXYZ = &xyzPixels[i * 3];
         uint8_t * dstPixel = &highlight->pixels[i * 4];

@@ -47,6 +47,10 @@ typedef struct clTransform
     int dstDepth;
     float whitePointX;
     float whitePointY;
+    float srcCurveScale;
+    float dstCurveScale;
+    float srcLuminanceScale;
+    float dstLuminanceScale;
     clTonemap tonemap;
     clBool tonemapEnabled; // calculated from incoming tonemap value
 
@@ -58,7 +62,6 @@ typedef struct clTransform
     gbMat3 ccmmSrcToXYZ;
     gbMat3 ccmmXYZToDst;
     gbMat3 ccmmCombined;
-    float ccmmLuminanceScale;
     clBool ccmmReady;
 
     // Cache for LittleCMS objects
@@ -66,7 +69,6 @@ typedef struct clTransform
     cmsHTRANSFORM lcmsSrcToXYZ;
     cmsHTRANSFORM lcmsXYZToDst;
     cmsHTRANSFORM lcmsCombined;
-    float lcmsLuminanceScale; // this might be different from ccmmLuminanceScale due to matrixCurveScale
     clBool lcmsReady;
 } clTransform;
 

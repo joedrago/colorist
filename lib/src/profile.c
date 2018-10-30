@@ -8,6 +8,7 @@
 #include "colorist/profile.h"
 
 #include "colorist/context.h"
+#include "colorist/pixelmath.h"
 #include "colorist/raw.h"
 
 #include "lcms2_plugin.h"
@@ -397,7 +398,7 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
         }
 
         // Check for A2B0 implicit scale in the matrix curve, for reporting purposes
-        curve->matrixCurveScale = 0.0f;
+        curve->implicitScale = 1.0f;
         {
             cmsUInt32Number aToBTagSize = cmsReadRawTag(profile->handle, cmsSigAToB0Tag, NULL, 0);
             if (aToBTagSize >= 32) { // A2B0 tag is present. Check for a matrix scale on para curve types 1 and above
@@ -425,7 +426,7 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
                         g = (float)_cms15Fixed16toDouble(clNTOHL(e));
                         memcpy(&e, &rawA2B0[matrixCurveOffset + 16], 4);
                         a = (float)_cms15Fixed16toDouble(clNTOHL(e));
-                        curve->matrixCurveScale = powf(a, g);
+                        curve->implicitScale = clPixelMathRoundf(powf(a, g) * 100.0f) / 100.0f; // Round to 0.01, otherwise you get stuff like 100.0000019x
                     }
                 }
                 clFree(rawA2B0);

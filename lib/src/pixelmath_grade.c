@@ -25,6 +25,15 @@ float clPixelMathFloorf(float val)
     return floorf(val);
 }
 
+clBool clPixelMathEqualsf(float a, float b)
+{
+    static const float CLOSE_ENOUGH = 0.000001f;
+    if (fabsf(a - b) < CLOSE_ENOUGH) {
+        return clTrue;
+    }
+    return clFalse;
+}
+
 float clPixelMathRoundNormalized(float normalizedValue, float factor)
 {
     normalizedValue = CL_CLAMP(normalizedValue, 0.0f, 1.0f);
