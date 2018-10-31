@@ -5,6 +5,15 @@
 #                  http://www.boost.org/LICENSE_1_0.txt)
 # ---------------------------------------------------------------------------
 
-add_subdirectory(colorist)
-add_subdirectory(colorist-test)
-add_subdirectory(colorist-roundtrip)
+if(NOT COLORIST_EMSCRIPTEN)
+
+set(COLORIST_ROUNDTRIP_SRCS
+    main.c
+)
+
+add_executable(colorist-roundtrip
+     ${COLORIST_ROUNDTRIP_SRCS}
+)
+target_link_libraries(colorist-roundtrip colorist)
+
+endif()
