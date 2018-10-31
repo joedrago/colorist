@@ -178,6 +178,12 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
             derivePrimariesAndXTF(C, transform->srcProfile, &srcPrimaries, &transform->ccmmSrcEOTF, &transform->ccmmSrcGamma);
             derivePrimariesAndXTF(C, transform->dstProfile, &dstPrimaries, &transform->ccmmDstOETF, &transform->ccmmDstInvGamma);
 
+            if (clProfilePrimariesMatch(C, &srcPrimaries, &dstPrimaries)) {
+                // if the src/dst primaries are close enough, make them match exactly to help roundtripping
+                // by making the SrcToXYZ and XYZtoDst matrices as close to true inverses of one another as possible.
+                memcpy(&srcPrimaries, &dstPrimaries, sizeof(srcPrimaries));
+            }
+
             if (transform->srcProfile) {
                 deriveXYZMatrix(C, &srcPrimaries, &transform->ccmmSrcToXYZ);
             } else {
