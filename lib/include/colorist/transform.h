@@ -52,7 +52,8 @@ typedef struct clTransform
     float srcLuminanceScale;
     float dstLuminanceScale;
     clTonemap tonemap;
-    clBool tonemapEnabled; // calculated from incoming tonemap value
+    clBool tonemapEnabled;        // calculated from incoming tonemap value
+    clBool luminanceScaleEnabled; // optimization; if false, avoid all luminance scaling math
 
     // Cache for CCMM objects
     clTransformTransferFunction ccmmSrcEOTF;

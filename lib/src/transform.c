@@ -157,7 +157,7 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
 
         switch (transform->tonemap) {
             case CL_TONEMAP_AUTO:
-                transform->tonemapEnabled = ((transform->srcLuminanceScale / transform->dstLuminanceScale) > AUTO_TONEMAP_LUMINANCE_SCALE_THRESHOLD) ? clTrue : clFalse;
+                transform->tonemapEnabled = (((transform->srcLuminanceScale * transform->srcCurveScale) / (transform->dstLuminanceScale * transform->dstCurveScale)) > AUTO_TONEMAP_LUMINANCE_SCALE_THRESHOLD) ? clTrue : clFalse;
                 break;
             case CL_TONEMAP_ON:
                 transform->tonemapEnabled = clTrue;
@@ -165,6 +165,12 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
             case CL_TONEMAP_OFF:
                 transform->tonemapEnabled = clFalse;
                 break;
+        }
+
+        if (transform->tonemapEnabled || (fabsf((transform->srcLuminanceScale * transform->srcCurveScale) - (transform->dstLuminanceScale * transform->dstCurveScale)) > 0.00001f)) {
+            transform->luminanceScaleEnabled = clTrue;
+        } else {
+            transform->luminanceScaleEnabled = clFalse;
         }
     }
 
@@ -295,7 +301,6 @@ static void transformFloatToFloat(struct clContext * C, struct clTransform * tra
         float * dstPixel = (float *)&dstPixels[i * dstPixelBytes];
         gbVec3 src;
         float XYZ[3];
-        float xyY[3];
 
         if (useCCMM) {
             switch (transform->ccmmSrcEOTF) {
@@ -320,34 +325,41 @@ static void transformFloatToFloat(struct clContext * C, struct clTransform * tra
             cmsDoTransform(transform->lcmsSrcToXYZ, srcPixel, XYZ, 1);
         }
 
-        // Convert to xyY
-        clTransformXYZToXYY(C, xyY, XYZ, transform->whitePointX, transform->whitePointY);
+        // if tonemapping is necessary, luminance scale MUST be enabled
+        COLORIST_ASSERT(!transform->tonemapEnabled || transform->luminanceScaleEnabled);
 
-        // Apply srcCurveScale as CCMM, if any (LCMS implicitly does this)
-        if (useCCMM) {
-            xyY[2] *= transform->srcCurveScale;
+        if (transform->luminanceScaleEnabled) {
+            float xyY[3];
+
+            // Convert to xyY
+            clTransformXYZToXYY(C, xyY, XYZ, transform->whitePointX, transform->whitePointY);
+
+            // Apply srcCurveScale as CCMM, if any (LCMS implicitly does this)
+            if (useCCMM) {
+                xyY[2] *= transform->srcCurveScale;
+            }
+
+            // Luminance scale
+            xyY[2] *= transform->srcLuminanceScale;
+            xyY[2] /= transform->dstLuminanceScale;
+
+            // Apply inverse dstCurveScale prior to tonemapping to ensure tonemap gets [0-1] range
+            xyY[2] /= transform->dstCurveScale;
+
+            // Tonemap
+            if (transform->tonemapEnabled) {
+                // reinhard tonemap
+                xyY[2] = xyY[2] / (1.0f + xyY[2]);
+            }
+
+            if (!useCCMM) {
+                // Re-apply dst scale for LCMS as it expects the XYZ->Dst input to be overranged
+                xyY[2] *= transform->dstCurveScale;
+            }
+
+            // Convert to XYZ
+            clTransformXYYToXYZ(C, XYZ, xyY);
         }
-
-        // Luminance scale
-        xyY[2] *= transform->srcLuminanceScale;
-        xyY[2] /= transform->dstLuminanceScale;
-
-        // Apply inverse dstCurveScale prior to tonemapping to ensure tonemap gets [0-1] range
-        xyY[2] /= transform->dstCurveScale;
-
-        // Tonemap
-        if (transform->tonemapEnabled) {
-            // reinhard tonemap
-            xyY[2] = xyY[2] / (1.0f + xyY[2]);
-        }
-
-        if (!useCCMM) {
-            // Re-apply dst scale for LCMS as it expects the XYZ->Dst input to be overranged
-            xyY[2] *= transform->dstCurveScale;
-        }
-
-        // Convert to XYZ
-        clTransformXYYToXYZ(C, XYZ, xyY);
 
         if (useCCMM) {
             float tmp[3];
