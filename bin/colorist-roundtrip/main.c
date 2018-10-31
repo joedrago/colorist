@@ -113,19 +113,19 @@ static void roundtrip(clContext * C, int depth, clProfile * profile, clProfile *
 int main(int argc, char * argv[])
 {
     clContext * C = clContextCreate(NULL);
-    struct clProfile * BT2020_G1;
     struct clProfile * BT2020_PQ;
+    struct clProfile * BT2020_G1;
     struct clProfile * BT709_100;
     struct clProfile * BT709_300;
     clProfilePrimaries primaries;
     clProfileCurve curve;
 
     // Create BT2020 profiles
-    clContextGetStockPrimaries(C, "bt2020", &primaries);
     curve.type = CL_PCT_GAMMA;
     curve.gamma = 1.0f;
-    BT2020_G1 = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G1");
     BT2020_PQ = clProfileRead(C, "../docs/profiles/HDR_UHD_ST2084.icc");
+    clProfileQuery(C, BT2020_PQ, &primaries, NULL, NULL); // Ensure the primaries are identical
+    BT2020_G1 = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G1");
     if (!BT2020_PQ)
         return 0;
 
@@ -145,8 +145,8 @@ int main(int argc, char * argv[])
     roundtrip(C, 12, BT709_300, BT2020_PQ, clFalse);
 
     // Cleanup
-    clProfileDestroy(C, BT2020_G1);
     clProfileDestroy(C, BT2020_PQ);
+    clProfileDestroy(C, BT2020_G1);
     clProfileDestroy(C, BT709_100);
     clProfileDestroy(C, BT709_300);
     clContextDestroy(C);
