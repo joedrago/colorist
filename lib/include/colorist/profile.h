@@ -77,6 +77,8 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
 void clProfileDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clProfile * profile, clBool dumpTags);
 void clProfileDestroy(struct clContext * C, clProfile * profile);
 
+clBool clProfilePrimariesMatch(struct clContext * C, clProfilePrimaries * p1, clProfilePrimaries * p2);
+
 // TODO: this needs a better name
 char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance);
 

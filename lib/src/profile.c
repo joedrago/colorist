@@ -576,6 +576,27 @@ const char * clProfileCMMName(struct clContext * C, clProfile * profile)
     return clProfileUsesCCMM(C, profile) ? "CCMM" : "LCMS";
 }
 
+static clBool matchesTo3RoundedPlaces(float a, float b)
+{
+    float fa = clPixelMathRoundf((a + 0.0005f) * 1000.0f) / 1000.0f;
+    float fb = clPixelMathRoundf((a + 0.0005f) * 1000.0f) / 1000.0f;
+    return (fabsf(fa - fb) < 0.0001f) ? clTrue : clFalse;
+}
+
+// Due to floating point imprecision and LittleCMS primaries roundtripping, these can sometimes be ever so slightly off.
+// If all primaries match to 0.001, consider them the same.
+clBool clProfilePrimariesMatch(struct clContext * C, clProfilePrimaries * p1, clProfilePrimaries * p2)
+{
+    return matchesTo3RoundedPlaces(p1->red[0], p2->red[0]) &&
+           matchesTo3RoundedPlaces(p1->red[1], p2->red[1]) &&
+           matchesTo3RoundedPlaces(p1->green[0], p2->green[0]) &&
+           matchesTo3RoundedPlaces(p1->green[1], p2->green[1]) &&
+           matchesTo3RoundedPlaces(p1->blue[0], p2->blue[0]) &&
+           matchesTo3RoundedPlaces(p1->blue[1], p2->blue[1]) &&
+           matchesTo3RoundedPlaces(p1->white[0], p2->white[0]) &&
+           matchesTo3RoundedPlaces(p1->white[1], p2->white[1]);
+}
+
 char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance)
 {
     char * tmp = clAllocate(1024);
