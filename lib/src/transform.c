@@ -50,63 +50,65 @@ static void DEBUG_PRINT_VECTOR(const char * name, gbVec3 * v)
 // Color Conversion Math
 
 // From http://docs-hoffmann.de/ciexyz29082000.pdf, Section 11.4
-static clBool deriveXYZMatrixAndXTF(struct clContext * C, struct clProfile * profile, gbMat3 * toXYZ, clTransformTransferFunction * xtf, float * gamma)
+static void deriveXYZMatrix(struct clContext * C, clProfilePrimaries * primaries, gbMat3 * toXYZ)
+{
+    gbVec3 U, W;
+    gbMat3 P, PInv, D;
+
+    P.col[0].x = primaries->red[0];
+    P.col[0].y = primaries->red[1];
+    P.col[0].z = 1 - primaries->red[0] - primaries->red[1];
+    P.col[1].x = primaries->green[0];
+    P.col[1].y = primaries->green[1];
+    P.col[1].z = 1 - primaries->green[0] - primaries->green[1];
+    P.col[2].x = primaries->blue[0];
+    P.col[2].y = primaries->blue[1];
+    P.col[2].z = 1 - primaries->blue[0] - primaries->blue[1];
+    DEBUG_PRINT_MATRIX("P", &P);
+
+    gb_mat3_inverse(&PInv, &P);
+    DEBUG_PRINT_MATRIX("PInv", &PInv);
+
+    W.x = primaries->white[0];
+    W.y = primaries->white[1];
+    W.z = 1 - primaries->white[0] - primaries->white[1];
+    DEBUG_PRINT_VECTOR("W", &W);
+
+    gb_mat3_mul_vec3(&U, &PInv, W);
+    DEBUG_PRINT_VECTOR("U", &U);
+
+    memset(&D, 0, sizeof(D));
+    D.col[0].x = U.x / W.y;
+    D.col[1].y = U.y / W.y;
+    D.col[2].z = U.z / W.y;
+    DEBUG_PRINT_MATRIX("D", &D);
+
+    gb_mat3_mul(toXYZ, &P, &D);
+    gb_mat3_transpose(toXYZ);
+    DEBUG_PRINT_MATRIX("Cxr", toXYZ);
+}
+
+static clBool derivePrimariesAndXTF(struct clContext * C, struct clProfile * profile, clProfilePrimaries * outPrimaries, clTransformTransferFunction * outXTF, float * outGamma)
 {
     if (profile) {
-        clProfilePrimaries primaries = { 0 };
         clProfileCurve curve = { 0 };
         int luminance = 0;
 
-        gbVec3 U, W;
-        gbMat3 P, PInv, D;
-
-        if (clProfileHasPQSignature(C, profile, &primaries)) {
-            *xtf = CL_XTF_PQ;
-            *gamma = 0.0f;
-        } else if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
-            *xtf = CL_XTF_GAMMA;
-            *gamma = curve.gamma;
+        if (clProfileHasPQSignature(C, profile, outPrimaries)) {
+            *outXTF = CL_XTF_PQ;
+            *outGamma = 0.0f;
+        } else if (clProfileQuery(C, profile, outPrimaries, &curve, &luminance)) {
+            *outXTF = CL_XTF_GAMMA;
+            *outGamma = curve.gamma;
         } else {
             clContextLogError(C, "deriveXYZMatrix: fatal error querying profile");
             return clFalse;
         }
-
-        P.col[0].x = primaries.red[0];
-        P.col[0].y = primaries.red[1];
-        P.col[0].z = 1 - primaries.red[0] - primaries.red[1];
-        P.col[1].x = primaries.green[0];
-        P.col[1].y = primaries.green[1];
-        P.col[1].z = 1 - primaries.green[0] - primaries.green[1];
-        P.col[2].x = primaries.blue[0];
-        P.col[2].y = primaries.blue[1];
-        P.col[2].z = 1 - primaries.blue[0] - primaries.blue[1];
-        DEBUG_PRINT_MATRIX("P", &P);
-
-        gb_mat3_inverse(&PInv, &P);
-        DEBUG_PRINT_MATRIX("PInv", &PInv);
-
-        W.x = primaries.white[0];
-        W.y = primaries.white[1];
-        W.z = 1 - primaries.white[0] - primaries.white[1];
-        DEBUG_PRINT_VECTOR("W", &W);
-
-        gb_mat3_mul_vec3(&U, &PInv, W);
-        DEBUG_PRINT_VECTOR("U", &U);
-
-        memset(&D, 0, sizeof(D));
-        D.col[0].x = U.x / W.y;
-        D.col[1].y = U.y / W.y;
-        D.col[2].z = U.z / W.y;
-        DEBUG_PRINT_MATRIX("D", &D);
-
-        gb_mat3_mul(toXYZ, &P, &D);
-        gb_mat3_transpose(toXYZ);
-        DEBUG_PRINT_MATRIX("Cxr", toXYZ);
     } else {
         // No profile; we're already XYZ!
-        *xtf = CL_XTF_NONE;
-        *gamma = 0.0f;
-        gb_mat3_identity(toXYZ);
+        memset(outPrimaries, 0, sizeof(clProfilePrimaries));
+        *outXTF = CL_XTF_NONE;
+        *outGamma = 0.0f;
     }
     return clTrue;
 }
@@ -169,10 +171,23 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
     if (useCCMM) {
         // Prepare CCMM
         if (!transform->ccmmReady) {
+            clProfilePrimaries srcPrimaries;
+            clProfilePrimaries dstPrimaries;
             gbMat3 dstToXYZ;
 
-            deriveXYZMatrixAndXTF(C, transform->srcProfile, &transform->ccmmSrcToXYZ, &transform->ccmmSrcEOTF, &transform->ccmmSrcGamma);
-            deriveXYZMatrixAndXTF(C, transform->dstProfile, &dstToXYZ, &transform->ccmmDstOETF, &transform->ccmmDstInvGamma);
+            derivePrimariesAndXTF(C, transform->srcProfile, &srcPrimaries, &transform->ccmmSrcEOTF, &transform->ccmmSrcGamma);
+            derivePrimariesAndXTF(C, transform->dstProfile, &dstPrimaries, &transform->ccmmDstOETF, &transform->ccmmDstInvGamma);
+
+            if (transform->srcProfile) {
+                deriveXYZMatrix(C, &srcPrimaries, &transform->ccmmSrcToXYZ);
+            } else {
+                gb_mat3_identity(&transform->ccmmSrcToXYZ);
+            }
+            if (transform->dstProfile) {
+                deriveXYZMatrix(C, &dstPrimaries, &dstToXYZ);
+            } else {
+                gb_mat3_identity(&dstToXYZ);
+            }
             if ((transform->ccmmDstOETF == CL_XTF_GAMMA) && (transform->ccmmDstInvGamma != 0.0f)) {
                 transform->ccmmDstInvGamma = 1.0f / transform->ccmmDstInvGamma;
             }
