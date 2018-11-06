@@ -17,7 +17,6 @@ int clContextModify(clContext * C)
     clProfilePrimaries primaries;
     clProfileCurve curve;
     int luminance = 0;
-    clBool checkColorantsAndGamma = clFalse;
 
     clContextLog(C, "action", 0, "Modify: %s -> %s", C->inputFilename, C->outputFilename);
 
@@ -46,7 +45,6 @@ int clContextModify(clContext * C)
         goto cleanup;
     }
     if (C->params.gamma > 0.0f) {
-        checkColorantsAndGamma = clTrue;
         clProfileRemoveTag(C, profile, "A2B0", "changing gamma");
         clProfileRemoveTag(C, profile, "A2B1", "changing gamma");
         clProfileRemoveTag(C, profile, "B2A0", "changing gamma");
