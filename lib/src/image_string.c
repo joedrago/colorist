@@ -98,7 +98,7 @@ static unsigned int hexChannel(const char * hex)
 static const char * parseHashColor(struct clContext * C, const char * s, clColor * parsedColor)
 {
     const char * end;
-    int len;
+    size_t len;
 
     if (*s != '#') {
         clContextLogError(C, "hash color does not begin with #");
@@ -143,7 +143,7 @@ static const char * parseParenColor(struct clContext * C, const char * s, int de
 {
     char * buffer;
     const char * end;
-    int len;
+    size_t len;
     char * token;
     int index = 0;
     int ints[4];
@@ -335,7 +335,7 @@ static const char * parseRange(struct clContext * C, const char * s, clToken * t
         return s + 2;
     } else {
         char buffer[32];
-        int len;
+        size_t len;
         const char * end = ++s;
         while (isdigit(*end)) {
             ++end;
@@ -385,7 +385,7 @@ static clBool finishRange(struct clContext * C, clToken * token)
 static const char * parseDimensions(struct clContext * C, const char * s, clToken * token)
 {
     char buffer[32];
-    int len;
+    size_t len;
     const char * end;
 
     // Width
@@ -435,7 +435,7 @@ static const char * parseDimensions(struct clContext * C, const char * s, clToke
 static const char * parseRepeat(struct clContext * C, const char * s, clToken * token)
 {
     char buffer[32];
-    int len;
+    size_t len;
     const char * end;
     if (*s != 'x') {
         clContextLogError(C, "repeat not begin with x");

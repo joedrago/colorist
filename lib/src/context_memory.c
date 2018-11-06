@@ -17,7 +17,7 @@
 
 #include <stdlib.h>
 
-void * clContextDefaultAlloc(struct clContext * C, int bytes)
+void * clContextDefaultAlloc(struct clContext * C, size_t bytes)
 {
     return calloc(1, bytes);
 

@@ -391,7 +391,7 @@ clBool clContextGetRawStockPrimaries(struct clContext * C, const char * name, fl
 
 char * clContextStrdup(clContext * C, const char * str)
 {
-    int len = strlen(str);
+    size_t len = strlen(str);
     char * dup = clAllocate(len + 1);
     memcpy(dup, str, len);
     dup[len] = 0;

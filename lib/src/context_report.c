@@ -457,14 +457,14 @@ int clContextReport(clContext * C)
         static const char coloristDataMarker[] = "__COLORIST_DATA__";
         const char * coloristDataInjectLoc = strstr((const char *)reportTemplateBinaryData, coloristDataMarker);
         const char * afterPtr;
-        int beforeLen, afterLen;
+        size_t beforeLen, afterLen;
         char * payloadString;
         if (!coloristDataInjectLoc) {
             clContextLogError(C, "Template does not contain the string \"%s\", bailing out", coloristDataMarker);
             FAIL();
         }
 
-        beforeLen = (int)(coloristDataInjectLoc - (const char *)reportTemplateBinaryData);
+        beforeLen = (coloristDataInjectLoc - (const char *)reportTemplateBinaryData);
         afterPtr = coloristDataInjectLoc + strlen(coloristDataMarker);
         afterLen = strlen(afterPtr);
 
