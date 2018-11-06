@@ -579,7 +579,7 @@ const char * clProfileCMMName(struct clContext * C, clProfile * profile)
 static clBool matchesTo3RoundedPlaces(float a, float b)
 {
     float fa = clPixelMathRoundf((a + 0.0005f) * 1000.0f) / 1000.0f;
-    float fb = clPixelMathRoundf((a + 0.0005f) * 1000.0f) / 1000.0f;
+    float fb = clPixelMathRoundf((b + 0.0005f) * 1000.0f) / 1000.0f;
     return (fabsf(fa - fb) < 0.0001f) ? clTrue : clFalse;
 }
 
