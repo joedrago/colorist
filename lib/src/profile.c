@@ -539,7 +539,8 @@ clBool clProfileRemoveTag(struct clContext * C, clProfile * profile, char * tag,
 
 clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * profile2)
 {
-    int i;
+    COLORIST_UNUSED(C);
+
     if (profile1 == profile2) {
         return clTrue;
     } else if (!profile1 || !profile2) {
@@ -547,6 +548,7 @@ clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * 
     }
 
     // Make sure one of them actually has a signature
+    int i;
     for (i = 0; i < 16; ++i) {
         if (profile1->signature[i] != 0)
             break;
@@ -562,8 +564,6 @@ clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * 
     }
     // TODO: fallback to doing a double clProfilePack and comparison? tag comparisons?
     return clFalse;
-
-    COLORIST_UNUSED(C);
 }
 
 clBool clProfileUsesCCMM(struct clContext * C, clProfile * profile)
@@ -591,6 +591,8 @@ static clBool matchesTo3RoundedPlaces(float a, float b)
 // If all primaries match to 0.001, consider them the same.
 clBool clProfilePrimariesMatch(struct clContext * C, clProfilePrimaries * p1, clProfilePrimaries * p2)
 {
+    COLORIST_UNUSED(C);
+
     return matchesTo3RoundedPlaces(p1->red[0], p2->red[0]) &&
            matchesTo3RoundedPlaces(p1->red[1], p2->red[1]) &&
            matchesTo3RoundedPlaces(p1->green[0], p2->green[0]) &&
@@ -599,8 +601,6 @@ clBool clProfilePrimariesMatch(struct clContext * C, clProfilePrimaries * p1, cl
            matchesTo3RoundedPlaces(p1->blue[1], p2->blue[1]) &&
            matchesTo3RoundedPlaces(p1->white[0], p2->white[0]) &&
            matchesTo3RoundedPlaces(p1->white[1], p2->white[1]);
-
-    COLORIST_UNUSED(C);
 }
 
 char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance)

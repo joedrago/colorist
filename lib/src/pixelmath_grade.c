@@ -47,9 +47,8 @@ static float gammaErrorTerm(float gamma, float * pixels, int pixelCount, float m
     float channelErrorTerm;
     float scaledChannel;
     float * pixel = pixels;
-    int i;
 
-    for (i = 0; i < pixelCount; ++i) {
+    for (int i = 0; i < pixelCount; ++i) {
         scaledChannel = pixel[0] * luminanceScale;
         scaledChannel = CL_CLAMP(scaledChannel, 0.0f, 1.0f);
         channelErrorTerm = fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
@@ -90,7 +89,6 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
 {
     int maxLuminance = 0;
     float bestGamma = 0.0f;
-    int i;
 
     // Find max luminance
     if (*outLuminance == 0) {
@@ -105,7 +103,7 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
         clTransform * toXYZ = clTransformCreate(C, pixelProfile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
 
         pixel = pixels;
-        for (i = 0; i < pixelCount; ++i) {
+        for (int i = 0; i < pixelCount; ++i) {
             if (maxChannel < pixel[0]) {
                 indexWithMaxChannel = i;
                 maxChannel = pixel[0];
@@ -172,7 +170,7 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
             ++tasksInFlight;
 
             if ((tasksInFlight == taskCount) || (gammaInt == GAMMA_RANGE_END)) {
-                for (i = 0; i < tasksInFlight; ++i) {
+                for (int i = 0; i < tasksInFlight; ++i) {
                     clTaskJoin(C, tasks[i]);
                     if (minErrorTerm < 0.0f) {
                         minErrorTerm = infos[i].outErrorTerm;

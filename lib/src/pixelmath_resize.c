@@ -8,13 +8,14 @@
 
 void clPixelMathResize(struct clContext * C, int srcW, int srcH, float * srcPixels, int dstW, int dstH, float * dstPixels, clFilter filter)
 {
+    COLORIST_UNUSED(C);
+
     if (filter == CL_FILTER_NEAREST) {
         // colorist's very own super-obvious nearest neighbor implementation
-        int i, j;
         float scaleW = (float)srcW / (float)dstW;
         float scaleH = (float)srcH / (float)dstH;
-        for (j = 0; j < dstH; ++j) {
-            for (i = 0; i < dstW; ++i) {
+        for (int j = 0; j < dstH; ++j) {
+            for (int i = 0; i < dstW; ++i) {
                 float * srcPixel;
                 float * dstPixel;
                 int srcX = (int)(((float)i + 0.5f) * scaleW);
@@ -35,6 +36,4 @@ void clPixelMathResize(struct clContext * C, int srcW, int srcH, float * srcPixe
             STBIR_EDGE_CLAMP, filter, STBIR_COLORSPACE_LINEAR,
             NULL);
     }
-
-    COLORIST_UNUSED(C);
 }

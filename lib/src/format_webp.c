@@ -18,6 +18,8 @@
 
 struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName, struct clRaw * input)
 {
+    COLORIST_UNUSED(formatName);
+
     clImage * image = NULL;
     clProfile * profile = NULL;
 
@@ -75,12 +77,12 @@ readCleanup:
         clProfileDestroy(C, profile);
     }
     return image;
-
-    COLORIST_UNUSED(formatName);
 }
 
 clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
 {
+    COLORIST_UNUSED(formatName);
+
     clBool writeResult = clTrue;
     clRaw rawProfile;
 
@@ -159,6 +161,4 @@ writeCleanup:
     WebPPictureFree(&picture);
     clRawFree(C, &rawProfile);
     return writeResult;
-
-    COLORIST_UNUSED(formatName);
 }

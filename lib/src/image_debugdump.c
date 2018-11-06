@@ -19,27 +19,24 @@ static void dumpPixel(struct clContext * C, clImage * image, clTransform * toXYZ
 
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent)
 {
-    int i, j;
-    int maxLuminance;
-    float maxLuminanceFloat;
-
     clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
 
     clContextLog(C, "image", 0 + extraIndent, "Image: %dx%d %d-bit", image->width, image->height, image->depth);
     clProfileDebugDump(C, image->profile, C->verbose, 1 + extraIndent);
 
+    int maxLuminance;
     clProfileQuery(C, image->profile, NULL, NULL, &maxLuminance);
     if (maxLuminance == 0) {
         maxLuminance = COLORIST_DEFAULT_LUMINANCE;
     }
-    maxLuminanceFloat = (float)maxLuminance;
+    float maxLuminanceFloat = (float)maxLuminance;
 
     if (clImageAdjustRect(C, image, &x, &y, &w, &h)) {
         int endX = x + w;
         int endY = y + h;
         clContextLog(C, "image", 1 + extraIndent, "Pixels:");
-        for (j = y; j < endY; ++j) {
-            for (i = x; i < endX; ++i) {
+        for (int j = y; j < endY; ++j) {
+            for (int i = x; i < endX; ++i) {
                 dumpPixel(C, image, toXYZ, maxLuminanceFloat, i, j, extraIndent, NULL);
             }
         }
@@ -52,10 +49,6 @@ void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clIma
 {
     cJSON * jsonProfile = cJSON_AddObjectToObject(jsonOutput, "profile");
 
-    int i, j;
-    int maxLuminance;
-    float maxLuminanceFloat;
-
     clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
 
     cJSON_AddNumberToObject(jsonOutput, "width", image->width);
@@ -64,18 +57,19 @@ void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clIma
 
     clProfileDebugDumpJSON(C, jsonProfile, image->profile, C->verbose);
 
+    int maxLuminance;
     clProfileQuery(C, image->profile, NULL, NULL, &maxLuminance);
     if (maxLuminance == 0) {
         maxLuminance = COLORIST_DEFAULT_LUMINANCE;
     }
-    maxLuminanceFloat = (float)maxLuminance;
+    float maxLuminanceFloat = (float)maxLuminance;
 
     if (clImageAdjustRect(C, image, &x, &y, &w, &h)) {
         int endX = x + w;
         int endY = y + h;
         cJSON * jsonPixels = NULL;
-        for (j = y; j < endY; ++j) {
-            for (i = x; i < endX; ++i) {
+        for (int j = y; j < endY; ++j) {
+            for (int i = x; i < endX; ++i) {
                 if (!jsonPixels) {
                     // Lazily create it in case we never have to
                     jsonPixels = cJSON_AddArrayToObject(jsonOutput, "pixels");

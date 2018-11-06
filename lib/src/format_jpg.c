@@ -36,6 +36,8 @@ static void write_icc_profile(j_compress_ptr cinfo, const JOCTET * icc_data_ptr,
 
 struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, struct clRaw * input)
 {
+    COLORIST_UNUSED(formatName);
+
     clImage * image = NULL;
     clProfile * profile = NULL;
 
@@ -100,12 +102,12 @@ struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, 
     jpeg_finish_decompress(&cinfo);
     jpeg_destroy_decompress(&cinfo);
     return image;
-
-    COLORIST_UNUSED(formatName);
 }
 
 clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
 {
+    COLORIST_UNUSED(formatName);
+
     cmsUInt32Number srcFormat = (image->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
     cmsHTRANSFORM rgbTransform;
     clRaw rawProfile;
@@ -163,8 +165,6 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
     clFree(jpegPixels);
     clRawFree(C, &rawProfile);
     return (output->size > 0) ? clTrue : clFalse;
-
-    COLORIST_UNUSED(formatName);
 }
 
 // ----------------------------------------------------------------------------

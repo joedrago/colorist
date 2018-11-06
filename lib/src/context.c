@@ -35,6 +35,8 @@ static const unsigned int stockPrimariesCount = sizeof(stockPrimaries) / sizeof(
 
 clAction clActionFromString(struct clContext * C, const char * str)
 {
+    COLORIST_UNUSED(C);
+
     if (!strcmp(str, "identify")) return CL_ACTION_IDENTIFY;
     if (!strcmp(str, "id")) return CL_ACTION_IDENTIFY;
     if (!strcmp(str, "generate")) return CL_ACTION_GENERATE;
@@ -44,12 +46,12 @@ clAction clActionFromString(struct clContext * C, const char * str)
     if (!strcmp(str, "modify")) return CL_ACTION_MODIFY;
     if (!strcmp(str, "report")) return CL_ACTION_REPORT;
     return CL_ACTION_ERROR;
-
-    COLORIST_UNUSED(C);
 }
 
 const char * clActionToString(struct clContext * C, clAction action)
 {
+    COLORIST_UNUSED(C);
+
     switch (action) {
         case CL_ACTION_NONE:     return "--";
         case CL_ACTION_IDENTIFY: return "identify";
@@ -63,8 +65,6 @@ const char * clActionToString(struct clContext * C, clAction action)
             break;
     }
     return "Unknown";
-
-    COLORIST_UNUSED(C);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -72,7 +72,6 @@ const char * clActionToString(struct clContext * C, clAction action)
 
 const char * clFormatDetect(struct clContext * C, const char * filename)
 {
-    clFormatRecord * record;
     const char * ext = strrchr(filename, '.');
     if (ext == NULL) {
         clContextLogError(C, "Unable to guess format");
@@ -85,7 +84,7 @@ const char * clFormatDetect(struct clContext * C, const char * filename)
         return "icc";
     }
 
-    for (record = C->formats; record != NULL; record = record->next) {
+    for (clFormatRecord * record = C->formats; record != NULL; record = record->next) {
         int extensionIndex;
         for (extensionIndex = 0; extensionIndex < CL_FORMAT_MAX_EXTENSIONS; ++extensionIndex) {
             if (record->format.extensions[extensionIndex] && !strcmp(record->format.extensions[extensionIndex], ext)) {
@@ -165,6 +164,8 @@ clBool clFormatExists(struct clContext * C, const char * formatName)
 
 clTonemap clTonemapFromString(struct clContext * C, const char * str)
 {
+    COLORIST_UNUSED(C);
+
     if (!strcmp(str, "on")) return CL_TONEMAP_ON;
     if (!strcmp(str, "yes")) return CL_TONEMAP_ON;
     if (!strcmp(str, "enabled")) return CL_TONEMAP_ON;
@@ -174,12 +175,12 @@ clTonemap clTonemapFromString(struct clContext * C, const char * str)
     if (!strcmp(str, "disabled")) return CL_TONEMAP_OFF;
 
     return CL_TONEMAP_AUTO;
-
-    COLORIST_UNUSED(C);
 }
 
 const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
 {
+    COLORIST_UNUSED(C);
+
     switch (tonemap) {
         case CL_TONEMAP_ON: return "on";
         case CL_TONEMAP_OFF: return "on";
@@ -187,8 +188,6 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
             break;
     }
     return "auto";
-
-    COLORIST_UNUSED(C);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -196,6 +195,8 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
 
 clFilter clFilterFromString(struct clContext * C, const char * str)
 {
+    COLORIST_UNUSED(C);
+
     if (!strcmp(str, "auto")) return CL_FILTER_AUTO;
     if (!strcmp(str, "box")) return CL_FILTER_BOX;
     if (!strcmp(str, "triangle")) return CL_FILTER_TRIANGLE;
@@ -204,12 +205,12 @@ clFilter clFilterFromString(struct clContext * C, const char * str)
     if (!strcmp(str, "mitchell")) return CL_FILTER_MITCHELL;
     if (!strcmp(str, "nearest")) return CL_FILTER_NEAREST;
     return CL_FILTER_INVALID;
-
-    COLORIST_UNUSED(C);
 }
 
 const char * clFilterToString(struct clContext * C, clFilter filter)
 {
+    COLORIST_UNUSED(C);
+
     switch (filter) {
         case CL_FILTER_AUTO:  return "auto";
         case CL_FILTER_BOX:  return "box";
@@ -223,8 +224,6 @@ const char * clFilterToString(struct clContext * C, clFilter filter)
             break;
     }
     return "Invalid";
-
-    COLORIST_UNUSED(C);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -232,18 +231,20 @@ const char * clFilterToString(struct clContext * C, clFilter filter)
 
 static void clConversionParamsSetOutputProfileDefaults(clContext * C, clConversionParams * params)
 {
+    COLORIST_UNUSED(C);
+
     params->autoGrade = clFalse;
     params->copyright = NULL;
     params->description = NULL;
     params->gamma = 0;
     params->luminance = 0;
     memset(params->primaries, 0, sizeof(float) * 8);
-
-    COLORIST_UNUSED(C);
 }
 
 void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
 {
+    COLORIST_UNUSED(C);
+
     clConversionParamsSetOutputProfileDefaults(C, params);
     params->bpp = 0;
     params->formatName = NULL;
@@ -261,21 +262,15 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->resizeFilter = CL_FILTER_AUTO;
     params->stripTags = NULL;
     params->tonemap = CL_TONEMAP_AUTO;
-
-    COLORIST_UNUSED(C);
 }
 
 clContext * clContextCreate(clContextSystem * system)
 {
-    clContextAllocFunc alloc;
-    clContext * C;
-
     // bootstrap!
-    alloc = clContextDefaultAlloc;
+    clContextAllocFunc alloc = clContextDefaultAlloc;
     if (system && system->alloc)
         alloc = system->alloc;
-    C = (clContext *)alloc(NULL, sizeof(clContext));
-
+    clContext * C = (clContext *)alloc(NULL, sizeof(clContext));
     C->system.alloc = clContextDefaultAlloc;
     C->system.free = clContextDefaultFree;
     C->system.log = clContextDefaultLog;
@@ -360,30 +355,28 @@ struct clFormat * clContextFindFormat(struct clContext * C, const char * formatN
 
 clBool clContextGetStockPrimaries(struct clContext * C, const char * name, struct clProfilePrimaries * outPrimaries)
 {
-    unsigned int index;
-    for (index = 0; index < stockPrimariesCount; ++index) {
+    COLORIST_UNUSED(C);
+
+    for (unsigned int index = 0; index < stockPrimariesCount; ++index) {
         if (!strcmp(name, stockPrimaries[index].name)) {
             memcpy(outPrimaries, &stockPrimaries[index].primaries, sizeof(clProfilePrimaries));
             return clTrue;
         }
     }
     return clFalse;
-
-    COLORIST_UNUSED(C);
 }
 
 clBool clContextGetRawStockPrimaries(struct clContext * C, const char * name, float outPrimaries[8])
 {
-    unsigned int index;
-    for (index = 0; index < stockPrimariesCount; ++index) {
+    COLORIST_UNUSED(C);
+
+    for (unsigned int index = 0; index < stockPrimariesCount; ++index) {
         if (!strcmp(name, stockPrimaries[index].name)) {
             memcpy(outPrimaries, &stockPrimaries[index].primaries, sizeof(float) * 8);
             return clTrue;
         }
     }
     return clFalse;
-
-    COLORIST_UNUSED(C);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -403,9 +396,6 @@ char * clContextStrdup(clContext * C, const char * str)
 
 static clBool parsePrimaries(clContext * C, float primaries[8], const char * arg)
 {
-    char * buffer;
-    char * token;
-    int index;
     clProfilePrimaries tmpPrimaries;
     if (clContextGetStockPrimaries(C, arg, &tmpPrimaries)) {
         primaries[0] = tmpPrimaries.red[0];
@@ -418,9 +408,10 @@ static clBool parsePrimaries(clContext * C, float primaries[8], const char * arg
         primaries[7] = tmpPrimaries.white[1];
         return clTrue;
     }
-    buffer = clContextStrdup(C, arg);
-    index = 0;
-    for (token = strtok(buffer, ","); token != NULL; token = strtok(NULL, ",")) {
+
+    char * buffer = clContextStrdup(C, arg);
+    int index = 0;
+    for (char * token = strtok(buffer, ","); token != NULL; token = strtok(NULL, ",")) {
         if (index >= 8) {
             clContextLogError(C, "Too many primaries: (expecting: rx,ry,gx,gy,bx,by,wx,wy)");
             return clFalse;
@@ -438,9 +429,9 @@ static clBool parsePrimaries(clContext * C, float primaries[8], const char * arg
 static clBool parseRect(clContext * C, int rect[4], const char * arg)
 {
     char * buffer = clContextStrdup(C, arg);
-    char * token;
+
     int index = 0;
-    for (token = strtok(buffer, ","); token != NULL; token = strtok(NULL, ",")) {
+    for (char * token = strtok(buffer, ","); token != NULL; token = strtok(NULL, ",")) {
         if (index >= 8) {
             clContextLogError(C, "Too many values for rect: (expecting: x,y,w,h)");
             return clFalse;
@@ -459,13 +450,11 @@ static clBool parseRect(clContext * C, int rect[4], const char * arg)
 static clBool parseResize(clContext * C, clConversionParams * params, const char * arg)
 {
     static const char * delims = ",x";
-    char * buffer;
-    char * token;
+
     clBool gotWidth = clFalse;
     clBool gotHeight = clFalse;
-    buffer = clContextStrdup(C, arg);
-
-    for (token = strtok(buffer, delims); token != NULL; token = strtok(NULL, delims)) {
+    char * buffer = clContextStrdup(C, arg);
+    for (char * token = strtok(buffer, delims); token != NULL; token = strtok(NULL, delims)) {
         if (isdigit(token[0])) {
             if (!gotWidth) {
                 gotWidth = clTrue;
@@ -533,9 +522,10 @@ static clBool validateArgs(clContext * C);
 
 clBool clContextParseArgs(clContext * C, int argc, char * argv[])
 {
+    int taskLimit = clTaskLimit();
+
     int argIndex = 1;
     const char * filenames[2] = { NULL, NULL };
-    int taskLimit = clTaskLimit();
     while (argIndex < argc) {
         const char * arg = argv[argIndex];
         if ((arg[0] == '-')) {

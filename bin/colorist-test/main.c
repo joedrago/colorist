@@ -202,6 +202,9 @@ static int diffTransform(clContext * C, int steps, clProfile * srcProfile, clTra
 
 int main(int argc, char * argv[])
 {
+    COLORIST_UNUSED(argc);
+    COLORIST_UNUSED(argv);
+
     clContext * C = clContextCreate(NULL);
     clProfilePrimaries primaries;
     clProfileCurve curve;
@@ -400,7 +403,4 @@ int main(int argc, char * argv[])
 
     printf("colorist-test Complete.\n");
     return 0;
-
-    COLORIST_UNUSED(argc);
-    COLORIST_UNUSED(argv);
 }

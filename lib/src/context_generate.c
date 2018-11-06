@@ -14,10 +14,6 @@
 
 int clContextGenerate(clContext * C, struct cJSON * output)
 {
-    Timer overall;
-    clProfilePrimaries primaries;
-    clProfileCurve curve;
-    int luminance;
     clProfile * dstProfile = NULL;
     const char * outputFileFormat = C->params.formatName;
     const char * action = "generate";
@@ -34,6 +30,7 @@ int clContextGenerate(clContext * C, struct cJSON * output)
         action = "calc";
     }
 
+    Timer overall;
     timerStart(&overall);
 
     if (outputFileFormat && !strcmp(outputFileFormat, "icc")) {
@@ -55,8 +52,7 @@ int clContextGenerate(clContext * C, struct cJSON * output)
             return 1;
         }
     } else {
-        char * description = NULL;
-
+        clProfilePrimaries primaries;
         if (C->params.primaries[0] <= 0.0f) {
             clBool ret = clContextGetStockPrimaries(C, "bt709", &primaries);
             COLORIST_ASSERT(ret == clTrue);
@@ -73,6 +69,7 @@ int clContextGenerate(clContext * C, struct cJSON * output)
             primaries.white[1] = C->params.primaries[7];
         }
 
+        clProfileCurve curve;
         curve.type = CL_PCT_GAMMA;
         if (C->params.gamma <= 0.0f) {
             clContextLog(C, action, 1, "No gamma specified (-g). Using default sRGB gamma.");
@@ -81,13 +78,13 @@ int clContextGenerate(clContext * C, struct cJSON * output)
             curve.gamma = C->params.gamma;
         }
 
-        if (C->params.luminance <= 0) {
+        int luminance = C->params.luminance;
+        if (luminance <= 0) {
             clContextLog(C, action, 1, "No luminance specified (-l). Using default Colorist luminance.");
             luminance = COLORIST_DEFAULT_LUMINANCE;
-        } else {
-            luminance = C->params.luminance;
         }
 
+        char * description = NULL;
         if (C->params.description) {
             description = clContextStrdup(C, C->params.description);
         } else {
@@ -105,10 +102,7 @@ int clContextGenerate(clContext * C, struct cJSON * output)
     }
 
     if (C->inputFilename) {
-        clImage * image;
-        int depth;
-
-        depth = C->params.bpp;
+        int depth = C->params.bpp;
         if (depth == 0) {
             clContextLog(C, action, 1, "No bits per pixel specified (-b). Setting to 8-bit.");
             depth = 8;
@@ -121,7 +115,7 @@ int clContextGenerate(clContext * C, struct cJSON * output)
             }
         }
 
-        image = clImageParseString(C, C->inputFilename, depth, dstProfile);
+        clImage * image = clImageParseString(C, C->inputFilename, depth, dstProfile);
         if (image == NULL) {
             clProfileDestroy(C, dstProfile);
             return 1;

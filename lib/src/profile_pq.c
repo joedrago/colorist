@@ -25,8 +25,7 @@ static const int pqProfileCount = sizeof(pqProfiles_) / sizeof(pqProfiles_[0]);
 
 clBool clProfileHasPQSignature(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries)
 {
-    int i;
-    for (i = 0; i < pqProfileCount; ++i) {
+    for (int i = 0; i < pqProfileCount; ++i) {
         struct PQProfile * pqProfile = &pqProfiles_[i];
         if (!memcmp(pqProfile->signature, profile->signature, 16)) {
             if (primaries) {

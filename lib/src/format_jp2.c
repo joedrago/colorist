@@ -17,10 +17,10 @@
 
 static void error_callback(const char * msg, void * client_data)
 {
+    COLORIST_UNUSED(client_data);
+
     clContext * C = (clContext *)client_data;
     clContextLogError(C, "%s", msg);
-
-    COLORIST_UNUSED(client_data);
 }
 static void warning_callback(const char * msg, void * client_data)
 {
@@ -79,6 +79,8 @@ static OPJ_BOOL seekCallback(OPJ_OFF_T p_nb_bytes, void * p_user_data)
 
 struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, struct clRaw * input)
 {
+    COLORIST_UNUSED(formatName);
+
     clImage * image = NULL;
     clProfile * profile = NULL;
     int i, pixelCount, dstDepth;
@@ -231,8 +233,6 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
     opj_image_destroy(opjImage);
 
     return image;
-
-    COLORIST_UNUSED(formatName);
 }
 
 clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)

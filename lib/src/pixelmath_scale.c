@@ -4,43 +4,41 @@
 
 void clPixelMathUNormToFloat(struct clContext * C, uint8_t * inPixels, int inDepth, float * outPixels, int pixelCount)
 {
+    COLORIST_UNUSED(C);
+
     float maxChannel = (float)((1 << inDepth) - 1);
     int channelCount = pixelCount * 4;
-    int i;
 
     if (inDepth > 8) {
         uint16_t * inChannel = (uint16_t *)inPixels;
         float * outChannel = outPixels;
-        for (i = 0; i < channelCount; ++i) {
+        for (int i = 0; i < channelCount; ++i) {
             outChannel[i] = inChannel[i] / maxChannel;
         }
     } else {
         uint8_t * inChannel = inPixels;
         float * outChannel = outPixels;
-        for (i = 0; i < channelCount; ++i) {
+        for (int i = 0; i < channelCount; ++i) {
             outChannel[i] = inChannel[i] / maxChannel;
         }
     }
-
-    COLORIST_UNUSED(C);
 }
 
 void clPixelMathFloatToUNorm(struct clContext * C, float * inPixels, uint8_t * outPixels, int outDepth, int pixelCount)
 {
     float maxChannel = (float)((1 << outDepth) - 1);
     int channelCount = pixelCount * 4;
-    int i;
 
     if (outDepth > 8) {
         float * inChannel = inPixels;
         uint16_t * outChannel = (uint16_t *)outPixels;
-        for (i = 0; i < channelCount; ++i) {
+        for (int i = 0; i < channelCount; ++i) {
             outChannel[i] = (uint16_t)clPixelMathRoundf(inChannel[i] * maxChannel);
         }
     } else {
         float * inChannel = inPixels;
         uint8_t * outChannel = outPixels;
-        for (i = 0; i < channelCount; ++i) {
+        for (int i = 0; i < channelCount; ++i) {
             outChannel[i] = (uint8_t)clPixelMathRoundf(inChannel[i] * maxChannel);
         }
     }
@@ -50,12 +48,11 @@ void clPixelMathFloatToUNorm(struct clContext * C, float * inPixels, uint8_t * o
 
 void clPixelMathScaleLuminance(struct clContext * C, float * pixels, int pixelCount, float luminanceScale, clBool tonemap)
 {
-    float * pixel;
-    int i;
+    COLORIST_UNUSED(C);
 
     if (tonemap) {
-        pixel = pixels;
-        for (i = 0; i < pixelCount; ++i) {
+        float * pixel = pixels;
+        for (int i = 0; i < pixelCount; ++i) {
             pixel[0] *= luminanceScale;                     // scale
             pixel[0] = (pixel[0] < 0.0f) ? 0.0f : pixel[0]; // max(0, v)
             pixel[0] = pixel[0] / (1.0f + pixel[0]);        // reinhard tonemap
@@ -71,8 +68,8 @@ void clPixelMathScaleLuminance(struct clContext * C, float * pixels, int pixelCo
             pixel += 4;
         }
     } else {
-        pixel = pixels;
-        for (i = 0; i < pixelCount; ++i) {
+        float * pixel = pixels;
+        for (int i = 0; i < pixelCount; ++i) {
             pixel[0] *= luminanceScale;                // scale
             pixel[0] = CL_CLAMP(pixel[0], 0.0f, 1.0f); // clamp
             pixel[1] *= luminanceScale;                // scale
@@ -82,8 +79,6 @@ void clPixelMathScaleLuminance(struct clContext * C, float * pixels, int pixelCo
             pixel += 4;
         }
     }
-
-    COLORIST_UNUSED(C);
 }
 
 // If you're closer than this to a color, just use that color exclusively
@@ -94,28 +89,24 @@ void clPixelMathScaleLuminance(struct clContext * C, float * pixels, int pixelCo
 
 void clPixelMathHaldCLUTLookup(struct clContext * C, float * haldData, int haldDims, const float src[4], float dst[4])
 {
-    float idealR, idealG, idealB;
-    float firstCornerX, firstCornerY, firstCornerZ;
-    float distSquared[8];
-    float weights[8];
-    float idwDivisor;
-    int dist0Index = -1; // Index containing a distance of 0, if any
-    int i, x, y, z;
+    COLORIST_UNUSED(C);
 
-    idealR = src[0] * (haldDims - 1);
-    idealG = src[1] * (haldDims - 1);
-    idealB = src[2] * (haldDims - 1);
+    float idealR = src[0] * (haldDims - 1);
+    float idealG = src[1] * (haldDims - 1);
+    float idealB = src[2] * (haldDims - 1);
 
-    firstCornerX = clPixelMathFloorf(idealR);
-    firstCornerY = clPixelMathFloorf(idealG);
-    firstCornerZ = clPixelMathFloorf(idealB);
+    float firstCornerX = clPixelMathFloorf(idealR);
+    float firstCornerY = clPixelMathFloorf(idealG);
+    float firstCornerZ = clPixelMathFloorf(idealB);
     firstCornerX = CL_CLAMP(firstCornerX, 0, haldDims - 2);
     firstCornerY = CL_CLAMP(firstCornerY, 0, haldDims - 2);
     firstCornerZ = CL_CLAMP(firstCornerZ, 0, haldDims - 2);
 
-    for (z = 0; z < 2; ++z) {
-        for (y = 0; y < 2; ++y) {
-            for (x = 0; x < 2; ++x) {
+    float distSquared[8];
+    int dist0Index = -1; // Index containing a distance of 0, if any
+    for (int z = 0; z < 2; ++z) {
+        for (int y = 0; y < 2; ++y) {
+            for (int x = 0; x < 2; ++x) {
                 float dx = (firstCornerX + x) - idealR;
                 float dy = (firstCornerY + y) - idealG;
                 float dz = (firstCornerZ + z) - idealB;
@@ -129,16 +120,18 @@ void clPixelMathHaldCLUTLookup(struct clContext * C, float * haldData, int haldD
         }
     }
 
+    float weights[8];
+    float idwDivisor;
     if (dist0Index == -1) {
         // No color with a distance of 0 found, use IDW
         idwDivisor = 0.0f;
-        for (i = 0; i < 8; ++i) {
+        for (int i = 0; i < 8; ++i) {
             weights[i] = 1.0f / distSquared[i];
             idwDivisor += weights[i];
         }
     } else {
         // Give all of the weight to one color, skip IDW
-        for (i = 0; i < 8; ++i) {
+        for (int i = 0; i < 8; ++i) {
             weights[i] = 0.0f;
         }
         weights[dist0Index] = 1.0f;
@@ -148,9 +141,9 @@ void clPixelMathHaldCLUTLookup(struct clContext * C, float * haldData, int haldD
     dst[0] = 0.0f;
     dst[1] = 0.0f;
     dst[2] = 0.0f;
-    for (z = 0; z < 2; ++z) {
-        for (y = 0; y < 2; ++y) {
-            for (x = 0; x < 2; ++x) {
+    for (int z = 0; z < 2; ++z) {
+        for (int y = 0; y < 2; ++y) {
+            for (int x = 0; x < 2; ++x) {
                 int index = ((int)firstCornerX + x) + (((int)firstCornerY + y) * haldDims) + (((int)firstCornerZ + z) * haldDims * haldDims);
                 float * lookup = &haldData[index * 4];
                 float weight = weights[I(x, y, z)];
@@ -166,6 +159,4 @@ void clPixelMathHaldCLUTLookup(struct clContext * C, float * haldData, int haldD
 
     // Copy alpha directly
     dst[3] = src[3];
-
-    COLORIST_UNUSED(C);
 }

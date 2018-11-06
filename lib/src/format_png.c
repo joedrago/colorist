@@ -30,8 +30,10 @@ static void readCallback(png_structp png, png_bytep data, png_size_t length)
     ri->offset += length;
 }
 
-struct clImage * clFormatReadPNG(struct clContext * C, const char *formatName, struct clRaw * input)
+struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, struct clRaw * input)
 {
+    COLORIST_UNUSED(formatName);
+
     clImage * image;
     clProfile * profile = NULL;
 
@@ -133,8 +135,6 @@ struct clImage * clFormatReadPNG(struct clContext * C, const char *formatName, s
     png_destroy_read_struct(&png, &info, NULL);
     clFree(rowPointers);
     return image;
-
-    COLORIST_UNUSED(formatName);
 }
 
 struct writeInfo
@@ -160,9 +160,11 @@ static void writeCallback(png_structp png, png_bytep data, png_size_t length)
     wi->offset += length;
 }
 
-clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char *formatName, struct clRaw * output, struct clWriteParams * writeParams)
+clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
 {
-    int y;
+    COLORIST_UNUSED(formatName);
+    COLORIST_UNUSED(writeParams);
+
     png_bytep * rowPointers;
     int imgBytesPerChannel = (image->depth == 16) ? 2 : 1;
     clRaw rawProfile;
@@ -199,12 +201,12 @@ clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char
     rowPointers = (png_bytep *)clAllocate(sizeof(png_bytep) * image->height);
     if (imgBytesPerChannel == 1) {
         uint8_t * pixels = (uint8_t *)image->pixels;
-        for (y = 0; y < image->height; ++y) {
+        for (int y = 0; y < image->height; ++y) {
             rowPointers[y] = &pixels[4 * y * image->width];
         }
     } else {
         uint16_t * pixels = (uint16_t *)image->pixels;
-        for (y = 0; y < image->height; ++y) {
+        for (int y = 0; y < image->height; ++y) {
             rowPointers[y] = (png_byte *)&pixels[4 * y * image->width];
         }
         png_set_swap(png);
@@ -218,7 +220,4 @@ clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char
     clRawFree(C, &rawProfile);
     output->size = wi.offset;
     return clTrue;
-
-    COLORIST_UNUSED(formatName);
-    COLORIST_UNUSED(writeParams);
 }

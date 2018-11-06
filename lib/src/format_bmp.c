@@ -104,6 +104,8 @@ static int maskDepth(uint32_t mask, int currentDepth, int * channelDepth, int * 
 
 struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clRaw * fileContents)
 {
+    COLORIST_UNUSED(formatName);
+
     clImage * image = NULL;
     clProfile * profile = NULL;
     const uint16_t expectedMagic = 0x4D42; // 'BM'
@@ -235,12 +237,13 @@ readCleanup:
         clProfileDestroy(C, profile);
     }
     return image;
-
-    COLORIST_UNUSED(formatName);
 }
 
 clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
 {
+    COLORIST_UNUSED(formatName);
+    COLORIST_UNUSED(writeParams);
+
     clBool writeResult = clTrue;
     clRaw rawProfile;
     uint16_t magic = 0x4D42; // 'BM'
@@ -278,8 +281,7 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     packedPixelBytes = sizeof(uint32_t) * info.bV5Width * info.bV5Height;
     packedPixels = clAllocate(packedPixelBytes);
     if (image->depth == 8) {
-        int i;
-        for (i = 0; i < pixelCount; ++i) {
+        for (int i = 0; i < pixelCount; ++i) {
             uint8_t * srcPixel = &image->pixels[i * 4];
             packedPixels[i] =
                 (srcPixel[2] << 0) +  // B
@@ -293,8 +295,7 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
         info.bV5AlphaMask = (uint32_t)(255 << 24);
     } else {
         // 10 bit
-        int i;
-        for (i = 0; i < pixelCount; ++i) {
+        for (int i = 0; i < pixelCount; ++i) {
             uint16_t * pixels = (uint16_t *)image->pixels;
             uint16_t * srcPixel = &pixels[i * 4];
             packedPixels[i] =
@@ -328,7 +329,4 @@ writeCleanup:
     }
     clRawFree(C, &rawProfile);
     return writeResult;
-
-    COLORIST_UNUSED(formatName);
-    COLORIST_UNUSED(writeParams);
 }

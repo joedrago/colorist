@@ -61,9 +61,9 @@ static toff_t seekCallback(tiffCallbackInfo * ci, toff_t off, int whence)
 
 static int closeCalllback(tiffCallbackInfo * ci)
 {
-    return 0;
-
     COLORIST_UNUSED(ci);
+
+    return 0;
 }
 
 static toff_t sizeCallback(tiffCallbackInfo * ci)
@@ -73,11 +73,11 @@ static toff_t sizeCallback(tiffCallbackInfo * ci)
 
 static int mapCallback(tiffCallbackInfo * ci, void ** base, toff_t * size)
 {
-    return 0;
-
     COLORIST_UNUSED(ci);
     COLORIST_UNUSED(base);
     COLORIST_UNUSED(size);
+
+    return 0;
 }
 
 static void unmapCallback(tiffCallbackInfo * ci, void * base, toff_t size)
@@ -89,6 +89,8 @@ static void unmapCallback(tiffCallbackInfo * ci, void * base, toff_t size)
 
 struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName, struct clRaw * input)
 {
+    COLORIST_UNUSED(formatName);
+
     clProfile * profile = NULL;
     clImage * image = NULL;
     TIFF * tiff;
@@ -188,12 +190,13 @@ readCleanup:
         clProfileDestroy(C, profile);
     }
     return image;
-
-    COLORIST_UNUSED(formatName);
 }
 
 clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
 {
+    COLORIST_UNUSED(formatName);
+    COLORIST_UNUSED(writeParams);
+
     clBool writeResult = clTrue;
     clRaw rawProfile;
     TIFF * tiff = NULL;
@@ -248,7 +251,4 @@ writeCleanup:
     }
     clRawFree(C, &rawProfile);
     return writeResult;
-
-    COLORIST_UNUSED(formatName);
-    COLORIST_UNUSED(writeParams);
 }

@@ -83,6 +83,8 @@ static void calcGamutDistances(float x, float y, const clProfilePrimaries * prim
 
 static float calcOutofSRGB(clContext * C, float x, float y, clProfilePrimaries * primaries)
 {
+    COLORIST_UNUSED(C);
+
     static const clProfilePrimaries srgbPrimaries = { { 0.64f, 0.33f }, { 0.30f, 0.60f }, { 0.15f, 0.06f }, { 0.3127f, 0.3290f } };
 
     float gamutDistances[3];
@@ -124,8 +126,6 @@ static float calcOutofSRGB(clContext * C, float x, float y, clProfilePrimaries *
         ratio = 1;
     }
     return ratio;
-
-    COLORIST_UNUSED(C);
 }
 
 static uint8_t intensityToU8(float intensity)

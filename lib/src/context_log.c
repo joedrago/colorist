@@ -17,14 +17,12 @@
 
 void clContextDefaultLog(clContext * C, const char * section, int indent, const char * format, va_list args)
 {
-    int needed;
-    char * buffer;
-    needed = vsnprintf(NULL, 0, format, args);
+    int needed = vsnprintf(NULL, 0, format, args);
     if (needed <= 0) {
         return;
     }
 
-    buffer = clAllocate(needed + 1);
+    char * buffer = clAllocate(needed + 1);
     vsnprintf(buffer, needed + 1, format, args);
     EM_ASM_({
         if (Module.coloristLog) {
@@ -40,14 +38,12 @@ void clContextDefaultLog(clContext * C, const char * section, int indent, const 
 
 void clContextDefaultLogError(clContext * C, const char * format, va_list args)
 {
-    int needed;
-    char * buffer;
-    needed = vsnprintf(NULL, 0, format, args);
+    int needed = vsnprintf(NULL, 0, format, args);
     if (needed <= 0) {
         return;
     }
 
-    buffer = clAllocate(needed + 1);
+    char * buffer = clAllocate(needed + 1);
     vsnprintf(buffer, needed + 1, format, args);
     EM_ASM_({
         if (Module.coloristError) {
@@ -65,6 +61,8 @@ void clContextDefaultLogError(clContext * C, const char * format, va_list args)
 
 void clContextDefaultLog(clContext * C, const char * section, int indent, const char * format, va_list args)
 {
+    COLORIST_UNUSED(C);
+
     if (section) {
         char spaces[10] = "         ";
         int spacesNeeded = 9 - (int)strlen(section);
@@ -82,17 +80,15 @@ void clContextDefaultLog(clContext * C, const char * section, int indent, const 
     }
     vfprintf(stdout, format, args);
     fprintf(stdout, "\n");
-
-    COLORIST_UNUSED(C);
 }
 
 void clContextDefaultLogError(clContext * C, const char * format, va_list args)
 {
+    COLORIST_UNUSED(C);
+
     fprintf(stderr, "** ERROR: ");
     vfprintf(stderr, format, args);
     fprintf(stderr, "\n");
-
-    COLORIST_UNUSED(C);
 }
 
 #endif /* ifdef COLORIST_EMSCRIPTEN */

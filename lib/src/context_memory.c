@@ -19,14 +19,14 @@
 
 void * clContextDefaultAlloc(struct clContext * C, size_t bytes)
 {
-    return calloc(1, bytes);
-
     COLORIST_UNUSED(C);
+
+    return calloc(1, bytes);
 }
 
 void clContextDefaultFree(struct clContext * C, void * ptr)
 {
-    free(ptr);
-
     COLORIST_UNUSED(C);
+
+    free(ptr);
 }

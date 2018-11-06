@@ -37,9 +37,8 @@ int clContextIdentify(clContext * C, struct cJSON * output)
             clProfileDestroy(C, profile);
         }
     } else {
-        clImage * image;
         clContextLog(C, "decode", 0, "Reading: %s (%d bytes)", C->inputFilename, clFileSize(C->inputFilename));
-        image = clContextRead(C, C->inputFilename, C->iccOverrideIn, &formatName);
+        clImage * image = clContextRead(C, C->inputFilename, C->iccOverrideIn, &formatName);
         if (image) {
             int rect[4];
             memcpy(rect, C->params.rect, sizeof(rect));

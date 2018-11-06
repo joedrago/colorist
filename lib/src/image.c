@@ -16,13 +16,13 @@
 
 void clImageLogCreate(clContext * C, int width, int height, int depth, clProfile * profile)
 {
-    if (profile == NULL) {
-        clContextLog(C, "decode", 1, "No embedded ICC profile, using SRGB");
-    }
-
     COLORIST_UNUSED(width);
     COLORIST_UNUSED(height);
     COLORIST_UNUSED(depth);
+
+    if (profile == NULL) {
+        clContextLog(C, "decode", 1, "No embedded ICC profile, using SRGB");
+    }
 }
 
 clImage * clImageCreate(clContext * C, int width, int height, int depth, clProfile * profile)
@@ -45,10 +45,6 @@ clImage * clImageCreate(clContext * C, int width, int height, int depth, clProfi
 
 clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, int w, int h, clBool keepSrc)
 {
-    clImage * dstImage = NULL;
-    int depthBytes;
-    int i, j;
-
     if (!srcImage) {
         return NULL;
     }
@@ -56,10 +52,10 @@ clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, in
         return NULL;
     }
 
-    depthBytes = clDepthToBytes(C, srcImage->depth);
-    dstImage = clImageCreate(C, w, h, srcImage->depth, srcImage->profile);
-    for (j = 0; j < h; ++j) {
-        for (i = 0; i < w; ++i) {
+    int depthBytes = clDepthToBytes(C, srcImage->depth);
+    clImage * dstImage = clImageCreate(C, w, h, srcImage->depth, srcImage->profile);
+    for (int j = 0; j < h; ++j) {
+        for (int i = 0; i < w; ++i) {
             uint8_t * src = &srcImage->pixels[4 * depthBytes * ((i + x) + (srcImage->width * (j + y)))];
             uint8_t * dst = &dstImage->pixels[4 * depthBytes * (i + (dstImage->width * j))];
             memcpy(dst, src, depthBytes * 4);
@@ -75,20 +71,16 @@ clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, in
 clImage * clImageApplyHALD(struct clContext * C, clImage * image, clImage * hald, int haldDims)
 {
     clImage * appliedImage = clImageCreate(C, image->width, image->height, image->depth, image->profile);
-    int i;
     int pixelCount = image->width * image->height;
     int haldDataCount = hald->width * hald->height;
-    float * haldData;
-    float * srcFloats;
-    float * dstFloats;
 
-    haldData = clAllocate(4 * sizeof(float) * haldDataCount);
+    float * haldData = clAllocate(4 * sizeof(float) * haldDataCount);
     clPixelMathUNormToFloat(C, hald->pixels, hald->depth, haldData, haldDataCount);
-    srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
+    float * srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
     clPixelMathUNormToFloat(C, image->pixels, image->depth, srcFloats, pixelCount);
-    dstFloats = clAllocate(4 * sizeof(float) * pixelCount);
+    float * dstFloats = clAllocate(4 * sizeof(float) * pixelCount);
 
-    for (i = 0; i < pixelCount; ++i) {
+    for (int i = 0; i < pixelCount; ++i) {
         clPixelMathHaldCLUTLookup(C, haldData, haldDims, &srcFloats[i * 4], &dstFloats[i * 4]);
     }
     clPixelMathFloatToUNorm(C, dstFloats, appliedImage->pixels, appliedImage->depth, pixelCount);
@@ -117,7 +109,7 @@ clImage * clImageResize(struct clContext * C, clImage * image, int width, int he
 
 clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y, int * w, int * h)
 {
-    int endX, endY;
+    COLORIST_UNUSED(C);
 
     if ((*x < 0) || (*y < 0) || (*w <= 0) || (*h <= 0)) {
         return clFalse;
@@ -126,20 +118,20 @@ clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y
     *x = (*x < image->width) ? *x : image->width - 1;
     *y = (*y < image->height) ? *y : image->height - 1;
 
-    endX = *x + *w;
-    endY = *y + *h;
+    int endX = *x + *w;
+    int endY = *y + *h;
     endX = (endX < image->width) ? endX : image->width;
     endY = (endY < image->height) ? endY : image->height;
 
     *w = endX - *x;
     *h = endY - *y;
     return clTrue;
-
-    COLORIST_UNUSED(C);
 }
 
 void clImageSetPixel(clContext * C, clImage * image, int x, int y, int r, int g, int b, int a)
 {
+    COLORIST_UNUSED(C);
+
     if (image->depth == 16) {
         uint16_t * pixels = (uint16_t *)image->pixels;
         uint16_t * pixel = &pixels[4 * (x + (y * image->width))];
@@ -156,14 +148,11 @@ void clImageSetPixel(clContext * C, clImage * image, int x, int y, int r, int g,
         pixel[2] = (uint8_t)b;
         pixel[3] = (uint8_t)a;
     }
-
-    COLORIST_UNUSED(C);
 }
 
 clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
 {
     clImage * rotated = NULL;
-    int i, j;
     int pixelBytes = clDepthToBytes(C, image->depth) * 4;
     switch (cwTurns) {
         case 0: // Not rotated
@@ -172,8 +161,8 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
             break;
         case 1: // 270 degrees clockwise
             rotated = clImageCreate(C, image->height, image->width, image->depth, image->profile);
-            for (j = 0; j < image->height; ++j) {
-                for (i = 0; i < image->width; ++i) {
+            for (int j = 0; j < image->height; ++j) {
+                for (int i = 0; i < image->width; ++i) {
                     uint8_t * srcPixel = &image->pixels[pixelBytes * (i + (j * image->width))];
                     uint8_t * dstPixel = &rotated->pixels[pixelBytes * ((rotated->width - 1 - j) + (i * rotated->width))];
                     memcpy(dstPixel, srcPixel, pixelBytes);
@@ -182,8 +171,8 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
             break;
         case 2: // 180 degrees clockwise
             rotated = clImageCreate(C, image->width, image->height, image->depth, image->profile);
-            for (j = 0; j < image->height; ++j) {
-                for (i = 0; i < image->width; ++i) {
+            for (int j = 0; j < image->height; ++j) {
+                for (int i = 0; i < image->width; ++i) {
                     uint8_t * srcPixel = &image->pixels[pixelBytes * (i + (j * image->width))];
                     uint8_t * dstPixel = &rotated->pixels[pixelBytes * ((rotated->width - 1 - i) + ((rotated->height - 1 - j) * rotated->width))];
                     memcpy(dstPixel, srcPixel, pixelBytes);
@@ -192,8 +181,8 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
             break;
         case 3: // 270 degrees clockwise
             rotated = clImageCreate(C, image->height, image->width, image->depth, image->profile);
-            for (j = 0; j < image->height; ++j) {
-                for (i = 0; i < image->width; ++i) {
+            for (int j = 0; j < image->height; ++j) {
+                for (int i = 0; i < image->width; ++i) {
                     uint8_t * srcPixel = &image->pixels[pixelBytes * (i + (j * image->width))];
                     uint8_t * dstPixel = &rotated->pixels[pixelBytes * (j + ((rotated->height - 1 - i) * rotated->width))];
                     memcpy(dstPixel, srcPixel, pixelBytes);
@@ -209,7 +198,6 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount
     Timer t;
     clImage * dstImage = NULL;
     clTransform * transform = NULL;
-    float luminanceScale;
 
     // Create destination image
     dstImage = clImageCreate(C, width, height, depth, dstProfile);
@@ -223,7 +211,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount
     // Create the transform
     transform = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, srcImage->depth, dstImage->profile, CL_XF_RGBA, depth, tonemap);
     clTransformPrepare(C, transform);
-    luminanceScale = clTransformGetLuminanceScale(C, transform);
+    float luminanceScale = clTransformGetLuminanceScale(C, transform);
 
     // Perform conversion
     clContextLog(C, "convert", 0, "Converting (%s, lum scale %gx, %s)...", clTransformCMMName(C, transform), luminanceScale, transform->tonemapEnabled ? "tonemap" : "clip");
@@ -238,14 +226,12 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount
 
 void clImageColorGrade(struct clContext * C, clImage * image, int taskCount, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose)
 {
-    float * floatPixels = NULL;
-    int pixelCount = image->width * image->height;
     int srcLuminance = 0;
-
     clProfileQuery(C, image->profile, NULL, NULL, &srcLuminance);
     srcLuminance = (srcLuminance != 0) ? srcLuminance : COLORIST_DEFAULT_LUMINANCE;
 
-    floatPixels = clAllocate(4 * sizeof(float) * pixelCount);
+    int pixelCount = image->width * image->height;
+    float * floatPixels = clAllocate(4 * sizeof(float) * pixelCount);
     clPixelMathUNormToFloat(C, image->pixels, image->depth, floatPixels, pixelCount);
     clPixelMathColorGrade(C, taskCount, image->profile, floatPixels, pixelCount, image->width, srcLuminance, dstColorDepth, outLuminance, outGamma, verbose);
     clFree(floatPixels);
@@ -262,10 +248,10 @@ void clImageDestroy(clContext * C, clImage * image)
 
 int clDepthToBytes(clContext * C, int depth)
 {
+    COLORIST_UNUSED(C);
     COLORIST_ASSERT(depth <= 16);
+
     if (depth > 8)
         return 2;
     return 1;
-
-    COLORIST_UNUSED(C);
 }

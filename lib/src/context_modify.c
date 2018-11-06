@@ -14,9 +14,6 @@
 int clContextModify(clContext * C)
 {
     clProfile * profile = NULL;
-    clProfilePrimaries primaries;
-    clProfileCurve curve;
-    int luminance = 0;
 
     clContextLog(C, "action", 0, "Modify: %s -> %s", C->inputFilename, C->outputFilename);
 
@@ -26,6 +23,10 @@ int clContextModify(clContext * C)
         goto cleanup;
     }
     clContextLog(C, "modify", 0, "Loaded profile: %s", C->inputFilename);
+
+    clProfilePrimaries primaries;
+    clProfileCurve curve;
+    int luminance = 0;
     if (!clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
         clContextLogError(C, "Cannot query ICC profile: %s", C->outputFilename);
         goto cleanup;

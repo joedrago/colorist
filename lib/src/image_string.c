@@ -720,6 +720,8 @@ parseCleanup:
 
 static void getColorFromRange(struct clContext * C, clToken * t, int reqIndex, clColor * outColor)
 {
+    COLORIST_UNUSED(C);
+
     float p;
     float diff;
 
@@ -739,8 +741,6 @@ static void getColorFromRange(struct clContext * C, clToken * t, int reqIndex, c
     if (outColor->depth < t->end.depth) {
         outColor->depth = t->end.depth;
     }
-
-    COLORIST_UNUSED(C);
 }
 
 static void getRawColor(struct clContext * C, clToken * tokens, int reqIndex, clColor * outColor)

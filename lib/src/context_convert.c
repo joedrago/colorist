@@ -41,8 +41,6 @@ int clContextConvert(clContext * C)
     struct ImageInfo srcInfo;
     struct ImageInfo dstInfo;
 
-    int crop[4];
-
     // Hald CLUT
     clImage * haldImage = NULL;
     int haldDims = 0;
@@ -111,6 +109,7 @@ int clContextConvert(clContext * C)
         }
     }
 
+    int crop[4];
     memcpy(crop, C->params.rect, 4 * sizeof(int));
     if (clImageAdjustRect(C, srcImage, &crop[0], &crop[1], &crop[2], &crop[3])) {
         timerStart(&t);
@@ -209,11 +208,11 @@ int clContextConvert(clContext * C)
 
     // Override depth
     {
-        int bestDepth;
         if (params.bpp > 0) {
             dstInfo.depth = params.bpp;
         }
-        bestDepth = clFormatBestDepth(C, params.formatName, dstInfo.depth);
+
+        int bestDepth = clFormatBestDepth(C, params.formatName, dstInfo.depth);
         if (dstInfo.depth != bestDepth) {
             clContextLog(C, "validate", 0, "Overriding output depth %d-bit -> %d-bit (format limitations)", dstInfo.depth, bestDepth);
             dstInfo.depth = bestDepth;
@@ -224,11 +223,10 @@ int clContextConvert(clContext * C)
     // Resize, if necessary
 
     if (((dstInfo.width != srcInfo.width) || (dstInfo.height != srcInfo.height))) {
-        clImage * resizedImage;
         clContextLog(C, "resize", 0, "Resizing %dx%d -> [filter:%s] -> %dx%d", srcInfo.width, srcInfo.height, clFilterToString(C, params.resizeFilter), dstInfo.width, dstInfo.height);
         timerStart(&t);
 
-        resizedImage = clImageResize(C, srcImage, dstInfo.width, dstInfo.height, params.resizeFilter);
+        clImage * resizedImage = clImageResize(C, srcImage, dstInfo.width, dstInfo.height, params.resizeFilter);
         if (!resizedImage) {
             clContextLogError(C, "Failed to resize image");
             FAIL();
@@ -267,8 +265,6 @@ int clContextConvert(clContext * C)
             (params.copyright)                                                           // custom copyright
             )
         {
-            char * dstDescription = NULL;
-
             // Primaries
             if ((dstInfo.primaries.red[0] <= 0.0f) || (dstInfo.primaries.red[1] <= 0.0f) ||
                 (dstInfo.primaries.green[0] <= 0.0f) || (dstInfo.primaries.green[1] <= 0.0f) ||
@@ -297,6 +293,7 @@ int clContextConvert(clContext * C)
             }
 
             // Description
+            char * dstDescription = NULL;
             if (params.description) {
                 dstDescription = clContextStrdup(C, params.description);
             } else {
@@ -325,12 +322,10 @@ int clContextConvert(clContext * C)
     }
 
     if (haldImage) {
-        clImage * appliedImage;
-
         clContextLog(C, "hald", 0, "Performing Hald CLUT postprocessing...");
         timerStart(&t);
 
-        appliedImage = clImageApplyHALD(C, dstImage, haldImage, haldDims);
+        clImage * appliedImage = clImageApplyHALD(C, dstImage, haldImage, haldDims);
         if (!appliedImage) {
             clContextLogError(C, "Failed to apply HALD");
             FAIL();
