@@ -86,12 +86,14 @@ static void deriveXYZMatrix(struct clContext * C, clProfilePrimaries * primaries
     gb_mat3_mul(toXYZ, &P, &D);
     gb_mat3_transpose(toXYZ);
     DEBUG_PRINT_MATRIX("Cxr", toXYZ);
+
+    COLORIST_UNUSED(C);
 }
 
 static clBool derivePrimariesAndXTF(struct clContext * C, struct clProfile * profile, clProfilePrimaries * outPrimaries, clTransformTransferFunction * outXTF, float * outGamma)
 {
     if (profile) {
-        clProfileCurve curve = { 0 };
+        clProfileCurve curve;
         int luminance = 0;
 
         if (clProfileHasPQSignature(C, profile, outPrimaries)) {
@@ -478,7 +480,6 @@ static void transformRGB8ToFloat(struct clContext * C, struct clTransform * tran
     for (i = 0; i < pixelCount; ++i) {
         float tmpPixel[4];
         uint8_t * srcPixel = &srcPixels[i * srcPixelBytes];
-        float * dstPixel = (float *)&dstPixels[i * dstPixelBytes];
         tmpPixel[0] = (float)srcPixel[0] * srcRescale;
         tmpPixel[1] = (float)srcPixel[1] * srcRescale;
         tmpPixel[2] = (float)srcPixel[2] * srcRescale;
@@ -502,7 +503,6 @@ static void transformRGB16ToFloat(struct clContext * C, struct clTransform * tra
     for (i = 0; i < pixelCount; ++i) {
         float tmpPixel[4];
         uint16_t * srcPixel = (uint16_t *)&srcPixels[i * srcPixelBytes];
-        float * dstPixel = (float *)&dstPixels[i * dstPixelBytes];
         tmpPixel[0] = (float)srcPixel[0] * srcRescale;
         tmpPixel[1] = (float)srcPixel[1] * srcRescale;
         tmpPixel[2] = (float)srcPixel[2] * srcRescale;
@@ -722,6 +722,8 @@ static void reformatFloatToFloat(struct clContext * C, uint8_t * srcPixels, int 
             }
         }
     }
+
+    COLORIST_UNUSED(C);
 }
 
 static void reformatFloatToRGB8(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
@@ -744,6 +746,8 @@ static void reformatFloatToRGB8(struct clContext * C, uint8_t * srcPixels, int s
             }
         }
     }
+
+    COLORIST_UNUSED(C);
 }
 
 static void reformatFloatToRGB16(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int dstDepth, int pixelCount)
@@ -767,6 +771,8 @@ static void reformatFloatToRGB16(struct clContext * C, uint8_t * srcPixels, int 
             }
         }
     }
+
+    COLORIST_UNUSED(C);
 }
 
 static void reformatRGB8ToFloat(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
@@ -789,6 +795,8 @@ static void reformatRGB8ToFloat(struct clContext * C, uint8_t * srcPixels, int s
             }
         }
     }
+
+    COLORIST_UNUSED(C);
 }
 
 static void reformatRGB16ToFloat(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, int srcDepth, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
@@ -812,6 +820,8 @@ static void reformatRGB16ToFloat(struct clContext * C, uint8_t * srcPixels, int 
             }
         }
     }
+
+    COLORIST_UNUSED(C);
 }
 
 static void reformatRGB8ToRGB8(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
@@ -832,6 +842,8 @@ static void reformatRGB8ToRGB8(struct clContext * C, uint8_t * srcPixels, int sr
             }
         }
     }
+
+    COLORIST_UNUSED(C);
 }
 
 static void reformatRGB16ToRGB16(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, int srcDepth, uint8_t * dstPixels, int dstPixelBytes, int dstDepth, int pixelCount)
@@ -857,6 +869,8 @@ static void reformatRGB16ToRGB16(struct clContext * C, uint8_t * srcPixels, int 
             }
         }
     }
+
+    COLORIST_UNUSED(C);
 }
 
 static void reformatRGB8ToRGB16(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int dstDepth, int pixelCount)
@@ -881,6 +895,8 @@ static void reformatRGB8ToRGB16(struct clContext * C, uint8_t * srcPixels, int s
             }
         }
     }
+
+    COLORIST_UNUSED(C);
 }
 
 static void reformatRGB16ToRGB8(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, int srcDepth, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
@@ -904,6 +920,8 @@ static void reformatRGB16ToRGB8(struct clContext * C, uint8_t * srcPixels, int s
             }
         }
     }
+
+    COLORIST_UNUSED(C);
 }
 
 // ----------------------------------------------------------------------------
@@ -1026,6 +1044,8 @@ void clTransformXYZToXYY(struct clContext * C, float * dstXYY, float * srcXYZ, f
     dstXYY[0] = srcXYZ[0] / sum;
     dstXYY[1] = srcXYZ[1] / sum;
     dstXYY[2] = srcXYZ[1];
+
+    COLORIST_UNUSED(C);
 }
 
 void clTransformXYYToXYZ(struct clContext * C, float * dstXYZ, float * srcXYY)
@@ -1039,6 +1059,8 @@ void clTransformXYYToXYZ(struct clContext * C, float * dstXYZ, float * srcXYY)
     dstXYZ[0] = (srcXYY[0] * srcXYY[2]) / srcXYY[1];
     dstXYZ[1] = srcXYY[2];
     dstXYZ[2] = ((1 - srcXYY[0] - srcXYY[1]) * srcXYY[2]) / srcXYY[1];
+
+    COLORIST_UNUSED(C);
 }
 
 clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, struct clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth, clTonemap tonemap)
@@ -1101,6 +1123,8 @@ clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format, 
             return depth == 32;
     }
     return clFalse;
+
+    COLORIST_UNUSED(C);
 }
 
 int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format, int depth)

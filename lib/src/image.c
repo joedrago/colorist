@@ -19,6 +19,10 @@ void clImageLogCreate(clContext * C, int width, int height, int depth, clProfile
     if (profile == NULL) {
         clContextLog(C, "decode", 1, "No embedded ICC profile, using SRGB");
     }
+
+    COLORIST_UNUSED(width);
+    COLORIST_UNUSED(height);
+    COLORIST_UNUSED(depth);
 }
 
 clImage * clImageCreate(clContext * C, int width, int height, int depth, clProfile * profile)
@@ -130,6 +134,8 @@ clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y
     *w = endX - *x;
     *h = endY - *y;
     return clTrue;
+
+    COLORIST_UNUSED(C);
 }
 
 void clImageSetPixel(clContext * C, clImage * image, int x, int y, int r, int g, int b, int a)
@@ -150,6 +156,8 @@ void clImageSetPixel(clContext * C, clImage * image, int x, int y, int r, int g,
         pixel[2] = (uint8_t)b;
         pixel[3] = (uint8_t)a;
     }
+
+    COLORIST_UNUSED(C);
 }
 
 clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
@@ -258,4 +266,6 @@ int clDepthToBytes(clContext * C, int depth)
     if (depth > 8)
         return 2;
     return 1;
+
+    COLORIST_UNUSED(C);
 }

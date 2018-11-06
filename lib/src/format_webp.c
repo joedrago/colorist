@@ -75,6 +75,8 @@ readCleanup:
         clProfileDestroy(C, profile);
     }
     return image;
+
+    COLORIST_UNUSED(formatName);
 }
 
 clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
@@ -157,4 +159,6 @@ writeCleanup:
     WebPPictureFree(&picture);
     clRawFree(C, &rawProfile);
     return writeResult;
+
+    COLORIST_UNUSED(formatName);
 }

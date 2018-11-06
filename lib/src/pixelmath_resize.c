@@ -35,4 +35,6 @@ void clPixelMathResize(struct clContext * C, int srcW, int srcH, float * srcPixe
             STBIR_EDGE_CLAMP, filter, STBIR_COLORSPACE_LINEAR,
             NULL);
     }
+
+    COLORIST_UNUSED(C);
 }

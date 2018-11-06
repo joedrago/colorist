@@ -59,6 +59,10 @@ endif()
 add_subdirectory(ext)
 include_directories(${COLORIST_EXT_INCLUDES})
 
+if(APPLE)
+  add_definitions(-Werror -Wall -Wextra)
+endif()
+
 add_subdirectory(lib)
 include_directories(lib/include)
 

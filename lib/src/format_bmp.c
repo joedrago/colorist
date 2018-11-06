@@ -214,7 +214,6 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
         // 10 bit
         int i;
         for (i = 0; i < pixelCount; ++i) {
-            uint8_t * srcPixel = (uint8_t *)&packedPixels[i];
             uint16_t * pixels = (uint16_t *)image->pixels;
             uint16_t * dstPixel = &pixels[i * 4];
             dstPixel[0] = (packedPixels[i] & info.bV5RedMask) >> rShift;
@@ -232,6 +231,8 @@ readCleanup:
         clProfileDestroy(C, profile);
     }
     return image;
+
+    COLORIST_UNUSED(formatName);
 }
 
 clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
@@ -323,4 +324,7 @@ writeCleanup:
     }
     clRawFree(C, &rawProfile);
     return writeResult;
+
+    COLORIST_UNUSED(formatName);
+    COLORIST_UNUSED(writeParams);
 }

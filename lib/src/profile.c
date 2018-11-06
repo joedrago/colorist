@@ -94,8 +94,8 @@ clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, int iccLen
 
     // See if colorist CMM can handle this profile
     {
-        clProfilePrimaries primaries = { 0 };
-        clProfileCurve curve = { 0 };
+        clProfilePrimaries primaries;
+        clProfileCurve curve;
         int luminance = 0;
         profile->ccmm = clFalse; // Start with unfriendly
         if (clProfileHasPQSignature(C, profile, NULL)) {
@@ -560,6 +560,8 @@ clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * 
     }
     // TODO: fallback to doing a double clProfilePack and comparison? tag comparisons?
     return clFalse;
+
+    COLORIST_UNUSED(C);
 }
 
 clBool clProfileUsesCCMM(struct clContext * C, clProfile * profile)
@@ -595,6 +597,8 @@ clBool clProfilePrimariesMatch(struct clContext * C, clProfilePrimaries * p1, cl
            matchesTo3RoundedPlaces(p1->blue[1], p2->blue[1]) &&
            matchesTo3RoundedPlaces(p1->white[0], p2->white[0]) &&
            matchesTo3RoundedPlaces(p1->white[1], p2->white[1]);
+
+    COLORIST_UNUSED(C);
 }
 
 char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance)

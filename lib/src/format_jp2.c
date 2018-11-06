@@ -19,14 +19,18 @@ static void error_callback(const char * msg, void * client_data)
 {
     clContext * C = (clContext *)client_data;
     clContextLogError(C, "%s", msg);
+
+    COLORIST_UNUSED(client_data);
 }
 static void warning_callback(const char * msg, void * client_data)
 {
-    (void)client_data;
+    COLORIST_UNUSED(msg);
+    COLORIST_UNUSED(client_data);
 }
 static void info_callback(const char * msg, void * client_data)
 {
-    (void)client_data;
+    COLORIST_UNUSED(msg);
+    COLORIST_UNUSED(client_data);
 }
 
 struct opjCallbackInfo
@@ -225,7 +229,10 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
     opj_stream_destroy(opjStream);
     opj_destroy_codec(opjCodec);
     opj_image_destroy(opjImage);
+
     return image;
+
+    COLORIST_UNUSED(formatName);
 }
 
 clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)

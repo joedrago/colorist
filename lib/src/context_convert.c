@@ -16,8 +16,6 @@
 
 #define FAIL() { returnCode = 1; goto convertCleanup; }
 
-static int fileSize(const char * filename);
-
 struct ImageInfo
 {
     int width;

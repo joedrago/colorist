@@ -9,6 +9,10 @@
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
 
+if(APPLE)
+  add_definitions(-Wno-everything)
+endif()
+
 # Currently not building zlib or libpng because openjp2 does it already.
 # I should stop using theirs and build my own, and somehow convince
 # openjpeg to use what I use.

@@ -153,4 +153,7 @@ int main(int argc, char * argv[])
 
     printf("colorist-roundtrip Complete.\n");
     return 0;
+
+    COLORIST_UNUSED(argc);
+    COLORIST_UNUSED(argv);
 }

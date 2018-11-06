@@ -133,6 +133,8 @@ struct clImage * clFormatReadPNG(struct clContext * C, const char *formatName, s
     png_destroy_read_struct(&png, &info, NULL);
     clFree(rowPointers);
     return image;
+
+    COLORIST_UNUSED(formatName);
 }
 
 struct writeInfo
@@ -216,4 +218,7 @@ clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char
     clRawFree(C, &rawProfile);
     output->size = wi.offset;
     return clTrue;
+
+    COLORIST_UNUSED(formatName);
+    COLORIST_UNUSED(writeParams);
 }

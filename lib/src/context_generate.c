@@ -19,7 +19,6 @@ int clContextGenerate(clContext * C, struct cJSON * output)
     clProfileCurve curve;
     int luminance;
     clProfile * dstProfile = NULL;
-    clImage * image = NULL;
     const char * outputFileFormat = C->params.formatName;
     const char * action = "generate";
 

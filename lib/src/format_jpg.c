@@ -100,6 +100,8 @@ struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, 
     jpeg_finish_decompress(&cinfo);
     jpeg_destroy_decompress(&cinfo);
     return image;
+
+    COLORIST_UNUSED(formatName);
 }
 
 clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
@@ -161,6 +163,8 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
     clFree(jpegPixels);
     clRawFree(C, &rawProfile);
     return (output->size > 0) ? clTrue : clFalse;
+
+    COLORIST_UNUSED(formatName);
 }
 
 // ----------------------------------------------------------------------------

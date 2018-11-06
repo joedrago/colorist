@@ -95,7 +95,7 @@ char * clContextWriteURI(struct clContext * C, clImage * image, const char * for
     clRaw dst;
     char * b64;
     int b64Len;
-    char * output;
+    char * output = NULL;
     clWriteParams writeParams;
 
     clFormat * format = clContextFindFormat(C, formatName);

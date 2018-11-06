@@ -44,6 +44,8 @@ clAction clActionFromString(struct clContext * C, const char * str)
     if (!strcmp(str, "modify")) return CL_ACTION_MODIFY;
     if (!strcmp(str, "report")) return CL_ACTION_REPORT;
     return CL_ACTION_ERROR;
+
+    COLORIST_UNUSED(C);
 }
 
 const char * clActionToString(struct clContext * C, clAction action)
@@ -61,6 +63,8 @@ const char * clActionToString(struct clContext * C, clAction action)
             break;
     }
     return "Unknown";
+
+    COLORIST_UNUSED(C);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -170,6 +174,8 @@ clTonemap clTonemapFromString(struct clContext * C, const char * str)
     if (!strcmp(str, "disabled")) return CL_TONEMAP_OFF;
 
     return CL_TONEMAP_AUTO;
+
+    COLORIST_UNUSED(C);
 }
 
 const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
@@ -181,6 +187,8 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
             break;
     }
     return "auto";
+
+    COLORIST_UNUSED(C);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -196,6 +204,8 @@ clFilter clFilterFromString(struct clContext * C, const char * str)
     if (!strcmp(str, "mitchell")) return CL_FILTER_MITCHELL;
     if (!strcmp(str, "nearest")) return CL_FILTER_NEAREST;
     return CL_FILTER_INVALID;
+
+    COLORIST_UNUSED(C);
 }
 
 const char * clFilterToString(struct clContext * C, clFilter filter)
@@ -213,6 +223,8 @@ const char * clFilterToString(struct clContext * C, clFilter filter)
             break;
     }
     return "Invalid";
+
+    COLORIST_UNUSED(C);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -226,6 +238,8 @@ static void clConversionParamsSetOutputProfileDefaults(clContext * C, clConversi
     params->gamma = 0;
     params->luminance = 0;
     memset(params->primaries, 0, sizeof(float) * 8);
+
+    COLORIST_UNUSED(C);
 }
 
 void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
@@ -247,6 +261,8 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->resizeFilter = CL_FILTER_AUTO;
     params->stripTags = NULL;
     params->tonemap = CL_TONEMAP_AUTO;
+
+    COLORIST_UNUSED(C);
 }
 
 clContext * clContextCreate(clContextSystem * system)
@@ -352,6 +368,8 @@ clBool clContextGetStockPrimaries(struct clContext * C, const char * name, struc
         }
     }
     return clFalse;
+
+    COLORIST_UNUSED(C);
 }
 
 clBool clContextGetRawStockPrimaries(struct clContext * C, const char * name, float outPrimaries[8])
@@ -364,6 +382,8 @@ clBool clContextGetRawStockPrimaries(struct clContext * C, const char * name, fl
         }
     }
     return clFalse;
+
+    COLORIST_UNUSED(C);
 }
 
 // ------------------------------------------------------------------------------------------------

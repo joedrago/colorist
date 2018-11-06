@@ -123,8 +123,9 @@ static float calcOutofSRGB(clContext * C, float x, float y, clProfilePrimaries *
         // close enough
         ratio = 1;
     }
-
     return ratio;
+
+    COLORIST_UNUSED(C);
 }
 
 static uint8_t intensityToU8(float intensity)

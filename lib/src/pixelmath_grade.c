@@ -106,7 +106,6 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
 
         pixel = pixels;
         for (i = 0; i < pixelCount; ++i) {
-            clBool foundBigger = clFalse;
             if (maxChannel < pixel[0]) {
                 indexWithMaxChannel = i;
                 maxChannel = pixel[0];

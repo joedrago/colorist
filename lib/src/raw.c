@@ -28,13 +28,6 @@ void clRawRealloc(struct clContext * C, clRaw * raw, uint32_t newSize)
     }
 }
 
-void clRawFill(struct clContext * C, clRaw * raw, uint8_t fill)
-{
-    if (raw->ptr && raw->size) {
-        memset(raw->ptr, raw->size, fill);
-    }
-}
-
 void clRawClone(struct clContext * C, clRaw * dst, const clRaw * src)
 {
     clRawSet(C, dst, src->ptr, src->size);

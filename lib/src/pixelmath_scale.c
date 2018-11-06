@@ -21,6 +21,8 @@ void clPixelMathUNormToFloat(struct clContext * C, uint8_t * inPixels, int inDep
             outChannel[i] = inChannel[i] / maxChannel;
         }
     }
+
+    COLORIST_UNUSED(C);
 }
 
 void clPixelMathFloatToUNorm(struct clContext * C, float * inPixels, uint8_t * outPixels, int outDepth, int pixelCount)
@@ -42,6 +44,8 @@ void clPixelMathFloatToUNorm(struct clContext * C, float * inPixels, uint8_t * o
             outChannel[i] = (uint8_t)clPixelMathRoundf(inChannel[i] * maxChannel);
         }
     }
+
+    COLORIST_UNUSED(C);
 }
 
 void clPixelMathScaleLuminance(struct clContext * C, float * pixels, int pixelCount, float luminanceScale, clBool tonemap)
@@ -78,6 +82,8 @@ void clPixelMathScaleLuminance(struct clContext * C, float * pixels, int pixelCo
             pixel += 4;
         }
     }
+
+    COLORIST_UNUSED(C);
 }
 
 // If you're closer than this to a color, just use that color exclusively
@@ -160,4 +166,6 @@ void clPixelMathHaldCLUTLookup(struct clContext * C, float * haldData, int haldD
 
     // Copy alpha directly
     dst[3] = src[3];
+
+    COLORIST_UNUSED(C);
 }

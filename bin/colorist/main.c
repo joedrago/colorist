@@ -18,6 +18,11 @@
 
 static void clContextSilentLog(clContext * C, const char * section, int indent, const char * format, va_list args)
 {
+    COLORIST_UNUSED(C);
+    COLORIST_UNUSED(section);
+    COLORIST_UNUSED(indent);
+    COLORIST_UNUSED(format);
+    COLORIST_UNUSED(args);
 }
 
 static cJSON * errorJSON = NULL;

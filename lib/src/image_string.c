@@ -534,7 +534,7 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
 
 static clImage * clImageParseStripe(struct clContext * C, const char * s, int depth, struct clProfile * profile, int luminance, struct clTransform * fromXYZ, int defaultW, int defaultH)
 {
-    char * sanitizedString;
+    char * sanitizedString = NULL;
     clImage * image = NULL;
     clToken * tokens = NULL;
     clToken * lastToken = NULL;
@@ -742,11 +742,12 @@ static void getColorFromRange(struct clContext * C, clToken * t, int reqIndex, c
     if (outColor->depth < t->end.depth) {
         outColor->depth = t->end.depth;
     }
+
+    COLORIST_UNUSED(C);
 }
 
 static void getRawColor(struct clContext * C, clToken * tokens, int reqIndex, clColor * outColor)
 {
-    int index = 0;
     int colorStart = 0;
     int colorEnd = 0;
     clToken * t;

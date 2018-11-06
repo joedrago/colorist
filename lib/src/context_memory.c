@@ -20,9 +20,13 @@
 void * clContextDefaultAlloc(struct clContext * C, int bytes)
 {
     return calloc(1, bytes);
+
+    COLORIST_UNUSED(C);
 }
 
 void clContextDefaultFree(struct clContext * C, void * ptr)
 {
     free(ptr);
+
+    COLORIST_UNUSED(C);
 }

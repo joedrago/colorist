@@ -32,6 +32,8 @@ int clFileSize(const char * filename);
 #define COLORIST_FAILURE1(FMT, A)
 #endif
 
+#define COLORIST_UNUSED(V) ((void)V)
+
 // Yes, clamp macros are nasty. Do not use them.
 #define CL_CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 

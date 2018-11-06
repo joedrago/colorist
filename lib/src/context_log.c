@@ -82,6 +82,8 @@ void clContextDefaultLog(clContext * C, const char * section, int indent, const 
     }
     vfprintf(stdout, format, args);
     fprintf(stdout, "\n");
+
+    COLORIST_UNUSED(C);
 }
 
 void clContextDefaultLogError(clContext * C, const char * format, va_list args)
@@ -89,6 +91,8 @@ void clContextDefaultLogError(clContext * C, const char * format, va_list args)
     fprintf(stderr, "** ERROR: ");
     vfprintf(stderr, format, args);
     fprintf(stderr, "\n");
+
+    COLORIST_UNUSED(C);
 }
 
 #endif /* ifdef COLORIST_EMSCRIPTEN */
