@@ -94,7 +94,7 @@ char * clContextWriteURI(struct clContext * C, clImage * image, const char * for
 {
     clRaw dst;
     char * b64;
-    int b64Len;
+    size_t b64Len;
     char * output = NULL;
     clWriteParams writeParams;
 
@@ -111,7 +111,7 @@ char * clContextWriteURI(struct clContext * C, clImage * image, const char * for
     if (format->writeFunc) {
         if (format->writeFunc(C, image, formatName, &dst, &writeParams)) {
             char prefix[512];
-            int prefixLen = sprintf(prefix, "data:%s;base64,", format->mimeType);
+            size_t prefixLen = sprintf(prefix, "data:%s;base64,", format->mimeType);
 
             b64 = clRawToBase64(C, &dst);
             if (!b64) {

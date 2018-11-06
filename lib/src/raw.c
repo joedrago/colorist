@@ -13,15 +13,15 @@
 #include "zlib.h"
 #include <string.h>
 
-void clRawRealloc(struct clContext * C, clRaw * raw, uint32_t newSize)
+void clRawRealloc(struct clContext * C, clRaw * raw, size_t newSize)
 {
     if (raw->size != newSize) {
         uint8_t * old = raw->ptr;
-        uint32_t oldSize = raw->size;
+        size_t oldSize = raw->size;
         raw->ptr = clAllocate(newSize);
         raw->size = newSize;
         if (oldSize) {
-            uint32_t bytesToCopy = (oldSize < raw->size) ? oldSize : raw->size;
+            size_t bytesToCopy = (oldSize < raw->size) ? oldSize : raw->size;
             memcpy(raw->ptr, old, bytesToCopy);
             clFree(old);
         }
@@ -38,12 +38,14 @@ clBool clRawDeflate(struct clContext * C, clRaw * dst, const clRaw * src)
     clBool ret = clTrue;
     z_stream z;
     int err;
-    int maxDeflatedSize = src->size + 6 + (((src->size + 16383) / 16384) * 5);
+    size_t maxDeflatedSize = src->size + 6 + (((src->size + 16383) / 16384) * 5);
     clRawRealloc(C, dst, maxDeflatedSize);
 
     memset(&z, 0, sizeof(z));
-    z.total_in = z.avail_in = src->size;
-    z.total_out = z.avail_out = dst->size;
+    z.total_in = (uLong)src->size;
+    z.avail_in = (uInt)src->size;
+    z.total_out = (uLong)dst->size;
+    z.avail_out = (uInt)dst->size;
     z.next_in = src->ptr;
     z.next_out = dst->ptr;
 
@@ -133,7 +135,7 @@ char * clRawToBase64(struct clContext * C, clRaw * src)
     return (char *)out;
 }
 
-void clRawSet(struct clContext * C, clRaw * raw, const uint8_t * data, uint32_t len)
+void clRawSet(struct clContext * C, clRaw * raw, const uint8_t * data, size_t len)
 {
     if (len) {
         clRawRealloc(C, raw, len);

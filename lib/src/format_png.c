@@ -18,7 +18,7 @@ struct readInfo
 {
     struct clContext * C;
     clRaw * src;
-    uint32_t offset;
+    png_size_t offset;
 };
 
 static void readCallback(png_structp png, png_bytep data, png_size_t length)
@@ -141,14 +141,14 @@ struct writeInfo
 {
     struct clContext * C;
     clRaw * dst;
-    uint32_t offset;
+    png_size_t offset;
 };
 
 static void writeCallback(png_structp png, png_bytep data, png_size_t length)
 {
     struct writeInfo * wi = (struct writeInfo *)png_get_io_ptr(png);
     if ((wi->offset + length) > wi->dst->size) {
-        uint32_t newSize = wi->dst->size;
+        size_t newSize = wi->dst->size;
         if (!newSize)
             newSize = 8;
         do {
@@ -193,7 +193,7 @@ clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char
         PNG_COMPRESSION_TYPE_DEFAULT,
         PNG_FILTER_TYPE_DEFAULT
         );
-    png_set_iCCP(png, info, image->profile->description, 0, rawProfile.ptr, rawProfile.size);
+    png_set_iCCP(png, info, image->profile->description, 0, rawProfile.ptr, (png_uint_32)rawProfile.size);
     png_write_info(png, info);
 
     rowPointers = (png_bytep *)clAllocate(sizeof(png_bytep) * image->height);

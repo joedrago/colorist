@@ -56,7 +56,7 @@ struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, 
 
     jpeg_create_decompress(&cinfo);
     setup_read_icc_profile(&cinfo);
-    jpeg_mem_src(&cinfo, input->ptr, input->size);
+    jpeg_mem_src(&cinfo, input->ptr, (unsigned long)input->size);
     jpeg_read_header(&cinfo, TRUE);
     jpeg_start_decompress(&cinfo);
 
@@ -141,7 +141,7 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
     if (!clProfilePack(C, image->profile, &rawProfile)) {
         return clFalse;
     }
-    write_icc_profile(&cinfo, rawProfile.ptr, rawProfile.size);
+    write_icc_profile(&cinfo, rawProfile.ptr, (unsigned int)rawProfile.size);
 
     row_stride = image->width * 3;
     while (cinfo.next_scanline < cinfo.image_height) {

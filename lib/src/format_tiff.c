@@ -18,7 +18,7 @@ typedef struct tiffCallbackInfo
 {
     struct clContext * C;
     clRaw * raw;
-    uint32_t offset;
+    toff_t offset;
 } tiffCallbackInfo;
 
 static tmsize_t readCallback(tiffCallbackInfo *ci, void* ptr, tmsize_t size)
@@ -34,7 +34,7 @@ static tmsize_t readCallback(tiffCallbackInfo *ci, void* ptr, tmsize_t size)
 static tmsize_t writeCallback(tiffCallbackInfo *ci, void* ptr, tmsize_t size)
 {
     if ((ci->offset + size) > ci->raw->size) {
-        uint32_t newSize = ci->offset + size;
+        tmsize_t newSize = ci->offset + size;
         clRawRealloc(ci->C, ci->raw, newSize);
     }
     memcpy(ci->raw->ptr + ci->offset, ptr, size);

@@ -106,7 +106,7 @@ void clProfileDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clP
         cJSON * jsonCurve;
 
         cJSON_AddStringToObject(jsonOutput, "description", profile->description);
-        cJSON_AddNumberToObject(jsonOutput, "size", clProfileSize(C, profile));
+        cJSON_AddNumberToObject(jsonOutput, "size", (double)clProfileSize(C, profile));
 
         tempStr = clProfileGetMLU(C, profile, "cprt", "en", "US");
         if (tempStr) {

@@ -61,10 +61,10 @@ clProfile * clProfileClone(struct clContext * C, clProfile * profile)
     return clone;
 }
 
-clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, int iccLen, const char * description)
+clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, size_t iccLen, const char * description)
 {
     clProfile * profile = clAllocateStruct(clProfile);
-    profile->handle = cmsOpenProfileFromMemTHR(C->lcms, icc, iccLen);
+    profile->handle = cmsOpenProfileFromMemTHR(C->lcms, icc, (cmsUInt32Number)iccLen);
     if (!profile->handle) {
         clFree(profile);
         return NULL;
@@ -88,7 +88,7 @@ clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, int iccLen
     {
         MD5_CTX ctx;
         MD5_Init(&ctx);
-        MD5_Update(&ctx, icc, iccLen);
+        MD5_Update(&ctx, icc, (unsigned long)iccLen);
         MD5_Final(profile->signature, &ctx);
     }
 
@@ -174,9 +174,9 @@ clBool clProfilePack(struct clContext * C, clProfile * profile, clRaw * out)
     return clTrue;
 }
 
-int clProfileSize(struct clContext * C, clProfile * profile)
+size_t clProfileSize(struct clContext * C, clProfile * profile)
 {
-    int ret;
+    size_t ret;
     if (profile->raw.size > 0) {
         ret = profile->raw.size;
     } else {
@@ -218,7 +218,7 @@ clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * fi
 {
     clRaw rawProfile;
     FILE * f;
-    int itemsWritten;
+    size_t itemsWritten;
 
     f = fopen(filename, "wb");
     if (!f) {

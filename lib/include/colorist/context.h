@@ -101,13 +101,13 @@ typedef enum clFilter
 clFilter clFilterFromString(struct clContext * C, const char * str);
 const char * clFilterToString(struct clContext * C, clFilter filter);
 
-typedef void *(* clContextAllocFunc)(struct clContext * C, int bytes); // C will be NULL when allocating the clContext itself
+typedef void *(* clContextAllocFunc)(struct clContext * C, size_t bytes); // C will be NULL when allocating the clContext itself
 typedef void (* clContextFreeFunc)(struct clContext * C, void * ptr);
 typedef void (* clContextLogFunc)(struct clContext * C, const char * section, int indent, const char * format, va_list args);
 typedef void (* clContextLogErrorFunc)(struct clContext * C, const char * format, va_list args);
 
 // Internal defaults for clContextSystem, use clContextLog*() / clAllocate / clFree below
-void * clContextDefaultAlloc(struct clContext * C, int bytes);
+void * clContextDefaultAlloc(struct clContext * C, size_t bytes);
 void clContextDefaultFree(struct clContext * C, void * ptr);
 void clContextDefaultLog(struct clContext * C, const char * section, int indent, const char * format, va_list args);
 void clContextDefaultLogError(struct clContext * C, const char * format, va_list args);

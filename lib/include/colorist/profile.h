@@ -57,7 +57,7 @@ typedef enum clProfileStock
 clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock);
 clProfile * clProfileClone(struct clContext * C, clProfile * profile);
 clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance, const char * description);
-clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, int iccLen, const char * description);
+clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, size_t iccLen, const char * description);
 clProfile * clProfileRead(struct clContext * C, const char * filename);
 clBool clProfileReload(struct clContext * C, clProfile * profile);
 clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * filename);
@@ -72,7 +72,7 @@ clBool clProfileRemoveTag(struct clContext * C, clProfile * profile, char * tag,
 clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * profile2);
 clBool clProfileUsesCCMM(struct clContext * C, clProfile * profile);
 const char * clProfileCMMName(struct clContext * C, clProfile * profile); // Convenience function
-int clProfileSize(struct clContext * C, clProfile * profile);
+size_t clProfileSize(struct clContext * C, clProfile * profile);
 void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTags, int extraIndent);
 void clProfileDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clProfile * profile, clBool dumpTags);
 void clProfileDestroy(struct clContext * C, clProfile * profile);

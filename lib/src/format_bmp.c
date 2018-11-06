@@ -269,7 +269,7 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     info.bV5CSType = PROFILE_EMBEDDED;
     info.bV5Intent = LCS_GM_ABS_COLORIMETRIC;
     info.bV5ProfileData = sizeof(info);
-    info.bV5ProfileSize = rawProfile.size;
+    info.bV5ProfileSize = (uint32_t)rawProfile.size;
 
     packedPixelBytes = sizeof(uint32_t) * info.bV5Width * info.bV5Height;
     packedPixels = clAllocate(packedPixelBytes);
@@ -306,7 +306,7 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     }
 
     memset(&fileHeader, 0, sizeof(fileHeader));
-    fileHeader.bfOffBits = sizeof(magic) + sizeof(fileHeader) + sizeof(info) + rawProfile.size;
+    fileHeader.bfOffBits = (uint32_t)(sizeof(magic) + sizeof(fileHeader) + sizeof(info) + rawProfile.size);
     fileHeader.bfSize = fileHeader.bfOffBits + packedPixelBytes;
 
     clRawRealloc(C, output, fileHeader.bfSize);

@@ -37,7 +37,7 @@ struct opjCallbackInfo
 {
     struct clContext * C;
     clRaw * raw;
-    uint32_t offset;
+    OPJ_OFF_T offset;
 };
 
 static OPJ_SIZE_T readCallback(void * p_buffer, OPJ_SIZE_T p_nb_bytes, void * p_user_data)
@@ -55,7 +55,7 @@ static OPJ_SIZE_T writeCallback(void * p_buffer, OPJ_SIZE_T p_nb_bytes, void * p
 {
     struct opjCallbackInfo * ci = (struct opjCallbackInfo *)p_user_data;
     if ((ci->offset + p_nb_bytes) > ci->raw->size) {
-        uint32_t newSize = ci->offset + p_nb_bytes;
+        size_t newSize = ci->offset + p_nb_bytes;
         clRawRealloc(ci->C, ci->raw, newSize);
     }
     memcpy(ci->raw->ptr + ci->offset, p_buffer, p_nb_bytes);
@@ -344,7 +344,7 @@ clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char
     }
     opjImage->icc_profile_buf = opj_malloc(rawProfile.size);
     memcpy(opjImage->icc_profile_buf, rawProfile.ptr, rawProfile.size);
-    opjImage->icc_profile_len = rawProfile.size;
+    opjImage->icc_profile_len = (OPJ_UINT32)rawProfile.size;
 
     opj_set_info_handler(opjCodec, info_callback, C);
     opj_set_warning_handler(opjCodec, warning_callback, C);
