@@ -238,6 +238,8 @@ static const char * parseParenColor(struct clContext * C, const char * s, int de
 
 static void finishColor(struct clContext * C, clColor * parsedColor)
 {
+    COLORIST_UNUSED(C);
+
     if (parsedColor->depth <= 16) {
         int maxChannel = (1 << parsedColor->depth) - 1;
         parsedColor->r = CL_CLAMP(parsedColor->r, 0, maxChannel);
