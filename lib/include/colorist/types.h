@@ -11,6 +11,9 @@
 // for uint*_t
 #include <stdint.h>
 
+// for size_t
+#include <stddef.h>
+
 // Output luminance colorist uses for basic profiles (sRGB, P3, etc)
 #define COLORIST_DEFAULT_LUMINANCE 300
 

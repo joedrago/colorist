@@ -406,16 +406,16 @@ static clBool parsePrimaries(clContext * C, float primaries[8], const char * arg
     char * buffer;
     char * token;
     int index;
-    clProfilePrimaries stockPrimaries;
-    if (clContextGetStockPrimaries(C, arg, &stockPrimaries)) {
-        primaries[0] = stockPrimaries.red[0];
-        primaries[1] = stockPrimaries.red[1];
-        primaries[2] = stockPrimaries.green[0];
-        primaries[3] = stockPrimaries.green[1];
-        primaries[4] = stockPrimaries.blue[0];
-        primaries[5] = stockPrimaries.blue[1];
-        primaries[6] = stockPrimaries.white[0];
-        primaries[7] = stockPrimaries.white[1];
+    clProfilePrimaries tmpPrimaries;
+    if (clContextGetStockPrimaries(C, arg, &tmpPrimaries)) {
+        primaries[0] = tmpPrimaries.red[0];
+        primaries[1] = tmpPrimaries.red[1];
+        primaries[2] = tmpPrimaries.green[0];
+        primaries[3] = tmpPrimaries.green[1];
+        primaries[4] = tmpPrimaries.blue[0];
+        primaries[5] = tmpPrimaries.blue[1];
+        primaries[6] = tmpPrimaries.white[0];
+        primaries[7] = tmpPrimaries.white[1];
         return clTrue;
     }
     buffer = clContextStrdup(C, arg);

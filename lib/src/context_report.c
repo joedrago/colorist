@@ -87,7 +87,7 @@ static float calcOutofSRGB(clContext * C, float x, float y, clProfilePrimaries *
 
     float gamutDistances[3];
     float srgbDistances[3];
-    float srgbMaxDist, gamutMaxDist, totalDist, ratio;
+    float srgbMaxDist, gamutMaxDist = 0.0f, totalDist, ratio;
     int i;
 
     if (fabsf(srgbPrimaries.green[1] - primaries->green[1]) < 0.0001f) {

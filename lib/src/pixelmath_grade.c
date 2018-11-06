@@ -146,7 +146,7 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
     if (*outGamma <= 0.0f) {
         float luminanceScale = (float)srcLuminance / maxLuminance;
         int gammaInt;
-        int minGammaInt;
+        int minGammaInt = 0;
         float minErrorTerm = -1.0f;
         float maxChannel = (float)((1 << dstColorDepth) - 1);
         clTask ** tasks;

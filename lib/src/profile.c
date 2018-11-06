@@ -292,6 +292,8 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
         if (whiteXYZ == NULL)
             return clFalse;
 
+        memset(&tmpColorants, 0, sizeof(tmpColorants)); // This exists to avoid a warning; this should always be set in the following conditional
+
         if ((redXYZ == NULL) || (greenXYZ == NULL) || (blueXYZ == NULL)) {
             // No colorant tags. See if we can harvest them (poorly) from the A2B0 tag. (yuck)
             cmsUInt32Number aToBTagSize = cmsReadRawTag(profile->handle, cmsSigAToB0Tag, NULL, 0);

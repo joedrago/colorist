@@ -162,7 +162,7 @@ void clImageSetPixel(clContext * C, clImage * image, int x, int y, int r, int g,
 
 clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
 {
-    clImage * rotated;
+    clImage * rotated = NULL;
     int i, j;
     int pixelBytes = clDepthToBytes(C, image->depth) * 4;
     switch (cwTurns) {

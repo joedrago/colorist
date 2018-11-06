@@ -9,8 +9,18 @@
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
 
-if(APPLE)
+# Disable all warnings for ext
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  MESSAGE(STATUS "Disabling warnings (for external libs) for Clang")
   add_definitions(-Wno-everything)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  MESSAGE(STATUS "Disabling warnings (for external libs) for GCC")
+  add_definitions(-w)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  MESSAGE(STATUS "Disabling warnings (for external libs) for MS CL")
+  add_definitions(/W0)
+else()
+  MESSAGE(FATAL_ERROR "Unknown compiler, bailing out")
 endif()
 
 # Currently not building zlib or libpng because openjp2 does it already.

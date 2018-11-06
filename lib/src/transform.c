@@ -306,6 +306,7 @@ static void transformFloatToFloat(struct clContext * C, struct clTransform * tra
 
         if (useCCMM) {
             switch (transform->ccmmSrcEOTF) {
+                default:
                 case CL_XTF_NONE:
                     memcpy(&src, srcPixel, sizeof(src));
                     break;
@@ -467,7 +468,7 @@ static void transformFloatToRGB16(struct clContext * C, struct clTransform * tra
                 dstPixel[3] = (uint16_t)clPixelMathRoundNormalized(tmpPixel[3], dstRescale);
             } else {
                 // RGB -> RGBA, set full opacity
-                dstPixel[3] = dstMaxChannel;
+                dstPixel[3] = (uint16_t)dstMaxChannel;
             }
         }
     }
@@ -604,7 +605,7 @@ static void transformRGB8ToRGB16(struct clContext * C, struct clTransform * tran
                 dstPixel[3] = (uint16_t)clPixelMathRoundNormalized((float)tmpDst[3], dstRescale);
             } else {
                 // RGB -> RGBA, set full opacity
-                dstPixel[3] = dstMaxChannel;
+                dstPixel[3] = (uint16_t)dstMaxChannel;
             }
         }
     }
@@ -697,7 +698,7 @@ static void transformRGB16ToRGB16(struct clContext * C, struct clTransform * tra
                 dstPixel[3] = (uint16_t)clPixelMathRoundNormalized((float)tmpDst[3], dstRescale);
             } else {
                 // RGB -> RGBA, set full opacity
-                dstPixel[3] = dstMaxChannel;
+                dstPixel[3] = (uint16_t)dstMaxChannel;
             }
         }
     }
@@ -767,7 +768,7 @@ static void reformatFloatToRGB16(struct clContext * C, uint8_t * srcPixels, int 
                 dstPixel[3] = (uint16_t)clPixelMathRoundNormalized(srcPixel[3], dstRescale);
             } else {
                 // RGB -> RGBA, set full opacity
-                dstPixel[3] = dstMaxChannel;
+                dstPixel[3] = (uint16_t)dstMaxChannel;
             }
         }
     }
@@ -865,7 +866,7 @@ static void reformatRGB16ToRGB16(struct clContext * C, uint8_t * srcPixels, int 
                 dstPixel[3] = (uint16_t)((float)srcPixel[3] * rescale);
             } else {
                 // RGB -> RGBA, set full opacity
-                dstPixel[3] = dstMaxChannel;
+                dstPixel[3] = (uint16_t)dstMaxChannel;
             }
         }
     }
@@ -891,7 +892,7 @@ static void reformatRGB8ToRGB16(struct clContext * C, uint8_t * srcPixels, int s
                 dstPixel[3] = (uint16_t)clPixelMathRoundNormalized((float)srcPixel[3], rescale);
             } else {
                 // RGB -> RGBA, set full opacity
-                dstPixel[3] = dstMaxChannel;
+                dstPixel[3] = (uint16_t)dstMaxChannel;
             }
         }
     }

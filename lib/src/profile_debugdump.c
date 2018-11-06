@@ -76,7 +76,7 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
 
         if (dumpTags) {
             // Dump tags
-            cmsInt32Number i, tagSize, tagCount = cmsGetTagCount(profile->handle);
+            cmsInt32Number tagSize, tagCount = cmsGetTagCount(profile->handle);
             if (tagCount > 0) {
                 clContextLog(C, "profile", 1 + extraIndent, "Tags [%d]:", tagCount);
             }

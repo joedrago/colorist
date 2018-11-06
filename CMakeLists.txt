@@ -34,10 +34,6 @@ if(UNIX)
   endif()
 endif()
 
-if(WIN32)
-  add_definitions(/wd4996)
-endif()
-
 find_package(Git)
 if(GIT_FOUND)
   execute_process(
@@ -59,8 +55,27 @@ endif()
 add_subdirectory(ext)
 include_directories(${COLORIST_EXT_INCLUDES})
 
-if(APPLE)
+# Enable all warnings for lib/bin
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  MESSAGE(STATUS "Enabling warnings (for colorist lib/bin) for Clang")
   add_definitions(-Werror -Wall -Wextra)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  MESSAGE(STATUS "Enabling warnings (for colorist lib/bin) for GCC")
+  add_definitions(-Werror -Wall -Wextra)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  MESSAGE(STATUS "Enabling warnings (for colorist lib/bin) for MS CL")
+  add_definitions(
+    /Wall   # All warnings
+    /WX     # Warnings as errors
+    /wd4996 # Disable: potentially unsafe stdlib methods
+    /wd4820 # Disable: bytes padding added after data member
+    /wd4668 # Disable: is not defined as a preprocessor macro, replacing with '0'
+    /wd4710 # Disable: function not inlined
+    /wd5045 # Disable: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
+    /wd4255 # Disable: no function prototype given
+  )
+else()
+  MESSAGE(FATAL_ERROR "Unknown compiler, bailing out")
 endif()
 
 add_subdirectory(lib)

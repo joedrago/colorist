@@ -107,7 +107,7 @@ static const char * parseHashColor(struct clContext * C, const char * s, clColor
 
     end = s + 1;
     while (*end && (*end != ',') && (*end != '.')) {
-        char upper = toupper(*end);
+        char upper = (char)toupper(*end);
         if (!(
                 ((upper >= '0') && (upper <= '9')) ||
                 ((upper >= 'A') && (upper <= 'F')))
@@ -350,9 +350,6 @@ static const char * parseRange(struct clContext * C, const char * s, clToken * t
         token->count = atoi(buffer);
         return end + 1;
     }
-    // Shouldn't be able to get here
-    COLORIST_ASSERT(0);
-    return NULL;
 }
 
 static clBool finishRange(struct clContext * C, clToken * token)
@@ -521,7 +518,7 @@ static char * sanitizeString(char * s)
     // Remove whitespace
     while (*src) {
         if ((*src != ' ') && (*src != '\t') && (*src != '\n') && (*src != '\r')) {
-            *dst = tolower(*src);
+            *dst = (char)tolower(*src);
             ++dst;
         }
         ++src;
@@ -866,16 +863,16 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
         if (depth > 8) {
             uint16_t * pixels = (uint16_t *)image->pixels;
             uint16_t * pixel = &pixels[4 * verticalPixelIndex];
-            pixel[0] = color.r;
-            pixel[1] = color.g;
-            pixel[2] = color.b;
-            pixel[3] = color.a;
+            pixel[0] = (uint16_t)(color.r);
+            pixel[1] = (uint16_t)(color.g);
+            pixel[2] = (uint16_t)(color.b);
+            pixel[3] = (uint16_t)(color.a);
         } else {
             uint8_t * pixel = &image->pixels[4 * verticalPixelIndex];
-            pixel[0] = color.r;
-            pixel[1] = color.g;
-            pixel[2] = color.b;
-            pixel[3] = color.a;
+            pixel[0] = (uint8_t)(color.r);
+            pixel[1] = (uint8_t)(color.g);
+            pixel[2] = (uint8_t)(color.b);
+            pixel[3] = (uint8_t)(color.a);
         }
     }
 

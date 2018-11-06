@@ -177,8 +177,12 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
         info.bV5BlueMask = 255 << 0;
         info.bV5GreenMask = 255 << 8;
         info.bV5RedMask = 255 << 16;
-        info.bV5AlphaMask = 255 << 24;
+        info.bV5AlphaMask = (uint32_t)(255 << 24);
         rDepth = gDepth = bDepth = aDepth = 8;
+        rShift = 0;
+        gShift = 8;
+        bShift = 16;
+        aShift = 24;
     }
 
     if ((depth != 8) && (depth != 10)) {
@@ -202,11 +206,11 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
         int i;
         for (i = 0; i < pixelCount; ++i) {
             uint8_t * dstPixel = &image->pixels[i * 4];
-            dstPixel[0] = (packedPixels[i] & info.bV5RedMask) >> rShift;
-            dstPixel[1] = (packedPixels[i] & info.bV5GreenMask) >> gShift;
-            dstPixel[2] = (packedPixels[i] & info.bV5BlueMask) >> bShift;
+            dstPixel[0] = (uint8_t)((packedPixels[i] & info.bV5RedMask) >> rShift);
+            dstPixel[1] = (uint8_t)((packedPixels[i] & info.bV5GreenMask) >> gShift);
+            dstPixel[2] = (uint8_t)((packedPixels[i] & info.bV5BlueMask) >> bShift);
             if (aDepth > 0)
-                dstPixel[3] = (packedPixels[i] & info.bV5AlphaMask) >> aShift;
+                dstPixel[3] = (uint8_t)((packedPixels[i] & info.bV5AlphaMask) >> aShift);
             else
                 dstPixel[3] = (1 << image->depth) - 1;
         }
@@ -216,11 +220,11 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
         for (i = 0; i < pixelCount; ++i) {
             uint16_t * pixels = (uint16_t *)image->pixels;
             uint16_t * dstPixel = &pixels[i * 4];
-            dstPixel[0] = (packedPixels[i] & info.bV5RedMask) >> rShift;
-            dstPixel[1] = (packedPixels[i] & info.bV5GreenMask) >> gShift;
-            dstPixel[2] = (packedPixels[i] & info.bV5BlueMask) >> bShift;
+            dstPixel[0] = (uint16_t)((packedPixels[i] & info.bV5RedMask) >> rShift);
+            dstPixel[1] = (uint16_t)((packedPixels[i] & info.bV5GreenMask) >> gShift);
+            dstPixel[2] = (uint16_t)((packedPixels[i] & info.bV5BlueMask) >> bShift);
             if (aDepth > 0)
-                dstPixel[3] = (packedPixels[i] & info.bV5AlphaMask) >> aShift;
+                dstPixel[3] = (uint16_t)((packedPixels[i] & info.bV5AlphaMask) >> aShift);
             else
                 dstPixel[3] = (1 << image->depth) - 1;
         }
@@ -245,7 +249,7 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     int packedPixelBytes = 0;
     uint32_t * packedPixels = NULL;
     int pixelCount = image->width * image->height;
-    uint8_t *p;
+    uint8_t * p;
 
     memset(&rawProfile, 0, sizeof(rawProfile));
     if (!clProfilePack(C, image->profile, &rawProfile)) {
@@ -286,7 +290,7 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
         info.bV5BlueMask = 255 << 0;
         info.bV5GreenMask = 255 << 8;
         info.bV5RedMask = 255 << 16;
-        info.bV5AlphaMask = 255 << 24;
+        info.bV5AlphaMask = (uint32_t)(255 << 24);
     } else {
         // 10 bit
         int i;

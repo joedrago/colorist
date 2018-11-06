@@ -97,7 +97,7 @@ static int diffTransform(clContext * C, int steps, clProfile * srcProfile, clTra
                         (uint16_t)clPixelMathRoundf(srcFloat[0] * srcScale),
                         (uint16_t)clPixelMathRoundf(srcFloat[1] * srcScale),
                         (uint16_t)clPixelMathRoundf(srcFloat[2] * srcScale),
-                        srcMaxChannel
+                        (uint16_t)srcMaxChannel
                         );
                     srcRaw = src16;
                 } else {
