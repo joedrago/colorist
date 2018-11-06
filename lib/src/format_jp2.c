@@ -44,7 +44,7 @@ static OPJ_SIZE_T readCallback(void * p_buffer, OPJ_SIZE_T p_nb_bytes, void * p_
 {
     struct opjCallbackInfo * ci = (struct opjCallbackInfo *)p_user_data;
     if ((ci->offset + p_nb_bytes) > ci->raw->size) {
-        p_nb_bytes = ci->raw->size - ci->offset;
+        p_nb_bytes = (OPJ_SIZE_T)(ci->raw->size - ci->offset);
     }
     memcpy(p_buffer, ci->raw->ptr + ci->offset, p_nb_bytes);
     ci->offset += p_nb_bytes;
@@ -55,7 +55,7 @@ static OPJ_SIZE_T writeCallback(void * p_buffer, OPJ_SIZE_T p_nb_bytes, void * p
 {
     struct opjCallbackInfo * ci = (struct opjCallbackInfo *)p_user_data;
     if ((ci->offset + p_nb_bytes) > ci->raw->size) {
-        size_t newSize = ci->offset + p_nb_bytes;
+        size_t newSize = (size_t)(ci->offset + p_nb_bytes);
         clRawRealloc(ci->C, ci->raw, newSize);
     }
     memcpy(ci->raw->ptr + ci->offset, p_buffer, p_nb_bytes);

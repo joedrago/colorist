@@ -21,20 +21,20 @@ typedef struct tiffCallbackInfo
     toff_t offset;
 } tiffCallbackInfo;
 
-static tmsize_t readCallback(tiffCallbackInfo *ci, void* ptr, tmsize_t size)
+static tmsize_t readCallback(tiffCallbackInfo * ci, void * ptr, tmsize_t size)
 {
     if ((ci->offset + size) > ci->raw->size) {
-        size = ci->raw->size - ci->offset;
+        size = (tmsize_t)(ci->raw->size - ci->offset);
     }
     memcpy(ptr, ci->raw->ptr + ci->offset, size);
     ci->offset += size;
     return size;
 }
 
-static tmsize_t writeCallback(tiffCallbackInfo *ci, void* ptr, tmsize_t size)
+static tmsize_t writeCallback(tiffCallbackInfo * ci, void * ptr, tmsize_t size)
 {
     if ((ci->offset + size) > ci->raw->size) {
-        tmsize_t newSize = ci->offset + size;
+        tmsize_t newSize = (tmsize_t)(ci->offset + size);
         clRawRealloc(ci->C, ci->raw, newSize);
     }
     memcpy(ci->raw->ptr + ci->offset, ptr, size);
@@ -42,9 +42,9 @@ static tmsize_t writeCallback(tiffCallbackInfo *ci, void* ptr, tmsize_t size)
     return size;
 }
 
-static toff_t seekCallback(tiffCallbackInfo *ci, toff_t off, int whence)
+static toff_t seekCallback(tiffCallbackInfo * ci, toff_t off, int whence)
 {
-    switch(whence) {
+    switch (whence) {
         default:
         case SEEK_CUR:
             ci->offset += (uint32_t)off;
@@ -59,19 +59,19 @@ static toff_t seekCallback(tiffCallbackInfo *ci, toff_t off, int whence)
     return ci->offset;
 }
 
-static int closeCalllback(tiffCallbackInfo *ci)
+static int closeCalllback(tiffCallbackInfo * ci)
 {
     return 0;
 
     COLORIST_UNUSED(ci);
 }
 
-static toff_t sizeCallback(tiffCallbackInfo *ci)
+static toff_t sizeCallback(tiffCallbackInfo * ci)
 {
     return ci->offset; // this seems bad
 }
 
-static int mapCallback(tiffCallbackInfo *ci, void** base, toff_t* size)
+static int mapCallback(tiffCallbackInfo * ci, void ** base, toff_t * size)
 {
     return 0;
 
@@ -80,7 +80,7 @@ static int mapCallback(tiffCallbackInfo *ci, void** base, toff_t* size)
     COLORIST_UNUSED(size);
 }
 
-static void unmapCallback(tiffCallbackInfo *ci, void* base, toff_t size)
+static void unmapCallback(tiffCallbackInfo * ci, void * base, toff_t size)
 {
     COLORIST_UNUSED(ci);
     COLORIST_UNUSED(base);
@@ -107,11 +107,11 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
     ci.offset = 0;
 
     tiff = TIFFClientOpen("tiff", "rb",
-			 (thandle_t) &ci,
-			 (TIFFReadWriteProc)readCallback, (TIFFReadWriteProc)writeCallback,
-			 (TIFFSeekProc)seekCallback, (TIFFCloseProc)closeCalllback,
-			 (TIFFSizeProc)sizeCallback,
-			 (TIFFMapFileProc)mapCallback, (TIFFUnmapFileProc)unmapCallback);
+        (thandle_t)&ci,
+        (TIFFReadWriteProc)readCallback, (TIFFReadWriteProc)writeCallback,
+        (TIFFSeekProc)seekCallback, (TIFFCloseProc)closeCalllback,
+        (TIFFSizeProc)sizeCallback,
+        (TIFFMapFileProc)mapCallback, (TIFFUnmapFileProc)unmapCallback);
     if (!tiff) {
         clContextLogError(C, "cannot open TIFF for read");
         goto readCleanup;
@@ -211,11 +211,11 @@ clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const cha
     ci.offset = 0;
 
     tiff = TIFFClientOpen("tiff", "wb",
-			 (thandle_t) &ci,
-             (TIFFReadWriteProc)readCallback, (TIFFReadWriteProc)writeCallback,
-             (TIFFSeekProc)seekCallback, (TIFFCloseProc)closeCalllback,
-             (TIFFSizeProc)sizeCallback,
-             (TIFFMapFileProc)mapCallback, (TIFFUnmapFileProc)unmapCallback);
+        (thandle_t)&ci,
+        (TIFFReadWriteProc)readCallback, (TIFFReadWriteProc)writeCallback,
+        (TIFFSeekProc)seekCallback, (TIFFCloseProc)closeCalllback,
+        (TIFFSizeProc)sizeCallback,
+        (TIFFMapFileProc)mapCallback, (TIFFUnmapFileProc)unmapCallback);
     if (!tiff) {
         clContextLogError(C, "cannot open TIFF for write");
         writeResult = clFalse;
