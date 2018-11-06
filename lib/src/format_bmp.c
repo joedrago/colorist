@@ -70,9 +70,9 @@ typedef struct BITMAPV5HEADER
 #define BI_RGB        0
 #define BI_BITFIELDS  3
 
-#define LCS_sRGB                'sRGB'
-#define LCS_WINDOWS_COLOR_SPACE 'Win ' // Windows default color space
-#define PROFILE_EMBEDDED        'MBED'
+#define LCS_sRGB                0x73524742 // 'sRGB'
+#define LCS_WINDOWS_COLOR_SPACE 0x57696e20 // 'Win ', Windows default color space
+#define PROFILE_EMBEDDED        0x4d424544 // 'MBED'
 
 #define LCS_GM_ABS_COLORIMETRIC 8
 
