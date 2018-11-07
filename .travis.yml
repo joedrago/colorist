@@ -1,19 +1,14 @@
 language: c
 
-compiler:
-  - gcc
-  - clang
-
 matrix:
   include:
-  - name: "Standard"
-    env:
+  - name: "Standard GCC"
+    compiler: gcc
+  - name: "Standard Clang"
+    compiler: clang
   - name: "Coverage"
+    compiler: clang
     env: COLORIST_COVERAGE=1
-  exclude:
-  - compiler: gcc
-    include:
-      name: "Coverage"
 
 
 before_script:
