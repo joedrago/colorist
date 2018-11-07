@@ -324,7 +324,7 @@ void clContextDestroy(clContext * C)
 void clContextRegisterFormat(clContext * C, clFormat * format)
 {
     clFormatRecord * record = clAllocateStruct(clFormatRecord);
-    memcpy(&record->format, format, sizeof(clFormatRecord));
+    memcpy(&record->format, format, sizeof(clFormat));
     record->next = NULL;
 
     if (C->formats) {
