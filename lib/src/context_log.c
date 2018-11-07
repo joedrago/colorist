@@ -7,9 +7,9 @@
 
 #include "colorist/context.h"
 
-#include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 #ifdef COLORIST_EMSCRIPTEN
 

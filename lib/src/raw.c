@@ -11,6 +11,9 @@
 
 #include "cJSON.h"
 #include "zlib.h"
+
+#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 
 void clRawRealloc(struct clContext * C, clRaw * raw, size_t newSize)
@@ -179,9 +182,6 @@ struct cJSON * clRawToStructArray(struct clContext * C, clRaw * raw, int width, 
     }
     return json;
 }
-
-#include <stdio.h>
-#include <stdarg.h>
 
 clBool clRawReadFile(struct clContext * C, clRaw * raw, const char * filename)
 {

@@ -258,11 +258,11 @@ int clContextConvert(clContext * C)
     // Create the destination profile, or clone the source one
     if (dstProfile == NULL) {
         if (
-            memcmp(&srcInfo.primaries, &dstInfo.primaries, sizeof(srcInfo.primaries)) || // Custom primaries
-            memcmp(&srcInfo.curve, &dstInfo.curve, sizeof(srcInfo.curve)) ||             // Custom curve
-            (srcInfo.luminance != dstInfo.luminance) ||                                  // Custom luminance
-            (params.description) ||                                                      // Custom description
-            (params.copyright)                                                           // custom copyright
+            (memcmp(&srcInfo.primaries, &dstInfo.primaries, sizeof(srcInfo.primaries)) != 0) || // Custom primaries
+            (memcmp(&srcInfo.curve, &dstInfo.curve, sizeof(srcInfo.curve)) != 0) ||             // Custom curve
+            (srcInfo.luminance != dstInfo.luminance) ||                                         // Custom luminance
+            (params.description) ||                                                             // Custom description
+            (params.copyright)                                                                  // custom copyright
             )
         {
             // Primaries

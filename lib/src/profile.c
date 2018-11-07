@@ -542,7 +542,9 @@ clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * 
 
     if (profile1 == profile2) {
         return clTrue;
-    } else if (!profile1 || !profile2) {
+    }
+
+    if (!profile1 || !profile2) {
         return clFalse;
     }
 

@@ -8,8 +8,8 @@
 #ifndef COLORIST_TRANSFORM_H
 #define COLORIST_TRANSFORM_H
 
-#include "colorist/types.h"
 #include "colorist/context.h"
+#include "colorist/types.h"
 
 // for gbMat3
 #include "gb_math.h"
@@ -85,8 +85,8 @@ clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format, 
 int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format, int depth);
 
 // if X+Y+Z is 0, clTransformXYZToXYY() returns (whitePointX, whitePointY, 0)
-void clTransformXYZToXYY(struct clContext * C, float * dstXYY, float * srcXYZ, float whitePointX, float whitePointY);
-void clTransformXYYToXYZ(struct clContext * C, float * dstXYZ, float * srcXYY);
+void clTransformXYZToXYY(struct clContext * C, float * dstXYY, const float * srcXYZ, float whitePointX, float whitePointY);
+void clTransformXYYToXYZ(struct clContext * C, float * dstXYZ, const float * srcXYY);
 
 // define to debug transform matrix math in colorist-test
 // #define DEBUG_MATRIX_MATH

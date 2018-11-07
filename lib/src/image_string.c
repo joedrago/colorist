@@ -12,9 +12,9 @@
 #include "colorist/profile.h"
 #include "colorist/transform.h"
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 
 // Notes: (ignore)
 // * dimensions first optionally: WxH
@@ -127,7 +127,8 @@ static const char * parseHashColor(struct clContext * C, const char * s, clColor
         parsedColor->b = hexChannel(s + 5);
         parsedColor->a = 255;
         return s + 7;
-    } else if (len == 9) {
+    }
+    if (len == 9) {
         // #ff00ff00
         parsedColor->r = hexChannel(s + 1);
         parsedColor->g = hexChannel(s + 3);
@@ -267,61 +268,80 @@ static const char * parseColor(struct clContext * C, const char * s, clColor * p
             finishColor(C, parsedColor);
         }
         return s;
-    } else if (!strncmp(s, "(", 1)) {
+    }
+
+    if (!strncmp(s, "(", 1)) {
         s = parseParenColor(C, s, 8, parsedColor, NULL, luminance, clFalse);
         if (s != NULL) {
             finishColor(C, parsedColor);
         }
         return s;
-    } else if (!strncmp(s, "rgb(", 4)) {
+    }
+
+    if (!strncmp(s, "rgb(", 4)) {
         s = parseParenColor(C, s + 3, 8, parsedColor, NULL, luminance, clFalse);
         if (s != NULL) {
             finishColor(C, parsedColor);
         }
         return s;
-    } else if (!strncmp(s, "rgba(", 5)) {
+    }
+
+    if (!strncmp(s, "rgba(", 5)) {
         s = parseParenColor(C, s + 4, 8, parsedColor, NULL, luminance, clFalse);
         if (s != NULL) {
             finishColor(C, parsedColor);
         }
         return s;
-    } else if (!strncmp(s, "rgb16(", 6)) {
+    }
+
+    if (!strncmp(s, "rgb16(", 6)) {
         s = parseParenColor(C, s + 5, 16, parsedColor, NULL, luminance, clFalse);
         if (s != NULL) {
             finishColor(C, parsedColor);
         }
         return s;
-    } else if (!strncmp(s, "rgba16(", 7)) {
+    }
+
+    if (!strncmp(s, "rgba16(", 7)) {
         s = parseParenColor(C, s + 6, 16, parsedColor, NULL, luminance, clFalse);
         if (s != NULL) {
             finishColor(C, parsedColor);
         }
         return s;
-    } else if (!strncmp(s, "f(", 2)) {
+    }
+
+    if (!strncmp(s, "f(", 2)) {
         s = parseParenColor(C, s + 1, 32, parsedColor, NULL, luminance, clFalse);
         if (s != NULL) {
             finishColor(C, parsedColor);
         }
         return s;
-    } else if (!strncmp(s, "float(", 6)) {
+    }
+
+    if (!strncmp(s, "float(", 6)) {
         s = parseParenColor(C, s + 5, 32, parsedColor, NULL, luminance, clFalse);
         if (s != NULL) {
             finishColor(C, parsedColor);
         }
         return s;
-    } else if ((!strncmp(s, "xyz(", 4))) {
+    }
+
+    if ((!strncmp(s, "xyz(", 4))) {
         s = parseParenColor(C, s + 3, 32, parsedColor, fromXYZ, luminance, clFalse);
         if (s != NULL) {
             finishColor(C, parsedColor);
         }
         return s;
-    } else if ((!strncmp(s, "xyy(", 4))) {
+    }
+
+    if ((!strncmp(s, "xyy(", 4))) {
         s = parseParenColor(C, s + 3, 32, parsedColor, fromXYZ, luminance, clTrue);
         if (s != NULL) {
             finishColor(C, parsedColor);
         }
         return s;
     }
+
     clContextLogError(C, "unknown color format here: %s", s);
     return NULL;
 }
@@ -335,23 +355,23 @@ static const char * parseRange(struct clContext * C, const char * s, clToken * t
     if (s[1] == '.') {
         token->count = 0;
         return s + 2;
-    } else {
-        char buffer[32];
-        size_t len;
-        const char * end = ++s;
-        while (isdigit(*end)) {
-            ++end;
-        }
-        len = end - s;
-        if (len > 31) {
-            clContextLogError(C, "range size string too long [%d] here: %s", len, s);
-            return NULL;
-        }
-        memcpy(buffer, s, len);
-        buffer[len] = 0;
-        token->count = atoi(buffer);
-        return end + 1;
     }
+
+    char buffer[32];
+    size_t len;
+    const char * end = ++s;
+    while (isdigit(*end)) {
+        ++end;
+    }
+    len = end - s;
+    if (len > 31) {
+        clContextLogError(C, "range size string too long [%d] here: %s", len, s);
+        return NULL;
+    }
+    memcpy(buffer, s, len);
+    buffer[len] = 0;
+    token->count = atoi(buffer);
+    return end + 1;
 }
 
 static clBool finishRange(struct clContext * C, clToken * token)
@@ -631,7 +651,7 @@ typedef struct Stripe
     struct Stripe * next;
 } Stripe;
 
-clImage * clImageParseString(struct clContext * C, const char * s, int depth, struct clProfile * profile)
+clImage * clImageParseString(struct clContext * C, const char * str, int depth, struct clProfile * profile)
 {
     Stripe * stripes = NULL;
     Stripe * lastStripe = NULL;
@@ -643,7 +663,7 @@ clImage * clImageParseString(struct clContext * C, const char * s, int depth, st
     int totalStripeHeight = 0;
     int prevW = 0;
     int prevH = 0;
-    char * buffer = clContextStrdup(C, s);
+    char * buffer = clContextStrdup(C, str);
     const char * stripeDelims = "|/";
     char * stripeString;
     uint8_t * pixelPos;

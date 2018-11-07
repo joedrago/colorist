@@ -76,6 +76,8 @@ typedef struct BITMAPV5HEADER
 
 #define LCS_GM_ABS_COLORIMETRIC 8
 
+#define APPEND(PTR, SIZE) memcpy(p, PTR, SIZE); p += (SIZE);
+
 struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clRaw * input);
 clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
@@ -318,7 +320,6 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     fileHeader.bfSize = fileHeader.bfOffBits + packedPixelBytes;
 
     clRawRealloc(C, output, fileHeader.bfSize);
-#define APPEND(PTR, SIZE) memcpy(p, PTR, SIZE); p += SIZE;
     p = output->ptr;
     APPEND(&magic, sizeof(magic));
     APPEND(&fileHeader, sizeof(fileHeader));

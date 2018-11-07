@@ -77,8 +77,9 @@ static toff_t sizeCallback(tiffCallbackInfo * ci)
 static int mapCallback(tiffCallbackInfo * ci, void ** base, toff_t * size)
 {
     COLORIST_UNUSED(ci);
-    COLORIST_UNUSED(base);
-    COLORIST_UNUSED(size);
+
+    *base = NULL;
+    *size = 0;
 
     return 0;
 }

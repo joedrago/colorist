@@ -9,8 +9,6 @@
 
 #include "colorist/version.h"
 
-#include <stdio.h>
-
 #include "jpeglib.h"
 #include "lcms2.h"
 #include "openjpeg.h"
@@ -20,6 +18,8 @@
 // WebP
 #include "decode.h"
 #include "encode.h"
+
+#include <stdio.h>
 
 #if !defined(GIT_COMMIT)
 #define GIT_COMMIT "Unknown"

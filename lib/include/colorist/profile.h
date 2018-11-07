@@ -8,8 +8,8 @@
 #ifndef COLORIST_PROFILE_H
 #define COLORIST_PROFILE_H
 
-#include "colorist/types.h"
 #include "colorist/raw.h"
+#include "colorist/types.h"
 
 #include "lcms2.h"
 
@@ -59,7 +59,7 @@ clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, size_t icc
 clProfile * clProfileRead(struct clContext * C, const char * filename);
 clBool clProfileReload(struct clContext * C, clProfile * profile);
 clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * filename);
-clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries, clProfileCurve * curve, int * maxLuminance);
+clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries, clProfileCurve * curve, int * luminance);
 clBool clProfileHasPQSignature(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries);
 char * clProfileGetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3]);
 clBool clProfileSetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3], const char * ascii);

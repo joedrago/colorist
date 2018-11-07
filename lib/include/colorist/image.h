@@ -8,8 +8,8 @@
 #ifndef COLORIST_IMAGE_H
 #define COLORIST_IMAGE_H
 
-#include "colorist/types.h"
 #include "colorist/context.h"
+#include "colorist/types.h"
 
 struct clProfile;
 struct clRaw;

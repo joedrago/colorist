@@ -11,8 +11,8 @@
 #include "colorist/task.h"
 
 #include <ctype.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 // ------------------------------------------------------------------------------------------------
 // Stock Primaries
