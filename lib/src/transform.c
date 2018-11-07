@@ -1095,6 +1095,8 @@ void clTransformDestroy(struct clContext * C, clTransform * transform)
 
 static cmsUInt32Number clTransformFormatToLCMSFormat(struct clContext * C, clTransformFormat format)
 {
+    COLORIST_UNUSED(C);
+
     switch (format) {
         case CL_XF_XYZ:  return TYPE_XYZ_FLT;
         case CL_XF_RGB:  return TYPE_RGB_FLT;
@@ -1121,6 +1123,8 @@ clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format, 
 
 int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format, int depth)
 {
+    COLORIST_UNUSED(C);
+
     switch (format) {
         case CL_XF_XYZ:
             return sizeof(float) * 3;

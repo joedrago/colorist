@@ -25,7 +25,7 @@ double timerElapsedSeconds(Timer * timer)
 #include <windows.h>
 static double now()
 {
-    return (double)GetTickCount() / 1000.0;
+    return (double)GetTickCount64() / 1000.0;
 }
 #else
 #include <sys/time.h>

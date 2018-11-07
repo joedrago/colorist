@@ -238,6 +238,8 @@ static const char * parseParenColor(struct clContext * C, const char * s, int de
 
 static void finishColor(struct clContext * C, clColor * parsedColor)
 {
+    COLORIST_UNUSED(C);
+
     if (parsedColor->depth <= 16) {
         int maxChannel = (1 << parsedColor->depth) - 1;
         parsedColor->r = CL_CLAMP(parsedColor->r, 0, maxChannel);
@@ -670,6 +672,11 @@ clImage * clImageParseString(struct clContext * C, const char * s, int depth, st
     }
 
     clContextLog(C, "parse", 0, "Found %d image stripe%s.", stripeCount, (stripeCount == 1) ? "" : "s");
+
+    if (!stripes) {
+        clContextLogError(C, "no valid image stripes found");
+        goto parseCleanup;
+    }
 
     for (stripe = stripes; stripe != NULL; stripe = stripe->next) {
         clContextLog(C, "parse", 0, "Parsing stripe index: %d", stripeIndex);
