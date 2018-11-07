@@ -68,6 +68,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     -Wno-covered-switch-default
     -Wno-double-promotion
     -Wno-deprecated-declarations
+    -Wno-disabled-macro-expansion
     -Wno-format-nonliteral
     -Wno-language-extension-token
     -Wno-missing-noreturn
