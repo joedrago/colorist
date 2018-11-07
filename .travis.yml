@@ -22,5 +22,10 @@ matrix:
 
   - name: "Coverage"
     compiler: clang
+    os: linux
+    addons:
+      apt:
+        packages:
+          - llvm
     script:
-      - ./scripts/coverage.sh
+      - bash ./scripts/coverage.sh
