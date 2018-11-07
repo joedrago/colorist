@@ -146,8 +146,8 @@ static const char * parseParenColor(struct clContext * C, const char * s, int de
     size_t len;
     char * token;
     int index = 0;
-    int ints[4];
-    float floats[4];
+    int ints[4] = { 0, 0, 0, 0 };
+    float floats[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
     if (*s != '(') {
         clContextLogError(C, "paren color does not begin with open paren");
