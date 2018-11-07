@@ -24,10 +24,6 @@ endif()
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DCOLORIST_DEBUG=1")
 
-if(ENV{COLORIST_COVERAGE})
-  set(COLORIST_COVERAGE TRUE)
-endif()
-
 if(UNIX)
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g")
   add_definitions(-DANSI=1 -D__ANSI__=1) # for jxrlib
