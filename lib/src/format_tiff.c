@@ -14,6 +14,9 @@
 
 #include <string.h>
 
+struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName, struct clRaw * input);
+clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
+
 typedef struct tiffCallbackInfo
 {
     struct clContext * C;

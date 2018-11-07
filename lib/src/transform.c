@@ -922,7 +922,7 @@ static void reformatRGB16ToRGB8(struct clContext * C, uint8_t * srcPixels, int s
 #define USES_UINT8_T(V) (V == 8)
 #define USES_UINT16_T(V) ((V >= 9) && (V <= 16))
 
-void clCCMMTransform(struct clContext * C, struct clTransform * transform, clBool useCCMM, void * srcPixels, void * dstPixels, int pixelCount)
+static void clCCMMTransform(struct clContext * C, struct clTransform * transform, clBool useCCMM, void * srcPixels, void * dstPixels, int pixelCount)
 {
     int srcDepth = transform->srcDepth;
     int dstDepth = transform->dstDepth;

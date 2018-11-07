@@ -58,7 +58,23 @@ include_directories(${COLORIST_EXT_INCLUDES})
 # Enable all warnings for lib/bin
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   MESSAGE(STATUS "Enabling warnings (for colorist lib/bin) for Clang")
-  add_definitions(-Werror -Wall -Wextra)
+  add_definitions(
+    -Weverything
+    -Werror
+    -Wno-bad-function-cast
+    -Wno-cast-align
+    -Wno-cast-qual
+    -Wno-covered-switch-default
+    -Wno-double-promotion
+    -Wno-deprecated-declarations
+    -Wno-format-nonliteral
+    -Wno-language-extension-token
+    -Wno-missing-noreturn
+    -Wno-padded
+    -Wno-reserved-id-macro
+    -Wno-sign-conversion
+    -Wno-undef
+  )
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   MESSAGE(STATUS "Enabling warnings (for colorist lib/bin) for GCC")
   add_definitions(-Werror -Wall -Wextra)

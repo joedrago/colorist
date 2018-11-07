@@ -185,7 +185,7 @@ struct cJSON * clRawToStructArray(struct clContext * C, clRaw * raw, int width, 
 
 clBool clRawReadFile(struct clContext * C, clRaw * raw, const char * filename)
 {
-    int bytes;
+    long bytes;
     FILE * f;
 
     f = fopen(filename, "rb");
@@ -231,7 +231,7 @@ clBool clRawWriteFile(struct clContext * C, clRaw * raw, const char * filename)
 int clFileSize(const char * filename)
 {
     // TODO: reimplement as fstat()
-    int bytes;
+    long bytes;
 
     FILE * f;
     f = fopen(filename, "rb");
@@ -242,5 +242,5 @@ int clFileSize(const char * filename)
     bytes = ftell(f);
     fseek(f, 0, SEEK_SET);
     fclose(f);
-    return bytes;
+    return (int)bytes;
 }

@@ -15,6 +15,9 @@
 
 #include <string.h>
 
+struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, struct clRaw * input);
+clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
+
 static void error_callback(const char * msg, void * client_data)
 {
     COLORIST_UNUSED(client_data);
