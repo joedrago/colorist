@@ -27,5 +27,6 @@ matrix:
       apt:
         packages:
           - llvm
+          - ninja-build
     script:
       - bash ./scripts/coverage.sh
