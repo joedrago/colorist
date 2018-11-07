@@ -146,7 +146,7 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
     lumi.Z = 0.0f;
     cmsWriteTag(profile->handle, cmsSigLuminanceTag, &lumi);
 
-    profile->description = description ? strdup(description) : NULL;
+    profile->description = description ? clContextStrdup(C, description) : NULL;
     if (profile->description) {
         clProfileSetMLU(C, profile, "desc", "en", "US", profile->description);
     }
