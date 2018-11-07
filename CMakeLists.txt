@@ -27,6 +27,7 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DCOLORIST_DEBUG=1")
 if(UNIX)
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g")
   add_definitions(-DANSI=1 -D__ANSI__=1) # for jxrlib
+  add_definitions(-DOPJ_SKIP_POISON=1) # for openjpeg
 
   if(COLORIST_COVERAGE)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-instr-generate -fcoverage-mapping")

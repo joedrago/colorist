@@ -37,51 +37,52 @@ struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, 
 {
     COLORIST_UNUSED(formatName);
 
-    clImage * image;
-    clProfile * profile = NULL;
-
-    png_structp png;
-    png_infop info;
-
-    char * iccpProfileName;
-    int iccpCompression;
-    unsigned char * iccpData;
-    png_uint_32 iccpDataLen;
-
-    int rawWidth, rawHeight;
-    png_byte rawColorType;
-    png_byte rawBitDepth;
-
-    int imgBitDepth = 8;
-    int imgBytesPerChannel = 1;
-
-    png_bytep * rowPointers;
-    int y;
-
-    struct readInfo ri;
-    ri.C = C;
-    ri.src = input;
-    ri.offset = 0;
+    clImage * image = NULL;
+    png_bytep * rowPointers = NULL;
 
     if (png_sig_cmp(input->ptr, 0, 8)) {
         clContextLogError(C, "not a PNG");
         return NULL;
     }
 
-    png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    info = png_create_info_struct(png);
-    setjmp(png_jmpbuf(png));
+    png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    png_infop info = png_create_info_struct(png);
+    COLORIST_ASSERT(png && info);
+
+    if (setjmp(png_jmpbuf(png))) {
+        if (rowPointers) {
+            clFree(rowPointers);
+        }
+        if (image) {
+            clImageDestroy(C, image);
+        }
+        png_destroy_read_struct(&png, &info, NULL);
+        return NULL;
+    }
+
+    struct readInfo ri;
+    ri.C = C;
+    ri.src = input;
+    ri.offset = 0;
+
     png_set_read_fn(png, &ri, readCallback);
     png_read_info(png, info);
+
+    clProfile * profile = NULL;
+
+    char * iccpProfileName;
+    int iccpCompression;
+    unsigned char * iccpData;
+    png_uint_32 iccpDataLen;
 
     if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
         profile = clProfileParse(C, iccpData, iccpDataLen, iccpProfileName);
     }
 
-    rawWidth = png_get_image_width(png, info);
-    rawHeight = png_get_image_height(png, info);
-    rawColorType = png_get_color_type(png, info);
-    rawBitDepth = png_get_bit_depth(png, info);
+    int rawWidth = png_get_image_width(png, info);
+    int rawHeight = png_get_image_height(png, info);
+    png_byte rawColorType = png_get_color_type(png, info);
+    png_byte rawBitDepth = png_get_bit_depth(png, info);
 
     if (rawColorType == PNG_COLOR_TYPE_PALETTE) {
         png_set_palette_to_rgb(png);
@@ -108,6 +109,8 @@ struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, 
         png_set_gray_to_rgb(png);
     }
 
+    int imgBitDepth = 8;
+    int imgBytesPerChannel = 1;
     if (rawBitDepth == 16) {
         png_set_swap(png);
         imgBitDepth = 16;
@@ -115,7 +118,6 @@ struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, 
     }
 
     png_read_update_info(png, info);
-    setjmp(png_jmpbuf(png));
 
     clImageLogCreate(C, rawWidth, rawHeight, imgBitDepth, profile);
     image = clImageCreate(C, rawWidth, rawHeight, imgBitDepth, profile);
@@ -125,12 +127,12 @@ struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, 
     rowPointers = (png_bytep *)clAllocate(sizeof(png_bytep) * rawHeight);
     if (imgBytesPerChannel == 1) {
         uint8_t * pixels = (uint8_t *)image->pixels;
-        for (y = 0; y < rawHeight; ++y) {
+        for (int y = 0; y < rawHeight; ++y) {
             rowPointers[y] = &pixels[4 * y * rawWidth];
         }
     } else {
         uint16_t * pixels = (uint16_t *)image->pixels;
-        for (y = 0; y < rawHeight; ++y) {
+        for (int y = 0; y < rawHeight; ++y) {
             rowPointers[y] = (png_byte *)&pixels[4 * y * rawWidth];
         }
     }
@@ -168,21 +170,28 @@ clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char
     COLORIST_UNUSED(formatName);
     COLORIST_UNUSED(writeParams);
 
-    png_bytep * rowPointers;
-    int imgBytesPerChannel = (image->depth == 16) ? 2 : 1;
-    clRaw rawProfile;
-    struct writeInfo wi;
     png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     png_infop info = png_create_info_struct(png);
+    COLORIST_ASSERT(png && info);
 
+    clRaw rawProfile;
     memset(&rawProfile, 0, sizeof(rawProfile));
     if (!clProfilePack(C, image->profile, &rawProfile)) {
         return clFalse;
     }
 
-    COLORIST_ASSERT(png && info);
-    setjmp(png_jmpbuf(png));
+    png_bytep * rowPointers = NULL;
 
+    if (setjmp(png_jmpbuf(png))) {
+        if (rowPointers) {
+            clFree(rowPointers);
+        }
+        clRawFree(C, &rawProfile);
+        png_destroy_write_struct(&png, &info);
+        return clFalse;
+    }
+
+    struct writeInfo wi;
     wi.C = C;
     wi.offset = 0;
     wi.dst = output;
@@ -202,6 +211,7 @@ clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char
     png_write_info(png, info);
 
     rowPointers = (png_bytep *)clAllocate(sizeof(png_bytep) * image->height);
+    int imgBytesPerChannel = (image->depth == 16) ? 2 : 1;
     if (imgBytesPerChannel == 1) {
         uint8_t * pixels = (uint8_t *)image->pixels;
         for (int y = 0; y < image->height; ++y) {

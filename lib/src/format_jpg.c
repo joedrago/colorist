@@ -42,19 +42,15 @@ struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, 
     COLORIST_UNUSED(formatName);
 
     clImage * image = NULL;
-    clProfile * profile = NULL;
 
     struct my_error_mgr jerr;
     struct jpeg_decompress_struct cinfo;
-    JSAMPARRAY buffer;
-    int row_stride;
-    int row;
-    uint8_t * iccData = NULL;
-    unsigned int iccDataLen;
-
     cinfo.err = jpeg_std_error(&jerr.pub);
     jerr.pub.error_exit = my_error_exit;
     if (setjmp(jerr.setjmp_buffer)) {
+        if (image) {
+            clImageDestroy(C, image);
+        }
         jpeg_destroy_decompress(&cinfo);
         return 0;
     }
@@ -65,9 +61,12 @@ struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, 
     jpeg_read_header(&cinfo, TRUE);
     jpeg_start_decompress(&cinfo);
 
-    row_stride = cinfo.output_width * cinfo.output_components;
-    buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr) & cinfo, JPOOL_IMAGE, row_stride, 1);
+    int row_stride = cinfo.output_width * cinfo.output_components;
+    JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr) & cinfo, JPOOL_IMAGE, row_stride, 1);
 
+    clProfile * profile = NULL;
+    uint8_t * iccData = NULL;
+    unsigned int iccDataLen;
     if (read_icc_profile(C, &cinfo, &iccData, &iccDataLen)) {
         profile = clProfileParse(C, iccData, iccDataLen, NULL);
         if (!profile) {
@@ -80,11 +79,12 @@ struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, 
 
     clImageLogCreate(C, cinfo.output_width, cinfo.output_height, 8, profile);
     image = clImageCreate(C, cinfo.output_width, cinfo.output_height, 8, profile);
+
     if (profile) {
         clProfileDestroy(C, profile);
     }
 
-    row = 0;
+    int row = 0;
     while (cinfo.output_scanline < cinfo.output_height) {
         jpeg_read_scanlines(&cinfo, buffer, 1);
         {
