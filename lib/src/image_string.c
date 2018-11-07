@@ -673,6 +673,11 @@ clImage * clImageParseString(struct clContext * C, const char * s, int depth, st
 
     clContextLog(C, "parse", 0, "Found %d image stripe%s.", stripeCount, (stripeCount == 1) ? "" : "s");
 
+    if (!stripes) {
+        clContextLogError(C, "no valid image stripes found");
+        goto parseCleanup;
+    }
+
     for (stripe = stripes; stripe != NULL; stripe = stripe->next) {
         clContextLog(C, "parse", 0, "Parsing stripe index: %d", stripeIndex);
         stripe->image = clImageParseStripe(C, stripe->s, depth, profile, luminance, fromXYZ, prevW, prevH);

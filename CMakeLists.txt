@@ -72,6 +72,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     /wd4668 # Disable: is not defined as a preprocessor macro, replacing with '0'
     /wd4710 # Disable: function not inlined
     /wd4711 # Disable: function selected for inline expansion
+    /wd4738 # Disable: storing 32-bit float result in memory, possible loss of performance
     /wd4820 # Disable: bytes padding added after data member
     /wd4996 # Disable: potentially unsafe stdlib methods
     /wd5045 # Disable: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified

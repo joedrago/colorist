@@ -47,13 +47,13 @@ static toff_t seekCallback(tiffCallbackInfo * ci, toff_t off, int whence)
     switch (whence) {
         default:
         case SEEK_CUR:
-            ci->offset += (uint32_t)off;
+            ci->offset += off;
             break;
         case SEEK_SET:
-            ci->offset = (uint32_t)off;
+            ci->offset = off;
             break;
         case SEEK_END:
-            ci->offset = ci->raw->size + (uint32_t)off;
+            ci->offset = ci->raw->size + off;
             break;
     }
     return ci->offset;
