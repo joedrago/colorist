@@ -85,7 +85,7 @@ void clPixelMathScaleLuminance(struct clContext * C, float * pixels, int pixelCo
 #define MIN_DISTANCE (0.000001f)
 
 // Converts ([0-1], [0-1], [0-1]) to a hald data or weight index in [0-7]
-#define I(X, Y, Z) (X + (Y * 2) + (Z * 4))
+#define I(X, Y, Z) ((X) + ((Y) * 2) + ((Z) * 4))
 
 void clPixelMathHaldCLUTLookup(struct clContext * C, float * haldData, int haldDims, const float src[4], float dst[4])
 {

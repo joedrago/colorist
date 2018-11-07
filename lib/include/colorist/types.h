@@ -8,11 +8,11 @@
 #ifndef COLORIST_TYPES_H
 #define COLORIST_TYPES_H
 
-// for uint*_t
-#include <stdint.h>
-
 // for size_t
 #include <stddef.h>
+
+// for uint*_t
+#include <stdint.h>
 
 // Output luminance colorist uses for basic profiles (sRGB, P3, etc)
 #define COLORIST_DEFAULT_LUMINANCE 300
@@ -35,7 +35,7 @@ int clFileSize(const char * filename);
 #define COLORIST_FAILURE1(FMT, A)
 #endif
 
-#define COLORIST_UNUSED(V) ((void)V)
+#define COLORIST_UNUSED(V) ((void)(V))
 
 // Yes, clamp macros are nasty. Do not use them.
 #define CL_CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))

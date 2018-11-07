@@ -124,7 +124,7 @@ struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, 
     }
     rowPointers = (png_bytep *)clAllocate(sizeof(png_bytep) * rawHeight);
     if (imgBytesPerChannel == 1) {
-        uint8_t * pixels = (uint8_t *)image->pixels;
+        uint8_t * pixels = image->pixels;
         for (y = 0; y < rawHeight; ++y) {
             rowPointers[y] = &pixels[4 * y * rawWidth];
         }
@@ -203,7 +203,7 @@ clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char
 
     rowPointers = (png_bytep *)clAllocate(sizeof(png_bytep) * image->height);
     if (imgBytesPerChannel == 1) {
-        uint8_t * pixels = (uint8_t *)image->pixels;
+        uint8_t * pixels = image->pixels;
         for (int y = 0; y < image->height; ++y) {
             rowPointers[y] = &pixels[4 * y * image->width];
         }

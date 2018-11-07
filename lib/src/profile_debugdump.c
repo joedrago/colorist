@@ -10,9 +10,9 @@
 #include "colorist/context.h"
 #include "colorist/pixelmath.h"
 
-#include <string.h>
-
 #include "cJSON.h"
+
+#include <string.h>
 
 static const char * curveTypeToString(clProfileCurveType curveType)
 {

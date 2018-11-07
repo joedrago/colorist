@@ -101,12 +101,12 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
     if (input->size < 4) {
         clContextLogError(C, "JP2/J2K header too small");
         return NULL;
-    } else {
-        static const unsigned char j2kHeader[4] = { 0xff, 0x4f, 0xff, 0x51 };
-        if (!memcmp(input->ptr, j2kHeader, 4)) {
-            isJ2K = clTrue;
-            errorExtName = "J2K";
-        }
+    }
+
+    static const unsigned char j2kHeader[4] = { 0xff, 0x4f, 0xff, 0x51 };
+    if (!memcmp(input->ptr, j2kHeader, 4)) {
+        isJ2K = clTrue;
+        errorExtName = "J2K";
     }
 
     ci.C = C;

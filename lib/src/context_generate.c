@@ -109,7 +109,7 @@ int clContextGenerate(clContext * C, struct cJSON * output)
         }
 
         if (C->outputFilename) {
-            if ((depth != 8) && outputFileFormat && (strcmp(outputFileFormat, "icc")) && (clFormatMaxDepth(C, outputFileFormat) < depth)) {
+            if ((depth != 8) && outputFileFormat && (strcmp(outputFileFormat, "icc") != 0) && (clFormatMaxDepth(C, outputFileFormat) < depth)) {
                 clContextLog(C, "validate", 0, "Forcing output to 8-bit (format limitations)");
                 depth = 8;
             }
