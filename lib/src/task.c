@@ -43,7 +43,7 @@ void clTaskDestroy(struct clContext * C, clTask * task)
 
 #include <windows.h>
 
-int clTaskLimit()
+int clTaskLimit(void)
 {
     int numCPU;
     SYSTEM_INFO sysinfo;
@@ -117,7 +117,7 @@ int clTaskLimit()
 #ifdef COLORIST_EMSCRIPTEN
     return 1;
 #else
-    int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
+    int numCPU = (int)sysconf(_SC_NPROCESSORS_ONLN);
     return CL_CLAMP(numCPU, 1, numCPU);
 #endif
 }
@@ -135,7 +135,6 @@ static void * taskThreadProc(void * userData)
     clTask * task = (clTask *)userData;
     task->func(task->userData);
     pthread_exit(NULL);
-    return 0; // never reached
 }
 
 static void nativeTaskStart(clContext * C, clTask * task)

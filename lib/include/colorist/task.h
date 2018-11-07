@@ -25,6 +25,6 @@ typedef struct clTask
 clTask * clTaskCreate(struct clContext * C, clTaskFunc func, void * userData);
 void clTaskJoin(struct clContext * C, clTask * task);
 void clTaskDestroy(struct clContext * C, clTask * task);
-int clTaskLimit();
+int clTaskLimit(void);
 
 #endif // ifndef COLORIST_TASK_H

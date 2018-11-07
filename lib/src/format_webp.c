@@ -16,6 +16,9 @@
 
 #include <string.h>
 
+struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName, struct clRaw * input);
+clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
+
 struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);

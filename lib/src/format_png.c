@@ -14,6 +14,9 @@
 
 #include <string.h>
 
+struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, struct clRaw * input);
+clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
+
 struct readInfo
 {
     struct clContext * C;

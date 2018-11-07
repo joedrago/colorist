@@ -198,8 +198,6 @@ static int diffTransform(clContext * C, int steps, clProfile * srcProfile, clTra
     return diffCount;
 }
 
-#define FAIL() printf("ERROR: found mismatches, bailing out\n"); goto foundMismatch;
-
 int main(int argc, char * argv[])
 {
     COLORIST_UNUSED(argc);

@@ -34,6 +34,9 @@ static void setup_read_icc_profile(j_decompress_ptr cinfo);
 static boolean read_icc_profile(struct clContext * C, j_decompress_ptr cinfo, JOCTET ** icc_data_ptr, unsigned int * icc_data_len);
 static void write_icc_profile(j_compress_ptr cinfo, const JOCTET * icc_data_ptr, unsigned int icc_data_len);
 
+struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, struct clRaw * input);
+clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
+
 struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);

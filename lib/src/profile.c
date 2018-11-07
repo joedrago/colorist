@@ -26,7 +26,6 @@ clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock)
     clProfileCurve curve;
     int maxLuminance;
     const char * description;
-    COLORIST_ASSERT((stock >= 0) && (stock < CL_PS_COUNT));
     switch (stock) {
         case CL_PS_SRGB:
         default:
@@ -195,7 +194,7 @@ clProfile * clProfileRead(struct clContext * C, const char * filename)
 {
     clProfile * profile;
     clRaw rawProfile;
-    int bytes;
+    long bytes;
     FILE * f;
     f = fopen(filename, "rb");
     if (!f) {

@@ -49,9 +49,7 @@ typedef struct clProfile
 
 typedef enum clProfileStock
 {
-    CL_PS_SRGB = 0,
-
-    CL_PS_COUNT
+    CL_PS_SRGB = 0
 } clProfileStock;
 
 clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock);

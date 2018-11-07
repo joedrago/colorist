@@ -33,7 +33,7 @@ void clPixelMathResize(struct clContext * C, int srcW, int srcH, float * srcPixe
             srcPixels, srcW, srcH, srcW * 4 * sizeof(float),
             dstPixels, dstW, dstH, dstW * 4 * sizeof(float),
             4, 3, 0,
-            STBIR_EDGE_CLAMP, filter, STBIR_COLORSPACE_LINEAR,
+            STBIR_EDGE_CLAMP, (stbir_filter)filter, STBIR_COLORSPACE_LINEAR,
             NULL);
     }
 }

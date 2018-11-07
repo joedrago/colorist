@@ -9,7 +9,7 @@
 
 #include <string.h>
 
-static double now();
+static double now(void);
 
 void timerStart(Timer * timer)
 {
@@ -23,7 +23,7 @@ double timerElapsedSeconds(Timer * timer)
 
 #ifdef _WIN32
 #include <windows.h>
-static double now()
+static double now(void)
 {
     return (double)GetTickCount64() / 1000.0;
 }
@@ -44,8 +44,8 @@ uint16_t clHTONS(uint16_t s)
     uint8_t data[2];
     memcpy(&data, &s, sizeof(data));
 
-    return ((uint32_t)data[0] << 0)
-           | ((uint32_t)data[1] << 8);
+    return (uint16_t)((data[0] << 0)
+                      | (data[1] << 8));
 }
 
 uint16_t clNTOHS(uint16_t s)
@@ -53,8 +53,8 @@ uint16_t clNTOHS(uint16_t s)
     uint8_t data[2];
     memcpy(&data, &s, sizeof(data));
 
-    return ((uint32_t)data[1] << 0)
-           | ((uint32_t)data[0] << 8);
+    return (uint16_t)((data[1] << 0)
+                      | (data[0] << 8));
 }
 
 uint32_t clHTONL(uint32_t l)

@@ -47,6 +47,8 @@ static void clContextSilentLogError(clContext * C, const char * format, va_list 
     clFree(buffer);
 }
 
+extern int execute(int argc, char * argv[]);
+
 #ifdef COLORIST_EMSCRIPTEN
 #include <emscripten.h>
 EMSCRIPTEN_KEEPALIVE
@@ -115,6 +117,8 @@ int execute(int argc, char * argv[])
         case CL_ACTION_REPORT:
             ret = clContextReport(C);
             break;
+        case CL_ACTION_ERROR:
+        case CL_ACTION_NONE:
         default:
             clContextLogError(C, "Unimplemented action: %s", clActionToString(C, C->action));
             break;

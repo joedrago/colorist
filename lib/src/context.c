@@ -145,9 +145,7 @@ int clFormatBestDepth(struct clContext * C, const char * formatName, int reqDept
         case CL_FORMAT_DEPTH_8_TO_16:
             if (reqDepth > 16)
                 return 16;
-            else
-                return reqDepth;
-            break;
+            return reqDepth;
     }
 
     // Everything else gets 8 bit
@@ -182,12 +180,12 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
     COLORIST_UNUSED(C);
 
     switch (tonemap) {
+        case CL_TONEMAP_AUTO: return "auto";
         case CL_TONEMAP_ON: return "on";
-        case CL_TONEMAP_OFF: return "on";
+        case CL_TONEMAP_OFF: return "off";
         default:
-            break;
+            return "unknown";
     }
-    return "auto";
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -717,6 +715,8 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
             }
             break;
 
+        case CL_ACTION_ERROR:
+        case CL_ACTION_NONE:
         default:
             break;
     }

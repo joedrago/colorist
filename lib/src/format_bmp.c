@@ -70,11 +70,14 @@ typedef struct BITMAPV5HEADER
 #define BI_RGB        0
 #define BI_BITFIELDS  3
 
-#define LCS_sRGB                0x73524742 // 'sRGB'
-#define LCS_WINDOWS_COLOR_SPACE 0x57696e20 // 'Win ', Windows default color space
+//#define LCS_sRGB                0x73524742 // 'sRGB'
+//#define LCS_WINDOWS_COLOR_SPACE 0x57696e20 // 'Win ', Windows default color space
 #define PROFILE_EMBEDDED        0x4d424544 // 'MBED'
 
 #define LCS_GM_ABS_COLORIMETRIC 8
+
+struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clRaw * input);
+clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
 // ---------------------------------------------------------------------------
 
@@ -102,7 +105,7 @@ static int maskDepth(uint32_t mask, int currentDepth, int * channelDepth, int * 
     return (depth > currentDepth) ? depth : currentDepth;
 }
 
-struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clRaw * fileContents)
+struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);
 
@@ -119,30 +122,30 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
     uint32_t * packedPixels;
     int pixelCount;
 
-    if (fileContents->size < (sizeof(magic) + sizeof(fileHeader))) {
+    if (input->size < (sizeof(magic) + sizeof(fileHeader))) {
         clContextLogError(C, "Truncated BMP");
         goto readCleanup;
     }
 
-    memcpy(&magic, fileContents->ptr, sizeof(magic));
+    memcpy(&magic, input->ptr, sizeof(magic));
     if (magic != expectedMagic) {
         clContextLogError(C, "Unexpected magic (BM)");
         goto readCleanup;
     }
 
-    memcpy(&fileHeader, fileContents->ptr + 2, sizeof(fileHeader));
-    if (fileHeader.bfSize != fileContents->size) {
+    memcpy(&fileHeader, input->ptr + 2, sizeof(fileHeader));
+    if (fileHeader.bfSize != input->size) {
         clContextLogError(C, "Invalid BMP total size in file header");
         goto readCleanup;
     }
 
     memset(&info, 0, sizeof(info));
-    memcpy(&info, fileContents->ptr + sizeof(magic) + sizeof(fileHeader), 4); // read bV5Size
-    if ((info.bV5Size >= fileContents->size) || (info.bV5Size > sizeof(info))) {
+    memcpy(&info, input->ptr + sizeof(magic) + sizeof(fileHeader), 4); // read bV5Size
+    if ((info.bV5Size >= input->size) || (info.bV5Size > sizeof(info))) {
         clContextLogError(C, "Invalid BMP info header size");
         goto readCleanup;
     }
-    memcpy(&info, fileContents->ptr + 2 + sizeof(fileHeader), info.bV5Size); // read the whole header
+    memcpy(&info, input->ptr + 2 + sizeof(fileHeader), info.bV5Size); // read the whole header
     // TODO: Make decisions based on the size? (autodetect V4 or previous)
 
     if (info.bV5BitCount != 32) {
@@ -151,11 +154,11 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
     }
 
     if (info.bV5CSType == PROFILE_EMBEDDED) {
-        if ((sizeof(magic) + sizeof(fileHeader) + info.bV5ProfileData + info.bV5ProfileSize) > fileContents->size) {
+        if ((sizeof(magic) + sizeof(fileHeader) + info.bV5ProfileData + info.bV5ProfileSize) > input->size) {
             clContextLogError(C, "Invalid BMP ICC profile offset/size");
             goto readCleanup;
         } else {
-            uint8_t * rawProfileData = fileContents->ptr + sizeof(magic) + sizeof(fileHeader) + info.bV5ProfileData;
+            uint8_t * rawProfileData = input->ptr + sizeof(magic) + sizeof(fileHeader) + info.bV5ProfileData;
             profile = clProfileParse(C, rawProfileData, info.bV5ProfileSize, NULL);
             if (profile == NULL) {
                 clContextLogError(C, "Invalid ICC embedded profile");
@@ -176,10 +179,10 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
         }
 
         // Assume these masks/depths for BI_RGB
-        info.bV5BlueMask = 255 << 0;
-        info.bV5GreenMask = 255 << 8;
-        info.bV5RedMask = 255 << 16;
-        info.bV5AlphaMask = (uint32_t)(255 << 24);
+        info.bV5BlueMask = 255U << 0;
+        info.bV5GreenMask = 255U << 8;
+        info.bV5RedMask = 255U << 16;
+        info.bV5AlphaMask = 255U << 24;
         rDepth = gDepth = bDepth = aDepth = 8;
         rShift = 0;
         gShift = 8;
@@ -195,11 +198,11 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
     pixelCount = info.bV5Width * info.bV5Height;
     packedPixelBytes = sizeof(uint32_t) * pixelCount;
     packedPixels = clAllocate(packedPixelBytes);
-    if ((fileHeader.bfOffBits + packedPixelBytes) > fileContents->size) {
+    if ((fileHeader.bfOffBits + packedPixelBytes) > input->size) {
         clContextLogError(C, "Truncated BMP (not enough pixel data)");
         goto readCleanup;
     }
-    memcpy(packedPixels, fileContents->ptr + fileHeader.bfOffBits, packedPixelBytes);
+    memcpy(packedPixels, input->ptr + fileHeader.bfOffBits, packedPixelBytes);
 
     clImageLogCreate(C, info.bV5Width, info.bV5Height, depth, profile);
     image = clImageCreate(C, info.bV5Width, info.bV5Height, depth, profile);
@@ -214,7 +217,7 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
             if (aDepth > 0)
                 dstPixel[3] = (uint8_t)((packedPixels[i] & info.bV5AlphaMask) >> aShift);
             else
-                dstPixel[3] = (1 << image->depth) - 1;
+                dstPixel[3] = 255U;
         }
     } else {
         // 10 bit
@@ -228,7 +231,7 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
             if (aDepth > 0)
                 dstPixel[3] = (uint16_t)((packedPixels[i] & info.bV5AlphaMask) >> aShift);
             else
-                dstPixel[3] = (1 << image->depth) - 1;
+                dstPixel[3] = 1023U;
         }
     }
 
@@ -289,10 +292,10 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
                 (srcPixel[0] << 16) + // R
                 (srcPixel[3] << 24);  // A
         }
-        info.bV5BlueMask = 255 << 0;
-        info.bV5GreenMask = 255 << 8;
-        info.bV5RedMask = 255 << 16;
-        info.bV5AlphaMask = (uint32_t)(255 << 24);
+        info.bV5BlueMask = 255U << 0;
+        info.bV5GreenMask = 255U << 8;
+        info.bV5RedMask = 255U << 16;
+        info.bV5AlphaMask = 255U << 24;
     } else {
         // 10 bit
         for (int i = 0; i < pixelCount; ++i) {
