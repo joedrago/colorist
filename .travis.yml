@@ -6,9 +6,15 @@ compiler:
 
 matrix:
   include:
-  - env: BUILD_A=1
-  include:
-  - env: BUILD_B=1
+  - name: "Standard"
+    env:
+  - name: "Coverage"
+    env: COLORIST_COVERAGE=1
+  exclude:
+  - compiler: gcc
+    include:
+      name: "Coverage"
+
 
 before_script:
   - mkdir build
