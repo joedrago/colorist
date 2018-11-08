@@ -1,11 +1,6 @@
 language: c
 
 os: linux
-addons:
-  apt:
-    packages:
-      - llvm
-      - ninja-build
 
 matrix:
   include:
@@ -47,10 +42,10 @@ matrix:
 
   - name: "Clang Coverage"
     compiler: clang
+    addons:
+      apt:
+        packages:
+          - llvm
+          - ninja-build
     script:
       - bash ./scripts/coverage.sh
-
-  - name: "Clang Analyze"
-    compiler: clang
-    script:
-      - bash ./scripts/analyze.sh
