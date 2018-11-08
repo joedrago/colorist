@@ -150,7 +150,6 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
     if (profile->description) {
         clProfileSetMLU(C, profile, "desc", "en", "US", profile->description);
     }
-    memset(&profile->raw, 0, sizeof(profile->raw));
     clProfileReload(C, profile);
     return profile;
 }
