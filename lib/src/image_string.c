@@ -635,7 +635,7 @@ parseCleanup:
     clFree(sanitizedString);
     if (tokens) {
         clToken * t = tokens;
-        while (t->next != NULL) {
+        while (t) {
             clToken * freeMe = t;
             t = t->next;
             clFree(freeMe);
