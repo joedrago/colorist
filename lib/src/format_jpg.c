@@ -264,9 +264,10 @@ static void write_icc_profile(j_compress_ptr cinfo,
         jpeg_write_m_byte(cinfo, (int)num_markers);
 
         /* Add the profile data */
-        while (length--) {
+        while (length) {
             jpeg_write_m_byte(cinfo, *icc_data_ptr);
             icc_data_ptr++;
+            --length;
         }
         cur_marker++;
     }
