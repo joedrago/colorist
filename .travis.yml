@@ -5,7 +5,6 @@ addons:
   apt:
     packages:
       - llvm
-      - clang-tidy
       - ninja-build
 
 matrix:
@@ -50,11 +49,6 @@ matrix:
     compiler: clang
     script:
       - bash ./scripts/coverage.sh
-
-  - name: "Clang Tidy"
-    compiler: clang
-    script:
-      - bash ./scripts/tidy.sh
 
   - name: "Clang Analyze"
     compiler: clang
