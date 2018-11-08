@@ -1,7 +1,3 @@
-# Build Status
-
-[![Build Status](https://travis-ci.com/joedrago/colorist.svg?branch=master)](https://travis-ci.com/joedrago/colorist)
-
 # Installation
 
 ### OSX
@@ -29,6 +25,12 @@ the latest in the master branch.
 
 Please see the [Usage](./docs/Usage.md) documentation and the
 [Cookbook](./docs/Cookbook.md).
+
+---
+
+# Build Status
+
+Travis CI: [![Build Status](https://travis-ci.com/joedrago/colorist.svg?branch=master)](https://travis-ci.com/joedrago/colorist)
 
 ---
 
