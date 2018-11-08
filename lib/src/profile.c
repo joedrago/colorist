@@ -206,7 +206,7 @@ clProfile * clProfileRead(struct clContext * C, const char * filename)
     fseek(f, 0, SEEK_SET);
     memset(&rawProfile, 0, sizeof(rawProfile));
     clRawRealloc(C, &rawProfile, bytes);
-    size_t bytesRead = fread(rawProfile.ptr, bytes, 1, f);
+    size_t bytesRead = fread(rawProfile.ptr, 1, bytes, f);
     fclose(f);
     if ((long)bytesRead != bytes) {
         clContextLogError(C, "Failed to read %ld bytes from %s, got %zu", bytes, bytesRead);
