@@ -125,7 +125,7 @@ if(COLORIST_COVERAGE)
       DEPENDS colorist-test-ccov-preprocessing)
 
   add_custom_target(colorist-test-ccov
-      COMMAND ${LLVM_PREFIX} llvm-cov show $<TARGET_FILE:colorist-test> -instr-profile=colorist-test.profdata -show-line-counts-or-regions -output-dir=${CMAKE_BINARY_DIR}/colorist-test-llvm-cov -format="html"
+      COMMAND ${LLVM_PREFIX} llvm-cov show $<TARGET_FILE:colorist-test> -instr-profile=colorist-test.profdata -show-line-counts-or-regions -output-dir=${CMAKE_BINARY_DIR}/colorist-test-llvm-cov -format="html" ${CMAKE_CURRENT_SOURCE_DIR}/lib
       DEPENDS colorist-test-ccov-preprocessing)
 
   add_custom_command(TARGET colorist-test-ccov POST_BUILD
