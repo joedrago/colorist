@@ -1,32 +1,62 @@
 language: c
 
+os: linux
+addons:
+  apt:
+    packages:
+      - llvm
+      - clang-tidy
+      - ninja-build
+
 matrix:
   include:
-  - name: "Standard GCC"
+  - name: "GCC Debug"
     compiler: gcc
     before_script:
       - mkdir build
       - cd build
-      - cmake ..
+      - cmake -DCMAKE_BUILD_TYPE=Debug ..
     script:
       - make
 
-  - name: "Standard Clang"
+  - name: "GCC Release"
+    compiler: gcc
+    before_script:
+      - mkdir build
+      - cd build
+      - cmake -DCMAKE_BUILD_TYPE=Release ..
+    script:
+      - make
+
+  - name: "Clang Debug"
     compiler: clang
     before_script:
       - mkdir build
       - cd build
-      - cmake ..
+      - cmake -DCMAKE_BUILD_TYPE=Debug ..
     script:
       - make
 
-  - name: "Coverage"
+  - name: "Clang Release"
     compiler: clang
-    os: linux
-    addons:
-      apt:
-        packages:
-          - llvm
-          - ninja-build
+    before_script:
+      - mkdir build
+      - cd build
+      - cmake -DCMAKE_BUILD_TYPE=Release ..
+    script:
+      - make
+
+  - name: "Clang Coverage"
+    compiler: clang
     script:
       - bash ./scripts/coverage.sh
+
+  - name: "Clang Tidy"
+    compiler: clang
+    script:
+      - bash ./scripts/tidy.sh
+
+  - name: "Clang Analyze"
+    compiler: clang
+    script:
+      - bash ./scripts/analyze.sh
