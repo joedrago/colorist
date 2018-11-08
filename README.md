@@ -1,3 +1,5 @@
+# Build Status
+
 [![Build Status](https://travis-ci.com/joedrago/colorist.svg?branch=master)](https://travis-ci.com/joedrago/colorist)
 
 # Installation
