@@ -558,6 +558,24 @@ static void test_debugDump(void)
     cJSON_Delete(jsonOutput);
     clImageDestroy(C, image);
 
+    // Test PQ signature detection
+    clProfile * P3PQ = clProfileRead(C, "../docs/profiles/HDR_P3_D65_ST2084.icc");
+    clProfileDebugDump(C, P3PQ, clTrue, 0);
+    jsonOutput = cJSON_CreateObject();
+    clProfileDebugDumpJSON(C, jsonOutput, P3PQ, clTrue);
+    cJSON_Delete(jsonOutput);
+    clProfileDestroy(C, P3PQ);
+
+    // Test "CCMM unfriendly" profile
+    clProfile * sRGB2014 = clProfileRead(C, "../test/sRGB2014.icc");
+    clProfileDebugDump(C, sRGB2014, clTrue, 0);
+    clProfileDestroy(C, sRGB2014);
+
+    // "bad" profile
+    clProfile * badProfile = clProfileRead(C, "../test/bad.icc");
+    clProfileDebugDump(C, badProfile, clTrue, 0);
+    clProfileDestroy(C, badProfile);
+
     clContextDestroy(C);
 }
 
