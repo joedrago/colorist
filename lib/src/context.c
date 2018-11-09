@@ -93,8 +93,14 @@ static char const * clFormatDetectHeader(struct clContext * C, const char * file
 
 const char * clFormatDetect(struct clContext * C, const char * filename)
 {
+    // If either slash is AFTER the last period in the filename, there is no extension
+    const char * lastBackSlash = strrchr(filename, '\\');
+    const char * lastSlash = strrchr(filename, '/');
     const char * ext = strrchr(filename, '.');
-    if (ext == NULL) {
+    if ((ext == NULL) ||
+        (lastBackSlash && (lastBackSlash > ext)) ||
+        (lastSlash && (lastSlash > ext)))
+    {
         ext = clFormatDetectHeader(C, filename);
         if (ext)
             return ext;

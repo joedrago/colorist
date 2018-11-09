@@ -109,6 +109,9 @@ static void test_clFormat(void)
     TEST_ASSERT_NULL(clFormatDetect(C, "not_an_image.txt"));
     TEST_ASSERT_EQUAL_STRING(clFormatDetect(C, "file.icc"), "icc");
     TEST_ASSERT_EQUAL_STRING(clFormatDetect(C, "file.png"), "png");
+    TEST_ASSERT_EQUAL_STRING(clFormatDetect(C, "..\\test\\not_a_file"), NULL);
+    TEST_ASSERT_EQUAL_STRING(clFormatDetect(C, "../test/red_png_no_ext"), "png");
+    TEST_ASSERT_EQUAL_STRING(clFormatDetect(C, "../test/red_png.txt"), "png");
 
     TEST_ASSERT_EQUAL_INT(clFormatMaxDepth(C, "txt"), 8); // this will error, but return 8
     TEST_ASSERT_EQUAL_INT(clFormatMaxDepth(C, "jpg"), 8);
