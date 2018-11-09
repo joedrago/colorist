@@ -116,19 +116,19 @@ if(COLORIST_COVERAGE)
       COMMAND ${LLVM_PREFIX} llvm-profdata merge -sparse colorist-test.profraw -o colorist-test.profdata
       DEPENDS colorist-test)
 
-  add_custom_target(colorist-test-ccov-show
-      COMMAND ${LLVM_PREFIX} llvm-cov show $<TARGET_FILE:colorist-test> -instr-profile=colorist-test.profdata -show-line-counts-or-regions
-      DEPENDS colorist-test-ccov-preprocessing)
+#  add_custom_target(colorist-test-ccov-show
+#      COMMAND ${LLVM_PREFIX} llvm-cov show $<TARGET_FILE:colorist-test> -instr-profile=colorist-test.profdata -show-line-counts-or-regions
+#      DEPENDS colorist-test-ccov-preprocessing)
 
-  add_custom_target(colorist-test-ccov-report
+  add_custom_target(coverage-cli
       COMMAND ${LLVM_PREFIX} llvm-cov report $<TARGET_FILE:colorist-test> -instr-profile=colorist-test.profdata ${CMAKE_CURRENT_SOURCE_DIR}/lib
       DEPENDS colorist-test-ccov-preprocessing)
 
-  add_custom_target(colorist-test-ccov
+  add_custom_target(coverage
       COMMAND ${LLVM_PREFIX} llvm-cov show $<TARGET_FILE:colorist-test> -instr-profile=colorist-test.profdata -show-expansions -show-line-counts-or-regions -output-dir=${CMAKE_BINARY_DIR}/colorist-test-llvm-cov -format="html" ${CMAKE_CURRENT_SOURCE_DIR}/lib
       DEPENDS colorist-test-ccov-preprocessing)
 
-  add_custom_command(TARGET colorist-test-ccov POST_BUILD
+  add_custom_command(TARGET coverage POST_BUILD
       COMMAND ;
       COMMENT "Open ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${TARGET_NAME}-llvm-cov/index.html in your browser to view the coverage report."
   )
