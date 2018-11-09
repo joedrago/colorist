@@ -64,7 +64,7 @@ const char * clActionToString(struct clContext * C, clAction action)
         default:
             break;
     }
-    return "Unknown";
+    return "unknown";
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -105,7 +105,7 @@ int clFormatMaxDepth(struct clContext * C, const char * formatName)
 
     switch (format->depth) {
         case CL_FORMAT_DEPTH_8:
-            return 8;
+            break;
         case CL_FORMAT_DEPTH_8_OR_10:
             return 10;
         case CL_FORMAT_DEPTH_8_OR_16:
@@ -184,8 +184,9 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
         case CL_TONEMAP_ON: return "on";
         case CL_TONEMAP_OFF: return "off";
         default:
-            return "unknown";
+            break;
     }
+    return "unknown";
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -221,7 +222,7 @@ const char * clFilterToString(struct clContext * C, clFilter filter)
         default:
             break;
     }
-    return "Invalid";
+    return "invalid";
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -262,6 +263,18 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->tonemap = CL_TONEMAP_AUTO;
 }
 
+static void clContextSetDefaultArgs(clContext * C)
+{
+    C->action = CL_ACTION_NONE;
+    clConversionParamsSetDefaults(C, &C->params);
+    C->help = clFalse;
+    C->iccOverrideIn = NULL;
+    C->verbose = clFalse;
+    C->ccmmAllowed = clTrue;
+    C->inputFilename = NULL;
+    C->outputFilename = NULL;
+}
+
 clContext * clContextCreate(clContextSystem * system)
 {
     // bootstrap!
@@ -293,18 +306,8 @@ clContext * clContextCreate(clContextSystem * system)
     // to fully honor the chad tags in the profiles (if any).
     cmsSetAdaptationStateTHR(C->lcms, 0);
 
-    // Default args
-    C->action = CL_ACTION_NONE;
-    clConversionParamsSetDefaults(C, &C->params);
-    C->help = clFalse;
-    C->iccOverrideIn = NULL;
-    C->verbose = clFalse;
-    C->ccmmAllowed = clTrue;
-    C->inputFilename = NULL;
-    C->outputFilename = NULL;
-
+    clContextSetDefaultArgs(C);
     clContextRegisterBuiltinFormats(C);
-
     return C;
 }
 
@@ -430,7 +433,7 @@ static clBool parseRect(clContext * C, int rect[4], const char * arg)
 
     int index = 0;
     for (char * token = strtok(buffer, ","); token != NULL; token = strtok(NULL, ",")) {
-        if (index >= 8) {
+        if (index >= 4) {
             clContextLogError(C, "Too many values for rect: (expecting: x,y,w,h)");
             return clFalse;
         }
@@ -473,7 +476,7 @@ static clBool parseResize(clContext * C, clConversionParams * params, const char
             params->resizeFilter = CL_FILTER_AUTO;
             continue;
         }
-        if (!strcmp(token, "box")) {
+        if (!strcmp(token, "bo")) { // Awful hack: Delims include 'x', which truncates box. Allow 'bo' to mean box.
             params->resizeFilter = CL_FILTER_BOX;
             continue;
         }
@@ -518,8 +521,10 @@ static clBool parseResize(clContext * C, clConversionParams * params, const char
 
 static clBool validateArgs(clContext * C);
 
-clBool clContextParseArgs(clContext * C, int argc, char * argv[])
+clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
 {
+    clContextSetDefaultArgs(C); // Reset to all defaults
+
     int taskLimit = clTaskLimit();
 
     int argIndex = 1;
@@ -567,9 +572,8 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
             } else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs")) {
                 NEXTARG();
                 C->params.jobs = atoi(arg);
-                if (C->params.jobs == 0)
+                if ((C->params.jobs <= 0) || (C->params.jobs > taskLimit))
                     C->params.jobs = taskLimit;
-                C->params.jobs = CL_CLAMP(C->params.jobs, 1, taskLimit);
             } else if (!strcmp(arg, "--json")) {
                 // Allow it to exist on the cmdline, it doesn't adjust any params
             } else if (!strcmp(arg, "-l") || !strcmp(arg, "--luminance")) {
@@ -627,7 +631,6 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
                 C->action = clActionFromString(C, arg);
                 if (C->action == CL_ACTION_ERROR) {
                     clContextLogError(C, "unknown action '%s', expecting convert, identify, generate, or report", arg);
-                    return clFalse;
                 }
             } else if (filenames[0] == NULL) {
                 filenames[0] = arg;
@@ -717,19 +720,13 @@ clBool clContextParseArgs(clContext * C, int argc, char * argv[])
 
         case CL_ACTION_ERROR:
         case CL_ACTION_NONE:
-        default:
-            break;
+            return clFalse;
     }
     return validateArgs(C);
 }
 
 static clBool validateArgs(clContext * C)
 {
-    clBool valid = clTrue;
-    if (C->params.bpp < 0) {
-        clContextLogError(C, "Unknown bpp: %d", C->params.bpp);
-        valid = clFalse;
-    }
     if (C->params.autoGrade && (C->params.gamma != 0.0f) && (C->params.luminance != 0)) {
         clContextLog(C, "syntax", 0, "WARNING: auto color grading mode (-a) is useless with both -g and -l specified, disabling auto color grading");
         C->params.autoGrade = clFalse;
@@ -738,7 +735,7 @@ static clBool validateArgs(clContext * C)
         clContextLog(C, "syntax", 0, "-o in use, disabling all other output profile options");
         clConversionParamsSetOutputProfileDefaults(C, &C->params);
     }
-    return valid;
+    return clTrue;
 }
 
 void clContextPrintArgs(clContext * C)

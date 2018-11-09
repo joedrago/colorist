@@ -191,7 +191,7 @@ void clContextLogError(clContext * C, const char * format, ...);
 void clContextPrintSyntax(clContext * C);
 void clContextPrintVersions(clContext * C);
 void clContextPrintArgs(clContext * C);
-clBool clContextParseArgs(clContext * C, int argc, char * argv[]);
+clBool clContextParseArgs(clContext * C, int argc, const char * argv[]);
 
 struct clImage * clContextRead(clContext * C, const char * filename, const char * iccOverride, const char ** outFormatName);
 clBool clContextWrite(clContext * C, struct clImage * image, const char * filename, const char * formatName, int quality, int rate);

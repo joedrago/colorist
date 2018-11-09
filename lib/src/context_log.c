@@ -66,7 +66,8 @@ void clContextDefaultLog(clContext * C, const char * section, int indent, const 
     if (section) {
         char spaces[10] = "         ";
         int spacesNeeded = 9 - (int)strlen(section);
-        spacesNeeded = CL_CLAMP(spacesNeeded, 0, 9);
+        if (spacesNeeded < 0)
+            spacesNeeded = 0;
         spaces[spacesNeeded] = 0;
         fprintf(stdout, "[%s%s] ", spaces, section);
     }

@@ -11,394 +11,548 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unity.h>
 
-static void setFloat4(float c[4], float v0, float v1, float v2, float v3) { c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; }
+// --------------------------------------------------------------------------------------
+// Helpers
+
+// static void setFloat4(float c[4], float v0, float v1, float v2, float v3) { c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; }
 // static void setFloat3(float c[3], float v0, float v1, float v2) { c[0] = v0; c[1] = v1; c[2] = v2; }
-static void setRGBA8_4(uint8_t c[4], uint8_t v0, uint8_t v1, uint8_t v2, uint8_t v3) { c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; }
+// static void setRGBA8_4(uint8_t c[4], uint8_t v0, uint8_t v1, uint8_t v2, uint8_t v3) { c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; }
 // static void setRGBA8_3(uint8_t c[3], uint8_t v0, uint8_t v1, uint8_t v2) { c[0] = v0; c[1] = v1; c[2] = v2; }
-static void setRGBA16_4(uint16_t c[4], uint16_t v0, uint16_t v1, uint16_t v2, uint16_t v3) { c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; }
+// static void setRGBA16_4(uint16_t c[4], uint16_t v0, uint16_t v1, uint16_t v2, uint16_t v3) { c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; }
 // static void setRGBA16_3(uint16_t c[3], uint16_t v0, uint16_t v1, uint16_t v2) { c[0] = v0; c[1] = v1; c[2] = v2; }
 
-// #define DEBUG_SINGLE_DIFF
-
-static int diffTransform(clContext * C, int steps, clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth, clTonemap tonemap, float thresholdF)
+static clContextSystem silentSystem;
+static void clContextSilentLog(clContext * C, const char * section, int indent, const char * format, va_list args)
 {
-#if defined(DEBUG_SINGLE_DIFF)
-    clBool printProgress = clFalse;
-    clBool printMatches = clFalse;
-    clBool printMismatches = clTrue;
-#else
-    clBool printProgress = clFalse;
-    clBool printMatches = clFalse;
-    clBool printMismatches = clFalse;
-#endif
-
-    int diffCount = 0;
-
-    float srcFloat[4];
-    float dstFloatCCMM[4];
-    float dstFloatLCMS[4];
-
-    uint8_t src8[4];
-    uint8_t dst8CCMM[4];
-    uint8_t dst8LCMS[4];
-
-    uint16_t src16[4];
-    uint16_t dst16CCMM[4];
-    uint16_t dst16LCMS[4];
-
-    void * srcRaw;
-    void * dstRawCCMM;
-    void * dstRawLCMS;
-
-    float channelDiv = (float)(steps - 1);
-    int srcMaxChannel = 0;
-    float srcScale = 1.0f;
-    int r, g, b;
-
-    int thresholdI = (int)thresholdF;
-
-    char title[512];
-    char errorPrefix[512];
-
-    clTransform * transform = clTransformCreate(C, srcProfile, srcFormat, srcDepth, dstProfile, dstFormat, dstDepth, tonemap);
-
-    if (srcDepth <= 16) {
-        srcMaxChannel = (1 << srcDepth) - 1;
-        srcScale = (float)srcMaxChannel;
-    }
-
-    sprintf(title, "'%s' (%d bit, %s) --%s--> '%s' (%d bit, %s)",
-        srcProfile ? srcProfile->description : "XYZ", srcDepth, (srcFormat == CL_XF_RGBA) ? "alpha" : "noalpha",
-        (tonemap == CL_TONEMAP_AUTO) ? "auto" : (tonemap == CL_TONEMAP_ON) ? "tonemap" : "clip",
-        dstProfile ? dstProfile->description : "XYZ", dstDepth, (dstFormat == CL_XF_RGBA) ? "alpha" : "noalpha");
-    if (printProgress) {
-        strcpy(errorPrefix, " * ");
-        printf("%s - ->\n", title);
-    } else {
-        strcpy(errorPrefix, title);
-        strcat(errorPrefix, " - ");
-    }
-
-    for (r = 0; r < steps; ++r) {
-        if (printProgress) {
-            printf(" * %s - %d/%d\n", title, r + 1, steps);
-        }
-        for (g = 0; g < steps; ++g) {
-            for (b = 0; b < steps; ++b) {
-                clBool differs = clFalse;
-
-                setFloat4(srcFloat, r / channelDiv, g / channelDiv, b / channelDiv, 1.0f);
-
-                if (srcDepth == 32) {
-                    srcRaw = srcFloat;
-                } else if (srcDepth > 8) {
-                    setRGBA16_4(src16,
-                        (uint16_t)clPixelMathRoundf(srcFloat[0] * srcScale),
-                        (uint16_t)clPixelMathRoundf(srcFloat[1] * srcScale),
-                        (uint16_t)clPixelMathRoundf(srcFloat[2] * srcScale),
-                        (uint16_t)srcMaxChannel
-                        );
-                    srcRaw = src16;
-                } else {
-                    setRGBA8_4(src8,
-                        (uint8_t)clPixelMathRoundf(srcFloat[0] * srcScale),
-                        (uint8_t)clPixelMathRoundf(srcFloat[1] * srcScale),
-                        (uint8_t)clPixelMathRoundf(srcFloat[2] * srcScale),
-                        255
-                        );
-                    srcRaw = src8;
-                }
-
-                if (dstDepth == 32) {
-                    dstRawCCMM = dstFloatCCMM;
-                    dstRawLCMS = dstFloatLCMS;
-                } else if (dstDepth > 8) {
-                    dstRawCCMM = dst16CCMM;
-                    dstRawLCMS = dst16LCMS;
-                } else {
-                    dstRawCCMM = dst8CCMM;
-                    dstRawLCMS = dst8LCMS;
-                }
-
-                C->ccmmAllowed = clTrue;
-                clTransformRun(C, transform, 1, srcRaw, dstRawCCMM, 1);
-                C->ccmmAllowed = clFalse;
-                clTransformRun(C, transform, 1, srcRaw, dstRawLCMS, 1);
-
-                if (dstDepth == 32) {
-                    if ((fabsf(dstFloatCCMM[0] - dstFloatLCMS[0]) > thresholdF)
-                        || (fabsf(dstFloatCCMM[1] - dstFloatLCMS[1]) > thresholdF)
-                        || (fabsf(dstFloatCCMM[2] - dstFloatLCMS[2]) > thresholdF))
-                    {
-                        differs = clTrue;
-                    }
-                } else if (dstDepth > 8) {
-                    if ((abs((int)dst16CCMM[0] - (int)dst16LCMS[0]) > thresholdI)
-                        || (abs((int)dst16CCMM[1] - (int)dst16LCMS[1]) > thresholdI)
-                        || (abs((int)dst16CCMM[2] - (int)dst16LCMS[2]) > thresholdI))
-                    {
-                        differs = clTrue;
-                    }
-                } else {
-                    if ((abs((int)dst8CCMM[0] - (int)dst8LCMS[0]) > thresholdI)
-                        || (abs((int)dst8CCMM[1] - (int)dst8LCMS[1]) > thresholdI)
-                        || (abs((int)dst8CCMM[2] - (int)dst8LCMS[2]) > thresholdI))
-                    {
-                        differs = clTrue;
-                    }
-                }
-
-                if (differs) {
-                    ++diffCount;
-                }
-
-                if ((printMatches && !differs) || (printMismatches && differs)) {
-                    const char * prefix = "Match";
-                    if (differs) {
-                        prefix = "Mismatch";
-                    }
-                    if (srcDepth == 32) {
-                        printf("%s%s: SRC(%g,%g,%g)", errorPrefix, prefix, srcFloat[0], srcFloat[1], srcFloat[2]);
-                    } else if (srcDepth > 8) {
-                        printf("%s%s: SRC(%u,%u,%u)", errorPrefix, prefix, src16[0], src16[1], src16[2]);
-                    } else {
-                        printf("%s%s: SRC(%u,%u,%u)", errorPrefix, prefix, src8[0], src8[1], src8[2]);
-                    }
-
-                    if (dstDepth == 32) {
-                        printf(" CCMM(%g,%g,%g) LCMS(%g,%g,%g)\n",
-                            dstFloatCCMM[0], dstFloatCCMM[1], dstFloatCCMM[2],
-                            dstFloatLCMS[0], dstFloatLCMS[1], dstFloatLCMS[2]);
-                    } else if (dstDepth > 8) {
-                        printf(" CCMM(%u,%u,%u) LCMS(%u,%u,%u)\n",
-                            dst16CCMM[0], dst16CCMM[1], dst16CCMM[2],
-                            dst16LCMS[0], dst16LCMS[1], dst16LCMS[2]);
-                    } else {
-                        printf(" CCMM(%u,%u,%u) LCMS(%u,%u,%u)\n",
-                            dst8CCMM[0], dst8CCMM[1], dst8CCMM[2],
-                            dst8LCMS[0], dst8LCMS[1], dst8LCMS[2]);
-                    }
-
-                    // if (differs) {
-                    // goto bailOut;
-                    // }
-                }
-            }
-        }
-    }
-
-// bailOut:
-
-    if (diffCount > 100) {
-        printf("%s - %d differences\n", title, diffCount);
-    }
-
-    clTransformDestroy(C, transform);
-    return diffCount;
+    COLORIST_UNUSED(C);
+    COLORIST_UNUSED(section);
+    COLORIST_UNUSED(indent);
+    COLORIST_UNUSED(format);
+    COLORIST_UNUSED(args);
 }
+static void clContextSilentLogError(clContext * C, const char * format, va_list args)
+{
+    COLORIST_UNUSED(C);
+    COLORIST_UNUSED(format);
+    COLORIST_UNUSED(args);
+}
+
+// --------------------------------------------------------------------------------------
+// Unity stubs
+
+void setUp(void) {}
+void tearDown(void) {}
+void suiteSetUp(void) {}
+int suiteTearDown(int num_failures) { return num_failures; }
+
+// --------------------------------------------------------------------------------------
+// Tests
+
+static void test_clContext(void)
+{
+    clContext * C = clContextCreate(NULL);
+    TEST_ASSERT_NOT_NULL(C);
+
+    clContextDestroy(C);
+}
+
+static void test_clContextLog(void)
+{
+    clContext * C = clContextCreate(NULL);
+    TEST_ASSERT_NOT_NULL(C);
+    clContextLog(C, "unittest", 0, "testing clContextLog");
+    clContextLog(C, "", 0, "testing clContextLog");
+    clContextLog(C, "unittestunittest", 0, "testing clContextLog");
+    clContextLog(C, "unittest", -3, "testing clContextLog");
+    clContextLogError(C, "testing clContextLogError");
+
+    clContextDestroy(C);
+}
+
+static void test_clAction(void)
+{
+    clContext * C = clContextCreate(&silentSystem);
+    TEST_ASSERT_NOT_NULL(C);
+
+    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "identify"), CL_ACTION_IDENTIFY);
+    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "id"), CL_ACTION_IDENTIFY);
+    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "generate"), CL_ACTION_GENERATE);
+    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "gen"), CL_ACTION_GENERATE);
+    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "calc"), CL_ACTION_CALC);
+    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "convert"), CL_ACTION_CONVERT);
+    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "modify"), CL_ACTION_MODIFY);
+    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "report"), CL_ACTION_REPORT);
+    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "derp"), CL_ACTION_ERROR);
+
+    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_NONE), "--");
+    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_IDENTIFY), "identify");
+    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_GENERATE), "generate");
+    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_CALC), "calc");
+    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_CONVERT), "convert");
+    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_MODIFY), "modify");
+    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_REPORT), "report");
+    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_ERROR), "unknown");
+    TEST_ASSERT_EQUAL_STRING(clActionToString(C, (clAction)555), "unknown");
+
+    clContextDestroy(C);
+}
+
+static void test_clFormat(void)
+{
+    clContext * C = clContextCreate(&silentSystem);
+    TEST_ASSERT_NOT_NULL(C);
+
+    TEST_ASSERT_NULL(clContextFindFormat(C, NULL));
+    TEST_ASSERT_NULL(clFormatDetect(C, "file_with_no_extension"));
+    TEST_ASSERT_NULL(clFormatDetect(C, "not_an_image.txt"));
+    TEST_ASSERT_EQUAL_STRING(clFormatDetect(C, "file.icc"), "icc");
+    TEST_ASSERT_EQUAL_STRING(clFormatDetect(C, "file.png"), "png");
+
+    TEST_ASSERT_EQUAL_INT(clFormatMaxDepth(C, "txt"), 8); // this will error, but return 8
+    TEST_ASSERT_EQUAL_INT(clFormatMaxDepth(C, "jpg"), 8);
+    TEST_ASSERT_EQUAL_INT(clFormatMaxDepth(C, "bmp"), 10);
+    TEST_ASSERT_EQUAL_INT(clFormatMaxDepth(C, "png"), 16);
+
+    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "txt", 8), 8); // this will error, but return 8
+    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "jpg", 8), 8);
+    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "jpg", 6), 8);
+    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "bmp", 8), 8);
+    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "bmp", 10), 10);
+    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "png", 8), 8);
+    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "png", 12), 16);
+    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "png", 16), 16);
+    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "jp2", 8), 8);
+    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "jp2", 12), 12);
+    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "jp2", 16), 16);
+    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "jp2", 20), 16);
+
+    TEST_ASSERT_TRUE(clFormatExists(C, "png"));
+    TEST_ASSERT_FALSE(clFormatExists(C, "txt"));
+
+    clContextDestroy(C);
+}
+
+static void test_clTonemap(void)
+{
+    clContext * C = clContextCreate(&silentSystem);
+    TEST_ASSERT_NOT_NULL(C);
+
+    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "on"), CL_TONEMAP_ON);
+    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "yes"), CL_TONEMAP_ON);
+    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "enabled"), CL_TONEMAP_ON);
+    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "off"), CL_TONEMAP_OFF);
+    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "no"), CL_TONEMAP_OFF);
+    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "disabled"), CL_TONEMAP_OFF);
+    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "auto"), CL_TONEMAP_AUTO);
+    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "automatic"), CL_TONEMAP_AUTO);
+    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "derp"), CL_TONEMAP_AUTO); // This is weird/dumb maybe, but auto IS the fallback
+
+    TEST_ASSERT_EQUAL_STRING(clTonemapToString(C, CL_TONEMAP_AUTO), "auto");
+    TEST_ASSERT_EQUAL_STRING(clTonemapToString(C, CL_TONEMAP_ON), "on");
+    TEST_ASSERT_EQUAL_STRING(clTonemapToString(C, CL_TONEMAP_OFF), "off");
+    TEST_ASSERT_EQUAL_STRING(clTonemapToString(C, (clTonemap)555), "unknown");
+
+    clContextDestroy(C);
+}
+
+static void test_clFilter(void)
+{
+    clContext * C = clContextCreate(&silentSystem);
+    TEST_ASSERT_NOT_NULL(C);
+
+    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "auto"), CL_FILTER_AUTO);
+    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "box"), CL_FILTER_BOX);
+    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "triangle"), CL_FILTER_TRIANGLE);
+    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "cubic"), CL_FILTER_CUBICBSPLINE);
+    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "catmullrom"), CL_FILTER_CATMULLROM);
+    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "mitchell"), CL_FILTER_MITCHELL);
+    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "nearest"), CL_FILTER_NEAREST);
+    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "derp"), CL_FILTER_INVALID);
+
+    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_AUTO), "auto");
+    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_BOX), "box");
+    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_TRIANGLE), "triangle");
+    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_CUBICBSPLINE), "cubic");
+    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_CATMULLROM), "catmullrom");
+    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_MITCHELL), "mitchell");
+    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_NEAREST), "nearest");
+    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_INVALID), "invalid");
+    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, (clFilter)555), "invalid");
+
+    clContextDestroy(C);
+}
+
+static void test_stockPrimaries(void)
+{
+    clContext * C = clContextCreate(&silentSystem);
+    TEST_ASSERT_NOT_NULL(C);
+
+    float bt709[8] = { 0.64f, 0.33f, 0.30f, 0.60f, 0.15f, 0.06f, 0.3127f, 0.3290f };
+    float bt2020[8] = { 0.708f, 0.292f, 0.170f, 0.797f, 0.131f, 0.046f, 0.3127f, 0.3290f };
+    float p3[8] = { 0.68f, 0.32f, 0.265f, 0.690f, 0.150f, 0.060f, 0.3127f, 0.3290f };
+
+    clProfilePrimaries primaries;
+    float rawPrimaries[8];
+
+    TEST_ASSERT_TRUE(clContextGetStockPrimaries(C, "bt709", &primaries));
+    memcpy(rawPrimaries, &primaries, sizeof(rawPrimaries));
+    TEST_ASSERT_EQUAL_FLOAT_ARRAY(rawPrimaries, bt709, 8);
+    TEST_ASSERT_TRUE(clContextGetStockPrimaries(C, "p3", &primaries));
+    memcpy(rawPrimaries, &primaries, sizeof(rawPrimaries));
+    TEST_ASSERT_EQUAL_FLOAT_ARRAY(rawPrimaries, p3, 8);
+    TEST_ASSERT_TRUE(clContextGetStockPrimaries(C, "bt2020", &primaries));
+    memcpy(rawPrimaries, &primaries, sizeof(rawPrimaries));
+    TEST_ASSERT_EQUAL_FLOAT_ARRAY(rawPrimaries, bt2020, 8);
+    TEST_ASSERT_FALSE(clContextGetStockPrimaries(C, "derp", &primaries));
+
+    TEST_ASSERT_TRUE(clContextGetRawStockPrimaries(C, "bt709", rawPrimaries));
+    TEST_ASSERT_EQUAL_FLOAT_ARRAY(rawPrimaries, bt709, 8);
+    TEST_ASSERT_TRUE(clContextGetRawStockPrimaries(C, "p3", rawPrimaries));
+    TEST_ASSERT_EQUAL_FLOAT_ARRAY(rawPrimaries, p3, 8);
+    TEST_ASSERT_TRUE(clContextGetRawStockPrimaries(C, "bt2020", rawPrimaries));
+    TEST_ASSERT_EQUAL_FLOAT_ARRAY(rawPrimaries, bt2020, 8);
+    TEST_ASSERT_FALSE(clContextGetRawStockPrimaries(C, "derp", rawPrimaries));
+
+    clContextDestroy(C);
+}
+
+#define ARGS(A) (sizeof(A) / sizeof(A[0])), A
+
+static void test_clContextParseArgs(void)
+{
+    clContext * C = clContextCreate(&silentSystem);
+    TEST_ASSERT_NOT_NULL(C);
+
+    {
+        const char * argv[] = { "colorist", "identify", "image.png" };
+        TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
+        TEST_ASSERT_EQUAL_INT(C->action, CL_ACTION_IDENTIFY);
+        TEST_ASSERT_EQUAL_STRING(C->inputFilename, "image.png");
+    }
+
+    {
+        // stock primaries
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-p", "bt709" };
+        TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // custom primaries
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-p", "0.64,0.33,0.30,0.60,0.15,0.06,0.3127,0.329" };
+        TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // too many primaries
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-p", "0.64,0.33,0.30,0.60,0.15,0.06,0.3127,0.329,0.555" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // too few primaries
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-p", "0.64,0.33,0.30,0.60,0.15,0.06,0.3127" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // rect
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-a", "-z", "0,0,1,1" };
+        TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // rect: too many
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-z", "0,0,1,1,1" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // rect: too few
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-z", "0,0,1" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // tonemap
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "--tonemap", "on" };
+        TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        const char * filterNames[] = {
+            "auto",
+            "box",
+            "triangle",
+            "cubic",
+            "catmullrom",
+            "mitchell",
+            "nearest"
+        };
+        const int filterNamesCount = sizeof(filterNames) / sizeof(filterNames[0]);
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "--resize", NULL };
+        for (int i = 0; i < filterNamesCount; ++i) {
+            char description[128];
+            char buffer[128];
+            sprintf(buffer, "5,5,%s", filterNames[i]);
+            sprintf(description, "Resize with %s", buffer);
+            argv[5] = buffer;
+            TEST_ASSERT_TRUE_MESSAGE(clContextParseArgs(C, ARGS(argv)), description);
+        }
+    }
+
+    {
+        // resize: too many params
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-r", "5,5,5,5" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // resize: unrecognized filter
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-r", "5,5,derp" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // resize: nonzero dimension required
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-r", "0,0" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // -r requires an argument
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-r" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // coverage kitchen sink
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-a", "-b", "16", "-c", "copyright",
+                                "-d", "description", "-f", "png", "-g", "2.2", "-g", "s", "-h", "--hald", "hald.png",
+                                "--iccin", "iccin.icc", "-j", "4", "-j", "0", "--json", "-l", "1000", "-l", "s",
+                                "--iccout", "iccout.icc", "-q", "50", "--striptags", "lumi", "-t", "on", "-v",
+                                "--cmm", "lcms", "--cmm", "ccmm", "--rect", "0,0,1,1", "--crop", "0,0,1,1",
+                                "-2", "50", "--jp2rate", "50", "--rate", "50" };
+        TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // invalid bpp
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-b", "foo" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // test everything that requires an argument
+        const char * needsArgs[] = { "-b", "-c", "-d", "-f", "-g", "--hald", "--iccin", "-j", "-l",
+                                     "--iccout", "-p", "-q", "--striptags", "-t", "--cms", "--crop", "--rate" };
+        const int needsArgsCount = sizeof(needsArgs) / sizeof(needsArgs[0]);
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", NULL };
+        for (int i = 0; i < needsArgsCount; ++i) {
+            argv[4] = needsArgs[i];
+            TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+        }
+    }
+
+    {
+        // jobs clamping
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-j", "1000" };
+        TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // jobs clamping, part 2
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-j", "0" };
+        TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // unknown format
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-f", "txt" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // unknown CMM
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "--cmm", "derp" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // unknown parameter
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "--derp" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // unknown action
+        const char * argv[] = { "colorist", "derp", "input.png" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // too many positional arguments
+        const char * argv[] = { "colorist", "convert", "a", "b", "c" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // identify requires an input name
+        const char * argv[] = { "colorist", "identify" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // identify does not accept an output filename
+        const char * argv[] = { "colorist", "identify", "a.png", "b.png" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // calc
+        const char * argv[] = { "colorist", "calc", "#ff0000" };
+        TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // calc requires an input string
+        const char * argv[] = { "colorist", "calc" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // generate with input and output strings
+        const char * argv[] = { "colorist", "generate", "#ff00000", "out.png" };
+        TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // generate with only an output string
+        const char * argv[] = { "colorist", "generate", "foo.icc" };
+        TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // generate requires an output filename
+        const char * argv[] = { "colorist", "generate" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // convert requires an input filename
+        const char * argv[] = { "colorist", "convert" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // convert requires an output filename
+        const char * argv[] = { "colorist", "convert", "input.png" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // modify requires an input filename
+        const char * argv[] = { "colorist", "modify" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // modify requires an output filename
+        const char * argv[] = { "colorist", "modify", "input.png" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        const char * argv[] = { "colorist", "modify", "input.png", "output.png" };
+        TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // report requires an input filename
+        const char * argv[] = { "colorist", "report" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        // report requires an output filename
+        const char * argv[] = { "colorist", "report", "input.png" };
+        TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        const char * argv[] = { "colorist", "report", "input.png", "output.html" };
+        TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
+    }
+
+    {
+        C->params.autoGrade = clTrue;
+        C->params.bpp = 16;
+        C->params.copyright = NULL;
+        C->params.description = NULL;
+        C->params.formatName = NULL;
+        C->params.gamma = -1.0f;
+        C->params.hald = NULL;
+        C->help = clFalse;
+        C->verbose = clFalse;
+        C->ccmmAllowed = clFalse;
+        C->iccOverrideIn = NULL;
+        C->params.iccOverrideOut = NULL;
+        C->params.luminance = -1;
+        clContextPrintArgs(C);
+        C->params.autoGrade = clFalse;
+        C->params.bpp = 0;
+        C->params.copyright = "copyright";
+        C->params.description = "description";
+        C->params.formatName = "png";
+        C->params.gamma = 2.2f;
+        C->params.hald = "hald.png";
+        C->help = clTrue;
+        C->verbose = clTrue;
+        C->ccmmAllowed = clTrue;
+        C->iccOverrideIn = "iccin.png";
+        C->params.iccOverrideOut = "iccout.png";
+        C->params.luminance = 0;
+        C->params.stripTags = NULL;
+        clContextPrintArgs(C);
+        C->params.gamma = 0.0f;
+        C->params.luminance = 300;
+        C->params.primaries[0] = 1.0f;
+        C->params.stripTags = "lumi";
+        C->inputFilename = NULL;
+        C->outputFilename = NULL;
+        clContextPrintArgs(C);
+    }
+
+    clContextPrintSyntax(C);
+    clContextDestroy(C);
+}
+
+// --------------------------------------------------------------------------------------
+// Main / List of active tests
 
 int main(int argc, char * argv[])
 {
     COLORIST_UNUSED(argc);
     COLORIST_UNUSED(argv);
 
-    clContext * C = clContextCreate(NULL);
-    clProfilePrimaries primaries;
-    clProfileCurve curve;
+    // Lots of these tests will be purposefully spewing errors or requesting conversions,
+    // there's no need to muddy stdout with colorist yapping away on most of them.
+    silentSystem.alloc = clContextDefaultAlloc;
+    silentSystem.free = clContextDefaultFree;
+    silentSystem.log = clContextSilentLog;
+    silentSystem.error = clContextSilentLogError;
 
-#if 0
-    // Local hacks
-    {
-        struct clProfile * BT2020;
-        struct clProfile * BT709;
-        struct clProfile * P3PQ;
-        clTransform * transform;
-        // float src[3];
-        // float dst[3];
-        uint16_t src16[3];
-        uint16_t dst16_C[3];
-        uint16_t dst16_L[3];
-        int i;
-        FILE * f;
-        int depth;
-        int maxChannel;
+    UNITY_BEGIN();
 
-        C = clContextCreate(NULL);
+    RUN_TEST(test_clContext);
+    RUN_TEST(test_clContextLog);
+    RUN_TEST(test_clAction);
+    RUN_TEST(test_clFormat);
+    RUN_TEST(test_clTonemap);
+    RUN_TEST(test_clFilter);
+    RUN_TEST(test_stockPrimaries);
+    RUN_TEST(test_clContextParseArgs);
 
-        curve.type = CL_PCT_GAMMA;
-        curve.gamma = 2.2f;
-        clContextGetStockPrimaries(C, "bt2020", &primaries);
-        BT2020 = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G22");
-
-        clContextGetStockPrimaries(C, "bt709", &primaries);
-        BT709 = clProfileCreate(C, &primaries, &curve, 300, "BT709 300 G22");
-
-        P3PQ = clProfileRead(C, "../docs/profiles/HDR_P3_D65_ST2084.icc");
-        if (!P3PQ) {
-            return -1;
-        }
-
-        // transform = clTransformCreate(C, P3PQ, CL_XF_RGB, 32, BT2020, CL_XF_RGB, 32, CL_TONEMAP_OFF);
-        // setFloat3(src, 1.0f, 1.0f, 1.0f);
-        // clTransformRun(C, transform, 1, src, dst, 1);
-        // C->ccmmAllowed = clFalse;
-        // clTransformRun(C, transform, 1, src, dst, 1);
-
-        f = fopen("out.txt", "w");
-        depth = 16;
-        maxChannel = (1 << depth) - 1;
-        transform = clTransformCreate(C, BT709, CL_XF_RGB, depth, P3PQ, CL_XF_RGB, depth, CL_TONEMAP_OFF);
-        for (i = 0; i <= maxChannel; ++i) {
-            setRGBA16_3(src16, i, i, i);
-            C->ccmmAllowed = clTrue;
-            clTransformRun(C, transform, 1, src16, dst16_C, 1);
-            C->ccmmAllowed = clFalse;
-            clTransformRun(C, transform, 1, src16, dst16_L, 1);
-            fprintf(f, "code %u CCMM %u LCMS %u\n", i, dst16_C[0], dst16_L[0]);
-        }
-        fclose(f);
-
-        return 0;
-    }
-#endif /* if 1 */
-
-#if defined(DEBUG_MATRIX_MATH)
-    {
-        clProfile * bt709;
-        clProfile * bt2020;
-        clTransform * transform;
-        C = clContextCreate(NULL);
-
-        clContextGetStockPrimaries(C, "bt709", &primaries);
-        curve.type = CL_PCT_GAMMA;
-        curve.gamma = 1.0f;
-        bt709 = clProfileCreate(C, &primaries, &curve, 0, NULL);
-
-        clContextGetStockPrimaries(C, "bt2020", &primaries);
-        curve.type = CL_PCT_GAMMA;
-        curve.gamma = 1.0f;
-        bt2020 = clProfileCreate(C, &primaries, &curve, 0, NULL);
-
-        transform = clTransformCreate(C, bt709, CL_XF_RGBA, 32, bt2020, CL_XF_RGBA, 32, CL_TONEMAP_OFF);
-        clTransformPrepare(C, transform);
-        clTransformDestroy(C, transform);
-
-        clContextDestroy(C);
-        return 0;
-    }
-#else
-    {
-        static const int steps = 16;
-
-        struct clProfile * BT709;
-        struct clProfile * BT2020;
-        struct clProfile * P3PQ;
-        struct clProfile * profiles[4];
-        int profilesCount = 0; // set later
-
-        // const int depths[]     = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 32 };
-        const int depths[]     = { 8, 16, 32 };
-        const int depthsCount = sizeof(depths) / sizeof(depths[0]);
-        int srcProfileIndex, srcDepthIndex, dstProfileIndex, dstDepthIndex, tonemapIndex;
-
-        C = clContextCreate(NULL);
-
-        curve.type = CL_PCT_GAMMA;
-        curve.gamma = 2.2f;
-
-        clContextGetStockPrimaries(C, "bt709", &primaries);
-        BT709 = clProfileCreate(C, &primaries, &curve, 300, "BT709 300 G22");
-        clContextGetStockPrimaries(C, "bt2020", &primaries);
-        BT2020 = clProfileCreate(C, &primaries, &curve, 10000, "BT2020 10k G22");
-        P3PQ = clProfileRead(C, "../docs/profiles/HDR_P3_D65_ST2084.icc");
-        if (!P3PQ) {
-            return -1;
-        }
-        profiles[0] = BT2020;
-        profiles[1] = BT709;
-        profiles[2] = P3PQ;
-        profiles[3] = NULL; // XYZ
-        profilesCount = 3;
-
-#if defined(DEBUG_SINGLE_DIFF)
-        diffTransform(C, steps, BT709, CL_XF_RGB, 32, P3PQ, CL_XF_RGB, 32, CL_TONEMAP_ON, 0.01);
-#else
-        for (srcProfileIndex = 0; srcProfileIndex < profilesCount; ++srcProfileIndex) {
-            for (srcDepthIndex = 0; srcDepthIndex < depthsCount; ++srcDepthIndex) {
-                for (dstProfileIndex = 0; dstProfileIndex < profilesCount; ++dstProfileIndex) {
-                    for (dstDepthIndex = 0; dstDepthIndex < depthsCount; ++dstDepthIndex) {
-                        for (tonemapIndex = 0; tonemapIndex < 3; ++tonemapIndex) {
-                            clProfile * srcProfile = profiles[srcProfileIndex];
-                            int srcDepth = depths[srcDepthIndex];
-                            clTransformFormat srcFormat = CL_XF_RGB;
-
-                            clProfile * dstProfile = profiles[dstProfileIndex];
-                            int dstDepth = depths[dstDepthIndex];
-                            clTransformFormat dstFormat = CL_XF_RGB;
-
-                            clTonemap tonemap = (clTonemap)tonemapIndex; // Naughty!
-                            float threshold = 0.01f;
-                            if (dstDepth < 32) {
-                                threshold = 5.0f;
-                                if (dstDepth > 12) {
-                                    threshold *= 256;
-                                }
-                            }
-
-                            if (srcProfile == NULL) {
-                                if (srcDepth == 32) {
-                                    srcFormat = CL_XF_XYZ;
-                                } else {
-                                    // Only do 32bit XYZ
-                                    continue;
-                                }
-                            }
-
-                            if (dstProfile == NULL) {
-                                if (dstDepth == 32) {
-                                    dstFormat = CL_XF_XYZ;
-                                } else {
-                                    // Only do 32bit XYZ
-                                    continue;
-                                }
-                            }
-
-                            if (diffTransform(C, steps, srcProfile, srcFormat, srcDepth, dstProfile, dstFormat, dstDepth, tonemap, threshold) > 0) {
-                                // FAIL();
-                            }
-                            if (srcFormat == CL_XF_RGB) {
-                                if (diffTransform(C, steps, srcProfile, CL_XF_RGBA, srcDepth, dstProfile, dstFormat, dstDepth, tonemap, threshold) > 0) {
-                                    // FAIL();
-                                }
-                            }
-                            if (dstFormat == CL_XF_RGB) {
-                                if (diffTransform(C, steps, srcProfile, srcFormat, srcDepth, dstProfile, CL_XF_RGBA, dstDepth, tonemap, threshold) > 0) {
-                                    // FAIL();
-                                }
-                            }
-                            if ((srcFormat == CL_XF_RGB) && (dstFormat == CL_XF_RGB)) {
-                                if (diffTransform(C, steps, srcProfile, CL_XF_RGBA, srcDepth, dstProfile, CL_XF_RGBA, dstDepth, tonemap, threshold) > 0) {
-                                    // FAIL();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-// foundMismatch:
-#endif  /* if 0 */
-
-        clProfileDestroy(C, BT709);
-        clProfileDestroy(C, P3PQ);
-        clProfileDestroy(C, BT2020);
-        clContextDestroy(C);
-    }
-
-#endif /* if defined(DEBUG_MATRIX_MATH) */
-
-    printf("colorist-test Complete.\n");
-    return 0;
+    return UNITY_END();
 }

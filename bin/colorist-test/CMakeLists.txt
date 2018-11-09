@@ -14,6 +14,6 @@ set(COLORIST_TEST_SRCS
 add_executable(colorist-test
      ${COLORIST_TEST_SRCS}
 )
-target_link_libraries(colorist-test colorist)
+target_link_libraries(colorist-test colorist unity)
 
 endif()

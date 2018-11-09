@@ -77,6 +77,12 @@ add_library(md5
     md5/md5.c
 )
 
+include_directories(unity/src)
+add_library(unity
+    unity/src/unity.c
+    unity/src/unity.h
+)
+
 include_directories(jpeg)
 add_library(jpeg
     jpeg/cdjpeg.c
@@ -158,6 +164,7 @@ set(COLORIST_EXT_INCLUDES
     "${OPENJPEG_BINARY_DIR}/src/lib/openjp2"
     "${CMAKE_CURRENT_SOURCE_DIR}/jpeg"
     "${CMAKE_CURRENT_SOURCE_DIR}/md5"
+    "${CMAKE_CURRENT_SOURCE_DIR}/unity/src"
 #    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/common/include"
 #    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/image/sys"
 #    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/jxrgluelib"
@@ -207,6 +214,7 @@ set_folder_safe(opj_dump "ext/openjpeg")
 set_folder_safe(png "ext")
 set_folder_safe(stb "ext")
 set_folder_safe(tiff "ext/openjpeg")
+set_folder_safe(unity "ext")
 set_folder_safe(webp "ext/webp")
 set_folder_safe(webpdecode "ext/webp")
 set_folder_safe(webpdecoder "ext/webp")
