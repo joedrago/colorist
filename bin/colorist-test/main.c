@@ -9,6 +9,7 @@
 
 #include "colorist/transform.h"
 
+#include <cJSON.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unity.h>
@@ -531,6 +532,35 @@ static void test_clContextParseArgs(void)
     clContextDestroy(C);
 }
 
+static void test_debugDump(void)
+{
+    clContext * C = clContextCreate(&silentSystem);
+    TEST_ASSERT_NOT_NULL(C);
+
+    clImage * image;
+    struct cJSON * jsonOutput;
+
+    for (int depth = 8; depth <= 16; depth += 8) {
+        image = clImageParseString(C, "#ff0000", depth, NULL);
+        clImageDebugDump(C, image, 0, 0, 1, 1, 0);
+        jsonOutput = cJSON_CreateObject();
+        clImageDebugDumpJSON(C, jsonOutput, image, 0, 0, 1, 1);
+        cJSON_Delete(jsonOutput);
+        clImageDestroy(C, image);
+    }
+
+    clProfile * noLuminance = clProfileCreateStock(C, CL_PS_SRGB);
+    clProfileRemoveTag(C, noLuminance, "lumi", "unit test with no lumi tag");
+    image = clImageParseString(C, "#000000", 8, noLuminance);
+    clImageDebugDump(C, image, 0, 0, 1, 1, 0);
+    jsonOutput = cJSON_CreateObject();
+    clImageDebugDumpJSON(C, jsonOutput, image, 0, 0, 1, 1);
+    cJSON_Delete(jsonOutput);
+    clImageDestroy(C, image);
+
+    clContextDestroy(C);
+}
+
 // --------------------------------------------------------------------------------------
 // Main / List of active tests
 
@@ -556,6 +586,7 @@ int main(int argc, char * argv[])
     RUN_TEST(test_clFilter);
     RUN_TEST(test_stockPrimaries);
     RUN_TEST(test_clContextParseArgs);
+    RUN_TEST(test_debugDump);
 
     return UNITY_END();
 }
