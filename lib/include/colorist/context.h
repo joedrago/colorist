@@ -55,12 +55,15 @@ typedef enum clFormatDepth
 } clFormatDepth;
 
 #define CL_FORMAT_MAX_EXTENSIONS 4
+#define CL_FORMAT_MAX_SIGNATURES 4
 typedef struct clFormat
 {
     const char * name;
     const char * description;
     const char * mimeType;
     const char * extensions[CL_FORMAT_MAX_EXTENSIONS];
+    const unsigned char * signatures[CL_FORMAT_MAX_SIGNATURES];
+    size_t signatureLengths[CL_FORMAT_MAX_SIGNATURES];
     clFormatDepth depth;
     clBool usesQuality;
     clBool usesRate;

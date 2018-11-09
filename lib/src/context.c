@@ -70,10 +70,35 @@ const char * clActionToString(struct clContext * C, clAction action)
 // ------------------------------------------------------------------------------------------------
 // clFormat
 
+static char const * clFormatDetectHeader(struct clContext * C, const char * filename)
+{
+    clRaw raw;
+    memset(&raw, 0, sizeof(raw));
+    if (clRawReadFileHeader(C, &raw, filename, 12)) {
+        for (clFormatRecord * record = C->formats; record != NULL; record = record->next) {
+            int signatureIndex;
+            for (signatureIndex = 0; signatureIndex < CL_FORMAT_MAX_SIGNATURES; ++signatureIndex) {
+                const unsigned char * signature = record->format.signatures[signatureIndex];
+                size_t signatureLength = record->format.signatureLengths[signatureIndex];
+                if (signature && !memcmp(signature, raw.ptr, signatureLength)) {
+                    clRawFree(C, &raw);
+                    return record->format.name;
+                }
+            }
+        }
+    }
+    clRawFree(C, &raw);
+    return NULL;
+}
+
 const char * clFormatDetect(struct clContext * C, const char * filename)
 {
     const char * ext = strrchr(filename, '.');
     if (ext == NULL) {
+        ext = clFormatDetectHeader(C, filename);
+        if (ext)
+            return ext;
+
         clContextLogError(C, "Unable to guess format");
         return NULL;
     }
@@ -92,6 +117,11 @@ const char * clFormatDetect(struct clContext * C, const char * filename)
             }
         }
     }
+
+    ext = clFormatDetectHeader(C, filename);
+    if (ext)
+        return ext;
+
     return NULL;
 }
 

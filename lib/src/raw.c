@@ -208,6 +208,27 @@ clBool clRawReadFile(struct clContext * C, clRaw * raw, const char * filename)
     return clTrue;
 }
 
+clBool clRawReadFileHeader(struct clContext * C, clRaw * raw, const char * filename, size_t bytes)
+{
+    FILE * f;
+
+    f = fopen(filename, "rb");
+    if (!f) {
+        clContextLogError(C, "Failed to open file for read: %s", filename);
+        return clFalse;
+    }
+
+    clRawRealloc(C, raw, bytes);
+    if (fread(raw->ptr, raw->size, 1, f) != 1) {
+        clContextLogError(C, "Failed to read file [%d bytes]: %s", (int)raw->size, filename);
+        fclose(f);
+        clRawFree(C, raw);
+        return clFalse;
+    }
+    fclose(f);
+    return clTrue;
+}
+
 clBool clRawWriteFile(struct clContext * C, clRaw * raw, const char * filename)
 {
     FILE * f;
