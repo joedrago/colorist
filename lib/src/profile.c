@@ -249,6 +249,7 @@ clBool clProfileReload(struct clContext * C, clProfile * profile)
     clProfile * tmpProfile;
     clRaw raw;
     memset(&raw, 0, sizeof(raw));
+    clRawFree(C, &profile->raw); // clProfilePack will use this if it isn't cleared
     if (!clProfilePack(C, profile, &raw)) {
         return clFalse;
     }
