@@ -82,7 +82,7 @@ int execute(int argc, char * argv[])
 #endif
 
     C = clContextCreate(&system);
-    if (!clContextParseArgs(C, argc, argv)) {
+    if (!clContextParseArgs(C, argc, (const char **)argv)) {
         goto cleanup;
     }
     if (C->help || (C->action == CL_ACTION_NONE)) {
