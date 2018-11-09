@@ -251,7 +251,6 @@ clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char
     opj_codec_t * opjCodec = NULL;
     OPJ_BOOL bSuccess;
     opj_stream_t * opjStream = NULL;
-    clRaw rawProfile;
     clBool isJ2K = !strcmp(formatName, "j2k");
     struct opjCallbackInfo ci;
 
@@ -341,7 +340,7 @@ clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char
     opjImage->y1 = image->height;
     opjImage->comps[3].alpha = 1;
 
-    memset(&rawProfile, 0, sizeof(rawProfile));
+    clRaw rawProfile = CL_RAW_EMPTY;
     if (!clProfilePack(C, image->profile, &rawProfile)) {
         return clFalse;
     }

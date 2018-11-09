@@ -174,8 +174,7 @@ clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char
     png_infop info = png_create_info_struct(png);
     COLORIST_ASSERT(png && info);
 
-    clRaw rawProfile;
-    memset(&rawProfile, 0, sizeof(rawProfile));
+    clRaw rawProfile = CL_RAW_EMPTY;
     if (!clProfilePack(C, image->profile, &rawProfile)) {
         return clFalse;
     }

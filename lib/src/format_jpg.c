@@ -113,7 +113,6 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
 
     cmsUInt32Number srcFormat = (image->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
     cmsHTRANSFORM rgbTransform;
-    clRaw rawProfile;
 
     struct jpeg_compress_struct cinfo;
     struct jpeg_error_mgr jerr;
@@ -142,7 +141,7 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
     jpeg_set_quality(&cinfo, writeParams->quality, TRUE);
     jpeg_start_compress(&cinfo, TRUE);
 
-    memset(&rawProfile, 0, sizeof(rawProfile));
+    clRaw rawProfile = CL_RAW_EMPTY;
     if (!clProfilePack(C, image->profile, &rawProfile)) {
         return clFalse;
     }

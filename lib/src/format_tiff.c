@@ -202,12 +202,11 @@ clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const cha
     COLORIST_UNUSED(writeParams);
 
     clBool writeResult = clTrue;
-    clRaw rawProfile;
     TIFF * tiff = NULL;
     int rowIndex, rowBytes;
     tiffCallbackInfo ci;
 
-    memset(&rawProfile, 0, sizeof(rawProfile));
+    clRaw rawProfile = CL_RAW_EMPTY;
     if (!clProfilePack(C, image->profile, &rawProfile)) {
         clContextLogError(C, "Failed to create ICC profile");
         goto writeCleanup;

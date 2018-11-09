@@ -16,6 +16,8 @@ typedef struct clRaw
     size_t size;
 } clRaw;
 
+#define CL_RAW_EMPTY { NULL, 0 }
+
 typedef struct clStructArraySchema
 {
     const char * format; // i8,i16,i32,u8,u16,u32,f32

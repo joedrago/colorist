@@ -15,7 +15,6 @@
 struct clImage * clContextRead(clContext * C, const char * filename, const char * iccOverride, const char ** outFormatName)
 {
     clImage * image = NULL;
-    clRaw input;
     clFormat * format;
     const char * formatName = clFormatDetect(C, filename);
     if (outFormatName)
@@ -24,7 +23,7 @@ struct clImage * clContextRead(clContext * C, const char * filename, const char 
         return NULL;
     }
 
-    memset(&input, 0, sizeof(input));
+    clRaw input = CL_RAW_EMPTY;
     if (!clRawReadFile(C, &input, filename)) {
         return clFalse;
     }
@@ -57,12 +56,6 @@ struct clImage * clContextRead(clContext * C, const char * filename, const char 
 clBool clContextWrite(clContext * C, struct clImage * image, const char * filename, const char * formatName, int quality, int rate)
 {
     clBool result = clFalse;
-    clFormat * format;
-    clWriteParams writeParams;
-    clRaw output;
-
-    memset(&writeParams, 0, sizeof(writeParams));
-    memset(&output, 0, sizeof(output));
 
     if (formatName == NULL) {
         formatName = clFormatDetect(C, filename);
@@ -72,31 +65,30 @@ clBool clContextWrite(clContext * C, struct clImage * image, const char * filena
         }
     }
 
-    format = clContextFindFormat(C, formatName);
+    clFormat * format = clContextFindFormat(C, formatName);
     COLORIST_ASSERT(format);
 
+    clWriteParams writeParams;
     writeParams.quality = quality;
     writeParams.rate = rate;
+
     if (format->writeFunc) {
+        clRaw output = CL_RAW_EMPTY;
         if (format->writeFunc(C, image, formatName, &output, &writeParams)) {
             if (clRawWriteFile(C, &output, filename)) {
                 result = clTrue;
             }
         }
+        clRawFree(C, &output);
     } else {
         clContextLogError(C, "Unimplemented file writer '%s'", formatName);
     }
-    clRawFree(C, &output);
     return result;
 }
 
 char * clContextWriteURI(struct clContext * C, clImage * image, const char * formatName, int quality, int rate)
 {
-    clRaw dst;
-    char * b64;
-    size_t b64Len;
     char * output = NULL;
-    clWriteParams writeParams;
 
     clFormat * format = clContextFindFormat(C, formatName);
     if (!format) {
@@ -104,21 +96,22 @@ char * clContextWriteURI(struct clContext * C, clImage * image, const char * for
         return NULL;
     }
 
-    memset(&dst, 0, sizeof(dst));
-
+    clWriteParams writeParams;
     writeParams.quality = quality;
     writeParams.rate = rate;
+
     if (format->writeFunc) {
+        clRaw dst = CL_RAW_EMPTY;
         if (format->writeFunc(C, image, formatName, &dst, &writeParams)) {
             char prefix[512];
             size_t prefixLen = sprintf(prefix, "data:%s;base64,", format->mimeType);
 
-            b64 = clRawToBase64(C, &dst);
+            char * b64 = clRawToBase64(C, &dst);
             if (!b64) {
                 clRawFree(C, &dst);
                 return NULL;
             }
-            b64Len = strlen(b64);
+            size_t b64Len = strlen(b64);
 
             output = clAllocate(prefixLen + b64Len + 1);
             memcpy(output, prefix, prefixLen);
@@ -127,10 +120,10 @@ char * clContextWriteURI(struct clContext * C, clImage * image, const char * for
 
             clFree(b64);
         }
+        clRawFree(C, &dst);
     } else {
         clContextLogError(C, "Unimplemented file writer '%s'", formatName);
     }
 
-    clRawFree(C, &dst);
     return output;
 }

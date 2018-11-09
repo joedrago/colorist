@@ -72,8 +72,7 @@ const char * clActionToString(struct clContext * C, clAction action)
 
 static char const * clFormatDetectHeader(struct clContext * C, const char * filename)
 {
-    clRaw raw;
-    memset(&raw, 0, sizeof(raw));
+    clRaw raw = CL_RAW_EMPTY;
     if (clRawReadFileHeader(C, &raw, filename, 12)) {
         for (clFormatRecord * record = C->formats; record != NULL; record = record->next) {
             int signatureIndex;

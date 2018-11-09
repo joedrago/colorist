@@ -159,14 +159,13 @@ struct cJSON * clRawToStructArray(struct clContext * C, clRaw * raw, int width, 
 {
     cJSON * json = cJSON_CreateObject();
     cJSON * jsonSchema = cJSON_CreateArray();
-    clRaw compressed;
     char * b64;
     int i;
 
     cJSON_AddItemToObject(json, "width", cJSON_CreateNumber(width));
     cJSON_AddItemToObject(json, "height", cJSON_CreateNumber(height));
 
-    memset(&compressed, 0, sizeof(compressed));
+    clRaw compressed = CL_RAW_EMPTY;
     clRawDeflate(C, &compressed, raw);
     b64 = clRawToBase64(C, &compressed);
     cJSON_AddItemToObject(json, "data", cJSON_CreateString(b64));

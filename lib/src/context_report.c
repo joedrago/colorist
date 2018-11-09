@@ -298,7 +298,6 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
     cJSON * jsonICC;
     cJSON * jsonPrimaries;
     char * text;
-    clRaw rawProfile;
     char * rawProfileB64;
 
     jsonICC = cJSON_CreateObject();
@@ -308,7 +307,7 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
         return clFalse;
     }
 
-    memset(&rawProfile, 0, sizeof(rawProfile));
+    clRaw rawProfile = CL_RAW_EMPTY;
     if (!clProfilePack(C, image->profile, &rawProfile)) {
         return clFalse;
     }

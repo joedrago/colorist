@@ -48,14 +48,12 @@ clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock)
 
 clProfile * clProfileClone(struct clContext * C, clProfile * profile)
 {
-    clRaw packed;
-    clProfile * clone;
-    memset(&packed, 0, sizeof(packed));
+    clRaw packed = CL_RAW_EMPTY;
     if (!clProfilePack(C, profile, &packed)) {
         return NULL;
     }
 
-    clone = clProfileParse(C, packed.ptr, packed.size, profile->description);
+    clProfile * clone = clProfileParse(C, packed.ptr, packed.size, profile->description);
     clRawFree(C, &packed);
     return clone;
 }
@@ -178,8 +176,7 @@ size_t clProfileSize(struct clContext * C, clProfile * profile)
     if (profile->raw.size > 0) {
         ret = profile->raw.size;
     } else {
-        clRaw raw;
-        memset(&raw, 0, sizeof(raw));
+        clRaw raw = CL_RAW_EMPTY;
         if (!clProfilePack(C, profile, &raw)) {
             return 0;
         }
@@ -192,7 +189,6 @@ size_t clProfileSize(struct clContext * C, clProfile * profile)
 clProfile * clProfileRead(struct clContext * C, const char * filename)
 {
     clProfile * profile = NULL;
-    clRaw rawProfile;
     long bytes;
     FILE * f;
     f = fopen(filename, "rb");
@@ -203,7 +199,8 @@ clProfile * clProfileRead(struct clContext * C, const char * filename)
     fseek(f, 0, SEEK_END);
     bytes = ftell(f);
     fseek(f, 0, SEEK_SET);
-    memset(&rawProfile, 0, sizeof(rawProfile));
+
+    clRaw rawProfile = CL_RAW_EMPTY;
     clRawRealloc(C, &rawProfile, bytes);
     size_t bytesRead = fread(rawProfile.ptr, 1, bytes, f);
     fclose(f);
@@ -218,7 +215,6 @@ clProfile * clProfileRead(struct clContext * C, const char * filename)
 
 clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * filename)
 {
-    clRaw rawProfile;
     FILE * f;
     size_t itemsWritten;
 
@@ -227,7 +223,8 @@ clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * fi
         clContextLogError(C, "Can't open file for write: %s", filename);
         return 1;
     }
-    memset(&rawProfile, 0, sizeof(rawProfile));
+
+    clRaw rawProfile = CL_RAW_EMPTY;
     if (!clProfilePack(C, profile, &rawProfile)) {
         clContextLogError(C, "Can't pack ICC profile");
         fclose(f);
@@ -246,14 +243,14 @@ clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * fi
 
 clBool clProfileReload(struct clContext * C, clProfile * profile)
 {
-    clProfile * tmpProfile;
-    clRaw raw;
-    memset(&raw, 0, sizeof(raw));
     clRawFree(C, &profile->raw); // clProfilePack will use this if it isn't cleared
+
+    clRaw raw = CL_RAW_EMPTY;
     if (!clProfilePack(C, profile, &raw)) {
         return clFalse;
     }
-    tmpProfile = clProfileParse(C, raw.ptr, raw.size, profile->description);
+
+    clProfile * tmpProfile = clProfileParse(C, raw.ptr, raw.size, profile->description);
     clRawFree(C, &raw);
     if (!tmpProfile) {
         return clFalse;

@@ -250,7 +250,6 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     COLORIST_UNUSED(writeParams);
 
     clBool writeResult = clTrue;
-    clRaw rawProfile;
     uint16_t magic = 0x4D42; // 'BM'
     BITMAPFILEHEADER fileHeader;
     BITMAPV5HEADER info;
@@ -259,7 +258,7 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     int pixelCount = image->width * image->height;
     uint8_t * p;
 
-    memset(&rawProfile, 0, sizeof(rawProfile));
+    clRaw rawProfile = CL_RAW_EMPTY;
     if (!clProfilePack(C, image->profile, &rawProfile)) {
         clContextLogError(C, "Failed to create ICC profile");
         goto writeCleanup;

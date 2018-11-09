@@ -87,7 +87,6 @@ clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const cha
     COLORIST_UNUSED(formatName);
 
     clBool writeResult = clTrue;
-    clRaw rawProfile;
 
     cmsUInt32Number srcFormat = (image->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
     cmsHTRANSFORM rgbTransform;
@@ -99,7 +98,6 @@ clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const cha
     WebPData iccChunk, imageChunk, assembledChunk;
     WebPMux * mux = NULL;
 
-    memset(&rawProfile, 0, sizeof(rawProfile));
     memset(&iccChunk, 0, sizeof(iccChunk));
     memset(&imageChunk, 0, sizeof(imageChunk));
     memset(&assembledChunk, 0, sizeof(assembledChunk));
@@ -108,7 +106,7 @@ clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const cha
     WebPConfigInit(&config);
     WebPPictureInit(&picture);
 
-    memset(&rawProfile, 0, sizeof(rawProfile));
+    clRaw rawProfile = CL_RAW_EMPTY;
     if (!clProfilePack(C, image->profile, &rawProfile)) {
         clContextLogError(C, "Failed to create ICC profile");
         goto writeCleanup;
