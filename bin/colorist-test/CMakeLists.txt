@@ -9,6 +9,9 @@ if(NOT COLORIST_EMSCRIPTEN)
 
 set(COLORIST_TEST_SRCS
     main.c
+    main.h
+
+    test_coverage.c
 )
 
 add_executable(colorist-test
