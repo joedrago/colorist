@@ -570,6 +570,40 @@ static void test_resize(void)
     clContextDestroy(C);
 }
 
+static void test_clTask(void)
+{
+    clContext * C = clContextCreate(&silentSystem);
+    TEST_ASSERT_NOT_NULL(C);
+
+    // Invoke a conversion via color grading
+    int taskLimit = clTaskLimit();
+    clProfile * profile = clProfileCreateStock(C, CL_PS_SRGB);
+    int width = 100;
+    int height = 100;
+    int pixelCount = width * height;
+
+    float * srcPixels = clAllocate(sizeof(float) * 4 * pixelCount);
+    for (int i = 0; i < pixelCount; ++i) {
+        srcPixels[i + 0] = 0.1f;
+        srcPixels[i + 1] = 0.5f;
+        srcPixels[i + 2] = 0.75f;
+        srcPixels[i + 3] = 1.0f;
+    }
+
+    int luminance = 300;
+    float gamma = 2.2f;
+    clPixelMathColorGrade(C, taskLimit, profile, srcPixels, pixelCount, width, 300, 16, &luminance, &gamma, clFalse);
+
+    luminance = 0;
+    gamma = 0.0f;
+    clPixelMathColorGrade(C, taskLimit, profile, srcPixels, pixelCount, width, 300, 16, &luminance, &gamma, clTrue);
+
+    clFree(srcPixels);
+    clProfileDestroy(C, profile);
+
+    clContextDestroy(C);
+}
+
 int test_coverage(void)
 {
     UNITY_BEGIN();
@@ -584,6 +618,7 @@ int test_coverage(void)
     RUN_TEST(test_clContextParseArgs);
     RUN_TEST(test_debugDump);
     RUN_TEST(test_resize);
+    RUN_TEST(test_clTask);
 
     return UNITY_END();
 }
