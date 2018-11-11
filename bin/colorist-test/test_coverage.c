@@ -632,6 +632,40 @@ static void test_floorRound(void)
     clContextDestroy(C);
 }
 
+static void test_raw(void)
+{
+    clContext * C = clContextCreate(&silentSystem);
+    TEST_ASSERT_NOT_NULL(C);
+
+    clRaw raw = CL_RAW_EMPTY;
+    clRaw deflated = CL_RAW_EMPTY;
+
+    clRawRealloc(C, &raw, 30);
+    clRawRealloc(C, &raw, 50);
+    clRawRealloc(C, &raw, 20);
+    clRawSet(C, &raw, NULL, 0); // free
+    clRawRealloc(C, &raw, 20);
+
+    clRawDeflate(C, &deflated, &raw);
+    clRawFree(C, &deflated);
+
+    clRawFree(C, &raw);
+    clRawDeflate(C, &deflated, &raw);
+    clRawFree(C, &deflated);
+
+    clRawRealloc(C, &raw, 20);
+    char * b64 = clRawToBase64(C, &raw);
+    clFree(b64);
+
+    clRawWriteFile(C, &raw, "test_raw.bin");
+    clRawReadFile(C, &raw, "test_raw.bin");
+    clFileSize("test_raw.bin");
+
+    clRawFree(C, &raw);
+
+    clContextDestroy(C);
+}
+
 int test_coverage(void)
 {
     UNITY_BEGIN();
@@ -649,6 +683,7 @@ int test_coverage(void)
     RUN_TEST(test_clTask);
     RUN_TEST(test_types);
     RUN_TEST(test_floorRound);
+    RUN_TEST(test_raw);
 
     return UNITY_END();
 }
