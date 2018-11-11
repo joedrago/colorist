@@ -619,6 +619,19 @@ static void test_types(void)
     clContextDestroy(C);
 }
 
+static void test_floorRound(void)
+{
+    clContext * C = clContextCreate(&silentSystem);
+    TEST_ASSERT_NOT_NULL(C);
+
+    clPixelMathFloorf(3.5f);
+    clPixelMathRoundNormalized(0.85f, 3.0f);
+    clPixelMathRoundNormalized(-0.85f, 3.0f);
+    clPixelMathRoundNormalized(1.85f, 3.0f);
+
+    clContextDestroy(C);
+}
+
 int test_coverage(void)
 {
     UNITY_BEGIN();
@@ -635,6 +648,7 @@ int test_coverage(void)
     RUN_TEST(test_resize);
     RUN_TEST(test_clTask);
     RUN_TEST(test_types);
+    RUN_TEST(test_floorRound);
 
     return UNITY_END();
 }
