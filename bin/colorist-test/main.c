@@ -44,7 +44,12 @@ int suiteTearDown(int num_failures) { return num_failures; }
 // --------------------------------------------------------------------------------------
 // Main / List of active tests
 
-#define RUN_TESTS(TESTS) do { int ret = TESTS(); if (ret != 0) return ret; } while (0)
+#define RUN_TESTS(TESTS, TITLE) do {                  \
+        printf("_______________________\n");          \
+        printf("%s\n", TITLE);                        \
+        printf("-----------------------\n");          \
+        int ret = TESTS(); if (ret != 0) return ret;  \
+} while (0)
 
 int main(int argc, char * argv[])
 {
@@ -58,5 +63,5 @@ int main(int argc, char * argv[])
     silentSystem.log = clContextSilentLog;
     silentSystem.error = clContextSilentLogError;
 
-    RUN_TESTS(test_coverage);
+    RUN_TESTS(test_coverage, "Coverage");
 }
