@@ -541,6 +541,35 @@ static void test_debugDump(void)
     clContextDestroy(C);
 }
 
+static void test_resize(void)
+{
+    clContext * C = clContextCreate(&silentSystem);
+    TEST_ASSERT_NOT_NULL(C);
+
+    clImage * large;
+    clImage * small;
+
+    // Large to small
+    large = clImageParseString(C, "512x512,#ff0000", 8, NULL);
+    small = clImageResize(C, large, 256, 256, CL_FILTER_AUTO);
+    clImageDestroy(C, large);
+    clImageDestroy(C, small);
+
+    // Small to large
+    small = clImageParseString(C, "256x256,#ff0000", 8, NULL);
+    large = clImageResize(C, small, 512, 512, CL_FILTER_AUTO);
+    clImageDestroy(C, large);
+    clImageDestroy(C, small);
+
+    // test CL_FILTER_NEAREST
+    large = clImageParseString(C, "512x512,#ff0000", 8, NULL);
+    small = clImageResize(C, large, 280, 380, CL_FILTER_NEAREST);
+    clImageDestroy(C, large);
+    clImageDestroy(C, small);
+
+    clContextDestroy(C);
+}
+
 int test_coverage(void)
 {
     UNITY_BEGIN();
@@ -554,6 +583,7 @@ int test_coverage(void)
     RUN_TEST(test_stockPrimaries);
     RUN_TEST(test_clContextParseArgs);
     RUN_TEST(test_debugDump);
+    RUN_TEST(test_resize);
 
     return UNITY_END();
 }
