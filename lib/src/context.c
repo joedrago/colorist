@@ -754,8 +754,11 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
             break;
 
         case CL_ACTION_ERROR:
-        case CL_ACTION_NONE:
             return clFalse;
+
+        case CL_ACTION_NONE:
+            // Just print syntax and quit
+            return clTrue;
     }
     return validateArgs(C);
 }
