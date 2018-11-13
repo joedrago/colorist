@@ -112,9 +112,10 @@ class PixelsView extends React.Component
       if @props.name != 'pixels'
         overbright = cm.calcOverbright(xyY, overbrightScale, COLORIST_DATA.icc.primaries)
         outofSRGB = cm.calcOutofSRGB(xyY[0], xyY[1], COLORIST_DATA.icc.primaries)
-        luminancePercentage = 100 * (pixelLuminance / maxPixelLuminance)
-        if luminancePercentage > 100
-          luminancePercentage = utils.fr(luminancePercentage, 2) + "%"
+        p = (pixelLuminance / maxPixelLuminance)
+        REASONABLY_OVERBRIGHT = 0.0001 # this should match the constant in context_report.c's calcOverbright()
+        if p > (1.0 + REASONABLY_OVERBRIGHT)
+          luminancePercentage = utils.fr(p * 100, 2) + "%"
         else
           luminancePercentage = "--"
         if outofSRGB > 0

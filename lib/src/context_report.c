@@ -50,9 +50,12 @@ static float calcMaxY(clContext * C, float x, float y, clTransform * fromXYZ, cl
 
 static float calcOverbright(clContext * C, float x, float y, float Y, float overbrightScale, clTransform * fromXYZ, clTransform * toXYZ)
 {
+    // Even at 10,000 nits, this is only 1 nit difference. If its less than this, we're not over.
+    static const float REASONABLY_OVERBRIGHT = 0.0001f;
+
     float maxY = calcMaxY(C, x, y, fromXYZ, toXYZ);
     float p = (Y / maxY) * overbrightScale;
-    if (p > 1.0f) {
+    if (p > (1.0f + REASONABLY_OVERBRIGHT)) {
         p = (p - 1.0f) / (overbrightScale - 1.0f);
         p = CL_CLAMP(p, 0.0f, 1.0f);
         return p;
