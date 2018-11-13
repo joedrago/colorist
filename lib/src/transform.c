@@ -123,7 +123,7 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
 
         // Default to D65, allow either profile to override it, with the priority: dst > src > D65
         transform->whitePointX = 0.3127f;
-        transform->whitePointX = 0.3290f;
+        transform->whitePointY = 0.3290f;
 
         if (transform->srcProfile) {
             clProfilePrimaries srcPrimaries;
