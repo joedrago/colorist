@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="1">
+    <paths>
+        <dir name="./bin"/>
+        <dir name="./lib"/>
+    </paths>
+    <suppressions>
+        <suppression>ConfigurationNotChecked</suppression>
+        <suppression>purgedConfiguration</suppression>
+        <suppression fileName="*/lib/src/context_report.c">invalidPointerCast</suppression>
+        <suppression fileName="*/lib/src/format_bmp.c">unusedStructMember</suppression>
+        <suppression fileName="*/lib/src/transform.c">invalidPointerCast</suppression>
+    </suppressions>
+</project>
