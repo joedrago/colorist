@@ -376,8 +376,6 @@ static const char * parseRange(struct clContext * C, const char * s, clToken * t
 
 static clBool finishRange(struct clContext * C, clToken * token)
 {
-    int diff, maxDiff;
-
     // If the count isn't specified, use the full range
     if (token->count == 0) {
         if ((token->start.depth == 32) || (token->end.depth == 32)) {
@@ -389,6 +387,7 @@ static clBool finishRange(struct clContext * C, clToken * token)
             return clFalse;
         }
 
+        int diff, maxDiff;
         maxDiff = abs(token->start.r - token->end.r);
         diff = abs(token->start.g - token->end.g);
         maxDiff = (diff > maxDiff) ? diff : maxDiff;
@@ -772,15 +771,9 @@ static void getColorFromRange(struct clContext * C, clToken * t, int reqIndex, c
 
 static void getRawColor(struct clContext * C, clToken * tokens, int reqIndex, clColor * outColor)
 {
-    int colorStart = 0;
     int colorEnd = 0;
-    clToken * t;
-    if (reqIndex == 7) {
-        reqIndex++;
-        reqIndex--;
-    }
-    for (t = tokens; t != NULL; t = t->next) {
-        colorStart = colorEnd;
+    for (clToken * t = tokens; t != NULL; t = t->next) {
+        int colorStart = colorEnd;
         if (t->repeat) {
             colorEnd += t->count * t->repeat;
         } else {

@@ -425,8 +425,6 @@ int clContextReport(clContext * C)
     Timer overall, t;
     int returnCode = 0;
 
-    clImage * image = NULL;
-
     cJSON * payload = cJSON_CreateObject();
     FILE * outf = NULL;
 
@@ -435,7 +433,7 @@ int clContextReport(clContext * C)
 
     clContextLog(C, "decode", 0, "Reading: %s (%d bytes)", C->inputFilename, clFileSize(C->inputFilename));
     timerStart(&t);
-    image = clContextRead(C, C->inputFilename, C->iccOverrideIn, NULL);
+    clImage * image = clContextRead(C, C->inputFilename, C->iccOverrideIn, NULL);
     if (image == NULL) {
         return 1;
     }

@@ -240,30 +240,18 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
 
 clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
 {
-    const OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_SRGB;
-    int numcomps = 4;
-    int i, j;
-    opj_cparameters_t parameters;
-    unsigned int subsampling_dx = 1;
-    unsigned int subsampling_dy = 1;
-    opj_image_cmptparm_t cmptparm[4];
-    opj_image_t * opjImage;
-    opj_codec_t * opjCodec = NULL;
-    OPJ_BOOL bSuccess;
-    opj_stream_t * opjStream = NULL;
-    clBool isJ2K = !strcmp(formatName, "j2k");
     struct opjCallbackInfo ci;
-
     ci.C = C;
     ci.raw = output;
     ci.offset = 0;
 
-    opjStream = opj_stream_create(OPJ_J2K_STREAM_CHUNK_SIZE, OPJ_FALSE);
+    opj_stream_t * opjStream = opj_stream_create(OPJ_J2K_STREAM_CHUNK_SIZE, OPJ_FALSE);
     opj_stream_set_user_data(opjStream, &ci, NULL);
     opj_stream_set_write_function(opjStream, writeCallback);
     opj_stream_set_skip_function(opjStream, skipCallback);
     opj_stream_set_seek_function(opjStream, seekCallback);
 
+    opj_cparameters_t parameters;
     memset(&parameters, 0, sizeof(parameters));
     opj_set_default_encoder_parameters(&parameters);
     parameters.cod_format = 0;
@@ -292,7 +280,11 @@ clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char
         }
     }
 
-    for (i = 0; i < numcomps; i++) {
+    int numcomps = 4;
+    opj_image_cmptparm_t cmptparm[4];
+    unsigned int subsampling_dx = 1;
+    unsigned int subsampling_dy = 1;
+    for (int i = 0; i < numcomps; i++) {
         memset(&cmptparm[i], 0, sizeof(cmptparm[0]));
         cmptparm[i].prec = image->depth;
         cmptparm[i].bpp = image->depth;
@@ -303,15 +295,16 @@ clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char
         cmptparm[i].h = image->height;
     }
 
-    opjImage = opj_image_create(numcomps, cmptparm, color_space);
+    const OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_SRGB;
+    opj_image_t * opjImage = opj_image_create(numcomps, cmptparm, color_space);
     if (!opjImage) {
         return 0;
     }
 
     if (image->depth > 8) {
         unsigned short * src = (unsigned short *)image->pixels;
-        for (j = 0; j < image->height; ++j) {
-            for (i = 0; i < image->width; ++i) {
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
                 int dstOffset = i + (j * image->width);
                 int srcOffset = 4 * dstOffset;
                 opjImage->comps[0].data[dstOffset] = src[srcOffset + 0];
@@ -322,8 +315,8 @@ clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char
         }
     } else {
         unsigned char * src = (unsigned char *)image->pixels;
-        for (j = 0; j < image->height; ++j) {
-            for (i = 0; i < image->width; ++i) {
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
                 int dstOffset = i + (j * image->width);
                 int srcOffset = 4 * dstOffset;
                 opjImage->comps[0].data[dstOffset] = src[srcOffset + 0];
@@ -348,6 +341,8 @@ clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char
     memcpy(opjImage->icc_profile_buf, rawProfile.ptr, rawProfile.size);
     opjImage->icc_profile_len = (OPJ_UINT32)rawProfile.size;
 
+    opj_codec_t * opjCodec = NULL;
+    clBool isJ2K = !strcmp(formatName, "j2k");
     opj_set_info_handler(opjCodec, info_callback, C);
     opj_set_warning_handler(opjCodec, warning_callback, C);
     opj_set_error_handler(opjCodec, error_callback, C);
@@ -357,6 +352,8 @@ clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char
     opj_set_error_handler(opjCodec, error_callback, C);
 
     opj_setup_encoder(opjCodec, &parameters, opjImage);
+
+    OPJ_BOOL bSuccess;
 
     bSuccess = opj_start_compress(opjCodec, opjImage, opjStream);
     if (!bSuccess) {

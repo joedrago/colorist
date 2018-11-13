@@ -196,11 +196,9 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
 clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount, int width, int height, int depth, struct clProfile * dstProfile, clTonemap tonemap)
 {
     Timer t;
-    clImage * dstImage = NULL;
-    clTransform * transform = NULL;
 
     // Create destination image
-    dstImage = clImageCreate(C, width, height, depth, dstProfile);
+    clImage * dstImage = clImageCreate(C, width, height, depth, dstProfile);
 
     // Show image details
     clContextLog(C, "details", 0, "Source:");
@@ -209,7 +207,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount
     clImageDebugDump(C, dstImage, 0, 0, 0, 0, 1);
 
     // Create the transform
-    transform = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, srcImage->depth, dstImage->profile, CL_XF_RGBA, depth, tonemap);
+    clTransform * transform = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, srcImage->depth, dstImage->profile, CL_XF_RGBA, depth, tonemap);
     clTransformPrepare(C, transform);
     float luminanceScale = clTransformGetLuminanceScale(C, transform);
 

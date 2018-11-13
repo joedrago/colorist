@@ -31,14 +31,12 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
     clProfilePrimaries primaries;
     clProfileCurve curve;
     int luminance;
-    char * tempStr;
-    int i;
 
     if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
         clContextLog(C, "profile", 0 + extraIndent, "Profile \"%s\"", profile->description);
         clContextLog(C, "profile", 1 + extraIndent, "Size: %d bytes", clProfileSize(C, profile));
 
-        tempStr = clProfileGetMLU(C, profile, "cprt", "en", "US");
+        char * tempStr = clProfileGetMLU(C, profile, "cprt", "en", "US");
         if (tempStr) {
             clContextLog(C, "profile", 1 + extraIndent, "Copyright: \"%s\"", tempStr);
             clFree(tempStr);
@@ -76,7 +74,7 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
             if (tagCount > 0) {
                 clContextLog(C, "profile", 1 + extraIndent, "Tags [%d]:", tagCount);
             }
-            for (i = 0; i < tagCount; ++i) {
+            for (int i = 0; i < tagCount; ++i) {
                 char tagName[5];
                 cmsTagSignature invSig, sig = cmsGetTagSignature(profile->handle, i);
                 invSig = clNTOHL(sig);
@@ -94,7 +92,6 @@ void clProfileDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clP
     clProfilePrimaries primaries;
     clProfileCurve curve;
     int luminance;
-    char * tempStr;
 
     if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
         cJSON * jsonPrimaries;
@@ -104,7 +101,7 @@ void clProfileDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clP
         cJSON_AddStringToObject(jsonOutput, "description", profile->description);
         cJSON_AddNumberToObject(jsonOutput, "size", (double)clProfileSize(C, profile));
 
-        tempStr = clProfileGetMLU(C, profile, "cprt", "en", "US");
+        char * tempStr = clProfileGetMLU(C, profile, "cprt", "en", "US");
         if (tempStr) {
             cJSON_AddStringToObject(jsonOutput, "copyright", tempStr);
             clFree(tempStr);

@@ -25,21 +25,16 @@ struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName,
 
     clImage * image = NULL;
     clProfile * profile = NULL;
-
-    WebPData webpFileContents;
-    WebPMux * mux = NULL;
-    WebPMuxFrameInfo frameInfo;
-    uint32_t muxFlags;
-
-    int width, height;
     uint8_t * readPixels = NULL;
 
-    memset(&frameInfo, 0, sizeof(frameInfo));
-
+    WebPData webpFileContents;
     webpFileContents.bytes = input->ptr;
     webpFileContents.size = input->size;
-    mux = WebPMuxCreate(&webpFileContents, 0);
+    WebPMux * mux = WebPMuxCreate(&webpFileContents, 0);
+
+    uint32_t muxFlags;
     WebPMuxGetFeatures(mux, &muxFlags);
+
     if (muxFlags & ICCP_FLAG) {
         WebPData iccChunk;
         if (WebPMuxGetChunk(mux, "ICCP", &iccChunk) != WEBP_MUX_OK) {
@@ -53,11 +48,14 @@ struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName,
         }
     }
 
+    WebPMuxFrameInfo frameInfo;
+    memset(&frameInfo, 0, sizeof(frameInfo));
     if (WebPMuxGetFrame(mux, 1, &frameInfo) != WEBP_MUX_OK) {
         clContextLogError(C, "Failed to get frame chunk in WebP");
         goto readCleanup;
     }
 
+    int width, height;
     readPixels = WebPDecodeRGBA(frameInfo.bitstream.bytes, frameInfo.bitstream.size, &width, &height);
     if (!readPixels) {
         clContextLogError(C, "Failed to decode WebP");
