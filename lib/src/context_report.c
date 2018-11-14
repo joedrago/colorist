@@ -20,40 +20,45 @@
 
 #define FAIL() { returnCode = 1; goto reportCleanup; }
 
-// Calculates the max Y for a given xy chromaticity, this is an awful hack
-static float calcMaxY(clContext * C, float x, float y, clTransform * fromXYZ, clTransform * toXYZ)
+// Calculates the max Y for a given xy chromaticity.
+//
+// This works by creating an xyY coordinate with a likely overbright Y channel (as Y=1.0 is only NOT
+// overbright for the white point) and then uses the largest RGB channel after conversion to
+// determine how far Y=1.0 exceeded "max Y". The reciprocal of that largest channel therefore
+// represents max Y, as converting from that newly derived xyY to RGB would yield at least one max
+// RGB channel (1.0), but no RGB channels OVER 1.0.
+static float calcMaxY(clContext * C, float x, float y, clTransform * fromXYZ)
 {
-    float floatXYZ[3];
-    float floatRGB[3];
-    float maxChannel;
-    cmsCIEXYZ XYZ;
     cmsCIExyY xyY;
     xyY.x = x;
     xyY.y = y;
     xyY.Y = 1.0f; // Filthy lies
+
+    cmsCIEXYZ XYZ;
     cmsxyY2XYZ(&XYZ, &xyY);
+
+    float floatXYZ[3];
     floatXYZ[0] = (float)XYZ.X;
     floatXYZ[1] = (float)XYZ.Y;
     floatXYZ[2] = (float)XYZ.Z;
+
+    float floatRGB[3];
     clTransformRun(C, fromXYZ, 1, floatXYZ, floatRGB, 1);
-    maxChannel = floatRGB[0];
+
+    float maxChannel = floatRGB[0];
     if (maxChannel < floatRGB[1])
         maxChannel = floatRGB[1];
     if (maxChannel < floatRGB[2])
         maxChannel = floatRGB[2];
-    floatRGB[0] /= maxChannel;
-    floatRGB[1] /= maxChannel;
-    floatRGB[2] /= maxChannel;
-    clTransformRun(C, toXYZ, 1, floatRGB, floatXYZ, 1);
-    return floatXYZ[1];
+    return 1.0f / maxChannel;
 }
 
-static float calcOverbright(clContext * C, float x, float y, float Y, float overbrightScale, clTransform * fromXYZ, clTransform * toXYZ)
+static float calcOverbright(clContext * C, float x, float y, float Y, float overbrightScale, clTransform * fromXYZ)
 {
     // Even at 10,000 nits, this is only 1 nit difference. If its less than this, we're not over.
     static const float REASONABLY_OVERBRIGHT = 0.0001f;
 
-    float maxY = calcMaxY(C, x, y, fromXYZ, toXYZ);
+    float maxY = calcMaxY(C, x, y, fromXYZ);
     float p = (Y / maxY) * overbrightScale;
     if (p > (1.0f + REASONABLY_OVERBRIGHT)) {
         p = (p - 1.0f) / (overbrightScale - 1.0f);
@@ -218,7 +223,7 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
         baseIntensity = CL_CLAMP(baseIntensity, 0.0f, 1.0f);
         intensity8 = intensityToU8(baseIntensity);
 
-        overbright = calcOverbright(C, (float)xyY.x, (float)xyY.y, (float)xyY.Y, overbrightScale, fromXYZ, toXYZ);
+        overbright = calcOverbright(C, (float)xyY.x, (float)xyY.y, (float)xyY.Y, overbrightScale, fromXYZ);
         outOfSRGB = calcOutofSRGB(C, (float)xyY.x, (float)xyY.y, &srcPrimaries);
 
         if ((overbright > 0.0f) && (outOfSRGB > 0.0f)) {

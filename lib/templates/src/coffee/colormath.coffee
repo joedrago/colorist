@@ -196,6 +196,7 @@ matDeriveRGBToRGB = (srcPrimaries, dstPrimaries) ->
 
 # ---------------------------------------------------------------------------
 
+# See calcMaxY() in context_report.c for an explanation of this math
 calcMaxY = (xyy, primaries) ->
   toXYZ = matDeriveRGBToXYZ(primaries)
   fromXYZ = matInvert(toXYZ)
@@ -208,11 +209,7 @@ calcMaxY = (xyy, primaries) ->
     maxChannel = rgb[1]
   if maxChannel < rgb[2]
     maxChannel = rgb[2]
-  rgb[0] /= maxChannel
-  rgb[1] /= maxChannel
-  rgb[2] /= maxChannel
-  xyz = matEval(toXYZ, rgb)
-  return xyz[1]
+  return (1.0 / maxChannel)
 
 calcOverbright = (xyy, overbrightScale, primaries) ->
   maxY = calcMaxY(xyy, primaries)
