@@ -44,11 +44,12 @@ static float gammaErrorTerm(float gamma, float * pixels, int pixelCount, float m
 {
     float invGamma = 1.0f / gamma;
     float errorTerm = 0.0f;
-    float channelErrorTerm;
-    float scaledChannel;
     float * pixel = pixels;
 
     for (int i = 0; i < pixelCount; ++i) {
+        float channelErrorTerm;
+        float scaledChannel;
+
         scaledChannel = pixel[0] * luminanceScale;
         scaledChannel = CL_CLAMP(scaledChannel, 0.0f, 1.0f);
         channelErrorTerm = fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));

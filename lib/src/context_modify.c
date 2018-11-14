@@ -13,11 +13,9 @@
 
 int clContextModify(clContext * C)
 {
-    clProfile * profile = NULL;
-
     clContextLog(C, "action", 0, "Modify: %s -> %s", C->inputFilename, C->outputFilename);
 
-    profile = clProfileRead(C, C->inputFilename);
+    clProfile * profile = clProfileRead(C, C->inputFilename);
     if (!profile) {
         clContextLogError(C, "Cannot parse ICC profile: %s", C->inputFilename);
         goto cleanup;
