@@ -209,8 +209,8 @@ int clContextIdentify(clContext * C, struct cJSON * output);
 int clContextModify(clContext * C);
 int clContextReport(clContext * C);
 
-#define TIMING_FORMAT "--> %g sec"
-#define OVERALL_TIMING_FORMAT "==> %g sec"
+#define TIMING_FORMAT "--> %.3f sec"
+#define OVERALL_TIMING_FORMAT "==> %.3f sec"
 
 // Enable on VS builds to dump memory leaks at the end of a debug session
 // #define WIN32_MEMORY_LEAK_DETECTION
