@@ -53,12 +53,12 @@ static float calcMaxY(clContext * C, float x, float y, clTransform * fromXYZ)
     return 1.0f / maxChannel;
 }
 
-static float calcOverbright(clContext * C, float x, float y, float Y, float srgbLuminance, float overbrightScale, clTransform * fromXYZ)
+static float calcOverbright(clContext * C, float x, float y, float Y, float overbrightScale, clTransform * fromXYZ)
 {
     // Even at 10,000 nits, this is only 1 nit difference. If its less than this, we're not over.
     static const float REASONABLY_OVERBRIGHT = 0.0001f;
 
-    float maxY = calcMaxY(C, x, y, fromXYZ) * srgbLuminance;
+    float maxY = calcMaxY(C, x, y, fromXYZ);
     float p = (Y / maxY) * overbrightScale;
     if (p > (1.0f + REASONABLY_OVERBRIGHT)) {
         p = (p - 1.0f) / (overbrightScale - 1.0f);
@@ -190,7 +190,7 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
 
     highlight = clImageCreate(C, srcImage->width, srcImage->height, 8, NULL);
     luminanceScale = (float)srcLuminance / 300.0f;
-    overbrightScale = (float)srcLuminance * srcCurve.implicitScale / (float)srgbLuminance;
+    overbrightScale = (float)srcLuminance / (float)srgbLuminance * srcCurve.implicitScale;
     for (i = 0; i < pixelCount; ++i) {
         float * srcXYZ = &xyzPixels[i * 3];
         uint8_t * dstPixel = &highlight->pixels[i * 4];
@@ -223,7 +223,7 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
         baseIntensity = CL_CLAMP(baseIntensity, 0.0f, 1.0f);
         intensity8 = intensityToU8(baseIntensity);
 
-        overbright = calcOverbright(C, (float)xyY.x, (float)xyY.y, (float)xyY.Y, (float)srgbLuminance, overbrightScale, fromXYZ);
+        overbright = calcOverbright(C, (float)xyY.x, (float)xyY.y, (float)xyY.Y, overbrightScale, fromXYZ);
         outOfSRGB = calcOutofSRGB(C, (float)xyY.x, (float)xyY.y, &srcPrimaries);
 
         if ((overbright > 0.0f) && (outOfSRGB > 0.0f)) {
