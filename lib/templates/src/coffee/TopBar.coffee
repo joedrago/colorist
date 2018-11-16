@@ -48,7 +48,7 @@ class TopBar extends React.Component
           top: 0
           zIndex: 2
         iconStyle:
-          color: '#ffffff'
+          color: '#808080'
         onClick: =>
           setTimeout =>
             @props.app.toggleNav()

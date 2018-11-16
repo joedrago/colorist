@@ -207,19 +207,31 @@ class ImageRenderer extends React.Component
 
     elements = []
 
+    elements.push tags.div {
+        id: 'checkerboard'
+        style:
+          position: 'fixed'
+          left: 0
+          top: 0
+          width: @props.width
+          height: @props.height
+          zIndex: -5
+          backgroundColor: "#ffffff"
+          backgroundImage: "linear-gradient(45deg, #eeeeee 25%, transparent 25%), linear-gradient(-45deg, #eeeeee 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #eeeeee 75%), linear-gradient(-45deg, transparent 75%, #eeeeee 75%)"
+          backgroundSize: "40px 40px"
+          backgroundPosition: "0 0, 0 20px, 20px -20px, -20px 0px"
+    }
+
     elements.push el TouchDiv, {
       key: 'image'
       listener: this
-      width: @props.width
-      height: @props.height
       style:
         id: 'page'
-        position: 'absolute'
-        left: @props.left
-        top: @props.top
+        position: 'fixed'
+        left: 0
+        top: 0
         width: @props.width
         height: @props.height
-        backgroundColor: '#bbbbbb'
         backgroundImage: "url(\"#{@props.url}\")"
         backgroundRepeat: 'no-repeat'
         backgroundPosition: "#{@state.imageX}px #{@state.imageY}px"
@@ -227,6 +239,6 @@ class ImageRenderer extends React.Component
         imageRendering: 'pixelated'
     }
 
-    return tags.div {}, elements
+    return elements
 
 module.exports = ImageRenderer

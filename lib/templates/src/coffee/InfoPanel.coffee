@@ -196,7 +196,7 @@ class InfoPanel extends React.Component
       key: "info"
       style:
         id: 'info'
-        position: 'absolute'
+        position: 'fixed'
         left: @props.left
         top: @props.top
         width: @props.width
