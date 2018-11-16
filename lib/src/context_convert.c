@@ -341,9 +341,17 @@ int clContextConvert(clContext * C)
         clFormat * format = clContextFindFormat(C, params.formatName);
         COLORIST_ASSERT(format);
         if (format->usesRate && format->usesQuality) {
-            clContextLog(C, "encode", 0, "Writing %s [%s:%d]: %s", format->description, (params.jp2rate) ? "R" : "Q", (params.jp2rate) ? params.jp2rate : params.quality, C->outputFilename);
+            if ((params.jp2rate == 0) && (params.quality == 100)) {
+                clContextLog(C, "encode", 0, "Writing %s [Lossless]: %s", format->description, C->outputFilename);
+            } else {
+                clContextLog(C, "encode", 0, "Writing %s [%s:%d]: %s", format->description, (params.jp2rate) ? "R" : "Q", (params.jp2rate) ? params.jp2rate : params.quality, C->outputFilename);
+            }
         } else if (format->usesQuality) {
-            clContextLog(C, "encode", 0, "Writing %s [Q:%d]: %s", format->description, params.quality, C->outputFilename);
+            if (params.quality == 100) {
+                clContextLog(C, "encode", 0, "Writing %s [Lossless]: %s", format->description, C->outputFilename);
+            } else {
+                clContextLog(C, "encode", 0, "Writing %s [Q:%d]: %s", format->description, params.quality, C->outputFilename);
+            }
         } else {
             clContextLog(C, "encode", 0, "Writing %s: %s", format->description, C->outputFilename);
         }
