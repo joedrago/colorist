@@ -231,12 +231,12 @@ clFilter clFilterFromString(struct clContext * C, const char * str)
 {
     COLORIST_UNUSED(C);
 
-    if (!strcmp(str, "auto")) return CL_FILTER_AUTO;
+    // if (!strcmp(str, "auto")) return CL_FILTER_AUTO;
     if (!strcmp(str, "box")) return CL_FILTER_BOX;
     if (!strcmp(str, "triangle")) return CL_FILTER_TRIANGLE;
     if (!strcmp(str, "cubic")) return CL_FILTER_CUBICBSPLINE;
-    if (!strcmp(str, "catmullrom")) return CL_FILTER_CATMULLROM;
-    if (!strcmp(str, "mitchell")) return CL_FILTER_MITCHELL;
+    // if (!strcmp(str, "catmullrom")) return CL_FILTER_CATMULLROM;
+    // if (!strcmp(str, "mitchell")) return CL_FILTER_MITCHELL;
     if (!strcmp(str, "nearest")) return CL_FILTER_NEAREST;
     return CL_FILTER_INVALID;
 }
@@ -246,12 +246,12 @@ const char * clFilterToString(struct clContext * C, clFilter filter)
     COLORIST_UNUSED(C);
 
     switch (filter) {
-        case CL_FILTER_AUTO:  return "auto";
+        // case CL_FILTER_AUTO:  return "auto";
         case CL_FILTER_BOX:  return "box";
         case CL_FILTER_TRIANGLE:  return "triangle";
         case CL_FILTER_CUBICBSPLINE:  return "cubic";
-        case CL_FILTER_CATMULLROM:  return "catmullrom";
-        case CL_FILTER_MITCHELL:  return "mitchell";
+        // case CL_FILTER_CATMULLROM:  return "catmullrom";
+        // case CL_FILTER_MITCHELL:  return "mitchell";
         case CL_FILTER_NEAREST:  return "nearest";
         case CL_FILTER_INVALID:
         default:
@@ -293,7 +293,7 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->rect[3] = -1;
     params->resizeW = 0;
     params->resizeH = 0;
-    params->resizeFilter = CL_FILTER_AUTO;
+    params->resizeFilter = CL_FILTER_CUBICBSPLINE;
     params->stripTags = NULL;
     params->tonemap = CL_TONEMAP_AUTO;
 }
@@ -507,10 +507,10 @@ static clBool parseResize(clContext * C, clConversionParams * params, const char
             return clFalse;
         }
 
-        if (!strcmp(token, "auto")) {
-            params->resizeFilter = CL_FILTER_AUTO;
-            continue;
-        }
+        // if (!strcmp(token, "auto")) {
+        //     params->resizeFilter = CL_FILTER_AUTO;
+        //     continue;
+        // }
         if (!strcmp(token, "bo")) { // Awful hack: Delims include 'x', which truncates box. Allow 'bo' to mean box.
             params->resizeFilter = CL_FILTER_BOX;
             continue;
@@ -523,14 +523,14 @@ static clBool parseResize(clContext * C, clConversionParams * params, const char
             params->resizeFilter = CL_FILTER_CUBICBSPLINE;
             continue;
         }
-        if (!strcmp(token, "catmullrom")) {
-            params->resizeFilter = CL_FILTER_CATMULLROM;
-            continue;
-        }
-        if (!strcmp(token, "mitchell")) {
-            params->resizeFilter = CL_FILTER_MITCHELL;
-            continue;
-        }
+        // if (!strcmp(token, "catmullrom")) {
+        //     params->resizeFilter = CL_FILTER_CATMULLROM;
+        //     continue;
+        // }
+        // if (!strcmp(token, "mitchell")) {
+        //     params->resizeFilter = CL_FILTER_MITCHELL;
+        //     continue;
+        // }
         if (!strcmp(token, "nearest")) {
             params->resizeFilter = CL_FILTER_NEAREST;
             continue;
@@ -869,7 +869,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Convert Options:");
-    clContextLog(C, NULL, 0, "    -r,--resize w,h,filter   : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)");
+    clContextLog(C, NULL, 0, "    -r,--resize w,h,filter   : Resize dst image to WxH. Use optional filter (box, triangle, cubic (default), nearest)");
     clContextLog(C, NULL, 0, "    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h");
     clContextLog(C, NULL, 0, "    --hald FILENAME          : Image containing valid Hald CLUT to be used after color conversion");
     clContextLog(C, NULL, 0, "");
