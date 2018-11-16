@@ -16,9 +16,15 @@ MenuItem = require('material-ui/MenuItem').default
 PixelsView = require './PixelsView'
 SummaryView = require './SummaryView'
 
+StructArray = require './StructArray'
+
 class App extends React.Component
   constructor: (props) ->
     super props
+
+    # Do this one time on startup, for performance
+    @rawPixels = new StructArray(COLORIST_DATA.raw)
+    @highlightInfos = new StructArray(COLORIST_DATA.srgb300.info)
 
     @state =
       width: 0
@@ -29,7 +35,6 @@ class App extends React.Component
     @views =
       summary: SummaryView
       pixels: PixelsView
-      # srgb100: PixelsView
       srgb300: PixelsView
 
     @navigate(true)
@@ -103,16 +108,6 @@ class App extends React.Component
           @redirect('#pixels')
           @setState { navOpen: false }
       }
-
-      # el MenuItem, {
-      #   key: "menu.srgb100"
-      #   primaryText: "sRGB Highlight (100)"
-      #   leftIcon: tags.icon 'event_note'
-      #   onClick: (e) =>
-      #     e.preventDefault()
-      #     @redirect('#srgb100')
-      #     @setState { navOpen: false }
-      # }
 
       el MenuItem, {
         key: "menu.srgb300"

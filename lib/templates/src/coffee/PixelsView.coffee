@@ -8,7 +8,6 @@
 React = require 'react'
 DOM = require 'react-dom'
 
-cm = require './colormath'
 tags = require './tags'
 utils = require './utils'
 {el, div, table, tr, td, tbody} = require './tags'
@@ -16,7 +15,6 @@ utils = require './utils'
 TopBar = require './TopBar'
 ImageRenderer = require './ImageRenderer'
 InfoPanel = require './InfoPanel'
-StructArray = require './StructArray'
 
 as8Bit = (v, depth) ->
   return utils.clamp(Math.round(v / ((1 << depth)-1) * 255), 0, 255)
@@ -31,7 +29,8 @@ class PixelsView extends React.Component
       x: -1
       y: -1
 
-    @rawPixels = new StructArray(COLORIST_DATA.raw)
+    @rawPixels = @props.app.rawPixels
+    @highlightInfos = @props.app.highlightInfos
 
   setPos: (x, y) ->
     @setState { x: x, y: y }
@@ -48,15 +47,10 @@ class PixelsView extends React.Component
     title = "Pixels"
     image = COLORIST_DATA.visual
     maxNits = COLORIST_DATA.icc.luminance
-    if @props.name == 'srgb100'
-      title = "sRGB Highlight (100)"
-      image = COLORIST_DATA.srgb100.visual
-      maxNits = 100
-    else if @props.name == 'srgb300'
+    if @props.name == 'srgb300'
       title = "sRGB Highlight (300)"
       image = COLORIST_DATA.srgb300.visual
       maxNits = 300
-    overbrightScale = COLORIST_DATA.icc.luminance / maxNits
 
     elements.push el ImageRenderer, {
       width: @props.width - infoPanelWidth
@@ -81,21 +75,12 @@ class PixelsView extends React.Component
         ]
       }
 
-      # floating point, (inverse) gamma space
-      floatIG = cm.rawToFloat([pixel.r, pixel.g, pixel.b, pixel.a], COLORIST_DATA.depth)
-
-      # floating point, linear space
-      if(COLORIST_DATA.icc.pq)
-        floatLin = cm.vecPQ_EOTF(floatIG)
-      else
-        floatLin = cm.vecPow(floatIG, COLORIST_DATA.icc.gamma)
-
-      toXYZ = cm.matDeriveRGBToXYZ(COLORIST_DATA.icc.primaries)
-      XYZ = cm.matEval(toXYZ, floatLin)
-      xyY = cm.convertXYZtoXYY(XYZ, [COLORIST_DATA.icc.primaries[6], COLORIST_DATA.icc.primaries[7]])
-
-      pixelLuminance = xyY[2] * COLORIST_DATA.icc.luminance
-      maxPixelLuminance = maxNits * cm.calcMaxY(xyY, COLORIST_DATA.icc.primaries)
+      @pixelInfos
+      highlightInfo = @highlightInfos.get(@state.x, @state.y)
+      xyY = [highlightInfo.x, highlightInfo.y, highlightInfo.Y]
+      pixelLuminance = highlightInfo.nits
+      maxPixelLuminance = highlightInfo.maxNits
+      outofSRGB = highlightInfo.outOfGamut
 
       sections.push {
         name: "xyY"
@@ -110,8 +95,6 @@ class PixelsView extends React.Component
       horseshoeY = xyY[1]
 
       if @props.name != 'pixels'
-        overbright = cm.calcOverbright(xyY, overbrightScale, COLORIST_DATA.icc.primaries)
-        outofSRGB = cm.calcOutofSRGB(xyY[0], xyY[1], COLORIST_DATA.icc.primaries)
         p = (pixelLuminance / maxPixelLuminance)
         REASONABLY_OVERBRIGHT = 0.0001 # this should match the constant in context_report.c's calcOverbright()
         if p > (1.0 + REASONABLY_OVERBRIGHT)

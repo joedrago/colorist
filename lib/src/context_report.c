@@ -20,8 +20,8 @@
 
 #define FAIL() { returnCode = 1; goto reportCleanup; }
 
-// Calculates the max Y for a given xy chromaticity, this is an awful hack
-static float calcMaxY(clContext * C, float x, float y, clTransform * fromXYZ, clTransform * toXYZ)
+// Calculates the max Y for a given xy chromaticity
+static float calcMaxY(clContext * C, float x, float y, clTransform * linearFromXYZ, clTransform * linearToXYZ)
 {
     float floatXYZ[3];
     float floatRGB[3];
@@ -30,12 +30,12 @@ static float calcMaxY(clContext * C, float x, float y, clTransform * fromXYZ, cl
     cmsCIExyY xyY;
     xyY.x = x;
     xyY.y = y;
-    xyY.Y = 1.0f; // Filthy lies
+    xyY.Y = 1.0f; // start with max luminance
     cmsxyY2XYZ(&XYZ, &xyY);
     floatXYZ[0] = (float)XYZ.X;
     floatXYZ[1] = (float)XYZ.Y;
     floatXYZ[2] = (float)XYZ.Z;
-    clTransformRun(C, fromXYZ, 1, floatXYZ, floatRGB, 1);
+    clTransformRun(C, linearFromXYZ, 1, floatXYZ, floatRGB, 1);
     maxChannel = floatRGB[0];
     if (maxChannel < floatRGB[1])
         maxChannel = floatRGB[1];
@@ -44,17 +44,16 @@ static float calcMaxY(clContext * C, float x, float y, clTransform * fromXYZ, cl
     floatRGB[0] /= maxChannel;
     floatRGB[1] /= maxChannel;
     floatRGB[2] /= maxChannel;
-    clTransformRun(C, toXYZ, 1, floatRGB, floatXYZ, 1);
+    clTransformRun(C, linearToXYZ, 1, floatRGB, floatXYZ, 1);
     return floatXYZ[1];
 }
 
-static float calcOverbright(clContext * C, float x, float y, float Y, float overbrightScale, clTransform * fromXYZ, clTransform * toXYZ)
+static float calcOverbright(float Y, float overbrightScale, float maxY)
 {
     // Even at 10,000 nits, this is only 1 nit difference. If its less than this, we're not over.
     static const float REASONABLY_OVERBRIGHT = 0.0001f;
 
-    float maxY = calcMaxY(C, x, y, fromXYZ, toXYZ);
-    float p = (Y / maxY) * overbrightScale;
+    float p = Y / maxY;
     if (p > (1.0f + REASONABLY_OVERBRIGHT)) {
         p = (p - 1.0f) / (overbrightScale - 1.0f);
         p = CL_CLAMP(p, 0.0f, 1.0f);
@@ -111,12 +110,12 @@ static float calcOutofSRGB(clContext * C, float x, float y, clProfilePrimaries *
         }
     }
 
-    if (srgbMaxDist < 0) {
+    if (srgbMaxDist < 0.0002f) {
         // in gamut
         return 0;
     }
 
-    if (gamutMaxDist > -0.00001) {
+    if (gamutMaxDist > -0.00001f) {
         // As far as possible, probably on the line or on a primary
         return 1;
     }
@@ -152,53 +151,76 @@ typedef struct SRGBHighlightStats
     float brightestPixelNits;
 } SRGBHighlightStats;
 
-static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgbLuminance, SRGBHighlightStats * stats)
+enum HighlightInfoIndex
+{
+    HII_x = 0,
+    HII_y,
+    HII_Y,
+    HII_NITS,
+    HII_MAXNITS,
+    HII_OOG,
+
+    HII_COUNT
+};
+
+// This much match HighlightInfoIndex's list exactly!
+static const char * highlightInfoPropertyNames[HII_COUNT] = {
+    "x",
+    "y",
+    "Y",
+    "nits",
+    "maxNits",
+    "outOfGamut"
+};
+
+static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgbLuminance, SRGBHighlightStats * stats, struct cJSON ** highlightInfoJSON)
 {
     const float minHighlight = 0.4f;
-    float luminanceScale;
-    float overbrightScale;
-    float * srcFloats;
-    clProfilePrimaries srcPrimaries;
-    clProfileCurve srcCurve;
-    int srcLuminance = 0;
-    float * xyzPixels;
-    int pixelCount = 0;
-    clImage * highlight = NULL;
-    int i;
 
     clTransform * toXYZ = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
     clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, 32, srcImage->profile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
 
-    clContextLog(C, "encode", 1, "Creating sRGB highlight (%d nits, %s)...", srgbLuminance, clTransformCMMName(C, toXYZ));
+    clContextLog(C, "highlight", 1, "Creating sRGB highlight (%d nits, %s)...", srgbLuminance, clTransformCMMName(C, toXYZ));
 
-    memset(stats, 0, sizeof(SRGBHighlightStats));
-    stats->pixelCount = pixelCount = srcImage->width * srcImage->height;
-
+    clProfilePrimaries srcPrimaries;
+    clProfileCurve srcCurve;
+    int srcLuminance = 0;
     clProfileQuery(C, srcImage->profile, &srcPrimaries, &srcCurve, &srcLuminance);
     srcLuminance = (srcLuminance != 0) ? srcLuminance : COLORIST_DEFAULT_LUMINANCE;
+    float overbrightScale = (float)srcLuminance * srcCurve.implicitScale / (float)srgbLuminance;
 
-    srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
+    // calcMaxY assumes the RGB profile is linear with a 1 nit luminance
+    clProfileCurve gamma1;
+    gamma1.type = CL_PCT_GAMMA;
+    gamma1.gamma = 1.0f;
+    clProfile * linearProfile = clProfileCreate(C, &srcPrimaries, &gamma1, 1, NULL);
+    clTransform * linearToXYZ = clTransformCreate(C, linearProfile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
+    clTransform * linearFromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, 32, linearProfile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
+
+    memset(stats, 0, sizeof(SRGBHighlightStats));
+    int pixelCount = stats->pixelCount = srcImage->width * srcImage->height;
+
+    float * srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
     clPixelMathUNormToFloat(C, srcImage->pixels, srcImage->depth, srcFloats, pixelCount);
 
-    xyzPixels = clAllocate(3 * sizeof(float) * pixelCount);
+    float * xyzPixels = clAllocate(3 * sizeof(float) * pixelCount);
     clTransformRun(C, toXYZ, C->params.jobs, (uint8_t *)srcFloats, (uint8_t *)xyzPixels, pixelCount);
 
-    highlight = clImageCreate(C, srcImage->width, srcImage->height, 8, NULL);
-    luminanceScale = (float)srcLuminance / 300.0f;
-    overbrightScale = (float)srcLuminance / (float)srgbLuminance * srcCurve.implicitScale;
-    for (i = 0; i < pixelCount; ++i) {
+    float * highlightInfo = clAllocate(HII_COUNT * sizeof(float) * pixelCount);
+    memset(highlightInfo, 0, HII_COUNT * sizeof(float) * pixelCount);
+
+    clImage * highlight = clImageCreate(C, srcImage->width, srcImage->height, 8, NULL);
+    for (int i = 0; i < pixelCount; ++i) {
         float * srcXYZ = &xyzPixels[i * 3];
         uint8_t * dstPixel = &highlight->pixels[i * 4];
-        float baseIntensity;
-        uint8_t intensity8;
-        float overbright, outOfSRGB;
-        float pixelNits;
-        cmsCIEXYZ XYZ;
-        cmsCIExyY xyY;
+        float * pixelHighlightInfo = &highlightInfo[i * HII_COUNT];
 
+        cmsCIEXYZ XYZ;
         XYZ.X = srcXYZ[0];
         XYZ.Y = srcXYZ[1];
         XYZ.Z = srcXYZ[2];
+
+        cmsCIExyY xyY;
         if (XYZ.Y > 0) {
             cmsXYZ2xyY(&xyY, &XYZ);
         } else {
@@ -207,19 +229,28 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
             xyY.Y = 0.0f;
         }
 
-        pixelNits = (float)xyY.Y;
+        pixelHighlightInfo[HII_x] = (float)xyY.x;
+        pixelHighlightInfo[HII_y] = (float)xyY.y;
+        pixelHighlightInfo[HII_Y] = (float)xyY.Y / ((float)srcLuminance * srcCurve.implicitScale);
+
+        float pixelNits = (float)xyY.Y;
         if (stats->brightestPixelNits < pixelNits) {
             stats->brightestPixelNits = pixelNits;
             stats->brightestPixelX = i % srcImage->width;
             stats->brightestPixelY = i / srcImage->width;
         }
 
-        baseIntensity = luminanceScale * (float)xyY.Y / (float)srcLuminance;
-        baseIntensity = CL_CLAMP(baseIntensity, 0.0f, 1.0f);
-        intensity8 = intensityToU8(baseIntensity);
+        float maxY = calcMaxY(C, (float)xyY.x, (float)xyY.y, linearFromXYZ, linearToXYZ) * (float)srgbLuminance;
+        float overbright = calcOverbright((float)xyY.Y, overbrightScale, maxY);
+        float outOfSRGB = calcOutofSRGB(C, (float)xyY.x, (float)xyY.y, &srcPrimaries);
 
-        overbright = calcOverbright(C, (float)xyY.x, (float)xyY.y, (float)xyY.Y, overbrightScale, fromXYZ, toXYZ);
-        outOfSRGB = calcOutofSRGB(C, (float)xyY.x, (float)xyY.y, &srcPrimaries);
+        pixelHighlightInfo[HII_NITS] = pixelNits;
+        pixelHighlightInfo[HII_MAXNITS] = maxY;
+        pixelHighlightInfo[HII_OOG] = outOfSRGB;
+
+        float baseIntensity = pixelNits / 300.0f;
+        baseIntensity = CL_CLAMP(baseIntensity, 0.0f, 1.0f);
+        uint8_t intensity8 = intensityToU8(baseIntensity);
 
         if ((overbright > 0.0f) && (outOfSRGB > 0.0f)) {
             float biggerHighlight = (overbright > outOfSRGB) ? overbright : outOfSRGB;
@@ -253,6 +284,25 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     }
     stats->hdrPixelCount = stats->bothPixelCount + stats->overbrightPixelCount + stats->outOfGamutPixelCount;
 
+    clRaw rawInfo;
+    clStructArraySchema infoSchema[HII_COUNT];
+    for (int i = 0; i < HII_COUNT; ++i) {
+        infoSchema[i].format = "f32";
+        infoSchema[i].name = highlightInfoPropertyNames[i];
+    }
+    rawInfo.ptr = (uint8_t *)highlightInfo;
+    rawInfo.size = HII_COUNT * sizeof(float) * pixelCount;
+
+    Timer t;
+    clContextLog(C, "highlight", 1, "Packing highlight info...");
+    timerStart(&t);
+    *highlightInfoJSON = clRawToStructArray(C, &rawInfo, srcImage->width, srcImage->height, infoSchema, HII_COUNT);
+    clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+
+    clTransformDestroy(C, linearToXYZ);
+    clTransformDestroy(C, linearFromXYZ);
+    clProfileDestroy(C, linearProfile);
+
     clTransformDestroy(C, fromXYZ);
     clTransformDestroy(C, toXYZ);
     clFree(srcFloats);
@@ -266,8 +316,9 @@ static clBool addSRGBHighlight(clContext * C, clImage * image, int maxLuminance,
     char * pngB64;
     SRGBHighlightStats stats;
     cJSON * base;
+    cJSON * highlightInfo = NULL;
 
-    highlight = createSRGBHighlight(C, image, maxLuminance, &stats);
+    highlight = createSRGBHighlight(C, image, maxLuminance, &stats, &highlightInfo);
     if (!highlight) {
         return clFalse;
     }
@@ -279,6 +330,7 @@ static clBool addSRGBHighlight(clContext * C, clImage * image, int maxLuminance,
 
     base = cJSON_CreateObject();
     cJSON_AddItemToObject(base, "visual", cJSON_CreateString(pngB64));
+    cJSON_AddItemToObject(base, "info", highlightInfo);
     cJSON_AddItemToObject(base, "overbrightPixelCount", cJSON_CreateNumber(stats.overbrightPixelCount));
     cJSON_AddItemToObject(base, "outOfGamutPixelCount", cJSON_CreateNumber(stats.outOfGamutPixelCount));
     cJSON_AddItemToObject(base, "bothPixelCount", cJSON_CreateNumber(stats.bothPixelCount));
@@ -372,17 +424,14 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
     }
 
     {
-        clContextLog(C, "encode", 0, "Creating out-of-gamut highlights...");
+        clContextLog(C, "highlight", 0, "Creating out-of-gamut highlights...");
         timerStart(&t);
 
-        // if (!addSRGBHighlight(C, image, 100, payload, "srgb100")) {
-        //     return clFalse;
-        // }
         if (!addSRGBHighlight(C, image, 300, payload, "srgb300")) {
             return clFalse;
         }
 
-        clContextLog(C, "encode", 0, "Highlight generation complete.");
+        clContextLog(C, "highlight", 0, "Highlight generation complete.");
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
 
