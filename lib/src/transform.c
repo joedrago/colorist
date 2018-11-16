@@ -169,7 +169,7 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
                 break;
         }
 
-        if (transform->tonemapEnabled || (fabsf((transform->srcLuminanceScale * transform->srcCurveScale) - (transform->dstLuminanceScale * transform->dstCurveScale)) > 0.00001f)) {
+        if (!useCCMM || !transform->srcProfile || !transform->dstProfile || transform->tonemapEnabled || (fabsf((transform->srcLuminanceScale * transform->srcCurveScale) - (transform->dstLuminanceScale * transform->dstCurveScale)) > 0.00001f)) {
             transform->luminanceScaleEnabled = clTrue;
         } else {
             transform->luminanceScaleEnabled = clFalse;
