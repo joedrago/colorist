@@ -407,7 +407,7 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
         char * pngB64;
         clContextLog(C, "encode", 0, "Creating raw pixels visual...");
         timerStart(&t);
-        visual = clImageConvert(C, image, C->params.jobs, image->width, image->height, 8, NULL, CL_TONEMAP_AUTO);
+        visual = clImageConvert(C, image, C->params.jobs, 8, NULL, CL_TONEMAP_AUTO);
         if (!visual) {
             return clFalse;
         }

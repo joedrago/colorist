@@ -316,7 +316,7 @@ int clContextConvert(clContext * C)
         }
     }
 
-    dstImage = clImageConvert(C, srcImage, params.jobs, dstInfo.width, dstInfo.height, dstInfo.depth, dstProfile, params.autoGrade ? CL_TONEMAP_OFF : params.tonemap);
+    dstImage = clImageConvert(C, srcImage, params.jobs, dstInfo.depth, dstProfile, params.autoGrade ? CL_TONEMAP_OFF : params.tonemap);
     if (!dstImage) {
         FAIL();
     }

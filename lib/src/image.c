@@ -193,12 +193,12 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
     return rotated;
 }
 
-clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount, int width, int height, int depth, struct clProfile * dstProfile, clTonemap tonemap)
+clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount, int depth, struct clProfile * dstProfile, clTonemap tonemap)
 {
     Timer t;
 
     // Create destination image
-    clImage * dstImage = clImageCreate(C, width, height, depth, dstProfile);
+    clImage * dstImage = clImageCreate(C, srcImage->width, srcImage->height, depth, dstProfile);
 
     // Show image details
     clContextLog(C, "details", 0, "Source:");

@@ -27,7 +27,7 @@ typedef struct clImage
 
 clImage * clImageCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
 clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns);
-clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount, int width, int height, int depth, struct clProfile * dstProfile, clTonemap tonemap);
+clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount, int depth, struct clProfile * dstProfile, clTonemap tonemap);
 clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, int w, int h, clBool keepSrc);
 clImage * clImageApplyHALD(struct clContext * C, clImage * image, clImage * hald, int haldDims);
 clImage * clImageResize(struct clContext * C, clImage * image, int width, int height, clFilter resizeFilter);
