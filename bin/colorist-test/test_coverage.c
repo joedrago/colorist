@@ -248,17 +248,20 @@ static void test_clContextParseArgs(void)
 
     {
         const char * filterNames[] = {
-            "auto",
+            NULL, //"auto",
             "box",
             "triangle",
             "cubic",
-            "catmullrom",
-            "mitchell",
+            NULL, //"catmullrom",
+            NULL, //"mitchell",
             "nearest"
         };
         const int filterNamesCount = sizeof(filterNames) / sizeof(filterNames[0]);
         const char * argv[] = { "colorist", "convert", "input.png", "output.png", "--resize", NULL };
         for (int i = 0; i < filterNamesCount; ++i) {
+            if (!filterNames[i])
+                continue;
+
             char description[128];
             char buffer[128];
             sprintf(buffer, "5,5,%s", filterNames[i]);
