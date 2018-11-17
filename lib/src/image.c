@@ -101,6 +101,11 @@ clImage * clImageResize(struct clContext * C, clImage * image, int width, int he
 
     clPixelMathUNormToFloat(C, image->pixels, image->depth, srcFloats, pixelCount);
     clPixelMathResize(C, image->width, image->height, srcFloats, resizedImage->width, resizedImage->height, dstFloats, resizeFilter);
+    int resizedChannelCount = resizedPixelCount * 4;
+    for (int i = 0; i < resizedChannelCount; ++i) {
+        // catmullrom and mitchell sometimes give values outside of 0-1, so clamp before calling clPixelMathFloatToUNorm
+        dstFloats[i] = CL_CLAMP(dstFloats[i], 0.0f, 1.0f);
+    }
     clPixelMathFloatToUNorm(C, dstFloats, resizedImage->pixels, resizedImage->depth, resizedPixelCount);
     clFree(dstFloats);
     clFree(srcFloats);
