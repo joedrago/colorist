@@ -39,25 +39,25 @@ static void test_clAction(void)
     clContext * C = clContextCreate(&silentSystem);
     TEST_ASSERT_NOT_NULL(C);
 
-    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "identify"), CL_ACTION_IDENTIFY);
-    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "id"), CL_ACTION_IDENTIFY);
-    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "generate"), CL_ACTION_GENERATE);
-    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "gen"), CL_ACTION_GENERATE);
-    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "calc"), CL_ACTION_CALC);
-    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "convert"), CL_ACTION_CONVERT);
-    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "modify"), CL_ACTION_MODIFY);
-    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "report"), CL_ACTION_REPORT);
-    TEST_ASSERT_EQUAL_INT(clActionFromString(C, "derp"), CL_ACTION_ERROR);
+    TEST_ASSERT_EQUAL_INT(CL_ACTION_IDENTIFY, clActionFromString(C, "identify"));
+    TEST_ASSERT_EQUAL_INT(CL_ACTION_IDENTIFY, clActionFromString(C, "id"));
+    TEST_ASSERT_EQUAL_INT(CL_ACTION_GENERATE, clActionFromString(C, "generate"));
+    TEST_ASSERT_EQUAL_INT(CL_ACTION_GENERATE, clActionFromString(C, "gen"));
+    TEST_ASSERT_EQUAL_INT(CL_ACTION_CALC, clActionFromString(C, "calc"));
+    TEST_ASSERT_EQUAL_INT(CL_ACTION_CONVERT, clActionFromString(C, "convert"));
+    TEST_ASSERT_EQUAL_INT(CL_ACTION_MODIFY, clActionFromString(C, "modify"));
+    TEST_ASSERT_EQUAL_INT(CL_ACTION_REPORT, clActionFromString(C, "report"));
+    TEST_ASSERT_EQUAL_INT(CL_ACTION_ERROR, clActionFromString(C, "derp"));
 
-    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_NONE), "--");
-    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_IDENTIFY), "identify");
-    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_GENERATE), "generate");
-    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_CALC), "calc");
-    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_CONVERT), "convert");
-    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_MODIFY), "modify");
-    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_REPORT), "report");
-    TEST_ASSERT_EQUAL_STRING(clActionToString(C, CL_ACTION_ERROR), "unknown");
-    TEST_ASSERT_EQUAL_STRING(clActionToString(C, (clAction)555), "unknown");
+    TEST_ASSERT_EQUAL_STRING("--", clActionToString(C, CL_ACTION_NONE));
+    TEST_ASSERT_EQUAL_STRING("identify", clActionToString(C, CL_ACTION_IDENTIFY));
+    TEST_ASSERT_EQUAL_STRING("generate", clActionToString(C, CL_ACTION_GENERATE));
+    TEST_ASSERT_EQUAL_STRING("calc", clActionToString(C, CL_ACTION_CALC));
+    TEST_ASSERT_EQUAL_STRING("convert", clActionToString(C, CL_ACTION_CONVERT));
+    TEST_ASSERT_EQUAL_STRING("modify", clActionToString(C, CL_ACTION_MODIFY));
+    TEST_ASSERT_EQUAL_STRING("report", clActionToString(C, CL_ACTION_REPORT));
+    TEST_ASSERT_EQUAL_STRING("unknown", clActionToString(C, CL_ACTION_ERROR));
+    TEST_ASSERT_EQUAL_STRING("unknown", clActionToString(C, (clAction)555));
 
     clContextDestroy(C);
 }
@@ -70,29 +70,29 @@ static void test_clFormat(void)
     TEST_ASSERT_NULL(clContextFindFormat(C, NULL));
     TEST_ASSERT_NULL(clFormatDetect(C, "file_with_no_extension"));
     TEST_ASSERT_NULL(clFormatDetect(C, "not_an_image.txt"));
-    TEST_ASSERT_EQUAL_STRING(clFormatDetect(C, "file.icc"), "icc");
-    TEST_ASSERT_EQUAL_STRING(clFormatDetect(C, "file.png"), "png");
-    TEST_ASSERT_EQUAL_STRING(clFormatDetect(C, "..\\test\\not_a_file"), NULL);
-    TEST_ASSERT_EQUAL_STRING(clFormatDetect(C, "../test/red_png_no_ext"), "png");
-    TEST_ASSERT_EQUAL_STRING(clFormatDetect(C, "../test/red_png.txt"), "png");
+    TEST_ASSERT_EQUAL_STRING("icc", clFormatDetect(C, "file.icc"));
+    TEST_ASSERT_EQUAL_STRING("png", clFormatDetect(C, "file.png"));
+    TEST_ASSERT_EQUAL_STRING(NULL, clFormatDetect(C, "..\\test\\not_a_file"));
+    TEST_ASSERT_EQUAL_STRING("png", clFormatDetect(C, "../test/red_png_no_ext"));
+    TEST_ASSERT_EQUAL_STRING("png", clFormatDetect(C, "../test/red_png.txt"));
 
-    TEST_ASSERT_EQUAL_INT(clFormatMaxDepth(C, "txt"), 8); // this will error, but return 8
-    TEST_ASSERT_EQUAL_INT(clFormatMaxDepth(C, "jpg"), 8);
-    TEST_ASSERT_EQUAL_INT(clFormatMaxDepth(C, "bmp"), 10);
-    TEST_ASSERT_EQUAL_INT(clFormatMaxDepth(C, "png"), 16);
+    TEST_ASSERT_EQUAL_INT(8, clFormatMaxDepth(C, "txt")); // this will error, but return 8
+    TEST_ASSERT_EQUAL_INT(8, clFormatMaxDepth(C, "jpg"));
+    TEST_ASSERT_EQUAL_INT(10, clFormatMaxDepth(C, "bmp"));
+    TEST_ASSERT_EQUAL_INT(16, clFormatMaxDepth(C, "png"));
 
-    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "txt", 8), 8); // this will error, but return 8
-    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "jpg", 8), 8);
-    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "jpg", 6), 8);
-    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "bmp", 8), 8);
-    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "bmp", 10), 10);
-    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "png", 8), 8);
-    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "png", 12), 16);
-    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "png", 16), 16);
-    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "jp2", 8), 8);
-    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "jp2", 12), 12);
-    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "jp2", 16), 16);
-    TEST_ASSERT_EQUAL_INT(clFormatBestDepth(C, "jp2", 20), 16);
+    TEST_ASSERT_EQUAL_INT(8, clFormatBestDepth(C, "txt", 8)); // this will error, but return 8
+    TEST_ASSERT_EQUAL_INT(8, clFormatBestDepth(C, "jpg", 8));
+    TEST_ASSERT_EQUAL_INT(8, clFormatBestDepth(C, "jpg", 6));
+    TEST_ASSERT_EQUAL_INT(8, clFormatBestDepth(C, "bmp", 8));
+    TEST_ASSERT_EQUAL_INT(10, clFormatBestDepth(C, "bmp", 10));
+    TEST_ASSERT_EQUAL_INT(8, clFormatBestDepth(C, "png", 8));
+    TEST_ASSERT_EQUAL_INT(16, clFormatBestDepth(C, "png", 12));
+    TEST_ASSERT_EQUAL_INT(16, clFormatBestDepth(C, "png", 16));
+    TEST_ASSERT_EQUAL_INT(8, clFormatBestDepth(C, "jp2", 8));
+    TEST_ASSERT_EQUAL_INT(12, clFormatBestDepth(C, "jp2", 12));
+    TEST_ASSERT_EQUAL_INT(16, clFormatBestDepth(C, "jp2", 16));
+    TEST_ASSERT_EQUAL_INT(16, clFormatBestDepth(C, "jp2", 20));
 
     TEST_ASSERT_TRUE(clFormatExists(C, "png"));
     TEST_ASSERT_FALSE(clFormatExists(C, "txt"));
@@ -105,20 +105,20 @@ static void test_clTonemap(void)
     clContext * C = clContextCreate(&silentSystem);
     TEST_ASSERT_NOT_NULL(C);
 
-    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "on"), CL_TONEMAP_ON);
-    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "yes"), CL_TONEMAP_ON);
-    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "enabled"), CL_TONEMAP_ON);
-    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "off"), CL_TONEMAP_OFF);
-    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "no"), CL_TONEMAP_OFF);
-    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "disabled"), CL_TONEMAP_OFF);
-    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "auto"), CL_TONEMAP_AUTO);
-    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "automatic"), CL_TONEMAP_AUTO);
-    TEST_ASSERT_EQUAL_INT(clTonemapFromString(C, "derp"), CL_TONEMAP_AUTO); // This is weird/dumb maybe, but auto IS the fallback
+    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_ON, clTonemapFromString(C, "on"));
+    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_ON, clTonemapFromString(C, "yes"));
+    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_ON, clTonemapFromString(C, "enabled"));
+    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_OFF, clTonemapFromString(C, "off"));
+    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_OFF, clTonemapFromString(C, "no"));
+    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_OFF, clTonemapFromString(C, "disabled"));
+    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_AUTO, clTonemapFromString(C, "auto"));
+    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_AUTO, clTonemapFromString(C, "automatic"));
+    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_AUTO, clTonemapFromString(C, "derp")); // This is weird/dumb maybe, but auto IS the fallback
 
-    TEST_ASSERT_EQUAL_STRING(clTonemapToString(C, CL_TONEMAP_AUTO), "auto");
-    TEST_ASSERT_EQUAL_STRING(clTonemapToString(C, CL_TONEMAP_ON), "on");
-    TEST_ASSERT_EQUAL_STRING(clTonemapToString(C, CL_TONEMAP_OFF), "off");
-    TEST_ASSERT_EQUAL_STRING(clTonemapToString(C, (clTonemap)555), "unknown");
+    TEST_ASSERT_EQUAL_STRING("auto", clTonemapToString(C, CL_TONEMAP_AUTO));
+    TEST_ASSERT_EQUAL_STRING("on", clTonemapToString(C, CL_TONEMAP_ON));
+    TEST_ASSERT_EQUAL_STRING("off", clTonemapToString(C, CL_TONEMAP_OFF));
+    TEST_ASSERT_EQUAL_STRING("unknown", clTonemapToString(C, (clTonemap)555));
 
     clContextDestroy(C);
 }
@@ -128,24 +128,24 @@ static void test_clFilter(void)
     clContext * C = clContextCreate(&silentSystem);
     TEST_ASSERT_NOT_NULL(C);
 
-    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "auto"), CL_FILTER_AUTO);
-    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "box"), CL_FILTER_BOX);
-    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "triangle"), CL_FILTER_TRIANGLE);
-    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "cubic"), CL_FILTER_CUBICBSPLINE);
-    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "catmullrom"), CL_FILTER_CATMULLROM);
-    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "mitchell"), CL_FILTER_MITCHELL);
-    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "nearest"), CL_FILTER_NEAREST);
-    TEST_ASSERT_EQUAL_INT(clFilterFromString(C, "derp"), CL_FILTER_INVALID);
+    TEST_ASSERT_EQUAL_INT(CL_FILTER_AUTO, clFilterFromString(C, "auto"));
+    TEST_ASSERT_EQUAL_INT(CL_FILTER_BOX, clFilterFromString(C, "box"));
+    TEST_ASSERT_EQUAL_INT(CL_FILTER_TRIANGLE, clFilterFromString(C, "triangle"));
+    TEST_ASSERT_EQUAL_INT(CL_FILTER_CUBICBSPLINE, clFilterFromString(C, "cubic"));
+    TEST_ASSERT_EQUAL_INT(CL_FILTER_CATMULLROM, clFilterFromString(C, "catmullrom"));
+    TEST_ASSERT_EQUAL_INT(CL_FILTER_MITCHELL, clFilterFromString(C, "mitchell"));
+    TEST_ASSERT_EQUAL_INT(CL_FILTER_NEAREST, clFilterFromString(C, "nearest"));
+    TEST_ASSERT_EQUAL_INT(CL_FILTER_INVALID, clFilterFromString(C, "derp"));
 
-    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_AUTO), "auto");
-    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_BOX), "box");
-    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_TRIANGLE), "triangle");
-    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_CUBICBSPLINE), "cubic");
-    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_CATMULLROM), "catmullrom");
-    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_MITCHELL), "mitchell");
-    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_NEAREST), "nearest");
-    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, CL_FILTER_INVALID), "invalid");
-    TEST_ASSERT_EQUAL_STRING(clFilterToString(C, (clFilter)555), "invalid");
+    TEST_ASSERT_EQUAL_STRING("auto", clFilterToString(C, CL_FILTER_AUTO));
+    TEST_ASSERT_EQUAL_STRING("box", clFilterToString(C, CL_FILTER_BOX));
+    TEST_ASSERT_EQUAL_STRING("triangle", clFilterToString(C, CL_FILTER_TRIANGLE));
+    TEST_ASSERT_EQUAL_STRING("cubic", clFilterToString(C, CL_FILTER_CUBICBSPLINE));
+    TEST_ASSERT_EQUAL_STRING("catmullrom", clFilterToString(C, CL_FILTER_CATMULLROM));
+    TEST_ASSERT_EQUAL_STRING("mitchell", clFilterToString(C, CL_FILTER_MITCHELL));
+    TEST_ASSERT_EQUAL_STRING("nearest", clFilterToString(C, CL_FILTER_NEAREST));
+    TEST_ASSERT_EQUAL_STRING("invalid", clFilterToString(C, CL_FILTER_INVALID));
+    TEST_ASSERT_EQUAL_STRING("invalid", clFilterToString(C, (clFilter)555));
 
     clContextDestroy(C);
 }
@@ -164,21 +164,21 @@ static void test_stockPrimaries(void)
 
     TEST_ASSERT_TRUE(clContextGetStockPrimaries(C, "bt709", &primaries));
     memcpy(rawPrimaries, &primaries, sizeof(rawPrimaries));
-    TEST_ASSERT_EQUAL_FLOAT_ARRAY(rawPrimaries, bt709, 8);
+    TEST_ASSERT_EQUAL_FLOAT_ARRAY(bt709, rawPrimaries, 8);
     TEST_ASSERT_TRUE(clContextGetStockPrimaries(C, "p3", &primaries));
     memcpy(rawPrimaries, &primaries, sizeof(rawPrimaries));
-    TEST_ASSERT_EQUAL_FLOAT_ARRAY(rawPrimaries, p3, 8);
+    TEST_ASSERT_EQUAL_FLOAT_ARRAY(p3, rawPrimaries, 8);
     TEST_ASSERT_TRUE(clContextGetStockPrimaries(C, "bt2020", &primaries));
     memcpy(rawPrimaries, &primaries, sizeof(rawPrimaries));
-    TEST_ASSERT_EQUAL_FLOAT_ARRAY(rawPrimaries, bt2020, 8);
+    TEST_ASSERT_EQUAL_FLOAT_ARRAY(bt2020, rawPrimaries, 8);
     TEST_ASSERT_FALSE(clContextGetStockPrimaries(C, "derp", &primaries));
 
     TEST_ASSERT_TRUE(clContextGetRawStockPrimaries(C, "bt709", rawPrimaries));
-    TEST_ASSERT_EQUAL_FLOAT_ARRAY(rawPrimaries, bt709, 8);
+    TEST_ASSERT_EQUAL_FLOAT_ARRAY(bt709, rawPrimaries, 8);
     TEST_ASSERT_TRUE(clContextGetRawStockPrimaries(C, "p3", rawPrimaries));
-    TEST_ASSERT_EQUAL_FLOAT_ARRAY(rawPrimaries, p3, 8);
+    TEST_ASSERT_EQUAL_FLOAT_ARRAY(p3, rawPrimaries, 8);
     TEST_ASSERT_TRUE(clContextGetRawStockPrimaries(C, "bt2020", rawPrimaries));
-    TEST_ASSERT_EQUAL_FLOAT_ARRAY(rawPrimaries, bt2020, 8);
+    TEST_ASSERT_EQUAL_FLOAT_ARRAY(bt2020, rawPrimaries, 8);
     TEST_ASSERT_FALSE(clContextGetRawStockPrimaries(C, "derp", rawPrimaries));
 
     clContextDestroy(C);
@@ -194,8 +194,8 @@ static void test_clContextParseArgs(void)
     {
         const char * argv[] = { "colorist", "identify", "image.png" };
         TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
-        TEST_ASSERT_EQUAL_INT(C->action, CL_ACTION_IDENTIFY);
-        TEST_ASSERT_EQUAL_STRING(C->inputFilename, "image.png");
+        TEST_ASSERT_EQUAL_INT(CL_ACTION_IDENTIFY, C->action);
+        TEST_ASSERT_EQUAL_STRING("image.png", C->inputFilename);
     }
 
     {
