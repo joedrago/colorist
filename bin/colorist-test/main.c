@@ -44,18 +44,33 @@ int suiteTearDown(int num_failures) { return num_failures; }
 // --------------------------------------------------------------------------------------
 // Main / List of active tests
 
-#define RUN_TESTS(TESTS, TITLE) do {                  \
-        printf("_______________________\n");          \
-        printf("%s\n", TITLE);                        \
-        printf("-----------------------\n");          \
-        int ret = TESTS(); if (ret != 0) return ret;  \
+static clBool shouldRun(const char * cmdlineName, int argc, char * argv[])
+{
+    if (argc < 2) {
+        // run everything
+        return clTrue;
+    }
+
+    // Only run names on the cmdline
+    for (int i = 1; i < argc; ++i) {
+        if (!strcmp(cmdlineName, argv[i])) {
+            return clTrue;
+        }
+    }
+    return clFalse;
+}
+
+#define RUN_TESTS(TESTS, CMDLINENAME, TITLE) do {        \
+        if (shouldRun(CMDLINENAME, argc, argv)) {        \
+            printf("_______________________\n");         \
+            printf("%s\n", TITLE);                       \
+            printf("-----------------------\n");         \
+            int ret = TESTS(); if (ret != 0) return ret; \
+        }                                                \
 } while (0)
 
 int main(int argc, char * argv[])
 {
-    COLORIST_UNUSED(argc);
-    COLORIST_UNUSED(argv);
-
     // Lots of these tests will be purposefully spewing errors or requesting conversions,
     // there's no need to muddy stdout with colorist yapping away on most of them.
     silentSystem.alloc = clContextDefaultAlloc;
@@ -63,5 +78,8 @@ int main(int argc, char * argv[])
     silentSystem.log = clContextSilentLog;
     silentSystem.error = clContextSilentLogError;
 
-    RUN_TESTS(test_coverage, "Coverage");
+    RUN_TESTS(test_coverage, "coverage", "Coverage");
+    RUN_TESTS(test_strings, "strings", "Image Strings");
+
+    return 0;
 }

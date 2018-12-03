@@ -112,7 +112,7 @@ endif()
 
 if(COLORIST_COVERAGE)
   add_custom_target(colorist-test-ccov-preprocessing
-      COMMAND LLVM_PROFILE_FILE=colorist-test.profraw $<TARGET_FILE:colorist-test>
+      COMMAND LLVM_PROFILE_FILE=colorist-test.profraw $<TARGET_FILE:colorist-test> coverage
       COMMAND ${LLVM_PREFIX} llvm-profdata merge -sparse colorist-test.profraw -o colorist-test.profdata
       DEPENDS colorist-test)
 
