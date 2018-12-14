@@ -148,6 +148,11 @@ add_library(jpeg
     jpeg/wrtarga.c
 )
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    # AOM does C99-specific things, gcc hates it by default
+    add_definitions(-std=c99)
+endif()
+
 set(AOM_TARGET_CPU generic)
 option(ENABLE_EXAMPLES "" FALSE)
 option(ENABLE_TESTS "" FALSE)
