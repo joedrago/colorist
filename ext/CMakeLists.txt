@@ -148,12 +148,16 @@ add_library(jpeg
     jpeg/wrtarga.c
 )
 
+set(AOM_TARGET_CPU generic)
+option(ENABLE_EXAMPLES "" FALSE)
+option(ENABLE_TESTS "" FALSE)
+option(ENABLE_TOOLS "" FALSE)
+add_subdirectory(aom)
+
 set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/cJSON"
     "${CMAKE_CURRENT_SOURCE_DIR}/stb"
     "${CMAKE_CURRENT_SOURCE_DIR}/gb"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/image/sys"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/jxrgluelib"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/liblcms2/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libz"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libpng"
@@ -165,9 +169,6 @@ set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/jpeg"
     "${CMAKE_CURRENT_SOURCE_DIR}/md5"
     "${CMAKE_CURRENT_SOURCE_DIR}/unity/src"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/common/include"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/image/sys"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/jxrgluelib"
     "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/imageio"
     "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/src/webp"
 )
@@ -180,7 +181,6 @@ set(COLORIST_EXT_LIBS
     openjp2
     jpeg
     md5
-#    jxrlib
     stb
     gb
     tiff
@@ -200,13 +200,28 @@ macro(set_folder_safe target folder)
     endif()
 endmacro()
 
+set_folder_safe(aom "ext/aom")
+set_folder_safe(aom_av1 "ext/aom")
+set_folder_safe(aom_av1_common "ext/aom")
+set_folder_safe(aom_av1_decoder "ext/aom")
+set_folder_safe(aom_av1_encoder "ext/aom")
+set_folder_safe(aom_dsp "ext/aom")
+set_folder_safe(aom_dsp_common "ext/aom")
+set_folder_safe(aom_dsp_decoder "ext/aom")
+set_folder_safe(aom_dsp_encoder "ext/aom")
+set_folder_safe(aom_mem "ext/aom")
+set_folder_safe(aom_rtcd "ext/aom")
+set_folder_safe(aom_scale "ext/aom")
+set_folder_safe(aom_util "ext/aom")
+set_folder_safe(aom_version "ext/aom")
+set_folder_safe(aom_version_check "ext/aom")
 set_folder_safe(cjson "ext")
+set_folder_safe(dist "ext/aom")
 set_folder_safe(gb "ext")
 set_folder_safe(genHeader "ext")
 set_folder_safe(jpeg "ext")
-set_folder_safe(md5 "ext")
-# set_folder_safe(jxrlib "ext")
 set_folder_safe(lcms2 "ext")
+set_folder_safe(md5 "ext")
 set_folder_safe(openjp2 "ext/openjpeg")
 set_folder_safe(opj_compress "ext/openjpeg")
 set_folder_safe(opj_decompress "ext/openjpeg")
