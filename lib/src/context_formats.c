@@ -9,6 +9,9 @@
 
 #include <string.h>
 
+struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clRaw * input);
+clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
+
 struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clRaw * input);
 clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
@@ -29,6 +32,26 @@ clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const cha
 
 void clContextRegisterBuiltinFormats(struct clContext * C)
 {
+    // AVIF
+    {
+        static const unsigned char avifSig[28] = { 0x00, 0x00, 0x00, 0x1c, 0x66, 0x74, 0x79, 0x70, 0x6d, 0x69, 0x66, 0x31, 0x00, 0x00, 0x00, 0x00, 0x6d, 0x69, 0x66, 0x31, 0x61, 0x76, 0x69, 0x66, 0x6d, 0x69, 0x61, 0x66 };
+
+        clFormat format;
+        memset(&format, 0, sizeof(format));
+        format.name = "avif";
+        format.description = "AVIF";
+        format.mimeType = "image/avif";
+        format.extensions[0] = "obu";
+        format.signatures[0] = avifSig;
+        format.signatureLengths[0] = sizeof(avifSig);
+        format.depth = CL_FORMAT_DEPTH_8_OR_16;
+        format.usesQuality = clFalse;
+        format.usesRate = clFalse;
+        format.readFunc = clFormatReadAVIF;
+        format.writeFunc = clFormatWriteAVIF;
+        clContextRegisterFormat(C, &format);
+    }
+
     // BMP
     {
         static const unsigned char bmpSig[2] = { 0x42, 0x4D };

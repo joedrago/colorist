@@ -936,9 +936,6 @@ static void clCCMMTransform(struct clContext * C, struct clTransform * transform
     int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat, srcDepth);
     int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat, dstDepth);
 
-    COLORIST_ASSERT(!transform->srcProfile || transform->srcProfile->ccmm);
-    COLORIST_ASSERT(!transform->dstProfile || transform->dstProfile->ccmm);
-
     // After this point, find a single valid return point from this function, or die
 
     if (clProfileMatches(C, transform->srcProfile, transform->dstProfile)) {
@@ -1084,6 +1081,33 @@ void clTransformXYYToXYZ(struct clContext * C, float * dstXYZ, const float * src
     dstXYZ[0] = (srcXYY[0] * srcXYY[2]) / srcXYY[1];
     dstXYZ[1] = srcXYY[2];
     dstXYZ[2] = ((1 - srcXYY[0] - srcXYY[1]) * srcXYY[2]) / srcXYY[1];
+}
+
+float clTransformCalcMaxY(clContext * C, clTransform * linearFromXYZ, clTransform * linearToXYZ, float x, float y)
+{
+    float floatXYZ[3];
+    float floatRGB[3];
+    float maxChannel;
+    cmsCIEXYZ XYZ;
+    cmsCIExyY xyY;
+    xyY.x = x;
+    xyY.y = y;
+    xyY.Y = 1.0f; // start with max luminance
+    cmsxyY2XYZ(&XYZ, &xyY);
+    floatXYZ[0] = (float)XYZ.X;
+    floatXYZ[1] = (float)XYZ.Y;
+    floatXYZ[2] = (float)XYZ.Z;
+    clTransformRun(C, linearFromXYZ, 1, floatXYZ, floatRGB, 1);
+    maxChannel = floatRGB[0];
+    if (maxChannel < floatRGB[1])
+        maxChannel = floatRGB[1];
+    if (maxChannel < floatRGB[2])
+        maxChannel = floatRGB[2];
+    floatRGB[0] /= maxChannel;
+    floatRGB[1] /= maxChannel;
+    floatRGB[2] /= maxChannel;
+    clTransformRun(C, linearToXYZ, 1, floatRGB, floatXYZ, 1);
+    return floatXYZ[1];
 }
 
 clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, struct clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth, clTonemap tonemap)

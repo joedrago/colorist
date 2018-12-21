@@ -176,10 +176,13 @@ set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/unity/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/imageio"
     "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/src/webp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/aom"
+    "${AOM_BINARY_DIR}"
 )
 set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} PARENT_SCOPE)
 
 set(COLORIST_EXT_LIBS
+    aom
     cjson
     png
     lcms2
@@ -222,6 +225,7 @@ set_folder_safe(aom_version "ext/aom")
 set_folder_safe(aom_version_check "ext/aom")
 set_folder_safe(cjson "ext")
 set_folder_safe(dist "ext/aom")
+set_folder_safe(dump_obu "ext/aom")
 set_folder_safe(gb "ext")
 set_folder_safe(genHeader "ext")
 set_folder_safe(jpeg "ext")
@@ -235,6 +239,7 @@ set_folder_safe(png "ext")
 set_folder_safe(stb "ext")
 set_folder_safe(tiff "ext/openjpeg")
 set_folder_safe(unity "ext")
+set_folder_safe(webm "ext/aom")
 set_folder_safe(webp "ext/webp")
 set_folder_safe(webpdecode "ext/webp")
 set_folder_safe(webpdecoder "ext/webp")

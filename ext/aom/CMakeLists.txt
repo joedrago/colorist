@@ -185,7 +185,7 @@ add_custom_target(aom_version_check
                           -DPERL_EXECUTABLE=${PERL_EXECUTABLE} -P
                           "${AOM_ROOT}/build/cmake/version.cmake"
                   COMMENT "Updating version info if necessary." VERBATIM)
-add_dependencies(aom_version aom_version_check)
+# add_dependencies(aom_version aom_version_check)
 
 # TODO(tomfinegan): Move rtcd target setup where it belongs for each rtcd
 # source.

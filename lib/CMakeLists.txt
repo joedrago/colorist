@@ -30,6 +30,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/bin2h.cmake)
 set(COLORIST_LIB_INCLUDES
     include/colorist/colorist.h
     include/colorist/context.h
+    include/colorist/embedded.h
     include/colorist/image.h
     include/colorist/pixelmath.h
     include/colorist/profile.h
@@ -38,7 +39,7 @@ set(COLORIST_LIB_INCLUDES
     include/colorist/transform.h
     include/colorist/types.h
     include/colorist/version.h
-    include/colorist/embedded.h
+    include/colorist/yuv.h
     ${CMAKE_CURRENT_BINARY_DIR}/reportTemplateBinary.h
 )
 
@@ -66,6 +67,7 @@ set(COLORIST_LIB_SRCS
     src/context_rw.c
     src/context_version.c
     src/embedded.c
+    src/format_avif.c
     src/format_bmp.c
     src/format_jp2.c
     src/format_jpg.c
@@ -86,6 +88,7 @@ set(COLORIST_LIB_SRCS
     src/task.c
     src/transform.c
     src/types.c
+    src/yuv.c
 )
 
 include_directories(

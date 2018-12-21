@@ -80,106 +80,109 @@
 #include "common/tools_common.h"
 #include "common/video_reader.h"
 
-static const char *exec_name;
+static const char * exec_name;
 
 #define MAX_LAYERS 5
 
-void usage_exit(void) {
-  fprintf(stderr, "Usage: %s <infile>\n", exec_name);
-  exit(EXIT_FAILURE);
+void usage_exit(void)
+{
+    fprintf(stderr, "Usage: %s <infile>\n", exec_name);
+    exit(EXIT_FAILURE);
 }
 
-int main(int argc, char **argv) {
-  int frame_cnt = 0;
-  FILE *outfile[MAX_LAYERS];
-  char filename[80];
-  aom_codec_ctx_t codec;
-  const AvxInterface *decoder = NULL;
-  FILE *inputfile = NULL;
-  uint8_t *buf = NULL;
-  size_t bytes_in_buffer = 0;
-  size_t buffer_size = 0;
-  struct AvxInputContext aom_input_ctx;
-  struct ObuDecInputContext obu_ctx = { &aom_input_ctx, NULL, 0, 0, 0 };
-  aom_codec_stream_info_t si;
-  uint8_t tmpbuf[32];
-  unsigned int i;
+int main(int argc, char ** argv)
+{
+    int frame_cnt = 0;
+    FILE * outfile[MAX_LAYERS];
+    char filename[80];
+    aom_codec_ctx_t codec;
+    const AvxInterface * decoder = NULL;
+    FILE * inputfile = NULL;
+    uint8_t * buf = NULL;
+    size_t bytes_in_buffer = 0;
+    size_t buffer_size = 0;
+    struct AvxInputContext aom_input_ctx;
+    struct ObuDecInputContext obu_ctx = { &aom_input_ctx, NULL, 0, 0, 0 };
+    aom_codec_stream_info_t si;
+    uint8_t tmpbuf[32];
+    unsigned int i;
 
-  exec_name = argv[0];
+    exec_name = argv[0];
 
-  if (argc != 2) die("Invalid number of arguments.");
+    if (argc != 2) die("Invalid number of arguments.");
 
-  if (!(inputfile = fopen(argv[1], "rb")))
-    die("Failed to open %s for read.", argv[1]);
-  obu_ctx.avx_ctx->file = inputfile;
-  obu_ctx.avx_ctx->filename = argv[1];
+    if (!(inputfile = fopen(argv[1], "rb")))
+        die("Failed to open %s for read.", argv[1]);
+    obu_ctx.avx_ctx->file = inputfile;
+    obu_ctx.avx_ctx->filename = argv[1];
 
-  decoder = get_aom_decoder_by_index(0);
-  printf("Using %s\n", aom_codec_iface_name(decoder->codec_interface()));
+    decoder = get_aom_decoder_by_index(0);
+    printf("Using %s\n", aom_codec_iface_name(decoder->codec_interface()));
 
-  if (aom_codec_dec_init(&codec, decoder->codec_interface(), NULL, 0))
-    die_codec(&codec, "Failed to initialize decoder.");
+    if (aom_codec_dec_init(&codec, decoder->codec_interface(), NULL, 0))
+        die_codec(&codec, "Failed to initialize decoder.");
 
-  if (aom_codec_control(&codec, AV1D_SET_OUTPUT_ALL_LAYERS, 1)) {
-    die_codec(&codec, "Failed to set output_all_layers control.");
-  }
-
-  // peak sequence header OBU to get number of spatial layers
-  const size_t ret = fread(tmpbuf, 1, 32, inputfile);
-  if (ret != 32) die_codec(&codec, "Input is not a valid obu file");
-  si.is_annexb = 0;
-  if (aom_codec_peek_stream_info(decoder->codec_interface(), tmpbuf, 32, &si)) {
-    die_codec(&codec, "Input is not a valid obu file");
-  }
-  fseek(inputfile, -32, SEEK_CUR);
-
-  if (!file_is_obu(&obu_ctx))
-    die_codec(&codec, "Input is not a valid obu file");
-
-  // open base layer output yuv file
-  snprintf(filename, sizeof(filename), "out_lyr%d.yuv", 0);
-  if (!(outfile[0] = fopen(filename, "wb")))
-    die("Failed top open output for writing.");
-
-  // open any enhancement layer output yuv files
-  for (i = 1; i < si.number_spatial_layers; i++) {
-    snprintf(filename, sizeof(filename), "out_lyr%d.yuv", i);
-    if (!(outfile[i] = fopen(filename, "wb")))
-      die("Failed to open output for writing.");
-  }
-
-  while (!obudec_read_temporal_unit(&obu_ctx, &buf, &bytes_in_buffer,
-                                    &buffer_size)) {
-    aom_codec_iter_t iter = NULL;
-    aom_image_t *img = NULL;
-    if (aom_codec_decode(&codec, buf, bytes_in_buffer, NULL))
-      die_codec(&codec, "Failed to decode frame.");
-
-    while ((img = aom_codec_get_frame(&codec, &iter)) != NULL) {
-      aom_image_t *img_shifted =
-          aom_img_alloc(NULL, AOM_IMG_FMT_I420, img->d_w, img->d_h, 16);
-      img_shifted->bit_depth = 8;
-      aom_img_downshift(img_shifted, img,
-                        img->bit_depth - img_shifted->bit_depth);
-      if (img->spatial_id == 0) {
-        printf("Writing        base layer 0 %d\n", frame_cnt);
-        aom_img_write(img_shifted, outfile[0]);
-      } else if (img->spatial_id <= (int)(si.number_spatial_layers - 1)) {
-        printf("Writing enhancement layer %d %d\n", img->spatial_id, frame_cnt);
-        aom_img_write(img_shifted, outfile[img->spatial_id]);
-      } else {
-        die_codec(&codec, "Invalid bitstream. Layer id exceeds layer count");
-      }
-      if (img->spatial_id == (int)(si.number_spatial_layers - 1)) ++frame_cnt;
+    if (aom_codec_control(&codec, AV1D_SET_OUTPUT_ALL_LAYERS, 1)) {
+        die_codec(&codec, "Failed to set output_all_layers control.");
     }
-  }
 
-  printf("Processed %d frames.\n", frame_cnt);
-  if (aom_codec_destroy(&codec)) die_codec(&codec, "Failed to destroy codec");
+    // peak sequence header OBU to get number of spatial layers
+    const size_t ret = fread(tmpbuf, 1, 32, inputfile);
+    if (ret != 32) die_codec(&codec, "Input is not a valid obu file");
+    si.is_annexb = 0;
+    if (aom_codec_peek_stream_info(decoder->codec_interface(), tmpbuf, 32, &si)) {
+        die_codec(&codec, "Input is not a valid obu file");
+    }
+    fseek(inputfile, -32, SEEK_CUR);
 
-  for (i = 0; i < si.number_spatial_layers; i++) fclose(outfile[i]);
+    if (!file_is_obu(&obu_ctx))
+        die_codec(&codec, "Input is not a valid obu file");
 
-  fclose(inputfile);
+    // open base layer output yuv file
+    snprintf(filename, sizeof(filename), "out_lyr%d.yuv", 0);
+    if (!(outfile[0] = fopen(filename, "wb")))
+        die("Failed top open output for writing.");
 
-  return EXIT_SUCCESS;
+    // open any enhancement layer output yuv files
+    for (i = 1; i < si.number_spatial_layers; i++) {
+        snprintf(filename, sizeof(filename), "out_lyr%d.yuv", i);
+        if (!(outfile[i] = fopen(filename, "wb")))
+            die("Failed to open output for writing.");
+    }
+
+    while (!obudec_read_temporal_unit(&obu_ctx, &buf, &bytes_in_buffer,
+               &buffer_size))
+    {
+        aom_codec_iter_t iter = NULL;
+        aom_image_t * img = NULL;
+        if (aom_codec_decode(&codec, buf, bytes_in_buffer, NULL))
+            die_codec(&codec, "Failed to decode frame.");
+
+        while ((img = aom_codec_get_frame(&codec, &iter)) != NULL) {
+            aom_image_t * img_shifted =
+                aom_img_alloc(NULL, AOM_IMG_FMT_I420, img->d_w, img->d_h, 16);
+            img_shifted->bit_depth = 8;
+            aom_img_downshift(img_shifted, img,
+                img->bit_depth - img_shifted->bit_depth);
+            if (img->spatial_id == 0) {
+                printf("Writing        base layer 0 %d\n", frame_cnt);
+                aom_img_write(img_shifted, outfile[0]);
+            } else if (img->spatial_id <= (int)(si.number_spatial_layers - 1)) {
+                printf("Writing enhancement layer %d %d\n", img->spatial_id, frame_cnt);
+                aom_img_write(img_shifted, outfile[img->spatial_id]);
+            } else {
+                die_codec(&codec, "Invalid bitstream. Layer id exceeds layer count");
+            }
+            if (img->spatial_id == (int)(si.number_spatial_layers - 1)) ++frame_cnt;
+        }
+    }
+
+    printf("Processed %d frames.\n", frame_cnt);
+    if (aom_codec_destroy(&codec)) die_codec(&codec, "Failed to destroy codec");
+
+    for (i = 0; i < si.number_spatial_layers; i++) fclose(outfile[i]);
+
+    fclose(inputfile);
+
+    return EXIT_SUCCESS;
 }
