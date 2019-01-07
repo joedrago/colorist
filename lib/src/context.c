@@ -286,7 +286,7 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->jobs = clTaskLimit();
     params->iccOverrideOut = NULL;
     params->quality = 90; // ?
-    params->jp2rate = 0;  // Choosing a value here is dangerous as it is heavily impacted by image size
+    params->rate = 0;     // Choosing a value here is dangerous as it is heavily impacted by image size
     params->rect[0] = 0;
     params->rect[1] = 0;
     params->rect[2] = -1;
@@ -628,7 +628,7 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
             } else if (!strcmp(arg, "-q") || !strcmp(arg, "--quality")) {
                 NEXTARG();
                 C->params.quality = atoi(arg);
-            } else if (!strcmp(arg, "-r") || !strcmp(arg, "--resize")) {
+            } else if (!strcmp(arg, "--resize")) {
                 NEXTARG();
                 if (!parseResize(C, &C->params, arg))
                     return clFalse;
@@ -654,9 +654,9 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 NEXTARG();
                 if (!parseRect(C, C->params.rect, arg))
                     return clFalse;
-            } else if (!strcmp(arg, "-2") || !strcmp(arg, "--rate") || !strcmp(arg, "--jp2rate")) {
+            } else if (!strcmp(arg, "-r") || !strcmp(arg, "--rate")) {
                 NEXTARG();
-                C->params.jp2rate = atoi(arg);
+                C->params.rate = atoi(arg);
             } else {
                 clContextLogError(C, "unknown parameter: %s", arg);
                 return clFalse;
@@ -864,12 +864,12 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "Output Format Options:");
     clContextLog(C, NULL, 0, "    -b,--bpp BPP             : Output bits-per-pixel. 8 - 16, or 0 for auto (default)");
     clContextLog(C, NULL, 0, formatLine);
-    clContextLog(C, NULL, 0, "    -q,--quality QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -2 below). (default: 90)");
-    clContextLog(C, NULL, 0, "    -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 0)");
+    clContextLog(C, NULL, 0, "    -q,--quality QUALITY     : Output quality for supported output formats. (default: 90)");
+    clContextLog(C, NULL, 0, "    -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)");
     clContextLog(C, NULL, 0, "    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Convert Options:");
-    clContextLog(C, NULL, 0, "    -r,--resize w,h,filter   : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)");
+    clContextLog(C, NULL, 0, "    --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)");
     clContextLog(C, NULL, 0, "    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h");
     clContextLog(C, NULL, 0, "    --hald FILENAME          : Image containing valid Hald CLUT to be used after color conversion");
     clContextLog(C, NULL, 0, "");

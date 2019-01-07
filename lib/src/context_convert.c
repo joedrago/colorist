@@ -341,10 +341,10 @@ int clContextConvert(clContext * C)
         clFormat * format = clContextFindFormat(C, params.formatName);
         COLORIST_ASSERT(format);
         if (format->usesRate && format->usesQuality) {
-            if ((params.jp2rate == 0) && (params.quality == 100)) {
+            if ((params.rate == 0) && (params.quality == 100)) {
                 clContextLog(C, "encode", 0, "Writing %s [Lossless]: %s", format->description, C->outputFilename);
             } else {
-                clContextLog(C, "encode", 0, "Writing %s [%s:%d]: %s", format->description, (params.jp2rate) ? "R" : "Q", (params.jp2rate) ? params.jp2rate : params.quality, C->outputFilename);
+                clContextLog(C, "encode", 0, "Writing %s [%s:%d]: %s", format->description, (params.rate) ? "R" : "Q", (params.rate) ? params.rate : params.quality, C->outputFilename);
             }
         } else if (format->usesQuality) {
             if (params.quality == 100) {
@@ -357,7 +357,7 @@ int clContextConvert(clContext * C)
         }
     }
     timerStart(&t);
-    if (!clContextWrite(C, dstImage, C->outputFilename, params.formatName, params.quality, params.jp2rate)) {
+    if (!clContextWrite(C, dstImage, C->outputFilename, params.formatName, params.quality, params.rate)) {
         FAIL();
     }
     clContextLog(C, "encode", 1, "Wrote %d bytes.", clFileSize(C->outputFilename));

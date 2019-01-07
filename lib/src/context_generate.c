@@ -124,7 +124,7 @@ int clContextGenerate(clContext * C, struct cJSON * output)
         if (C->outputFilename) {
             clContextLog(C, action, 0, "Writing Image: %s", C->outputFilename);
             clImageDebugDump(C, image, C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3], 0);
-            if (!clContextWrite(C, image, C->outputFilename, outputFileFormat, C->params.quality, C->params.jp2rate)) {
+            if (!clContextWrite(C, image, C->outputFilename, outputFileFormat, C->params.quality, C->params.rate)) {
                 clImageDestroy(C, image);
                 clProfileDestroy(C, dstProfile);
                 return 1;

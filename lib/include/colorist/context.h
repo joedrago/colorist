@@ -137,13 +137,13 @@ typedef struct clConversionParams
     const char * iccOverrideOut; // -o
     float primaries[8];          // -p
     int quality;                 // -q
-    int resizeW;                 // -r
-    int resizeH;                 // -r
-    clFilter resizeFilter;       // -r
+    int rate;                    // -r
+    int resizeW;                 // --resize
+    int resizeH;                 // --resize
+    clFilter resizeFilter;       // --resize
     const char * stripTags;      // -s
     clTonemap tonemap;           // -t
     int rect[4];                 // -z
-    int jp2rate;                 // -2
 } clConversionParams;
 
 void clConversionParamsSetDefaults(struct clContext * C, clConversionParams * params);
