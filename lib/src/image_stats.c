@@ -92,10 +92,14 @@ clBool clImageCalcDiffStats(struct clContext * C, int taskCount, clImage * srcIm
     if (errorSquaredSumLinear > 0.0f) {
         diffStats->mseLinear = errorSquaredSumLinear / (float)pixelCount;
         diffStats->psnrLinear = 10.0f * log10f(1.0f / diffStats->mseLinear);
+    } else {
+        diffStats->psnrLinear = INFINITY;
     }
     if (errorSquaredSumG22 > 0.0f) {
         diffStats->mseG22 = errorSquaredSumG22 / (float)pixelCount;
         diffStats->psnrG22 = 10.0f * log10f(1.0f / diffStats->mseG22);
+    } else {
+        diffStats->psnrG22 = INFINITY;
     }
 
     clFree(srcXYZ);
