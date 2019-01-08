@@ -142,6 +142,7 @@ typedef struct clConversionParams
     int resizeH;                 // --resize
     clFilter resizeFilter;       // --resize
     const char * stripTags;      // -s
+    clBool stats;                // --stats
     clTonemap tonemap;           // -t
     int rect[4];                 // -z
 } clConversionParams;

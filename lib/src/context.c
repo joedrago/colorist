@@ -295,6 +295,7 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->resizeH = 0;
     params->resizeFilter = CL_FILTER_AUTO;
     params->stripTags = NULL;
+    params->stats = clFalse;
     params->tonemap = CL_TONEMAP_AUTO;
 }
 
@@ -635,6 +636,8 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
             } else if (!strcmp(arg, "-s") || !strcmp(arg, "--striptags")) {
                 NEXTARG();
                 C->params.stripTags = arg;
+            } else if (!strcmp(arg, "--stats")) {
+                C->params.stats = clTrue;
             } else if (!strcmp(arg, "-t") || !strcmp(arg, "--tonemap")) {
                 NEXTARG();
                 C->params.tonemap = clTonemapFromString(C, arg);
@@ -817,6 +820,7 @@ void clContextPrintArgs(clContext * C)
     clContextLog(C, "syntax", 1, "resizeFilter: %s", clFilterToString(C, C->params.resizeFilter));
     clContextLog(C, "syntax", 1, "rect        : (%d,%d) %dx%d", C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3]);
     clContextLog(C, "syntax", 1, "stripTags   : %s", C->params.stripTags ? C->params.stripTags : "--");
+    clContextLog(C, "syntax", 1, "stats       : %s", C->params.stats ? "true" : "false");
     clContextLog(C, "syntax", 1, "tonemap     : %s", clTonemapToString(C, C->params.tonemap));
     clContextLog(C, "syntax", 1, "verbose     : %s", C->verbose ? "enabled" : "disabled");
     clContextLog(C, "syntax", 1, "Allow CCMM  : %s", C->ccmmAllowed ? "enabled" : "disabled");
@@ -872,6 +876,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)");
     clContextLog(C, NULL, 0, "    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h");
     clContextLog(C, NULL, 0, "    --hald FILENAME          : Image containing valid Hald CLUT to be used after color conversion");
+    clContextLog(C, NULL, 0, "    --stats                  : Enable post-conversion stats (MSE, PSNR, etc)");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Identify / Calc Options:");
     clContextLog(C, NULL, 0, "    -z,--rect x,y,w,h        : Pixels to dump. x,y,w,h");

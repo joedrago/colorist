@@ -25,6 +25,14 @@ typedef struct clImage
     struct clProfile * profile;
 } clImage;
 
+typedef struct clImageDiffStats
+{
+    float mseLinear;
+    float psnrLinear;
+    float mseG22;
+    float psnrG22;
+} clImageDiffStats;
+
 clImage * clImageCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
 clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns);
 clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount, int depth, struct clProfile * dstProfile, clTonemap tonemap);
@@ -39,6 +47,7 @@ void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clIma
 void clImageDestroy(struct clContext * C, clImage * image);
 void clImageLogCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
 clImage * clImageParseString(struct clContext * C, const char * str, int depth, struct clProfile * profile);
+clBool clImageCalcDiffStats(struct clContext * C, int taskCount, clImage * srcImage, clImage * dstImage, clImageDiffStats * diffStats);
 
 int clDepthToBytes(clContext * C, int depth);
 

@@ -363,6 +363,27 @@ int clContextConvert(clContext * C)
     clContextLog(C, "encode", 1, "Wrote %d bytes.", clFileSize(C->outputFilename));
     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
 
+    if (params.stats) {
+        clContextLog(C, "stats", 0, "Calculating conversion stats...");
+        timerStart(&t);
+
+        clImage * convertedImage = clContextRead(C, C->outputFilename, NULL, NULL);
+        if (convertedImage) {
+            clImageDiffStats diffStats;
+            if (clImageCalcDiffStats(C, params.jobs, srcImage, convertedImage, &diffStats)) {
+                clContextLog(C, "stats", 1, "MSE  (Lin) : %f", diffStats.mseLinear);
+                clContextLog(C, "stats", 1, "PSNR (Lin) : %f", diffStats.psnrLinear);
+                clContextLog(C, "stats", 1, "MSE  (2.2g): %f", diffStats.mseG22);
+                clContextLog(C, "stats", 1, "PSNR (2.2g): %f", diffStats.psnrG22);
+            }
+            clImageDestroy(C, convertedImage);
+        } else {
+            clContextLogError(C, "Failed to reload converted image, skipping conversion stats");
+        }
+
+        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+    }
+
 convertCleanup:
     if (dstProfile)
         clProfileDestroy(C, dstProfile);
