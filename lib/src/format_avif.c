@@ -110,9 +110,6 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
 {
     COLORIST_UNUSED(formatName);
 
-    COLORIST_UNUSED(image);
-    COLORIST_UNUSED(writeParams);
-
     clBool writeResult = clFalse;
 
     aom_codec_iface_t * encoder_interface = aom_codec_av1_cx();
@@ -178,10 +175,23 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
     cfg.g_h = image->height;
     cfg.g_threads = C->params.jobs;
 
+    clBool lossless = (writeParams->quality == 0) || (writeParams->quality == 100);
+    if (lossless) {
+        cfg.rc_min_quantizer = 0;
+        cfg.rc_max_quantizer = 0;
+    } else {
+        int rescaledQuality = 63 - (int)(((float)writeParams->quality / 100.0f) * 63.0f);
+        cfg.rc_min_quantizer = 0;
+        cfg.rc_max_quantizer = rescaledQuality;
+    }
+
     aom_codec_ctx_t encoder;
     aom_codec_enc_init(&encoder, encoder_interface, &cfg, AOM_CODEC_USE_HIGHBITDEPTH);
 
     aom_codec_control(&encoder, AV1E_SET_COLOR_RANGE, AOM_CR_FULL_RANGE);
+    if (lossless) {
+        aom_codec_control(&encoder, AV1E_SET_LOSSLESS, 1);
+    }
 
     // aom_codec_control(&encoder, AV1E_SET_ROW_MT, 1);
     // aom_codec_control(&encoder, AV1E_SET_TILE_ROWS, 8);

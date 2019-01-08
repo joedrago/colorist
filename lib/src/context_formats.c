@@ -45,7 +45,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.signatures[0] = avifSig;
         format.signatureLengths[0] = sizeof(avifSig);
         format.depth = CL_FORMAT_DEPTH_8_OR_16;
-        format.usesQuality = clFalse;
+        format.usesQuality = clTrue;
         format.usesRate = clFalse;
         format.readFunc = clFormatReadAVIF;
         format.writeFunc = clFormatWriteAVIF;
