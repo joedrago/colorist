@@ -42,10 +42,11 @@ static double now()
 uint16_t clHTONS(uint16_t s)
 {
     uint8_t data[2];
-    memcpy(&data, &s, sizeof(data));
-
-    return (uint16_t)((data[0] << 0)
-                      | (data[1] << 8));
+    data[0] = (s >> 8) & 0xff;
+    data[1] = (s >> 0) & 0xff;
+    uint16_t result;
+    memcpy(&result, data, sizeof(uint16_t));
+    return result;
 }
 
 uint16_t clNTOHS(uint16_t s)
@@ -60,12 +61,13 @@ uint16_t clNTOHS(uint16_t s)
 uint32_t clHTONL(uint32_t l)
 {
     uint8_t data[4];
-    memcpy(&data, &l, sizeof(data));
-
-    return ((uint32_t)data[0] << 0)
-           | ((uint32_t)data[1] << 8)
-           | ((uint32_t)data[2] << 16)
-           | ((uint32_t)data[3] << 24);
+    data[0] = (l >> 24) & 0xff;
+    data[1] = (l >> 16) & 0xff;
+    data[2] = (l >> 8) & 0xff;
+    data[3] = (l >> 0) & 0xff;
+    uint32_t result;
+    memcpy(&result, data, sizeof(uint32_t));
+    return result;
 }
 
 uint32_t clNTOHL(uint32_t l)
