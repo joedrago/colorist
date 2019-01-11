@@ -273,25 +273,25 @@ static void test_clContextParseArgs(void)
 
     {
         // resize: too many params
-        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-r", "5,5,5,5" };
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "--resize", "5,5,5,5" };
         TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
     }
 
     {
         // resize: unrecognized filter
-        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-r", "5,5,derp" };
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "--resize", "5,5,derp" };
         TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
     }
 
     {
         // resize: nonzero dimension required
-        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-r", "0,0" };
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "--resize", "0,0" };
         TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
     }
 
     {
-        // -r requires an argument
-        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-r" };
+        // --resize requires an argument
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "--resize" };
         TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
     }
 
