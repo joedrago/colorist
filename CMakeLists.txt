@@ -63,6 +63,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     -Weverything
     -Werror
     -Wno-bad-function-cast
+	-Wno-c11-extensions
     -Wno-cast-align
     -Wno-cast-qual
     -Wno-covered-switch-default
