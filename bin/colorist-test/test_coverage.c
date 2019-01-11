@@ -302,7 +302,7 @@ static void test_clContextParseArgs(void)
                                 "--iccin", "iccin.icc", "-j", "4", "-j", "0", "--json", "-l", "1000", "-l", "s",
                                 "--iccout", "iccout.icc", "-q", "50", "--striptags", "lumi", "-t", "on", "-v",
                                 "--cmm", "lcms", "--cmm", "ccmm", "--rect", "0,0,1,1", "--crop", "0,0,1,1",
-                                "-2", "50", "--rate", "50" };
+                                "--rate", "50" };
         TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
     }
 
