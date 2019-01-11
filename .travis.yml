@@ -6,6 +6,10 @@ matrix:
   include:
   - name: "GCC Debug"
     compiler: gcc
+    addons:
+      apt:
+        packages:
+          - nasm
     before_script:
       - mkdir build
       - cd build
@@ -15,6 +19,10 @@ matrix:
 
   - name: "GCC Release"
     compiler: gcc
+    addons:
+      apt:
+        packages:
+          - nasm
     before_script:
       - mkdir build
       - cd build
@@ -24,6 +32,10 @@ matrix:
 
   - name: "Clang Debug"
     compiler: clang
+    addons:
+      apt:
+        packages:
+          - nasm
     before_script:
       - mkdir build
       - cd build
@@ -33,6 +45,10 @@ matrix:
 
   - name: "Clang Release"
     compiler: clang
+    addons:
+      apt:
+        packages:
+          - nasm
     before_script:
       - mkdir build
       - cd build
@@ -45,6 +61,7 @@ matrix:
     addons:
       apt:
         packages:
+          - nasm
           - llvm
           - ninja-build
     script:
