@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 project(apg)
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  add_definitions(-std=c99) # Enforce C99 for gcc
+endif()
+
 add_subdirectory(ext)
 
 include_directories(
