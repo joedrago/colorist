@@ -29,15 +29,16 @@ Output Profile Options:
 
 Output Format Options:
     -b,--bpp BPP             : Output bits-per-pixel. 8 - 16, or 0 for auto (default)
-    -f,--format FORMAT       : Output format. auto (default), bmp, jpg, jp2, j2k, png, tiff, webp
-    -q,--quality QUALITY     : Output quality for JPG and WebP. JP2 can also use it (see -2 below). (default: 90)
-    -2,--jp2rate RATE        : Output rate for JP2. If 0, JP2 codec uses -q value above instead. (default: 0)
+    -f,--format FORMAT       : Output format. auto (default), apg, bmp, jpg, jp2, j2k, png, tiff, webp
+    -q,--quality QUALITY     : Output quality for supported output formats. (default: 90)
+    -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)
     -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off
 
 Convert Options:
-    -r,--resize w,h,filter   : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)
+    --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)
     -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h
     --hald FILENAME          : Image containing valid Hald CLUT to be used after color conversion
+    --stats                  : Enable post-conversion stats (MSE, PSNR, etc)
 
 Identify / Calc Options:
     -z,--rect x,y,w,h        : Pixels to dump. x,y,w,h
@@ -45,6 +46,7 @@ Identify / Calc Options:
 
 Modify Options:
     -s,--striptags TAG,...   : Strips ICC tags from profile
+
 ```
 
 ---
@@ -150,7 +152,7 @@ Choose a lossy quality (0-100) for any output file format that supports it
 (JPG, JP2 if not using `-2`, WebP). The lower the value, the lower the file
 size and quality. For WebP and JP2 (without `-2`), 100 is lossless.
 
-### -2, --jp2rate
+### -r, --rate
 
 Choose a "rate" for JP2 output compression. This effectively puts a hard
 ceiling on the size of the output JP2 file, and can be treated as a divisor on
@@ -162,7 +164,7 @@ The JP2 compressor will do everything it can to blur/ruin your image if you
 don't give it enough breathing room, but it *will* hit your requested rate.
 Also, be sure to experiment to make sure my math isn't really wrong.
 
-### -r, --resize
+### --resize
 
 Resizes the destination image during conversion. `-r` expects 1-2 numbers,
 either comma separated or in the form `WxH`, representing the destination
