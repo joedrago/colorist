@@ -20,34 +20,6 @@
 
 #define FAIL() { returnCode = 1; goto reportCleanup; }
 
-// Calculates the max Y for a given xy chromaticity
-static float calcMaxY(clContext * C, float x, float y, clTransform * linearFromXYZ, clTransform * linearToXYZ)
-{
-    float floatXYZ[3];
-    float floatRGB[3];
-    float maxChannel;
-    cmsCIEXYZ XYZ;
-    cmsCIExyY xyY;
-    xyY.x = x;
-    xyY.y = y;
-    xyY.Y = 1.0f; // start with max luminance
-    cmsxyY2XYZ(&XYZ, &xyY);
-    floatXYZ[0] = (float)XYZ.X;
-    floatXYZ[1] = (float)XYZ.Y;
-    floatXYZ[2] = (float)XYZ.Z;
-    clTransformRun(C, linearFromXYZ, 1, floatXYZ, floatRGB, 1);
-    maxChannel = floatRGB[0];
-    if (maxChannel < floatRGB[1])
-        maxChannel = floatRGB[1];
-    if (maxChannel < floatRGB[2])
-        maxChannel = floatRGB[2];
-    floatRGB[0] /= maxChannel;
-    floatRGB[1] /= maxChannel;
-    floatRGB[2] /= maxChannel;
-    clTransformRun(C, linearToXYZ, 1, floatRGB, floatXYZ, 1);
-    return floatXYZ[1];
-}
-
 static float calcOverbright(float Y, float overbrightScale, float maxY)
 {
     // Even at 10,000 nits, this is only 1 nit difference. If its less than this, we're not over.
@@ -189,7 +161,7 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     srcLuminance = (srcLuminance != 0) ? srcLuminance : COLORIST_DEFAULT_LUMINANCE;
     float overbrightScale = (float)srcLuminance * srcCurve.implicitScale / (float)srgbLuminance;
 
-    // calcMaxY assumes the RGB profile is linear with a 1 nit luminance
+    // clTransformCalcMaxY assumes the RGB profile is linear with a 1 nit luminance
     clProfileCurve gamma1;
     gamma1.type = CL_PCT_GAMMA;
     gamma1.gamma = 1.0f;
@@ -240,7 +212,7 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
             stats->brightestPixelY = i / srcImage->width;
         }
 
-        float maxY = calcMaxY(C, (float)xyY.x, (float)xyY.y, linearFromXYZ, linearToXYZ) * (float)srgbLuminance;
+        float maxY = clTransformCalcMaxY(C, linearFromXYZ, linearToXYZ, (float)xyY.x, (float)xyY.y) * (float)srgbLuminance;
         float overbright = calcOverbright((float)xyY.Y, overbrightScale, maxY);
         float outOfSRGB = calcOutofSRGB(C, (float)xyY.x, (float)xyY.y, &srcPrimaries);
 
