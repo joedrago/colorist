@@ -296,6 +296,11 @@ apgResult apgImageEncode(apgImage * image, int quality)
 
         image->encoded = payload;
         image->encodedSize = payloadSize;
+
+        // Stash off extra info, for logging
+        image->extraInfo.colorPayloadSize = layers[LT_COLOR].obuSize;
+        image->extraInfo.alphaPayloadSize = layers[LT_ALPHA].obuSize;
+
         result = APG_RESULT_OK;
     }
 
@@ -484,6 +489,10 @@ apgImage * apgImageDecode(uint8_t * encoded, uint32_t encodedSize, apgResult * r
     image->yuvKR = rawKR;
     image->yuvKG = rawKG;
     image->yuvKB = rawKB;
+
+    // Stash off extra info, for logging
+    image->extraInfo.colorPayloadSize = layers[LT_COLOR].obuSize;
+    image->extraInfo.alphaPayloadSize = layers[LT_ALPHA].obuSize;
 
     if (iccSize > 0) {
         apgImageSetICC(image, encoded + APG_HEADER_SIZE_V1, iccSize);

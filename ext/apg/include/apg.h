@@ -73,6 +73,13 @@ typedef struct apgImage
     // Encoded chunk (valid after apgImageEncode() returns true); memory owned by apgImage
     uint8_t * encoded;
     uint32_t encodedSize;
+
+    // Additional data from an encode/decode (useful for verbose logging)
+    struct ExtraInfo
+    {
+        uint32_t colorPayloadSize;
+        uint32_t alphaPayloadSize;
+    } extraInfo;
 } apgImage;
 
 apgImage * apgImageDecode(uint8_t * encoded, uint32_t encodedSize, apgResult * result);
