@@ -40,6 +40,28 @@ static uint32_t apgHTONL(uint32_t l);
 static uint32_t apgNTOHL(uint32_t l);
 
 // ---------------------------------------------------------------------------
+// Internal structures
+
+typedef struct apgLayer
+{
+    aom_codec_ctx_t encoder;
+    aom_codec_ctx_t decoder;
+    apgBool codecInitialized;
+
+    aom_image_t * image;
+    uint8_t * obu;
+    uint32_t obuSize;
+} apgLayer;
+
+typedef enum apgLayerType
+{
+    LT_COLOR = 0,
+    LT_ALPHA,
+
+    LT_COUNT
+} apgLayerType;
+
+// ---------------------------------------------------------------------------
 // apgImage
 
 apgImage * apgImageCreate(int width, int height, int depth)
@@ -94,16 +116,58 @@ void apgImageSetYUVCoefficientsFromPrimaries(apgImage * image, float xr, float y
 
 apgResult apgImageEncode(apgImage * image, int quality)
 {
+    apgResult result = APG_RESULT_UNKNOWN_ERROR;
+    aom_codec_iface_t * encoder_interface = aom_codec_av1_cx();
+
+    // Cleanup any lingering data
     if (image->encoded) {
         free(image->encoded);
         image->encoded = NULL;
     }
     image->encodedSize = 0;
 
-    aom_codec_iface_t * encoder_interface = aom_codec_av1_cx();
-    aom_image_t * aomImage = aom_img_alloc(NULL, AOM_IMG_FMT_I44416, image->width, image->height, 16);
-    aomImage->range = AOM_CR_FULL_RANGE; // always use full range
+    // Init all layers
+    apgLayer layers[LT_COUNT];
+    memset(layers, 0, sizeof(layers));
+    for (int layerType = 0; layerType < LT_COUNT; ++layerType) {
+        apgLayer * layer = &layers[layerType];
 
+        layer->image = aom_img_alloc(NULL, AOM_IMG_FMT_I44416, image->width, image->height, 16);
+        layer->image->range = AOM_CR_FULL_RANGE; // always use full range
+        if (layerType == LT_ALPHA) {
+            layer->image->monochrome = 1;
+        }
+
+        struct aom_codec_enc_cfg cfg;
+        aom_codec_enc_config_default(encoder_interface, &cfg, 0);
+
+        // Profile 2.  8-bit and 10-bit 4:2:2
+        //            12-bit  4:0:0, 4:2:2 and 4:4:4
+        cfg.g_profile = 2;
+        cfg.g_bit_depth = AOM_BITS_12;
+        cfg.g_input_bit_depth = 12;
+        cfg.g_w = image->width;
+        cfg.g_h = image->height;
+        // cfg.g_threads = ...;
+
+        apgBool lossless = (quality == 0) || (quality == 100) || (layerType == LT_ALPHA); // alpha is always lossless
+        if (lossless) {
+            cfg.rc_min_quantizer = 0;
+            cfg.rc_max_quantizer = 0;
+        } else {
+            int rescaledQuality = 63 - (int)(((float)quality / 100.0f) * 63.0f);
+            cfg.rc_min_quantizer = 0;
+            cfg.rc_max_quantizer = rescaledQuality;
+        }
+
+        aom_codec_enc_init(&layer->encoder, encoder_interface, &cfg, AOM_CODEC_USE_HIGHBITDEPTH);
+        aom_codec_control(&layer->encoder, AV1E_SET_COLOR_RANGE, AOM_CR_FULL_RANGE);
+        if (lossless) {
+            aom_codec_control(&layer->encoder, AV1E_SET_LOSSLESS, 1);
+        }
+    }
+
+    // Populate aom_image_t pixel data
     float kr = (float)image->yuvKR / 65535.0f;
     float kg = (float)image->yuvKG / 65535.0f;
     float kb = (float)image->yuvKB / 65535.0f;
@@ -125,73 +189,51 @@ apgResult apgImageEncode(apgImage * image, int quality)
             yuvPixel[1] = (rgbPixel[2] - Y) / (2 * (1 - kb));
             yuvPixel[2] = (rgbPixel[0] - Y) / (2 * (1 - kr));
 
-            // stuff YUV into unorm16
+            // Stuff YUV into unorm16 color layer
             yuvPixel[0] = APG_CLAMP(yuvPixel[0], 0.0f, 1.0f);
             yuvPixel[1] += 0.5f;
             yuvPixel[1] = APG_CLAMP(yuvPixel[1], 0.0f, 1.0f);
             yuvPixel[2] += 0.5f;
             yuvPixel[2] = APG_CLAMP(yuvPixel[2], 0.0f, 1.0f);
             for (int plane = 0; plane < 3; ++plane) {
-                uint16_t * planePixel = (uint16_t *)&aomImage->planes[plane][(j * aomImage->stride[plane]) + (2 * i)];
+                uint16_t * planePixel = (uint16_t *)&layers[LT_COLOR].image->planes[plane][(j * layers[LT_COLOR].image->stride[plane]) + (2 * i)];
                 *planePixel = (uint16_t)(yuvPixel[plane] * 4095.0f);
             }
+
+            // Stuff alpha into unorm16 alpha layer
+            uint16_t * alphaPixel = (uint16_t *)&layers[LT_ALPHA].image->planes[0][(j * layers[LT_ALPHA].image->stride[0]) + (2 * i)];
+            *alphaPixel = (uint16_t)((srcPixel[3] / maxChannel) * 4095.0f);
         }
     }
 
-    struct aom_codec_enc_cfg cfg;
-    aom_codec_enc_config_default(encoder_interface, &cfg, 0);
+    // Encode layers
+    apgBool encodedAllLayers = apgTrue;
+    for (int layerType = 0; layerType < LT_COUNT; ++layerType) {
+        apgLayer * layer = &layers[layerType];
 
-    // Profile 2.  8-bit and 10-bit 4:2:2
-    //            12-bit  4:0:0, 4:2:2 and 4:4:4
-    cfg.g_profile = 2;
-    cfg.g_bit_depth = AOM_BITS_12;
-    cfg.g_input_bit_depth = 12;
-    cfg.g_w = image->width;
-    cfg.g_h = image->height;
-    // cfg.g_threads = ...;
+        aom_codec_encode(&layer->encoder, layer->image, 0, 1, 0);
+        aom_codec_encode(&layer->encoder, NULL, 0, 1, 0); // flush
 
-    apgBool lossless = (quality == 0) || (quality == 100);
-    if (lossless) {
-        cfg.rc_min_quantizer = 0;
-        cfg.rc_max_quantizer = 0;
-    } else {
-        int rescaledQuality = 63 - (int)(((float)quality / 100.0f) * 63.0f);
-        cfg.rc_min_quantizer = 0;
-        cfg.rc_max_quantizer = rescaledQuality;
-    }
+        aom_codec_iter_t iter = NULL;
+        for (;;) {
+            const aom_codec_cx_pkt_t * pkt = aom_codec_get_cx_data(&layer->encoder, &iter);
+            if (pkt == NULL)
+                break;
+            if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
+                layer->obu = pkt->data.frame.buf;
+                layer->obuSize = (uint32_t)pkt->data.frame.sz;
+                break;
+            }
+        }
 
-    aom_codec_ctx_t encoder;
-    aom_codec_enc_init(&encoder, encoder_interface, &cfg, AOM_CODEC_USE_HIGHBITDEPTH);
-
-    aom_codec_control(&encoder, AV1E_SET_COLOR_RANGE, AOM_CR_FULL_RANGE);
-    if (lossless) {
-        aom_codec_control(&encoder, AV1E_SET_LOSSLESS, 1);
-    }
-
-    // aom_codec_control(&encoder, AV1E_SET_ROW_MT, 1);
-    // aom_codec_control(&encoder, AV1E_SET_TILE_ROWS, 8);
-    // aom_codec_control(&encoder, AV1E_SET_TILE_COLUMNS, 8);
-
-    aom_codec_encode(&encoder, aomImage, 0, 1, 0);
-    aom_codec_encode(&encoder, NULL, 0, 1, 0); // flush
-
-    uint8_t * obuData = NULL;
-    uint32_t obuDataSize = 0;
-    aom_codec_iter_t iter = NULL;
-    for (;;) {
-        const aom_codec_cx_pkt_t * pkt = aom_codec_get_cx_data(&encoder, &iter);
-        if (pkt == NULL)
-            break;
-        if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
-            obuData = pkt->data.frame.buf;
-            obuDataSize = (uint32_t)pkt->data.frame.sz;
-            break;
+        if (!layer->obu || !layer->obuSize) {
+            encodedAllLayers = apgFalse;
         }
     }
 
-    apgResult result = APG_RESULT_UNKNOWN_ERROR;
-    if (obuData && obuDataSize) {
-        uint32_t payloadSize = APG_HEADER_SIZE_V1 + image->iccSize + obuDataSize;
+    // Build payload
+    if (encodedAllLayers) {
+        uint32_t payloadSize = APG_HEADER_SIZE_V1 + image->iccSize + layers[LT_COLOR].obuSize + layers[LT_ALPHA].obuSize;
         uint8_t * payload = calloc(1, payloadSize);
 
         // Offset   Size     Type      Description           Notes
@@ -232,20 +274,37 @@ apgResult apgImageEncode(apgImage * image, int quality)
         uint32_t iccSizeNO = apgHTONL(image->iccSize);
         memcpy(payload + 24, &iccSizeNO, sizeof(iccSizeNO));
 
-        //     28      x    bytes      ICC Payload           (may be 0 bytes)
+        //     28      4      u32      Color Payload Size    (network order)
+        uint32_t colorOBUSizeNO = apgHTONL(layers[LT_COLOR].obuSize);
+        memcpy(payload + 28, &colorOBUSizeNO, sizeof(colorOBUSizeNO));
+
+        //     32      4      u32      Alpha Payload Size    (network order)
+        uint32_t alphaOBUSizeNO = apgHTONL(layers[LT_ALPHA].obuSize);
+        memcpy(payload + 32, &alphaOBUSizeNO, sizeof(alphaOBUSizeNO));
+
+        //     36      x    bytes      ICC Payload           (may be 0 bytes)
         if ((image->iccSize > 0) && image->icc) {
-            memcpy(payload + 28, image->icc, image->iccSize);
+            memcpy(payload + 36, image->icc, image->iccSize);
         }
 
-        //   28+x   rest    bytes      AV1 OBU Payload
-        memcpy(payload + 28 + image->iccSize, obuData, obuDataSize);
+        //   36+x      y    bytes      Color Payload         (AV1 OBUs)
+        memcpy(payload + 36 + image->iccSize, layers[LT_COLOR].obu, layers[LT_COLOR].obuSize);
+
+        // 36+x+y      z    bytes      Alpha Payload         (AV1 OBUs)
+        memcpy(payload + 36 + image->iccSize + layers[LT_COLOR].obuSize, layers[LT_ALPHA].obu, layers[LT_ALPHA].obuSize);
 
         image->encoded = payload;
         image->encodedSize = payloadSize;
         result = APG_RESULT_OK;
     }
-    aom_img_free(aomImage);
-    aom_codec_destroy(&encoder);
+
+    // Cleanup
+    for (int layerType = 0; layerType < LT_COUNT; ++layerType) {
+        apgLayer * layer = &layers[layerType];
+
+        aom_img_free(layer->image);
+        aom_codec_destroy(&layer->encoder);
+    }
     return result;
 }
 
@@ -259,7 +318,12 @@ apgImage * apgImageDecode(uint8_t * encoded, uint32_t encodedSize, apgResult * r
         return NULL;
     }
 
+    uint32_t leftoverSize = encodedSize - APG_HEADER_SIZE_V1;
+
     *result = APG_RESULT_UNKNOWN_ERROR;
+
+    apgLayer layers[LT_COUNT];
+    memset(layers, 0, sizeof(layers));
 
     // Offset   Size     Type      Description           Notes
     // ------   ----     ----      --------------------- -------------------------
@@ -331,62 +395,88 @@ apgImage * apgImageDecode(uint8_t * encoded, uint32_t encodedSize, apgResult * r
         *result = APG_RESULT_INVALID_HEADER;
         return NULL;
     }
-    uint32_t leftoverSize = encodedSize - APG_HEADER_SIZE_V1;
     if (leftoverSize < iccSize) {
         *result = APG_RESULT_TRUNCATED;
         return NULL;
     }
-
     leftoverSize -= iccSize;
-    uint32_t obuSize = leftoverSize;
-    if (obuSize < 32) { // TODO: find a good min size for OBUs
+
+    //     28      4      u32      Color Payload Size    (network order)
+    uint32_t colorOBUSizeNO;
+    memcpy(&colorOBUSizeNO, encoded + 28, sizeof(colorOBUSizeNO));
+    layers[LT_COLOR].obuSize = apgNTOHL(colorOBUSizeNO);
+    if (leftoverSize < layers[LT_COLOR].obuSize) {
         *result = APG_RESULT_TRUNCATED;
         return NULL;
     }
-    uint8_t * obu = encoded + APG_HEADER_SIZE_V1 + iccSize;
+    leftoverSize -= layers[LT_COLOR].obuSize;
 
-    // Decode OBUs
-    apgBool initializedDecoder = apgFalse;
-    aom_codec_ctx_t decoder;
-    aom_codec_stream_info_t si;
-    aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
-    if (aom_codec_dec_init(&decoder, decoder_interface, NULL, 0)) {
-        *result = APG_RESULT_CODEC_INIT_FAILURE;
+    //     32      4      u32      Alpha Payload Size    (network order)
+    uint32_t alphaOBUSizeNO;
+    memcpy(&alphaOBUSizeNO, encoded + 32, sizeof(alphaOBUSizeNO));
+    layers[LT_ALPHA].obuSize = apgNTOHL(alphaOBUSizeNO);
+    if (leftoverSize < layers[LT_ALPHA].obuSize) {
+        *result = APG_RESULT_TRUNCATED;
         return NULL;
     }
-    initializedDecoder = apgTrue;
+    leftoverSize -= layers[LT_ALPHA].obuSize;
 
-    if (aom_codec_control(&decoder, AV1D_SET_OUTPUT_ALL_LAYERS, 1)) {
-        *result = APG_RESULT_CODEC_INIT_FAILURE;
-        goto decodeCleanup;
+    if (leftoverSize != 0) {
+        *result = APG_RESULT_TRAILING_DATA;
+        return NULL;
     }
 
-    si.is_annexb = 0;
-    if (aom_codec_peek_stream_info(decoder_interface, obu, obuSize, &si)) {
-        *result = APG_RESULT_INVALID_AV1_PAYLOAD;
-        goto decodeCleanup;
-    }
+    // Get OBU pointers
+    layers[LT_COLOR].obu = encoded + APG_HEADER_SIZE_V1 + iccSize;
+    layers[LT_ALPHA].obu = encoded + APG_HEADER_SIZE_V1 + iccSize + layers[LT_COLOR].obuSize;
 
-    if (aom_codec_decode(&decoder, obu, obuSize, NULL)) {
-        *result = APG_RESULT_DECODE_FAILURE;
-        goto decodeCleanup;
-    }
+    // Decode OBUs
+    for (int layerType = 0; layerType < LT_COUNT; ++layerType) {
+        apgLayer * layer = &layers[layerType];
+        layer->codecInitialized = apgFalse;
 
-    aom_codec_iter_t iter = NULL;
-    aom_image_t * aomImage = aom_codec_get_frame(&decoder, &iter); // It doesn't appear that I own this / need to free this
-    if (!aomImage) {
-        *result = APG_RESULT_DECODE_FAILURE;
-        goto decodeCleanup;
-    }
+        aom_codec_stream_info_t si;
+        aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
+        if (aom_codec_dec_init(&layer->decoder, decoder_interface, NULL, 0)) {
+            *result = APG_RESULT_CODEC_INIT_FAILURE;
+            return NULL;
+        }
+        layer->codecInitialized = apgTrue;
 
-    if ((aomImage->bit_depth != 12) || (aomImage->fmt != AOM_IMG_FMT_I44416)) {
-        *result = APG_RESULT_UNSUPPORTED_FORMAT;
-        goto decodeCleanup;
-    }
+        if (aom_codec_control(&layer->decoder, AV1D_SET_OUTPUT_ALL_LAYERS, 1)) {
+            *result = APG_RESULT_CODEC_INIT_FAILURE;
+            goto decodeCleanup;
+        }
 
-    if ((width != aomImage->d_w) || (height != aomImage->d_h)) {
-        *result = APG_RESULT_INCONSISTENT_SIZES;
-        goto decodeCleanup;
+        si.is_annexb = 0;
+        if (aom_codec_peek_stream_info(decoder_interface, layer->obu, layer->obuSize, &si)) {
+            *result = APG_RESULT_INVALID_AV1_PAYLOAD;
+            goto decodeCleanup;
+        }
+
+        if (aom_codec_decode(&layer->decoder, layer->obu, layer->obuSize, NULL)) {
+            *result = APG_RESULT_DECODE_FAILURE;
+            goto decodeCleanup;
+        }
+
+        aom_codec_iter_t iter = NULL;
+        aom_image_t * aomImage = aom_codec_get_frame(&layer->decoder, &iter); // It doesn't appear that I own this / need to free this
+        if (!aomImage) {
+            *result = APG_RESULT_DECODE_FAILURE;
+            goto decodeCleanup;
+        }
+
+        if ((aomImage->bit_depth != 12) || (aomImage->fmt != AOM_IMG_FMT_I44416)) {
+            *result = APG_RESULT_UNSUPPORTED_FORMAT;
+            goto decodeCleanup;
+        }
+
+        if ((width != aomImage->d_w) || (height != aomImage->d_h)) {
+            *result = APG_RESULT_INCONSISTENT_SIZES;
+            goto decodeCleanup;
+        }
+
+        layer->image = aomImage;
     }
 
     apgImage * image = apgImageCreate(width, height, depth);
@@ -405,10 +495,12 @@ apgImage * apgImageDecode(uint8_t * encoded, uint32_t encodedSize, apgResult * r
     float rgbPixel[3];
     float maxChannel = (float)((1 << image->depth) - 1);
     uint16_t * dstPixels = (uint16_t *)image->pixels;
+    apgLayer * colorLayer = &layers[LT_COLOR];
+    apgLayer * alphaLayer = &layers[LT_ALPHA];
     for (int j = 0; j < image->height; ++j) {
         for (int i = 0; i < image->width; ++i) {
             for (int plane = 0; plane < 3; ++plane) {
-                uint16_t * planePixel = (uint16_t *)&aomImage->planes[plane][(j * aomImage->stride[plane]) + (2 * i)];
+                uint16_t * planePixel = (uint16_t *)&colorLayer->image->planes[plane][(j * colorLayer->image->stride[plane]) + (2 * i)];
                 yuvPixel[plane] = *planePixel / 4095.0f;
             }
             yuvPixel[1] -= 0.5f;
@@ -430,17 +522,23 @@ apgImage * apgImageDecode(uint8_t * encoded, uint32_t encodedSize, apgResult * r
             rgbPixel[1] = APG_CLAMP(G, 0.0f, 1.0f);
             rgbPixel[2] = APG_CLAMP(B, 0.0f, 1.0f);
 
+            uint16_t * alphaPixel = (uint16_t *)&alphaLayer->image->planes[0][(j * alphaLayer->image->stride[0]) + (2 * i)];
+
             dstPixel[0] = (uint16_t)(rgbPixel[0] * maxChannel);
             dstPixel[1] = (uint16_t)(rgbPixel[1] * maxChannel);
             dstPixel[2] = (uint16_t)(rgbPixel[2] * maxChannel);
-            dstPixel[3] = 65535; // TODO: alpha
+            dstPixel[3] = (uint16_t)(((float)alphaPixel[0] / 4095.0f) * maxChannel);
         }
     }
 
     *result = APG_RESULT_OK;
 decodeCleanup:
-    if (initializedDecoder) {
-        aom_codec_destroy(&decoder);
+    for (int layerType = 0; layerType < LT_COUNT; ++layerType) {
+        apgLayer * layer = &layers[layerType];
+
+        if (layer->codecInitialized) {
+            aom_codec_destroy(&layer->decoder);
+        }
     }
     if (image && (*result != APG_RESULT_OK)) {
         apgImageDestroy(image);

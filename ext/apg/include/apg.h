@@ -22,13 +22,16 @@
 //     20      2      u16      YUV Coeff: Green      (network order, 65535x)
 //     22      2      u16      YUV Coeff: Blue       (network order, 65535x)
 //     24      4      u32      ICC Payload Size      (network order)
-//     28                      -- end of header --
-//     28      x    bytes      ICC Payload           (may be 0 bytes)
-//   28+x   rest    bytes      AV1 OBU Payload
+//     28      4      u32      Color Payload Size    (network order)
+//     32      4      u32      Alpha Payload Size    (network order)
+//     36                      -- end of header --
+//     36      x    bytes      ICC Payload           (may be 0 bytes)
+//   36+x      y    bytes      Color Payload         (AV1 OBUs)
+// 36+x+y      z    bytes      Alpha Payload         (AV1 OBUs)
 //
 // ---------------------------------------------------------------------------
 
-#define APG_HEADER_SIZE_V1 28 // see above
+#define APG_HEADER_SIZE_V1 36 // see above
 
 #include <stdint.h>
 
@@ -47,7 +50,8 @@ typedef enum apgResult
     APG_RESULT_INVALID_AV1_PAYLOAD,
     APG_RESULT_DECODE_FAILURE,
     APG_RESULT_INCONSISTENT_SIZES,
-    APG_RESULT_UNSUPPORTED_FORMAT
+    APG_RESULT_UNSUPPORTED_FORMAT,
+    APG_RESULT_TRAILING_DATA
 } apgResult;
 
 typedef struct apgImage
