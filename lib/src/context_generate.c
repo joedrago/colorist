@@ -102,7 +102,7 @@ int clContextGenerate(clContext * C, struct cJSON * output)
     }
 
     if (C->inputFilename) {
-        int depth = C->params.bpp;
+        int depth = C->params.bpc;
         if (depth == 0) {
             clContextLog(C, action, 1, "No bits per pixel specified (-b). Setting to 8-bit.");
             depth = 8;

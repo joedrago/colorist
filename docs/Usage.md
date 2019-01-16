@@ -28,7 +28,7 @@ Output Profile Options:
     -p,--primaries PRIMARIES : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy
 
 Output Format Options:
-    -b,--bpp BPP             : Output bits-per-pixel. 8 - 16, or 0 for auto (default)
+    -b,--bpc BPC             : Output bits-per-channel. 8 - 16, or 0 for auto (default)
     -f,--format FORMAT       : Output format. auto (default), apg, bmp, jpg, jp2, j2k, png, tiff, webp
     -q,--quality QUALITY     : Output quality for supported output formats. (default: 90)
     -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)
@@ -72,12 +72,12 @@ conversion process.
 Turning this on and then specifying a luminance (`-l`) AND gamma (`-g`) will
 make this a useless switch.
 
-### -b, --bpp
+### -b, --bpc
 
 Choose an output bit depth (8 - 16). By default, `convert` will try to use
 the bit depth of the source image, and `generate` will choose an 8-bit image.
 In either case, choosing an output file format incapable of 16-bit will
-automatically force it to 8-bit. Currently, only J2K/JP2 supports bpp (9-15).
+automatically force it to 8-bit. Currently, only J2K/JP2 supports bpc (9-15).
 
 ### -c, --copyright
 

@@ -126,7 +126,7 @@ typedef struct clContextSystem
 typedef struct clConversionParams
 {
     clBool autoGrade;            // -a
-    int bpp;                     // -b
+    int bpc;                     // -b
     const char * copyright;      // -c
     const char * description;    // -d
     const char * formatName;     // -f

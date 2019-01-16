@@ -456,7 +456,7 @@ static void test_clContextParseArgs(void)
 
     {
         C->params.autoGrade = clTrue;
-        C->params.bpp = 16;
+        C->params.bpc = 16;
         C->params.copyright = NULL;
         C->params.description = NULL;
         C->params.formatName = NULL;
@@ -470,7 +470,7 @@ static void test_clContextParseArgs(void)
         C->params.luminance = -1;
         clContextPrintArgs(C);
         C->params.autoGrade = clFalse;
-        C->params.bpp = 0;
+        C->params.bpc = 0;
         C->params.copyright = "copyright";
         C->params.description = "description";
         C->params.formatName = "png";

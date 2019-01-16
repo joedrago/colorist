@@ -280,7 +280,7 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     COLORIST_UNUSED(C);
 
     clConversionParamsSetOutputProfileDefaults(C, params);
-    params->bpp = 0;
+    params->bpc = 0;
     params->formatName = NULL;
     params->hald = NULL;
     params->jobs = clTaskLimit();
@@ -570,11 +570,11 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
         if ((arg[0] == '-')) {
             if (!strcmp(arg, "-a") || !strcmp(arg, "--auto") || !strcmp(arg, "--autograde")) {
                 C->params.autoGrade = clTrue;
-            } else if (!strcmp(arg, "-b") || !strcmp(arg, "--bpp")) {
+            } else if (!strcmp(arg, "-b") || !strcmp(arg, "--bpc")) {
                 NEXTARG();
-                C->params.bpp = atoi(arg);
-                if (C->params.bpp <= 0) {
-                    clContextLogError(C, "Invalid --bpp: %s", arg);
+                C->params.bpc = atoi(arg);
+                if (C->params.bpc <= 0) {
+                    clContextLogError(C, "Invalid --bpc: %s", arg);
                     return clFalse;
                 }
             } else if (!strcmp(arg, "-c") || !strcmp(arg, "--copyright")) {
@@ -783,10 +783,10 @@ void clContextPrintArgs(clContext * C)
     clContextLog(C, "syntax", 0, "Args:");
     clContextLog(C, "syntax", 1, "Action      : %s", clActionToString(C, C->action));
     clContextLog(C, "syntax", 1, "autoGrade   : %s", C->params.autoGrade ? "true" : "false");
-    if (C->params.bpp)
-        clContextLog(C, "syntax", 1, "bpp         : %d", C->params.bpp);
+    if (C->params.bpc)
+        clContextLog(C, "syntax", 1, "bpc         : %d", C->params.bpc);
     else
-        clContextLog(C, "syntax", 1, "bpp         : auto");
+        clContextLog(C, "syntax", 1, "bpc         : auto");
     clContextLog(C, "syntax", 1, "copyright   : %s", C->params.copyright ? C->params.copyright : "--");
     clContextLog(C, "syntax", 1, "description : %s", C->params.description ? C->params.description : "--");
     clContextLog(C, "syntax", 1, "format      : %s", C->params.formatName ? C->params.formatName : "auto");
@@ -866,7 +866,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -p,--primaries PRIMARIES : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Output Format Options:");
-    clContextLog(C, NULL, 0, "    -b,--bpp BPP             : Output bits-per-pixel. 8 - 16, or 0 for auto (default)");
+    clContextLog(C, NULL, 0, "    -b,--bpc BPC             : Output bits-per-channel. 8 - 16, or 0 for auto (default)");
     clContextLog(C, NULL, 0, formatLine);
     clContextLog(C, NULL, 0, "    -q,--quality QUALITY     : Output quality for supported output formats. (default: 90)");
     clContextLog(C, NULL, 0, "    -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)");

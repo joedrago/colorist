@@ -208,8 +208,8 @@ int clContextConvert(clContext * C)
 
     // Override depth
     {
-        if (params.bpp > 0) {
-            dstInfo.depth = params.bpp;
+        if (params.bpc > 0) {
+            dstInfo.depth = params.bpc;
         }
 
         int bestDepth = clFormatBestDepth(C, params.formatName, dstInfo.depth);
