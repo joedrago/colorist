@@ -112,6 +112,19 @@ void apgImageSetYUVCoefficientsFromPrimaries(apgImage * image, float xr, float y
     // TODO: implement
 }
 
+static apgBool apgImageIsOpaque(apgImage * image)
+{
+    int pixelCount = image->width * image->height;
+    int maxChannel = (1 << image->depth) - 1;
+    for (int i = 0; i < pixelCount; ++i) {
+        uint16_t * pixel = &image->pixels[4 * i];
+        if (pixel[3] != maxChannel) {
+            return apgFalse;
+        }
+    }
+    return apgTrue;
+}
+
 // ---------------------------------------------------------------------------
 // Encode
 
@@ -127,11 +140,17 @@ apgResult apgImageEncode(apgImage * image, int quality)
     }
     image->encodedSize = 0;
 
+    apgBool fullyOpaque = apgImageIsOpaque(image);
+
     // Init all layers
     apgLayer layers[LT_COUNT];
     memset(layers, 0, sizeof(layers));
     for (int layerType = 0; layerType < LT_COUNT; ++layerType) {
         apgLayer * layer = &layers[layerType];
+        if (fullyOpaque && (layerType == LT_ALPHA)) {
+            // Don't bother encoding alpha at all
+            continue;
+        }
 
         layer->image = aom_img_alloc(NULL, AOM_IMG_FMT_I44416, image->width, image->height, 16);
         layer->image->range = AOM_CR_FULL_RANGE; // always use full range
@@ -201,9 +220,13 @@ apgResult apgImageEncode(apgImage * image, int quality)
                 *planePixel = (uint16_t)apgRoundf(yuvPixel[plane] * 4095.0f);
             }
 
-            // Stuff alpha into unorm16 alpha layer
-            uint16_t * alphaPixel = (uint16_t *)&layers[LT_ALPHA].image->planes[0][(j * layers[LT_ALPHA].image->stride[0]) + (2 * i)];
-            *alphaPixel = (uint16_t)apgRoundf((srcPixel[3] / maxChannel) * 4095.0f);
+            if (layers[LT_ALPHA].image) {
+                // Stuff alpha into unorm16 alpha layer
+                uint16_t * alphaPixel = (uint16_t *)&layers[LT_ALPHA].image->planes[0][(j * layers[LT_ALPHA].image->stride[0]) + (2 * i)];
+                alphaPixel[0] = (uint16_t)apgRoundf((srcPixel[3] / maxChannel) * 4095.0f);
+                alphaPixel[1] = 0; // is this necessary?
+                alphaPixel[2] = 0; // is this necessary?
+            }
         }
     }
 
@@ -211,6 +234,9 @@ apgResult apgImageEncode(apgImage * image, int quality)
     apgBool encodedAllLayers = apgTrue;
     for (int layerType = 0; layerType < LT_COUNT; ++layerType) {
         apgLayer * layer = &layers[layerType];
+        if (!layer->image) {
+            continue;
+        }
 
         aom_codec_encode(&layer->encoder, layer->image, 0, 1, 0);
         aom_codec_encode(&layer->encoder, NULL, 0, 1, 0); // flush
@@ -292,7 +318,9 @@ apgResult apgImageEncode(apgImage * image, int quality)
         memcpy(payload + 36 + image->iccSize, layers[LT_COLOR].obu, layers[LT_COLOR].obuSize);
 
         // 36+x+y      z    bytes      Alpha Payload         (AV1 OBUs)
-        memcpy(payload + 36 + image->iccSize + layers[LT_COLOR].obuSize, layers[LT_ALPHA].obu, layers[LT_ALPHA].obuSize);
+        if (layers[LT_ALPHA].obuSize > 0) {
+            memcpy(payload + 36 + image->iccSize + layers[LT_COLOR].obuSize, layers[LT_ALPHA].obu, layers[LT_ALPHA].obuSize);
+        }
 
         image->encoded = payload;
         image->encodedSize = payloadSize;
@@ -307,6 +335,9 @@ apgResult apgImageEncode(apgImage * image, int quality)
     // Cleanup
     for (int layerType = 0; layerType < LT_COUNT; ++layerType) {
         apgLayer * layer = &layers[layerType];
+        if (!layer->image) {
+            continue;
+        }
 
         aom_img_free(layer->image);
         aom_codec_destroy(&layer->encoder);
@@ -434,12 +465,18 @@ apgImage * apgImageDecode(uint8_t * encoded, uint32_t encodedSize, apgResult * r
 
     // Get OBU pointers
     layers[LT_COLOR].obu = encoded + APG_HEADER_SIZE_V1 + iccSize;
-    layers[LT_ALPHA].obu = encoded + APG_HEADER_SIZE_V1 + iccSize + layers[LT_COLOR].obuSize;
+    if (layers[LT_ALPHA].obuSize) {
+        layers[LT_ALPHA].obu = encoded + APG_HEADER_SIZE_V1 + iccSize + layers[LT_COLOR].obuSize;
+    }
 
     // Decode OBUs
     for (int layerType = 0; layerType < LT_COUNT; ++layerType) {
         apgLayer * layer = &layers[layerType];
         layer->codecInitialized = apgFalse;
+        if (!layer->obu) {
+            // No alpha, decode nothing and assume opaque
+            continue;
+        }
 
         aom_codec_stream_info_t si;
         aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
@@ -503,7 +540,8 @@ apgImage * apgImageDecode(uint8_t * encoded, uint32_t encodedSize, apgResult * r
     float kb = (float)image->yuvKB / 65535.0f;
     float yuvPixel[3];
     float rgbPixel[3];
-    float maxChannel = (float)((1 << image->depth) - 1);
+    float maxChannelInt = (1 << image->depth) - 1;
+    float maxChannel = (float)maxChannelInt;
     uint16_t * dstPixels = (uint16_t *)image->pixels;
     apgLayer * colorLayer = &layers[LT_COLOR];
     apgLayer * alphaLayer = &layers[LT_ALPHA];
@@ -532,12 +570,16 @@ apgImage * apgImageDecode(uint8_t * encoded, uint32_t encodedSize, apgResult * r
             rgbPixel[1] = APG_CLAMP(G, 0.0f, 1.0f);
             rgbPixel[2] = APG_CLAMP(B, 0.0f, 1.0f);
 
-            uint16_t * alphaPixel = (uint16_t *)&alphaLayer->image->planes[0][(j * alphaLayer->image->stride[0]) + (2 * i)];
-
             dstPixel[0] = (uint16_t)apgRoundf(rgbPixel[0] * maxChannel);
             dstPixel[1] = (uint16_t)apgRoundf(rgbPixel[1] * maxChannel);
             dstPixel[2] = (uint16_t)apgRoundf(rgbPixel[2] * maxChannel);
-            dstPixel[3] = (uint16_t)apgRoundf(((float)alphaPixel[0] / 4095.0f) * maxChannel);
+
+            if (alphaLayer->obu) {
+                uint16_t * alphaPixel = (uint16_t *)&alphaLayer->image->planes[0][(j * alphaLayer->image->stride[0]) + (2 * i)];
+                dstPixel[3] = (uint16_t)apgRoundf(((float)alphaPixel[0] / 4095.0f) * maxChannel);
+            } else {
+                dstPixel[3] = maxChannelInt;
+            }
         }
     }
 
