@@ -34,6 +34,7 @@
 // Yes, clamp macros are nasty. Do not use them.
 #define APG_CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
+static float apgRoundf(float f);
 static uint16_t apgHTONS(uint16_t s);
 static uint16_t apgNTOHS(uint16_t s);
 static uint32_t apgHTONL(uint32_t l);
@@ -197,12 +198,12 @@ apgResult apgImageEncode(apgImage * image, int quality)
             yuvPixel[2] = APG_CLAMP(yuvPixel[2], 0.0f, 1.0f);
             for (int plane = 0; plane < 3; ++plane) {
                 uint16_t * planePixel = (uint16_t *)&layers[LT_COLOR].image->planes[plane][(j * layers[LT_COLOR].image->stride[plane]) + (2 * i)];
-                *planePixel = (uint16_t)(yuvPixel[plane] * 4095.0f);
+                *planePixel = (uint16_t)apgRoundf(yuvPixel[plane] * 4095.0f);
             }
 
             // Stuff alpha into unorm16 alpha layer
             uint16_t * alphaPixel = (uint16_t *)&layers[LT_ALPHA].image->planes[0][(j * layers[LT_ALPHA].image->stride[0]) + (2 * i)];
-            *alphaPixel = (uint16_t)((srcPixel[3] / maxChannel) * 4095.0f);
+            *alphaPixel = (uint16_t)apgRoundf((srcPixel[3] / maxChannel) * 4095.0f);
         }
     }
 
@@ -524,10 +525,10 @@ apgImage * apgImageDecode(uint8_t * encoded, uint32_t encodedSize, apgResult * r
 
             uint16_t * alphaPixel = (uint16_t *)&alphaLayer->image->planes[0][(j * alphaLayer->image->stride[0]) + (2 * i)];
 
-            dstPixel[0] = (uint16_t)(rgbPixel[0] * maxChannel);
-            dstPixel[1] = (uint16_t)(rgbPixel[1] * maxChannel);
-            dstPixel[2] = (uint16_t)(rgbPixel[2] * maxChannel);
-            dstPixel[3] = (uint16_t)(((float)alphaPixel[0] / 4095.0f) * maxChannel);
+            dstPixel[0] = (uint16_t)apgRoundf(rgbPixel[0] * maxChannel);
+            dstPixel[1] = (uint16_t)apgRoundf(rgbPixel[1] * maxChannel);
+            dstPixel[2] = (uint16_t)apgRoundf(rgbPixel[2] * maxChannel);
+            dstPixel[3] = (uint16_t)apgRoundf(((float)alphaPixel[0] / 4095.0f) * maxChannel);
         }
     }
 
@@ -549,6 +550,11 @@ decodeCleanup:
 
 // ---------------------------------------------------------------------------
 // Helper functions
+
+static float apgRoundf(float f)
+{
+    return floorf(f + 0.5f);
+}
 
 // Thanks, Rob Pike! https://commandcenter.blogspot.nl/2012/04/byte-order-fallacy.html
 
