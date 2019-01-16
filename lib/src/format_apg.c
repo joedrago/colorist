@@ -18,6 +18,8 @@
 struct clImage * clFormatReadAPG(struct clContext * C, const char * formatName, struct clRaw * input);
 clBool clFormatWriteAPG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
+static void dumpAPG(struct clContext * C, apgImage * apg, uint32_t totalSize);
+
 struct clImage * clFormatReadAPG(struct clContext * C, const char * formatName, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);
@@ -55,6 +57,10 @@ struct clImage * clFormatReadAPG(struct clContext * C, const char * formatName, 
         for (int i = 0; i < pixelChannelCount; ++i) {
             pixels[i] = apg->pixels[i];
         }
+    }
+
+    if (C->verbose) {
+        dumpAPG(C, apg, (uint32_t)input->size);
     }
 
 readCleanup:
@@ -129,10 +135,26 @@ clBool clFormatWriteAPG(struct clContext * C, struct clImage * image, const char
 
     clRawSet(C, output, apg->encoded, apg->encodedSize);
 
+    if (C->verbose) {
+        dumpAPG(C, apg, apg->encodedSize);
+    }
+
 writeCleanup:
     if (apg) {
         apgImageDestroy(apg);
     }
     clRawFree(C, &rawProfile);
     return writeResult;
+}
+
+static void dumpAPG(struct clContext * C, apgImage * apg, uint32_t totalSize)
+{
+    COLORIST_UNUSED(apg);
+    clContextLog(C, "apg", 0, "APG YUV coeff. (Red)  : %.3f (%u)", (float)apg->yuvKR / 65535.0f, apg->yuvKR);
+    clContextLog(C, "apg", 0, "APG YUV coeff. (Green): %.3f (%u)", (float)apg->yuvKG / 65535.0f, apg->yuvKG);
+    clContextLog(C, "apg", 0, "APG YUV coeff. (Blue) : %.3f (%u)", (float)apg->yuvKB / 65535.0f, apg->yuvKB);
+    clContextLog(C, "apg", 0, "APG ICC size          : %u", apg->iccSize);
+    clContextLog(C, "apg", 0, "APG color OBU size    : %u", apg->extraInfo.colorPayloadSize);
+    clContextLog(C, "apg", 0, "APG alpha OBU size    : %u", apg->extraInfo.alphaPayloadSize);
+    clContextLog(C, "apg", 0, "APG total size        : %u", totalSize);
 }
