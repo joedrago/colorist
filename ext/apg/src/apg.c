@@ -221,11 +221,15 @@ apgResult apgImageEncode(apgImage * image, int quality)
             }
 
             if (layers[LT_ALPHA].image) {
-                // Stuff alpha into unorm16 alpha layer
+                // Stuff alpha into unorm16 alpha (Y) layer
                 uint16_t * alphaPixel = (uint16_t *)&layers[LT_ALPHA].image->planes[0][(j * layers[LT_ALPHA].image->stride[0]) + (2 * i)];
-                alphaPixel[0] = (uint16_t)apgRoundf((srcPixel[3] / maxChannel) * 4095.0f);
-                alphaPixel[1] = 0; // is this necessary?
-                alphaPixel[2] = 0; // is this necessary?
+                *alphaPixel = (uint16_t)apgRoundf((srcPixel[3] / maxChannel) * 4095.0f);
+
+                // Force UV to 0 as the encoder clearly still uses them despite ->monochrome being set
+                uint16_t * ignoredU = (uint16_t *)&layers[LT_ALPHA].image->planes[1][(j * layers[LT_ALPHA].image->stride[1]) + (2 * i)];
+                *ignoredU = 0;
+                uint16_t * ignoredV = (uint16_t *)&layers[LT_ALPHA].image->planes[2][(j * layers[LT_ALPHA].image->stride[2]) + (2 * i)];
+                *ignoredV = 0;
             }
         }
     }
