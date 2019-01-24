@@ -66,7 +66,7 @@ set(COLORIST_LIB_SRCS
     src/context_rw.c
     src/context_version.c
     src/embedded.c
-    src/format_apg.c
+    src/format_avif.c
     src/format_bmp.c
     src/format_jp2.c
     src/format_jpg.c

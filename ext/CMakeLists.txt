@@ -148,10 +148,10 @@ add_library(jpeg
     jpeg/wrtarga.c
 )
 
-add_subdirectory(apg)
+add_subdirectory(avif)
 
 set(COLORIST_EXT_INCLUDES
-    "${CMAKE_CURRENT_SOURCE_DIR}/apg/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/avif/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/cJSON"
     "${CMAKE_CURRENT_SOURCE_DIR}/stb"
     "${CMAKE_CURRENT_SOURCE_DIR}/gb"
@@ -177,7 +177,7 @@ set(COLORIST_EXT_INCLUDES
 set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} PARENT_SCOPE)
 
 set(COLORIST_EXT_LIBS
-    apg
+    avif
     cjson
     png
     lcms2
