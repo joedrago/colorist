@@ -9,6 +9,9 @@
 
 #include <string.h>
 
+struct clImage * clFormatReadAPG(struct clContext * C, const char * formatName, struct clRaw * input);
+clBool clFormatWriteAPG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
+
 struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clRaw * input);
 clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
@@ -32,6 +35,27 @@ clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const cha
 
 void clContextRegisterBuiltinFormats(struct clContext * C)
 {
+    // APG
+    {
+        static const unsigned char apgSig[4] = { 0x41, 0x50, 0x47, 0x21 };
+
+        clFormat format;
+        memset(&format, 0, sizeof(format));
+
+        format.name = "apg";
+        format.description = "APG";
+        format.mimeType = "image/apg";
+        format.extensions[0] = "apg";
+        format.signatures[0] = apgSig;
+        format.signatureLengths[0] = sizeof(apgSig);
+        format.depth = CL_FORMAT_DEPTH_8_TO_16;
+        format.usesQuality = clTrue;
+        format.usesRate = clFalse;
+        format.readFunc = clFormatReadAPG;
+        format.writeFunc = clFormatWriteAPG;
+        clContextRegisterFormat(C, &format);
+    }
+
     // AVIF
     {
         clFormat format;

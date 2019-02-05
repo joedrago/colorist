@@ -149,14 +149,19 @@ add_library(jpeg
 )
 
 add_subdirectory(avif)
+set(APG_EXTERNAL_AOM TRUE)
+include_directories(
+    "${CMAKE_CURRENT_SOURCE_DIR}/avif/ext/aom"
+    "${AOM_BINARY_DIR}"
+)
+add_subdirectory(apg)
 
 set(COLORIST_EXT_INCLUDES
+    "${CMAKE_CURRENT_SOURCE_DIR}/apg/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/avif/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/cJSON"
     "${CMAKE_CURRENT_SOURCE_DIR}/stb"
     "${CMAKE_CURRENT_SOURCE_DIR}/gb"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/image/sys"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/jxrgluelib"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/liblcms2/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libz"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/libpng"
@@ -168,15 +173,13 @@ set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/jpeg"
     "${CMAKE_CURRENT_SOURCE_DIR}/md5"
     "${CMAKE_CURRENT_SOURCE_DIR}/unity/src"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/common/include"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/image/sys"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/jxrgluelib"
     "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/imageio"
     "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/src/webp"
 )
 set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} PARENT_SCOPE)
 
 set(COLORIST_EXT_LIBS
+    apg
     avif
     cjson
     png
@@ -184,7 +187,6 @@ set(COLORIST_EXT_LIBS
     openjp2
     jpeg
     md5
-#    jxrlib
     stb
     gb
     tiff
@@ -209,7 +211,6 @@ set_folder_safe(gb "ext")
 set_folder_safe(genHeader "ext")
 set_folder_safe(jpeg "ext")
 set_folder_safe(md5 "ext")
-# set_folder_safe(jxrlib "ext")
 set_folder_safe(lcms2 "ext")
 set_folder_safe(openjp2 "ext/openjpeg")
 set_folder_safe(opj_compress "ext/openjpeg")
