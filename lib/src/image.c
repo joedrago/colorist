@@ -37,8 +37,8 @@ clImage * clImageCreate(clContext * C, int width, int height, int depth, clProfi
     image->width = width;
     image->height = height;
     image->depth = depth;
-    image->size = 4 * image->width * image->height * clDepthToBytes(C, image->depth);
-    image->pixels = (uint8_t *)clAllocate(image->size);
+    image->size = image->width * image->height * CL_BYTES_PER_PIXEL;
+    image->pixels = (uint16_t *)clAllocate(image->size);
     memset(image->pixels, 0xff, image->size);
     return image;
 }
@@ -52,13 +52,12 @@ clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, in
         return NULL;
     }
 
-    int depthBytes = clDepthToBytes(C, srcImage->depth);
     clImage * dstImage = clImageCreate(C, w, h, srcImage->depth, srcImage->profile);
     for (int j = 0; j < h; ++j) {
         for (int i = 0; i < w; ++i) {
-            uint8_t * src = &srcImage->pixels[4 * depthBytes * ((i + x) + (srcImage->width * (j + y)))];
-            uint8_t * dst = &dstImage->pixels[4 * depthBytes * (i + (dstImage->width * j))];
-            memcpy(dst, src, depthBytes * 4);
+            uint16_t * src = &srcImage->pixels[CL_CHANNELS_PER_PIXEL * ((i + x) + (srcImage->width * (j + y)))];
+            uint16_t * dst = &dstImage->pixels[CL_CHANNELS_PER_PIXEL * (i + (dstImage->width * j))];
+            memcpy(dst, src, CL_BYTES_PER_PIXEL);
         }
     }
 
@@ -137,28 +136,16 @@ void clImageSetPixel(clContext * C, clImage * image, int x, int y, int r, int g,
 {
     COLORIST_UNUSED(C);
 
-    if (image->depth == 16) {
-        uint16_t * pixels = (uint16_t *)image->pixels;
-        uint16_t * pixel = &pixels[4 * (x + (y * image->width))];
-        pixel[0] = (uint16_t)r;
-        pixel[1] = (uint16_t)g;
-        pixel[2] = (uint16_t)b;
-        pixel[3] = (uint16_t)a;
-    } else {
-        uint8_t * pixels = image->pixels;
-        uint8_t * pixel = &pixels[4 * (x + (y * image->width))];
-        COLORIST_ASSERT(image->depth == 8);
-        pixel[0] = (uint8_t)r;
-        pixel[1] = (uint8_t)g;
-        pixel[2] = (uint8_t)b;
-        pixel[3] = (uint8_t)a;
-    }
+    uint16_t * pixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (x + (y * image->width))];
+    pixel[0] = (uint16_t)r;
+    pixel[1] = (uint16_t)g;
+    pixel[2] = (uint16_t)b;
+    pixel[3] = (uint16_t)a;
 }
 
 clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
 {
     clImage * rotated = NULL;
-    int pixelBytes = clDepthToBytes(C, image->depth) * 4;
     switch (cwTurns) {
         case 0: // Not rotated
             rotated = clImageCreate(C, image->width, image->height, image->depth, image->profile);
@@ -168,9 +155,9 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
             rotated = clImageCreate(C, image->height, image->width, image->depth, image->profile);
             for (int j = 0; j < image->height; ++j) {
                 for (int i = 0; i < image->width; ++i) {
-                    uint8_t * srcPixel = &image->pixels[pixelBytes * (i + (j * image->width))];
-                    uint8_t * dstPixel = &rotated->pixels[pixelBytes * ((rotated->width - 1 - j) + (i * rotated->width))];
-                    memcpy(dstPixel, srcPixel, pixelBytes);
+                    uint16_t * srcPixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
+                    uint16_t * dstPixel = &rotated->pixels[CL_CHANNELS_PER_PIXEL * ((rotated->width - 1 - j) + (i * rotated->width))];
+                    memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL);
                 }
             }
             break;
@@ -178,9 +165,9 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
             rotated = clImageCreate(C, image->width, image->height, image->depth, image->profile);
             for (int j = 0; j < image->height; ++j) {
                 for (int i = 0; i < image->width; ++i) {
-                    uint8_t * srcPixel = &image->pixels[pixelBytes * (i + (j * image->width))];
-                    uint8_t * dstPixel = &rotated->pixels[pixelBytes * ((rotated->width - 1 - i) + ((rotated->height - 1 - j) * rotated->width))];
-                    memcpy(dstPixel, srcPixel, pixelBytes);
+                    uint16_t * srcPixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
+                    uint16_t * dstPixel = &rotated->pixels[CL_CHANNELS_PER_PIXEL * ((rotated->width - 1 - i) + ((rotated->height - 1 - j) * rotated->width))];
+                    memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL);
                 }
             }
             break;
@@ -188,9 +175,9 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
             rotated = clImageCreate(C, image->height, image->width, image->depth, image->profile);
             for (int j = 0; j < image->height; ++j) {
                 for (int i = 0; i < image->width; ++i) {
-                    uint8_t * srcPixel = &image->pixels[pixelBytes * (i + (j * image->width))];
-                    uint8_t * dstPixel = &rotated->pixels[pixelBytes * (j + ((rotated->height - 1 - i) * rotated->width))];
-                    memcpy(dstPixel, srcPixel, pixelBytes);
+                    uint16_t * srcPixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
+                    uint16_t * dstPixel = &rotated->pixels[CL_CHANNELS_PER_PIXEL * (j + ((rotated->height - 1 - i) * rotated->width))];
+                    memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL);
                 }
             }
             break;
@@ -249,12 +236,179 @@ void clImageDestroy(clContext * C, clImage * image)
     clFree(image);
 }
 
-int clDepthToBytes(clContext * C, int depth)
+void clImageToRGB8(struct clContext * C, clImage * image, uint8_t * outPixels)
 {
     COLORIST_UNUSED(C);
-    COLORIST_ASSERT(depth <= 16);
 
-    if (depth > 8)
-        return 2;
-    return 1;
+    if (image->depth == 8) {
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
+                uint16_t * srcPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                uint8_t * dstPixel = &outPixels[(i + (j * image->width)) * 3];
+                dstPixel[0] = (uint8_t)srcPixel[0];
+                dstPixel[1] = (uint8_t)srcPixel[1];
+                dstPixel[2] = (uint8_t)srcPixel[2];
+            }
+        }
+    } else {
+        float maxSrcChannel = (float)((1 << image->depth) - 1);
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
+                uint16_t * srcPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                uint8_t * dstPixel = &outPixels[(i + (j * image->width)) * 3];
+                dstPixel[0] = (uint8_t)clPixelMathRoundf((srcPixel[0] / maxSrcChannel) * 255.0f);
+                dstPixel[1] = (uint8_t)clPixelMathRoundf((srcPixel[1] / maxSrcChannel) * 255.0f);
+                dstPixel[2] = (uint8_t)clPixelMathRoundf((srcPixel[2] / maxSrcChannel) * 255.0f);
+            }
+        }
+    }
+}
+
+void clImageFromRGB8(struct clContext * C, clImage * image, uint8_t * inPixels)
+{
+    COLORIST_UNUSED(C);
+
+    if (image->depth == 8) {
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
+                uint8_t * srcPixel = &inPixels[(i + (j * image->width)) * 3];
+                uint16_t * dstPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                dstPixel[0] = srcPixel[0];
+                dstPixel[1] = srcPixel[1];
+                dstPixel[2] = srcPixel[2];
+                dstPixel[3] = 255;
+            }
+        }
+    } else {
+        uint16_t maxDstChannel = (uint16_t)((1 << image->depth) - 1);
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
+                uint8_t * srcPixel = &inPixels[(i + (j * image->width)) * 3];
+                uint16_t * dstPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                dstPixel[0] = (uint8_t)clPixelMathRoundf((srcPixel[0] / 255.0f) * maxDstChannel);
+                dstPixel[1] = (uint8_t)clPixelMathRoundf((srcPixel[1] / 255.0f) * maxDstChannel);
+                dstPixel[2] = (uint8_t)clPixelMathRoundf((srcPixel[2] / 255.0f) * maxDstChannel);
+                dstPixel[3] = maxDstChannel;
+            }
+        }
+    }
+}
+void clImageToRGBA8(struct clContext * C, clImage * image, uint8_t * outPixels)
+{
+    COLORIST_UNUSED(C);
+
+    if (image->depth == 8) {
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
+                uint16_t * srcPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                uint8_t * dstPixel = &outPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                dstPixel[0] = (uint8_t)srcPixel[0];
+                dstPixel[1] = (uint8_t)srcPixel[1];
+                dstPixel[2] = (uint8_t)srcPixel[2];
+                dstPixel[3] = (uint8_t)srcPixel[3];
+            }
+        }
+    } else {
+        float maxSrcChannel = (float)((1 << image->depth) - 1);
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
+                uint16_t * srcPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                uint8_t * dstPixel = &outPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                dstPixel[0] = (uint8_t)clPixelMathRoundf((srcPixel[0] / maxSrcChannel) * 255.0f);
+                dstPixel[1] = (uint8_t)clPixelMathRoundf((srcPixel[1] / maxSrcChannel) * 255.0f);
+                dstPixel[2] = (uint8_t)clPixelMathRoundf((srcPixel[2] / maxSrcChannel) * 255.0f);
+                dstPixel[3] = (uint8_t)clPixelMathRoundf((srcPixel[3] / maxSrcChannel) * 255.0f);
+            }
+        }
+    }
+}
+
+void clImageFromRGBA8(struct clContext * C, clImage * image, uint8_t * inPixels)
+{
+    COLORIST_UNUSED(C);
+
+    if (image->depth == 8) {
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
+                uint8_t * srcPixel = &inPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                uint16_t * dstPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                dstPixel[0] = srcPixel[0];
+                dstPixel[1] = srcPixel[1];
+                dstPixel[2] = srcPixel[2];
+                dstPixel[3] = srcPixel[3];
+            }
+        }
+    } else {
+        float maxDstChannel = (float)((1 << image->depth) - 1);
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
+                uint8_t * srcPixel = &inPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                uint16_t * dstPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                dstPixel[0] = (uint8_t)clPixelMathRoundf((srcPixel[0] / 255.0f) * maxDstChannel);
+                dstPixel[1] = (uint8_t)clPixelMathRoundf((srcPixel[1] / 255.0f) * maxDstChannel);
+                dstPixel[2] = (uint8_t)clPixelMathRoundf((srcPixel[2] / 255.0f) * maxDstChannel);
+                dstPixel[3] = (uint8_t)clPixelMathRoundf((srcPixel[3] / 255.0f) * maxDstChannel);
+            }
+        }
+    }
+}
+
+void clImageToBGRA8(struct clContext * C, clImage * image, uint8_t * outPixels)
+{
+    COLORIST_UNUSED(C);
+
+    if (image->depth == 8) {
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
+                uint16_t * srcPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                uint8_t * dstPixel = &outPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                dstPixel[2] = (uint8_t)srcPixel[0];
+                dstPixel[1] = (uint8_t)srcPixel[1];
+                dstPixel[0] = (uint8_t)srcPixel[2];
+                dstPixel[3] = (uint8_t)srcPixel[3];
+            }
+        }
+    } else {
+        float maxSrcChannel = (float)((1 << image->depth) - 1);
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
+                uint16_t * srcPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                uint8_t * dstPixel = &outPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                dstPixel[2] = (uint8_t)clPixelMathRoundf((srcPixel[0] / maxSrcChannel) * 255.0f);
+                dstPixel[1] = (uint8_t)clPixelMathRoundf((srcPixel[1] / maxSrcChannel) * 255.0f);
+                dstPixel[0] = (uint8_t)clPixelMathRoundf((srcPixel[2] / maxSrcChannel) * 255.0f);
+                dstPixel[3] = (uint8_t)clPixelMathRoundf((srcPixel[3] / maxSrcChannel) * 255.0f);
+            }
+        }
+    }
+}
+
+void clImageFromBGRA8(struct clContext * C, clImage * image, uint8_t * inPixels)
+{
+    COLORIST_UNUSED(C);
+
+    if (image->depth == 8) {
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
+                uint8_t * srcPixel = &inPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                uint16_t * dstPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                dstPixel[2] = srcPixel[0];
+                dstPixel[1] = srcPixel[1];
+                dstPixel[0] = srcPixel[2];
+                dstPixel[3] = srcPixel[3];
+            }
+        }
+    } else {
+        float maxDstChannel = (float)((1 << image->depth) - 1);
+        for (int j = 0; j < image->height; ++j) {
+            for (int i = 0; i < image->width; ++i) {
+                uint8_t * srcPixel = &inPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                uint16_t * dstPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                dstPixel[2] = (uint8_t)clPixelMathRoundf((srcPixel[0] / 255.0f) * maxDstChannel);
+                dstPixel[1] = (uint8_t)clPixelMathRoundf((srcPixel[1] / 255.0f) * maxDstChannel);
+                dstPixel[0] = (uint8_t)clPixelMathRoundf((srcPixel[2] / 255.0f) * maxDstChannel);
+                dstPixel[3] = (uint8_t)clPixelMathRoundf((srcPixel[3] / 255.0f) * maxDstChannel);
+            }
+        }
+    }
 }

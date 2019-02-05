@@ -2,45 +2,28 @@
 
 #include "colorist/context.h"
 
-void clPixelMathUNormToFloat(struct clContext * C, uint8_t * inPixels, int inDepth, float * outPixels, int pixelCount)
+void clPixelMathUNormToFloat(struct clContext * C, uint16_t * inPixels, int inDepth, float * outPixels, int pixelCount)
 {
     COLORIST_UNUSED(C);
 
     float maxChannel = (float)((1 << inDepth) - 1);
     int channelCount = pixelCount * 4;
-
-    if (inDepth > 8) {
-        uint16_t * inChannel = (uint16_t *)inPixels;
-        float * outChannel = outPixels;
-        for (int i = 0; i < channelCount; ++i) {
-            outChannel[i] = inChannel[i] / maxChannel;
-        }
-    } else {
-        uint8_t * inChannel = inPixels;
-        float * outChannel = outPixels;
-        for (int i = 0; i < channelCount; ++i) {
-            outChannel[i] = inChannel[i] / maxChannel;
-        }
+    uint16_t * inChannel = (uint16_t *)inPixels;
+    float * outChannel = outPixels;
+    for (int i = 0; i < channelCount; ++i) {
+        outChannel[i] = inChannel[i] / maxChannel;
     }
 }
 
-void clPixelMathFloatToUNorm(struct clContext * C, float * inPixels, uint8_t * outPixels, int outDepth, int pixelCount)
+void clPixelMathFloatToUNorm(struct clContext * C, float * inPixels, uint16_t * outPixels, int outDepth, int pixelCount)
 {
     float maxChannel = (float)((1 << outDepth) - 1);
     int channelCount = pixelCount * 4;
 
-    if (outDepth > 8) {
-        float * inChannel = inPixels;
-        uint16_t * outChannel = (uint16_t *)outPixels;
-        for (int i = 0; i < channelCount; ++i) {
-            outChannel[i] = (uint16_t)clPixelMathRoundf(inChannel[i] * maxChannel);
-        }
-    } else {
-        float * inChannel = inPixels;
-        uint8_t * outChannel = outPixels;
-        for (int i = 0; i < channelCount; ++i) {
-            outChannel[i] = (uint8_t)clPixelMathRoundf(inChannel[i] * maxChannel);
-        }
+    float * inChannel = inPixels;
+    uint16_t * outChannel = (uint16_t *)outPixels;
+    for (int i = 0; i < channelCount; ++i) {
+        outChannel[i] = (uint16_t)clPixelMathRoundf(inChannel[i] * maxChannel);
     }
 
     COLORIST_UNUSED(C);

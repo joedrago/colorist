@@ -64,7 +64,7 @@ struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName,
 
     clImageLogCreate(C, width, height, 8, profile);
     image = clImageCreate(C, width, height, 8, profile);
-    memcpy(image->pixels, readPixels, 4 * width * height);
+    clImageFromRGBA8(C, image, readPixels);
 
 readCleanup:
     WebPDataClear(&frameInfo.bitstream);
@@ -85,9 +85,6 @@ clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const cha
     COLORIST_UNUSED(formatName);
 
     clBool writeResult = clTrue;
-
-    cmsUInt32Number srcFormat = (image->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
-    cmsHTRANSFORM rgbTransform;
 
     WebPConfig config;
     WebPPicture picture;
@@ -122,10 +119,7 @@ clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const cha
     picture.height = image->height;
     WebPPictureAlloc(&picture);
 
-    rgbTransform = cmsCreateTransformTHR(C->lcms, image->profile->handle, srcFormat, image->profile->handle, TYPE_BGRA_8, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
-    COLORIST_ASSERT(rgbTransform);
-    cmsDoTransform(rgbTransform, image->pixels, picture.argb, image->width * image->height);
-    cmsDeleteTransform(rgbTransform);
+    clImageToBGRA8(C, image, (uint8_t *)picture.argb);
 
     if (!WebPEncode(&config, &picture)) {
         clContextLogError(C, "Failed to encode WebP");

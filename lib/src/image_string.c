@@ -665,8 +665,7 @@ clImage * clImageParseString(struct clContext * C, const char * str, int depth, 
     char * buffer = clContextStrdup(C, str);
     const char * stripeDelims = "|/";
     char * stripeString;
-    uint8_t * pixelPos;
-    int depthBytes = clDepthToBytes(C, depth);
+    uint16_t * pixelPos;
     clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, 32, profile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
     int luminance = 0;
 
@@ -719,8 +718,8 @@ clImage * clImageParseString(struct clContext * C, const char * str, int depth, 
         for (stripe = stripes; stripe != NULL; stripe = stripe->next) {
             int y;
             for (y = 0; y < stripe->image->height; ++y) {
-                memcpy(pixelPos, &stripe->image->pixels[4 * depthBytes * y * stripe->image->width], 4 * depthBytes * stripe->image->width);
-                pixelPos += 4 * depthBytes * image->width;
+                memcpy(pixelPos, &stripe->image->pixels[CL_CHANNELS_PER_PIXEL * y * stripe->image->width], CL_BYTES_PER_PIXEL * stripe->image->width);
+                pixelPos += CL_BYTES_PER_PIXEL * image->width;
             }
         }
     } else {
@@ -880,20 +879,11 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
         }
         colorIndex = CL_CLAMP(colorIndex, 0, colorCount - 1);
         getColor(C, tokens, colorIndex, depth, &color);
-        if (depth > 8) {
-            uint16_t * pixels = (uint16_t *)image->pixels;
-            uint16_t * pixel = &pixels[4 * verticalPixelIndex];
-            pixel[0] = (uint16_t)(color.r);
-            pixel[1] = (uint16_t)(color.g);
-            pixel[2] = (uint16_t)(color.b);
-            pixel[3] = (uint16_t)(color.a);
-        } else {
-            uint8_t * pixel = &image->pixels[4 * verticalPixelIndex];
-            pixel[0] = (uint8_t)(color.r);
-            pixel[1] = (uint8_t)(color.g);
-            pixel[2] = (uint8_t)(color.b);
-            pixel[3] = (uint8_t)(color.a);
-        }
+        uint16_t * pixel = &image->pixels[4 * verticalPixelIndex];
+        pixel[0] = (uint16_t)(color.r);
+        pixel[1] = (uint16_t)(color.g);
+        pixel[2] = (uint16_t)(color.b);
+        pixel[3] = (uint16_t)(color.a);
     }
 
     if (rotate != 0) {

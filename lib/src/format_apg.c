@@ -46,17 +46,9 @@ struct clImage * clFormatReadAPG(struct clContext * C, const char * formatName, 
 
     image = clImageCreate(C, apg->width, apg->height, apg->depth, profile);
 
-    int pixelChannelCount = 4 * image->width * image->height; // 4 == RGBA
-    if (image->depth == 8) {
-        uint8_t * pixels = image->pixels;
-        for (int i = 0; i < pixelChannelCount; ++i) {
-            pixels[i] = (uint8_t)apg->pixels[i];
-        }
-    } else {
-        uint16_t * pixels = (uint16_t *)image->pixels;
-        for (int i = 0; i < pixelChannelCount; ++i) {
-            pixels[i] = apg->pixels[i];
-        }
+    int pixelChannelCount = CL_CHANNELS_PER_PIXEL * image->width * image->height;
+    for (int i = 0; i < pixelChannelCount; ++i) {
+        image->pixels[i] = apg->pixels[i];
     }
 
     if (C->verbose) {
@@ -107,17 +99,9 @@ clBool clFormatWriteAPG(struct clContext * C, struct clImage * image, const char
     clTransformDestroy(C, linearFromXYZ);
     clProfileDestroy(C, linearProfile);
 
-    int pixelChannelCount = 4 * image->width * image->height; // 4 == RGBA
-    if (image->depth == 8) {
-        uint8_t * pixels = image->pixels;
-        for (int i = 0; i < pixelChannelCount; ++i) {
-            apg->pixels[i] = pixels[i];
-        }
-    } else {
-        uint16_t * pixels = (uint16_t *)image->pixels;
-        for (int i = 0; i < pixelChannelCount; ++i) {
-            apg->pixels[i] = pixels[i];
-        }
+    int pixelChannelCount = CL_CHANNELS_PER_PIXEL * image->width * image->height;
+    for (int i = 0; i < pixelChannelCount; ++i) {
+        apg->pixels[i] = image->pixels[i];
     }
 
     apgResult result = apgImageEncode(apg, writeParams->quality);

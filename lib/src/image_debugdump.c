@@ -93,20 +93,11 @@ static void dumpPixel(struct clContext * C, clImage * image, clTransform * toXYZ
 
     COLORIST_ASSERT(image->pixels);
 
-    if (image->depth > 8) {
-        uint16_t * shorts = (uint16_t *)image->pixels;
-        uint16_t * pixel = &shorts[4 * (x + (y * image->width))];
-        intRGB[0] = pixel[0];
-        intRGB[1] = pixel[1];
-        intRGB[2] = pixel[2];
-        intRGB[3] = pixel[3];
-    } else {
-        uint8_t * pixel = &image->pixels[4 * (x + (y * image->width))];
-        intRGB[0] = pixel[0];
-        intRGB[1] = pixel[1];
-        intRGB[2] = pixel[2];
-        intRGB[3] = pixel[3];
-    }
+    uint16_t * pixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (x + (y * image->width))];
+    intRGB[0] = pixel[0];
+    intRGB[1] = pixel[1];
+    intRGB[2] = pixel[2];
+    intRGB[3] = pixel[3];
 
     floatRGBA[0] = intRGB[0] / maxChannel;
     floatRGBA[1] = intRGB[1] / maxChannel;

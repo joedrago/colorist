@@ -11,6 +11,10 @@
 #include "colorist/context.h"
 #include "colorist/types.h"
 
+#define CL_CHANNELS_PER_PIXEL 4 // R, G, B, A
+#define CL_BYTES_PER_CHANNEL 2
+#define CL_BYTES_PER_PIXEL (CL_CHANNELS_PER_PIXEL * CL_BYTES_PER_CHANNEL)
+
 struct clProfile;
 struct clRaw;
 struct cJSON;
@@ -21,7 +25,7 @@ typedef struct clImage
     int height;
     int depth;
     int size;
-    uint8_t * pixels;
+    uint16_t * pixels; // always RGBA
     struct clProfile * profile;
 } clImage;
 
@@ -49,6 +53,11 @@ void clImageLogCreate(struct clContext * C, int width, int height, int depth, st
 clImage * clImageParseString(struct clContext * C, const char * str, int depth, struct clProfile * profile);
 clBool clImageCalcDiffStats(struct clContext * C, int taskCount, clImage * srcImage, clImage * dstImage, clImageDiffStats * diffStats);
 
-int clDepthToBytes(clContext * C, int depth);
+void clImageToRGB8(struct clContext * C, clImage * image, uint8_t * outPixels);
+void clImageFromRGB8(struct clContext * C, clImage * image, uint8_t * inPixels);
+void clImageToRGBA8(struct clContext * C, clImage * image, uint8_t * outPixels);
+void clImageFromRGBA8(struct clContext * C, clImage * image, uint8_t * inPixels);
+void clImageToBGRA8(struct clContext * C, clImage * image, uint8_t * outPixels);
+void clImageFromBGRA8(struct clContext * C, clImage * image, uint8_t * inPixels);
 
 #endif // ifndef COLORIST_IMAGE_H

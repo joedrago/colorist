@@ -209,32 +209,16 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
     clImageLogCreate(C, info.bV5Width, info.bV5Height, depth, profile);
     image = clImageCreate(C, info.bV5Width, info.bV5Height, depth, profile);
 
-    if (image->depth == 8) {
-        int i;
-        for (i = 0; i < pixelCount; ++i) {
-            uint8_t * dstPixel = &image->pixels[i * 4];
-            dstPixel[0] = (uint8_t)((packedPixels[i] & info.bV5RedMask) >> rShift);
-            dstPixel[1] = (uint8_t)((packedPixels[i] & info.bV5GreenMask) >> gShift);
-            dstPixel[2] = (uint8_t)((packedPixels[i] & info.bV5BlueMask) >> bShift);
-            if (aDepth > 0)
-                dstPixel[3] = (uint8_t)((packedPixels[i] & info.bV5AlphaMask) >> aShift);
-            else
-                dstPixel[3] = 255U;
-        }
-    } else {
-        // 10 bit
-        int i;
-        for (i = 0; i < pixelCount; ++i) {
-            uint16_t * pixels = (uint16_t *)image->pixels;
-            uint16_t * dstPixel = &pixels[i * 4];
-            dstPixel[0] = (uint16_t)((packedPixels[i] & info.bV5RedMask) >> rShift);
-            dstPixel[1] = (uint16_t)((packedPixels[i] & info.bV5GreenMask) >> gShift);
-            dstPixel[2] = (uint16_t)((packedPixels[i] & info.bV5BlueMask) >> bShift);
-            if (aDepth > 0)
-                dstPixel[3] = (uint16_t)((packedPixels[i] & info.bV5AlphaMask) >> aShift);
-            else
-                dstPixel[3] = 1023U;
-        }
+    for (int i = 0; i < pixelCount; ++i) {
+        uint16_t * pixels = (uint16_t *)image->pixels;
+        uint16_t * dstPixel = &pixels[i * 4];
+        dstPixel[0] = (uint16_t)((packedPixels[i] & info.bV5RedMask) >> rShift);
+        dstPixel[1] = (uint16_t)((packedPixels[i] & info.bV5GreenMask) >> gShift);
+        dstPixel[2] = (uint16_t)((packedPixels[i] & info.bV5BlueMask) >> bShift);
+        if (aDepth > 0)
+            dstPixel[3] = (uint16_t)((packedPixels[i] & info.bV5AlphaMask) >> aShift);
+        else
+            dstPixel[3] = (uint16_t)((1 << depth) - 1);
     }
 
 readCleanup:
@@ -286,7 +270,7 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     packedPixels = clAllocate(packedPixelBytes);
     if (image->depth == 8) {
         for (int i = 0; i < pixelCount; ++i) {
-            uint8_t * srcPixel = &image->pixels[i * 4];
+            uint16_t * srcPixel = &image->pixels[i * CL_CHANNELS_PER_PIXEL];
             packedPixels[i] =
                 (srcPixel[2] << 0) +  // B
                 (srcPixel[1] << 8) +  // G
@@ -301,7 +285,7 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
         // 10 bit
         for (int i = 0; i < pixelCount; ++i) {
             uint16_t * pixels = (uint16_t *)image->pixels;
-            uint16_t * srcPixel = &pixels[i * 4];
+            uint16_t * srcPixel = &pixels[i * CL_CHANNELS_PER_PIXEL];
             packedPixels[i] =
                 ((srcPixel[2] & 1023) << 0) +  // B
                 ((srcPixel[1] & 1023) << 10) + // G

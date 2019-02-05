@@ -87,17 +87,14 @@ struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, 
     int row = 0;
     while (cinfo.output_scanline < cinfo.output_height) {
         jpeg_read_scanlines(&cinfo, buffer, 1);
-        {
-            uint8_t * pixelRow = &image->pixels[row * 4 * image->width];
-            unsigned int i;
-            for (i = 0; i < cinfo.output_width; ++i) {
-                uint8_t * dst = &pixelRow[i * 4];
-                uint8_t * src = &buffer[0][i * 3];
-                dst[0] = src[0];
-                dst[1] = src[1];
-                dst[2] = src[2];
-                dst[3] = 255;
-            }
+        uint16_t * pixelRow = &image->pixels[row * image->width * CL_CHANNELS_PER_PIXEL];
+        for (unsigned int i = 0; i < cinfo.output_width; ++i) {
+            uint16_t * dst = &pixelRow[i * CL_CHANNELS_PER_PIXEL];
+            uint8_t * src = &buffer[0][i * 3];
+            dst[0] = src[0];
+            dst[1] = src[1];
+            dst[2] = src[2];
+            dst[3] = 255;
         }
         ++row;
     }
@@ -111,27 +108,25 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
 {
     COLORIST_UNUSED(formatName);
 
-    cmsUInt32Number srcFormat = (image->depth == 16) ? TYPE_RGBA_16 : TYPE_RGBA_8;
-    cmsHTRANSFORM rgbTransform;
-
     struct jpeg_compress_struct cinfo;
     struct jpeg_error_mgr jerr;
 
     JSAMPROW row_pointer[1];
     int row_stride;
-    uint8_t * jpegPixels;
     unsigned char * outbuffer = NULL;
     unsigned long outsize = 0;
+
+    clRaw rawProfile = CL_RAW_EMPTY;
+    if (!clProfilePack(C, image->profile, &rawProfile)) {
+        return clFalse;
+    }
 
     cinfo.err = jpeg_std_error(&jerr);
     jpeg_create_compress(&cinfo);
     jpeg_mem_dest(&cinfo, &outbuffer, &outsize);
 
-    jpegPixels = clAllocate(3 * image->width * image->height);
-    rgbTransform = cmsCreateTransformTHR(C->lcms, image->profile->handle, srcFormat, image->profile->handle, TYPE_RGB_8, INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE);
-    COLORIST_ASSERT(rgbTransform);
-    cmsDoTransform(rgbTransform, image->pixels, jpegPixels, image->width * image->height);
-    cmsDeleteTransform(rgbTransform);
+    uint8_t * jpegPixels = clAllocate(3 * image->width * image->height);
+    clImageToRGB8(C, image, jpegPixels);
 
     cinfo.image_width = image->width;
     cinfo.image_height = image->height;
@@ -141,10 +136,6 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
     jpeg_set_quality(&cinfo, writeParams->quality, TRUE);
     jpeg_start_compress(&cinfo, TRUE);
 
-    clRaw rawProfile = CL_RAW_EMPTY;
-    if (!clProfilePack(C, image->profile, &rawProfile)) {
-        return clFalse;
-    }
     write_icc_profile(&cinfo, rawProfile.ptr, (unsigned int)rawProfile.size);
 
     row_stride = image->width * 3;
@@ -219,8 +210,8 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
  */
 
 static void write_icc_profile(j_compress_ptr cinfo,
-                              const JOCTET * icc_data_ptr,
-                              unsigned int icc_data_len)
+    const JOCTET * icc_data_ptr,
+    unsigned int icc_data_len)
 {
     unsigned int num_markers; /* total number of markers we'll write */
     int cur_marker = 1;       /* per spec, counting starts at 1 */
@@ -325,9 +316,9 @@ static boolean marker_is_icc(jpeg_saved_marker_ptr marker)
  */
 
 static boolean read_icc_profile(struct clContext * C,
-                                j_decompress_ptr cinfo,
-                                JOCTET ** icc_data_ptr,
-                                unsigned int * icc_data_len)
+    j_decompress_ptr cinfo,
+    JOCTET ** icc_data_ptr,
+    unsigned int * icc_data_len)
 {
     jpeg_saved_marker_ptr marker;
     int num_markers = 0;

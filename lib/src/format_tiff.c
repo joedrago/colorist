@@ -107,6 +107,8 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
     uint8_t * iccBuf = NULL;
     int rowIndex, rowBytes;
     tiffCallbackInfo ci;
+    uint8_t * pixels = NULL;
+    uint8_t * rgba8 = NULL;
 
     ci.C = C;
     ci.raw = input;
@@ -169,14 +171,21 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
 
     clImageLogCreate(C, width, height, depth, profile);
     image = clImageCreate(C, width, height, depth, profile);
-    rowBytes = image->width * 4 * clDepthToBytes(C, image->depth);
+    if (depth == 8) {
+        rgba8 = clAllocate(image->width * image->height * CL_CHANNELS_PER_PIXEL);
+        pixels = rgba8;
+        rowBytes = image->width * CL_CHANNELS_PER_PIXEL * 1;
+    } else {
+        pixels = (uint8_t *)image->pixels;
+        rowBytes = image->width * CL_CHANNELS_PER_PIXEL * CL_BYTES_PER_PIXEL;
+    }
     for (rowIndex = 0; rowIndex < image->height; ++rowIndex) {
         uint8_t * pixelRow;
         if (orientation == ORIENTATION_TOPLEFT) {
-            pixelRow = &image->pixels[rowIndex * rowBytes];
+            pixelRow = &pixels[rowIndex * rowBytes];
         } else {
             // ORIENTATION_BOTLEFT
-            pixelRow = &image->pixels[(image->height - 1 - rowIndex) * rowBytes];
+            pixelRow = &pixels[(image->height - 1 - rowIndex) * rowBytes];
         }
         if (TIFFReadScanline(tiff, pixelRow, rowIndex, 0) < 0) {
             clContextLogError(C, "Failed to read TIFF scanline row %d", rowIndex);
@@ -186,12 +195,19 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
         }
     }
 
+    if (rgba8) {
+        clImageFromRGBA8(C, image, rgba8);
+    }
+
 readCleanup:
     if (tiff) {
         TIFFClose(tiff);
     }
     if (profile) {
         clProfileDestroy(C, profile);
+    }
+    if (rgba8) {
+        clFree(rgba8);
     }
     return image;
 }
@@ -205,6 +221,8 @@ clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const cha
     TIFF * tiff = NULL;
     int rowIndex, rowBytes;
     tiffCallbackInfo ci;
+    uint8_t * pixels = NULL;
+    uint8_t * rgba8 = NULL;
 
     clRaw rawProfile = CL_RAW_EMPTY;
     if (!clProfilePack(C, image->profile, &rawProfile)) {
@@ -228,7 +246,16 @@ clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const cha
         goto writeCleanup;
     }
 
-    rowBytes = image->width * 4 * clDepthToBytes(C, image->depth);
+    if (image->depth == 8) {
+        rgba8 = clAllocate(image->width * image->height * CL_CHANNELS_PER_PIXEL);
+        clImageToRGBA8(C, image, rgba8);
+        pixels = rgba8;
+        rowBytes = image->width * CL_CHANNELS_PER_PIXEL * 1;
+    } else {
+        pixels = (uint8_t *)image->pixels;
+        rowBytes = image->width * CL_CHANNELS_PER_PIXEL * CL_BYTES_PER_PIXEL;
+    }
+
     TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, image->width);
     TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, image->height);
     TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, 4);
@@ -240,7 +267,7 @@ clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const cha
     TIFFSetField(tiff, TIFFTAG_ICCPROFILE, rawProfile.size, rawProfile.ptr);
 
     for (rowIndex = 0; rowIndex < image->height; ++rowIndex) {
-        uint8_t * pixelRow = &image->pixels[rowIndex * rowBytes];
+        uint8_t * pixelRow = &pixels[rowIndex * rowBytes];
         if (TIFFWriteScanline(tiff, pixelRow, rowIndex, 0) < 0) {
             clContextLogError(C, "Failed to write TIFF scanline row %d", rowIndex);
             writeResult = clFalse;

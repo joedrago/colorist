@@ -57,24 +57,11 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
 
     image = clImageCreate(C, avif->width, avif->height, avif->depth, profile);
 
-    if (image->depth == 8) {
-        uint8_t * pixels = image->pixels;
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint8_t * pixel = &pixels[4 * (i + (j * image->width))];
-                for (int plane = 0; plane < 4; ++plane) {
-                    pixel[plane] = (uint8_t)rgba->planes[plane][i + (j * rgba->strides[plane])];
-                }
-            }
-        }
-    } else {
-        uint16_t * pixels = (uint16_t *)image->pixels;
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint16_t * pixel = &pixels[4 * (i + (j * image->width))];
-                for (int plane = 0; plane < 4; ++plane) {
-                    pixel[plane] = rgba->planes[plane][i + (j * rgba->strides[plane])];
-                }
+    for (int j = 0; j < image->height; ++j) {
+        for (int i = 0; i < image->width; ++i) {
+            uint16_t * pixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
+            for (int plane = 0; plane < 4; ++plane) {
+                pixel[plane] = rgba->planes[plane][i + (j * rgba->strides[plane])];
             }
         }
     }
@@ -107,24 +94,11 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
     avifImageCreatePixels(avif, AVIF_PIXEL_FORMAT_RGBA, image->width, image->height, image->depth);
     avifRawData avifOutput = AVIF_RAW_DATA_EMPTY;
 
-    if (image->depth == 8) {
-        uint8_t * pixels = image->pixels;
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint8_t * pixel = &pixels[4 * (i + (j * image->width))];
-                for (int plane = 0; plane < 4; ++plane) {
-                    avif->planes[plane][i + (j * avif->strides[plane])] = pixel[plane];
-                }
-            }
-        }
-    } else {
-        uint16_t * pixels = (uint16_t *)image->pixels;
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint16_t * pixel = &pixels[4 * (i + (j * image->width))];
-                for (int plane = 0; plane < 4; ++plane) {
-                    avif->planes[plane][i + (j * avif->strides[plane])] = pixel[plane];
-                }
+    for (int j = 0; j < image->height; ++j) {
+        for (int i = 0; i < image->width; ++i) {
+            uint16_t * pixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
+            for (int plane = 0; plane < 4; ++plane) {
+                avif->planes[plane][i + (j * avif->strides[plane])] = pixel[plane];
             }
         }
     }

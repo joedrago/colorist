@@ -184,7 +184,7 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     clImage * highlight = clImageCreate(C, srcImage->width, srcImage->height, 8, NULL);
     for (int i = 0; i < pixelCount; ++i) {
         float * srcXYZ = &xyzPixels[i * 3];
-        uint8_t * dstPixel = &highlight->pixels[i * 4];
+        uint16_t * dstPixel = &highlight->pixels[i * CL_CHANNELS_PER_PIXEL];
         float * pixelHighlightInfo = &highlightInfo[i * HII_COUNT];
 
         cmsCIEXYZ XYZ;
@@ -352,12 +352,9 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
     cJSON_AddItemToObject(payload, "depth", cJSON_CreateNumber(image->depth));
 
     {
-        char * channelFormat = "u8";
+        char * channelFormat = "u16";
         clRaw rawPixels;
         clStructArraySchema imageSchema[4];
-        if (image->depth > 8) {
-            channelFormat = "u16";
-        }
         imageSchema[0].format = channelFormat;
         imageSchema[0].name = "r";
         imageSchema[1].format = channelFormat;
@@ -366,7 +363,7 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
         imageSchema[2].name = "b";
         imageSchema[3].format = channelFormat;
         imageSchema[3].name = "a";
-        rawPixels.ptr = image->pixels;
+        rawPixels.ptr = (uint8_t *)image->pixels;
         rawPixels.size = image->size;
         clContextLog(C, "encode", 0, "Packing raw pixels...");
         timerStart(&t);

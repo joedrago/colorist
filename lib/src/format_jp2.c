@@ -185,49 +185,25 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
 
     pixelCount = image->width * image->height;
 
-    if (image->depth > 8) {
-        uint16_t * pixel = (uint16_t *)image->pixels;
-        if (opjImage->numcomps == 3) {
-            // RGB, fill A
-            for (i = 0; i < pixelCount; ++i) {
-                pixel[0] = (uint16_t)(opjImage->comps[0].data[i] * channelFactor[0]);
-                pixel[1] = (uint16_t)(opjImage->comps[1].data[i] * channelFactor[1]);
-                pixel[2] = (uint16_t)(opjImage->comps[2].data[i] * channelFactor[2]);
-                pixel[3] = (uint16_t)(maxChannel);
-                pixel += 4;
-            }
-        } else {
-            // RGBA
-            COLORIST_ASSERT(opjImage->numcomps == 4);
-            for (i = 0; i < pixelCount; ++i) {
-                pixel[0] = (uint16_t)(opjImage->comps[0].data[i] * channelFactor[0]);
-                pixel[1] = (uint16_t)(opjImage->comps[1].data[i] * channelFactor[1]);
-                pixel[2] = (uint16_t)(opjImage->comps[2].data[i] * channelFactor[2]);
-                pixel[3] = (uint16_t)(opjImage->comps[3].data[i] * channelFactor[3]);
-                pixel += 4;
-            }
+    uint16_t * pixel = image->pixels;
+    if (opjImage->numcomps == 3) {
+        // RGB, fill A
+        for (i = 0; i < pixelCount; ++i) {
+            pixel[0] = (uint16_t)(opjImage->comps[0].data[i] * channelFactor[0]);
+            pixel[1] = (uint16_t)(opjImage->comps[1].data[i] * channelFactor[1]);
+            pixel[2] = (uint16_t)(opjImage->comps[2].data[i] * channelFactor[2]);
+            pixel[3] = (uint16_t)(maxChannel);
+            pixel += 4;
         }
     } else {
-        uint8_t * pixel = image->pixels;
-        if (opjImage->numcomps == 3) {
-            // RGB, fill A
-            for (i = 0; i < pixelCount; ++i) {
-                pixel[0] = (uint8_t)(opjImage->comps[0].data[i] * channelFactor[0]);
-                pixel[1] = (uint8_t)(opjImage->comps[1].data[i] * channelFactor[1]);
-                pixel[2] = (uint8_t)(opjImage->comps[2].data[i] * channelFactor[2]);
-                pixel[3] = (uint8_t)(maxChannel);
-                pixel += 4;
-            }
-        } else {
-            // RGBA
-            COLORIST_ASSERT(opjImage->numcomps == 4);
-            for (i = 0; i < pixelCount; ++i) {
-                pixel[0] = (uint8_t)(opjImage->comps[0].data[i] * channelFactor[0]);
-                pixel[1] = (uint8_t)(opjImage->comps[1].data[i] * channelFactor[1]);
-                pixel[2] = (uint8_t)(opjImage->comps[2].data[i] * channelFactor[2]);
-                pixel[3] = (uint8_t)(opjImage->comps[3].data[i] * channelFactor[3]);
-                pixel += 4;
-            }
+        // RGBA
+        COLORIST_ASSERT(opjImage->numcomps == 4);
+        for (i = 0; i < pixelCount; ++i) {
+            pixel[0] = (uint16_t)(opjImage->comps[0].data[i] * channelFactor[0]);
+            pixel[1] = (uint16_t)(opjImage->comps[1].data[i] * channelFactor[1]);
+            pixel[2] = (uint16_t)(opjImage->comps[2].data[i] * channelFactor[2]);
+            pixel[3] = (uint16_t)(opjImage->comps[3].data[i] * channelFactor[3]);
+            pixel += 4;
         }
     }
 
