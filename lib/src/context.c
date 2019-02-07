@@ -14,6 +14,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define CL_DEFAULT_QUALITY 90 // ?
+#define CL_DEFAULT_RATE 0     // Choosing a value here is dangerous as it is heavily impacted by image size
+
 // ------------------------------------------------------------------------------------------------
 // Stock Primaries
 
@@ -143,6 +146,8 @@ int clFormatMaxDepth(struct clContext * C, const char * formatName)
             break;
         case CL_FORMAT_DEPTH_8_OR_10:
             return 10;
+        case CL_FORMAT_DEPTH_8_OR_10_OR_12:
+            return 12;
         case CL_FORMAT_DEPTH_8_OR_16:
         case CL_FORMAT_DEPTH_8_TO_16:
             return 16;
@@ -172,6 +177,12 @@ int clFormatBestDepth(struct clContext * C, const char * formatName, int reqDept
         case CL_FORMAT_DEPTH_8_OR_10:
             if (reqDepth == 10)
                 return 10;
+            break;
+        case CL_FORMAT_DEPTH_8_OR_10_OR_12:
+            if (reqDepth == 10)
+                return 10;
+            if (reqDepth == 12)
+                return 12;
             break;
         case CL_FORMAT_DEPTH_8_OR_16:
             if (reqDepth > 8)
@@ -225,7 +236,7 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
 }
 
 // ------------------------------------------------------------------------------------------------
-// clTonemap
+// clFilter
 
 clFilter clFilterFromString(struct clContext * C, const char * str)
 {
@@ -261,6 +272,53 @@ const char * clFilterToString(struct clContext * C, clFilter filter)
 }
 
 // ------------------------------------------------------------------------------------------------
+// clYUVFormat
+
+clYUVFormat clYUVFormatFromString(struct clContext * C, const char * str)
+{
+    COLORIST_UNUSED(C);
+
+    if (!strcmp(str, "auto")) return CL_YUVFORMAT_AUTO;
+    if (!strcmp(str, "444")) return CL_YUVFORMAT_444;
+    if (!strcmp(str, "422")) return CL_YUVFORMAT_422;
+    if (!strcmp(str, "420")) return CL_YUVFORMAT_420;
+    if (!strcmp(str, "yv12")) return CL_YUVFORMAT_YV12;
+    return CL_YUVFORMAT_INVALID;
+}
+
+const char * clYUVFormatToString(struct clContext * C, clYUVFormat format)
+{
+    COLORIST_UNUSED(C);
+
+    switch (format) {
+        case CL_YUVFORMAT_AUTO:  return "auto";
+        case CL_YUVFORMAT_444:  return "444";
+        case CL_YUVFORMAT_422:  return "422";
+        case CL_YUVFORMAT_420:  return "420";
+        case CL_YUVFORMAT_YV12:  return "yv12";
+        case CL_YUVFORMAT_INVALID:
+        default:
+            break;
+    }
+    return "invalid";
+}
+
+clYUVFormat clYUVFormatAutoChoose(struct clContext * C, struct clWriteParams * writeParams)
+{
+    // This function is a work in progress!
+
+    COLORIST_UNUSED(C);
+
+    if ((writeParams->quality == 0) || (writeParams->quality == 100)) {
+        // Lossless gets the "best"
+        return CL_YUVFORMAT_444;
+    }
+
+    // If you're happy with lossy, let's get lossy!
+    return CL_YUVFORMAT_420;
+}
+
+// ------------------------------------------------------------------------------------------------
 // clContext
 
 static void clConversionParamsSetOutputProfileDefaults(clContext * C, clConversionParams * params)
@@ -277,16 +335,12 @@ static void clConversionParamsSetOutputProfileDefaults(clContext * C, clConversi
 
 void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
 {
-    COLORIST_UNUSED(C);
-
     clConversionParamsSetOutputProfileDefaults(C, params);
     params->bpc = 0;
     params->formatName = NULL;
     params->hald = NULL;
     params->jobs = clTaskLimit();
     params->iccOverrideOut = NULL;
-    params->quality = 90; // ?
-    params->rate = 0;     // Choosing a value here is dangerous as it is heavily impacted by image size
     params->rect[0] = 0;
     params->rect[1] = 0;
     params->rect[2] = -1;
@@ -297,6 +351,16 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->stripTags = NULL;
     params->stats = clFalse;
     params->tonemap = CL_TONEMAP_AUTO;
+    clWriteParamsSetDefaults(C, &params->writeParams);
+}
+
+void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams)
+{
+    COLORIST_UNUSED(C);
+
+    writeParams->quality = CL_DEFAULT_QUALITY;
+    writeParams->rate = CL_DEFAULT_RATE;
+    writeParams->yuvFormat = CL_YUVFORMAT_AUTO;
 }
 
 static void clContextSetDefaultArgs(clContext * C)
@@ -628,7 +692,7 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                     return clFalse;
             } else if (!strcmp(arg, "-q") || !strcmp(arg, "--quality")) {
                 NEXTARG();
-                C->params.quality = atoi(arg);
+                C->params.writeParams.quality = atoi(arg);
             } else if (!strcmp(arg, "--resize")) {
                 NEXTARG();
                 if (!parseResize(C, &C->params, arg))
@@ -643,6 +707,13 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 C->params.tonemap = clTonemapFromString(C, arg);
             } else if (!strcmp(arg, "-v") || !strcmp(arg, "--verbose")) {
                 C->verbose = clTrue;
+            } else if (!strcmp(arg, "--yuv")) {
+                NEXTARG();
+                C->params.writeParams.yuvFormat = clYUVFormatFromString(C, arg);
+                if (C->params.writeParams.yuvFormat == CL_YUVFORMAT_INVALID) {
+                    clContextLogError(C, "Unknown YUV Format: %s", arg);
+                    return clFalse;
+                }
             } else if (!strcmp(arg, "--cmm") || !strcmp(arg, "--cms")) {
                 NEXTARG();
                 if (!strcmp(arg, "auto") || !strcmp(arg, "colorist") || !strcmp(arg, "ccmm")) {
@@ -659,7 +730,7 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                     return clFalse;
             } else if (!strcmp(arg, "-r") || !strcmp(arg, "--rate")) {
                 NEXTARG();
-                C->params.rate = atoi(arg);
+                C->params.writeParams.rate = atoi(arg);
             } else {
                 clContextLogError(C, "unknown parameter: %s", arg);
                 return clFalse;
@@ -822,6 +893,7 @@ void clContextPrintArgs(clContext * C)
     clContextLog(C, "syntax", 1, "stripTags   : %s", C->params.stripTags ? C->params.stripTags : "--");
     clContextLog(C, "syntax", 1, "stats       : %s", C->params.stats ? "true" : "false");
     clContextLog(C, "syntax", 1, "tonemap     : %s", clTonemapToString(C, C->params.tonemap));
+    clContextLog(C, "syntax", 1, "yuvFormat   : %s", clYUVFormatToString(C, C->params.writeParams.yuvFormat));
     clContextLog(C, "syntax", 1, "verbose     : %s", C->verbose ? "enabled" : "disabled");
     clContextLog(C, "syntax", 1, "Allow CCMM  : %s", C->ccmmAllowed ? "enabled" : "disabled");
     clContextLog(C, "syntax", 1, "input       : %s", C->inputFilename ? C->inputFilename : "--");
@@ -871,6 +943,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -q,--quality QUALITY     : Output quality for supported output formats. (default: 90)");
     clContextLog(C, NULL, 0, "    -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)");
     clContextLog(C, NULL, 0, "    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off");
+    clContextLog(C, NULL, 0, "    --yuv YUVFORMAT          : Choose yuv output format for supported formats. auto (default), 444, 422, 420, yv12");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Convert Options:");
     clContextLog(C, NULL, 0, "    --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)");

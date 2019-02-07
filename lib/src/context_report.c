@@ -294,7 +294,9 @@ static clBool addSRGBHighlight(clContext * C, clImage * image, int maxLuminance,
     if (!highlight) {
         return clFalse;
     }
-    pngB64 = clContextWriteURI(C, highlight, "png", 0, 0);
+    clWriteParams writeParams;
+    clWriteParamsSetDefaults(C, &writeParams);
+    pngB64 = clContextWriteURI(C, highlight, "png", &writeParams);
     clImageDestroy(C, highlight);
     if (!pngB64) {
         return clFalse;
@@ -381,7 +383,9 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
             return clFalse;
         }
         clContextLog(C, "encode", 1, "Generating Base64 encoded PNG...");
-        pngB64 = clContextWriteURI(C, visual, "png", 0, 0);
+        clWriteParams writeParams;
+        clWriteParamsSetDefaults(C, &writeParams);
+        pngB64 = clContextWriteURI(C, visual, "png", &writeParams);
         clImageDestroy(C, visual);
         if (!pngB64) {
             return clFalse;

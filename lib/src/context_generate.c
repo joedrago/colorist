@@ -30,6 +30,12 @@ int clContextGenerate(clContext * C, struct cJSON * output)
         action = "calc";
     }
 
+    clWriteParams writeParams;
+    memcpy(&writeParams, &C->params.writeParams, sizeof(writeParams));
+    if (writeParams.yuvFormat == CL_YUVFORMAT_AUTO) {
+        writeParams.yuvFormat = clYUVFormatAutoChoose(C, &writeParams);
+    }
+
     Timer overall;
     timerStart(&overall);
 
@@ -122,9 +128,9 @@ int clContextGenerate(clContext * C, struct cJSON * output)
         }
 
         if (C->outputFilename) {
-            clContextLog(C, action, 0, "Writing Image: %s", C->outputFilename);
+            clContextLogWrite(C, C->outputFilename, C->params.formatName, &writeParams);
             clImageDebugDump(C, image, C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3], 0);
-            if (!clContextWrite(C, image, C->outputFilename, outputFileFormat, C->params.quality, C->params.rate)) {
+            if (!clContextWrite(C, image, C->outputFilename, outputFileFormat, &writeParams)) {
                 clImageDestroy(C, image);
                 clProfileDestroy(C, dstProfile);
                 return 1;

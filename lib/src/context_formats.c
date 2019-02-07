@@ -51,6 +51,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.depth = CL_FORMAT_DEPTH_8_TO_16;
         format.usesQuality = clTrue;
         format.usesRate = clFalse;
+        format.usesYUVFormat = clFalse;
         format.readFunc = clFormatReadAPG;
         format.writeFunc = clFormatWriteAPG;
         clContextRegisterFormat(C, &format);
@@ -64,9 +65,10 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.description = "AVIF";
         format.mimeType = "image/avif";
         format.extensions[0] = "avif";
-        format.depth = CL_FORMAT_DEPTH_8_TO_16;
+        format.depth = CL_FORMAT_DEPTH_8_OR_10_OR_12;
         format.usesQuality = clTrue;
         format.usesRate = clFalse;
+        format.usesYUVFormat = clTrue;
         format.readFunc = clFormatReadAVIF;
         format.writeFunc = clFormatWriteAVIF;
         clContextRegisterFormat(C, &format);
@@ -87,6 +89,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.depth = CL_FORMAT_DEPTH_8_OR_10;
         format.usesQuality = clFalse;
         format.usesRate = clFalse;
+        format.usesYUVFormat = clFalse;
         format.readFunc = clFormatReadBMP;
         format.writeFunc = clFormatWriteBMP;
         clContextRegisterFormat(C, &format);
@@ -108,6 +111,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.depth = CL_FORMAT_DEPTH_8;
         format.usesQuality = clTrue;
         format.usesRate = clFalse;
+        format.usesYUVFormat = clFalse;
         format.readFunc = clFormatReadJPG;
         format.writeFunc = clFormatWriteJPG;
         clContextRegisterFormat(C, &format);
@@ -128,6 +132,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.depth = CL_FORMAT_DEPTH_8_TO_16;
         format.usesQuality = clTrue;
         format.usesRate = clTrue;
+        format.usesYUVFormat = clFalse;
         format.readFunc = clFormatReadJP2;
         format.writeFunc = clFormatWriteJP2;
         clContextRegisterFormat(C, &format);
@@ -148,6 +153,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.depth = CL_FORMAT_DEPTH_8_TO_16;
         format.usesQuality = clTrue;
         format.usesRate = clTrue;
+        format.usesYUVFormat = clFalse;
         format.readFunc = clFormatReadJP2;
         format.writeFunc = clFormatWriteJP2;
         clContextRegisterFormat(C, &format);
@@ -167,6 +173,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.depth = CL_FORMAT_DEPTH_8_OR_16;
         format.usesQuality = clFalse;
         format.usesRate = clFalse;
+        format.usesYUVFormat = clFalse;
         format.readFunc = clFormatReadPNG;
         format.writeFunc = clFormatWritePNG;
         clContextRegisterFormat(C, &format);
@@ -191,6 +198,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.depth = CL_FORMAT_DEPTH_8_OR_16;
         format.usesQuality = clFalse;
         format.usesRate = clFalse;
+        format.usesYUVFormat = clFalse;
         format.readFunc = clFormatReadTIFF;
         format.writeFunc = clFormatWriteTIFF;
         clContextRegisterFormat(C, &format);
@@ -211,6 +219,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.depth = CL_FORMAT_DEPTH_8;
         format.usesQuality = clTrue;
         format.usesRate = clFalse;
+        format.usesYUVFormat = clFalse;
         format.readFunc = clFormatReadWebP;
         format.writeFunc = clFormatWriteWebP;
         clContextRegisterFormat(C, &format);

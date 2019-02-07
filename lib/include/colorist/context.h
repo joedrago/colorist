@@ -38,11 +38,7 @@ typedef enum clAction
 clAction clActionFromString(struct clContext * C, const char * str);
 const char * clActionToString(struct clContext * C, clAction action);
 
-typedef struct clWriteParams
-{
-    int quality;
-    int rate;
-} clWriteParams;
+struct clWriteParams;
 typedef struct clImage * (* clFormatReadFunc)(struct clContext * C, const char * formatName, struct clRaw * input);
 typedef clBool (* clFormatWriteFunc)(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
@@ -50,6 +46,7 @@ typedef enum clFormatDepth
 {
     CL_FORMAT_DEPTH_8 = 0,
     CL_FORMAT_DEPTH_8_OR_10,
+    CL_FORMAT_DEPTH_8_OR_10_OR_12,
     CL_FORMAT_DEPTH_8_OR_16,
     CL_FORMAT_DEPTH_8_TO_16
 } clFormatDepth;
@@ -67,6 +64,7 @@ typedef struct clFormat
     clFormatDepth depth;
     clBool usesQuality;
     clBool usesRate;
+    clBool usesYUVFormat;
     clFormatReadFunc readFunc;
     clFormatWriteFunc writeFunc;
 } clFormat;
@@ -104,6 +102,29 @@ typedef enum clFilter
 clFilter clFilterFromString(struct clContext * C, const char * str);
 const char * clFilterToString(struct clContext * C, clFilter filter);
 
+typedef enum clYUVFormat
+{
+    CL_YUVFORMAT_AUTO,
+    CL_YUVFORMAT_444,
+    CL_YUVFORMAT_422,
+    CL_YUVFORMAT_420,
+    CL_YUVFORMAT_YV12,
+
+    CL_YUVFORMAT_INVALID = -1
+} clYUVFormat;
+
+clYUVFormat clYUVFormatFromString(struct clContext * C, const char * str);
+const char * clYUVFormatToString(struct clContext * C, clYUVFormat format);
+clYUVFormat clYUVFormatAutoChoose(struct clContext * C, struct clWriteParams * writeParams);
+
+typedef struct clWriteParams
+{
+    int quality;
+    int rate;
+    clYUVFormat yuvFormat;
+} clWriteParams;
+void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams);
+
 typedef void *(* clContextAllocFunc)(struct clContext * C, size_t bytes); // C will be NULL when allocating the clContext itself
 typedef void (* clContextFreeFunc)(struct clContext * C, void * ptr);
 typedef void (* clContextLogFunc)(struct clContext * C, const char * section, int indent, const char * format, va_list args);
@@ -136,14 +157,13 @@ typedef struct clConversionParams
     int luminance;               // -l
     const char * iccOverrideOut; // -o
     float primaries[8];          // -p
-    int quality;                 // -q
-    int rate;                    // -r
     int resizeW;                 // --resize
     int resizeH;                 // --resize
     clFilter resizeFilter;       // --resize
     const char * stripTags;      // -s
     clBool stats;                // --stats
     clTonemap tonemap;           // -t
+    clWriteParams writeParams;   // -q, -r, --yuv
     int rect[4];                 // -z
 } clConversionParams;
 
@@ -198,8 +218,9 @@ void clContextPrintArgs(clContext * C);
 clBool clContextParseArgs(clContext * C, int argc, const char * argv[]);
 
 struct clImage * clContextRead(clContext * C, const char * filename, const char * iccOverride, const char ** outFormatName);
-clBool clContextWrite(clContext * C, struct clImage * image, const char * filename, const char * formatName, int quality, int rate);
-char * clContextWriteURI(struct clContext * C, struct clImage * image, const char * formatName, int quality, int rate);
+clBool clContextWrite(clContext * C, struct clImage * image, const char * filename, const char * formatName, clWriteParams * writeParams);
+char * clContextWriteURI(struct clContext * C, struct clImage * image, const char * formatName, clWriteParams * writeParams);
+void clContextLogWrite(clContext * C, const char * filename, const char * formatName, clWriteParams * writeParams);
 
 clBool clContextGetStockPrimaries(struct clContext * C, const char * name, struct clProfilePrimaries * outPrimaries);
 clBool clContextGetRawStockPrimaries(struct clContext * C, const char * name, float outPrimaries[8]);

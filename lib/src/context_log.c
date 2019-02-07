@@ -109,3 +109,33 @@ void clContextLogError(clContext * C, const char * format, ...)
     C->system.error(C, format, args);
     va_end(args);
 }
+
+void clContextLogWrite(clContext * C, const char * filename, const char * formatName, clWriteParams * writeParams)
+{
+    if (!formatName) {
+        formatName = clFormatDetect(C, filename);
+    }
+    clFormat * format = clContextFindFormat(C, formatName);
+
+    char yuvText[128];
+    yuvText[0] = 0;
+    if (format && format->usesYUVFormat) {
+        sprintf(yuvText, " [YUV:%s]", clYUVFormatToString(C, writeParams->yuvFormat));
+    }
+
+    if (format && format->usesRate && format->usesQuality) {
+        if ((writeParams->rate == 0) && (writeParams->quality == 100)) {
+            clContextLog(C, "encode", 0, "Writing %s [Lossless]%s: %s", format->description, yuvText, filename);
+        } else {
+            clContextLog(C, "encode", 0, "Writing %s [%s:%d]%s: %s", format->description, (writeParams->rate) ? "R" : "Q", (writeParams->rate) ? writeParams->rate : writeParams->quality, yuvText, filename);
+        }
+    } else if (format && format->usesQuality) {
+        if (writeParams->quality == 100) {
+            clContextLog(C, "encode", 0, "Writing %s [Lossless]%s: %s", format->description, yuvText, filename);
+        } else {
+            clContextLog(C, "encode", 0, "Writing %s [Q:%d]%s: %s", format->description, writeParams->quality, yuvText, filename);
+        }
+    } else {
+        clContextLog(C, "encode", 0, "Writing %s%s: %s", format->description, yuvText, filename);
+    }
+}

@@ -54,6 +54,9 @@ int clContextConvert(clContext * C)
         clContextLogError(C, "Unknown output file format: %s", C->outputFilename);
         FAIL();
     }
+    if (params.writeParams.yuvFormat == CL_YUVFORMAT_AUTO) {
+        params.writeParams.yuvFormat = clYUVFormatAutoChoose(C, &params.writeParams);
+    }
 
     clContextLog(C, "action", 0, "Convert: %s -> %s", C->inputFilename, C->outputFilename);
     timerStart(&overall);
@@ -337,27 +340,9 @@ int clContextConvert(clContext * C)
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
 
-    {
-        clFormat * format = clContextFindFormat(C, params.formatName);
-        COLORIST_ASSERT(format);
-        if (format->usesRate && format->usesQuality) {
-            if ((params.rate == 0) && (params.quality == 100)) {
-                clContextLog(C, "encode", 0, "Writing %s [Lossless]: %s", format->description, C->outputFilename);
-            } else {
-                clContextLog(C, "encode", 0, "Writing %s [%s:%d]: %s", format->description, (params.rate) ? "R" : "Q", (params.rate) ? params.rate : params.quality, C->outputFilename);
-            }
-        } else if (format->usesQuality) {
-            if (params.quality == 100) {
-                clContextLog(C, "encode", 0, "Writing %s [Lossless]: %s", format->description, C->outputFilename);
-            } else {
-                clContextLog(C, "encode", 0, "Writing %s [Q:%d]: %s", format->description, params.quality, C->outputFilename);
-            }
-        } else {
-            clContextLog(C, "encode", 0, "Writing %s: %s", format->description, C->outputFilename);
-        }
-    }
     timerStart(&t);
-    if (!clContextWrite(C, dstImage, C->outputFilename, params.formatName, params.quality, params.rate)) {
+    clContextLogWrite(C, C->outputFilename, params.formatName, &params.writeParams);
+    if (!clContextWrite(C, dstImage, C->outputFilename, params.formatName, &params.writeParams)) {
         FAIL();
     }
     clContextLog(C, "encode", 1, "Wrote %d bytes.", clFileSize(C->outputFilename));

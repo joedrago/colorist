@@ -53,7 +53,7 @@ struct clImage * clContextRead(clContext * C, const char * filename, const char 
     return image;
 }
 
-clBool clContextWrite(clContext * C, struct clImage * image, const char * filename, const char * formatName, int quality, int rate)
+clBool clContextWrite(clContext * C, struct clImage * image, const char * filename, const char * formatName, clWriteParams * writeParams)
 {
     clBool result = clFalse;
 
@@ -68,13 +68,9 @@ clBool clContextWrite(clContext * C, struct clImage * image, const char * filena
     clFormat * format = clContextFindFormat(C, formatName);
     COLORIST_ASSERT(format);
 
-    clWriteParams writeParams;
-    writeParams.quality = quality;
-    writeParams.rate = rate;
-
     if (format->writeFunc) {
         clRaw output = CL_RAW_EMPTY;
-        if (format->writeFunc(C, image, formatName, &output, &writeParams)) {
+        if (format->writeFunc(C, image, formatName, &output, writeParams)) {
             if (clRawWriteFile(C, &output, filename)) {
                 result = clTrue;
             }
@@ -86,7 +82,7 @@ clBool clContextWrite(clContext * C, struct clImage * image, const char * filena
     return result;
 }
 
-char * clContextWriteURI(struct clContext * C, clImage * image, const char * formatName, int quality, int rate)
+char * clContextWriteURI(struct clContext * C, clImage * image, const char * formatName, clWriteParams * writeParams)
 {
     char * output = NULL;
 
@@ -96,13 +92,9 @@ char * clContextWriteURI(struct clContext * C, clImage * image, const char * for
         return NULL;
     }
 
-    clWriteParams writeParams;
-    writeParams.quality = quality;
-    writeParams.rate = rate;
-
     if (format->writeFunc) {
         clRaw dst = CL_RAW_EMPTY;
-        if (format->writeFunc(C, image, formatName, &dst, &writeParams)) {
+        if (format->writeFunc(C, image, formatName, &dst, writeParams)) {
             char prefix[512];
             size_t prefixLen = sprintf(prefix, "data:%s;base64,", format->mimeType);
 
