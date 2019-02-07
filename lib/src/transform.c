@@ -14,11 +14,9 @@
 // this close.)
 #define AUTO_TONEMAP_LUMINANCE_SCALE_THRESHOLD (1.001f)
 
-#define SRC_8_HAS_ALPHA() (srcPixelBytes > 3)
 #define SRC_16_HAS_ALPHA() (srcPixelBytes > 7)
 #define SRC_FLOAT_HAS_ALPHA() (srcPixelBytes > 15)
 
-#define DST_8_HAS_ALPHA() (dstPixelBytes > 3)
 #define DST_16_HAS_ALPHA() (dstPixelBytes > 7)
 #define DST_FLOAT_HAS_ALPHA() (dstPixelBytes > 15)
 
