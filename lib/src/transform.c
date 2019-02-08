@@ -621,8 +621,8 @@ static void clCCMMTransform(struct clContext * C, struct clTransform * transform
     int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat, srcDepth);
     int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat, dstDepth);
 
-    COLORIST_ASSERT(!transform->srcProfile || transform->srcProfile->ccmm);
-    COLORIST_ASSERT(!transform->dstProfile || transform->dstProfile->ccmm);
+    // COLORIST_ASSERT(!transform->srcProfile || transform->srcProfile->ccmm);
+    // COLORIST_ASSERT(!transform->dstProfile || transform->dstProfile->ccmm);
 
     // After this point, find a single valid return point from this function, or die
 
