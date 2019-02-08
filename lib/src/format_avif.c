@@ -38,15 +38,13 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
         goto readCleanup;
     }
 
-#if 0
-    if (... icc ...) {
-        profile = clProfileParse(C, avif->icc, avif->iccSize, NULL);
+    if (avif->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
+        profile = clProfileParse(C, avif->icc.data, avif->icc.size, NULL);
         if (!profile) {
             clContextLogError(C, "Failed parse ICC profile chunk");
             goto readCleanup;
         }
     }
-#endif
 
     image = clImageCreate(C, avif->width, avif->height, avif->depth, profile);
 
@@ -98,14 +96,12 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
     clBool writeResult = clTrue;
     avifImage * avif = NULL;
 
-#if 0
     clRaw rawProfile = CL_RAW_EMPTY;
     if (!clProfilePack(C, image->profile, &rawProfile)) {
         clContextLogError(C, "Failed to create ICC profile");
         writeResult = clFalse;
         goto writeCleanup;
     }
-#endif
 
     avifPixelFormat avifYUVFormat;
     switch (writeParams->yuvFormat) {
@@ -122,6 +118,7 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
     }
 
     avif = avifImageCreate(image->width, image->height, image->depth, avifYUVFormat);
+    avifImageSetProfileICC(avif, rawProfile.ptr, rawProfile.size);
     avifImageAllocatePlanes(avif, AVIF_PLANES_RGB | AVIF_PLANES_A);
     avifRawData avifOutput = AVIF_RAW_DATA_EMPTY;
 
@@ -165,7 +162,6 @@ writeCleanup:
         avifImageDestroy(avif);
     }
     avifRawDataFree(&avifOutput);
-    // clRawFree(C, &rawProfile);
-
+    clRawFree(C, &rawProfile);
     return writeResult;
 }
