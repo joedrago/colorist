@@ -26,17 +26,32 @@
 #define MAX_ITEMS 8
 #define MAX_PROPERTIES 24
 
+// ---------------------------------------------------------------------------
+// Box data structures
+
+// ftyp
+typedef struct avifFileType
+{
+    uint8_t majorBrand[4];
+    uint32_t minorVersion;
+    uint8_t compatibleBrands[4 * MAX_COMPATIBLE_BRANDS];
+    int compatibleBrandsCount;
+} avifFileType;
+
+// ispe
 typedef struct avifImageSpatialExtents
 {
     uint32_t width;
     uint32_t height;
 } avifImageSpatialExtents;
 
+// auxC
 typedef struct avifAuxiliaryType
 {
     char auxType[AUXTYPE_SIZE];
 } avifAuxiliaryType;
 
+// colr
 typedef struct avifColourInformationBox
 {
     avifProfileFormat format;
@@ -44,6 +59,10 @@ typedef struct avifColourInformationBox
     size_t iccSize;
 } avifColourInformationBox;
 
+// ---------------------------------------------------------------------------
+// Top-level structures
+
+// one "item" worth (all iref, iloc, iprp, etc refer to one of these)
 typedef struct avifItem
 {
     int id;
@@ -60,6 +79,7 @@ typedef struct avifItem
     int auxForID;       // if non-zero, this item is an auxC plane for Item #{auxForID}
 } avifItem;
 
+// Temporary storage for ipco contents until they can be associated and memcpy'd to an avifItem
 typedef struct avifProperty
 {
     uint8_t type[4];
@@ -67,14 +87,6 @@ typedef struct avifProperty
     avifAuxiliaryType auxC;
     avifColourInformationBox colr;
 } avifProperty;
-
-typedef struct avifFileType
-{
-    uint8_t majorBrand[4];
-    uint32_t minorVersion;
-    uint8_t compatibleBrands[4 * MAX_COMPATIBLE_BRANDS];
-    int compatibleBrandsCount;
-} avifFileType;
 
 typedef struct avifData
 {
@@ -130,7 +142,6 @@ static avifBool avifParseItemLocationBox(avifData * data, uint8_t * raw, size_t 
 {
     BEGIN_STREAM(s, raw, rawLen);
 
-    avifBoxHeader header;
     CHECK(avifStreamReadAndEnforceVersion(&s, 0));
 
     uint8_t offsetSizeAndLengthSize;
@@ -179,7 +190,6 @@ static avifBool avifParseImageSpatialExtentsProperty(avifData * data, uint8_t * 
     BEGIN_STREAM(s, raw, rawLen);
     CHECK(avifStreamReadAndEnforceVersion(&s, 0));
 
-    uint32_t width, height;
     CHECK(avifStreamReadU32(&s, &data->properties[propertyIndex].ispe.width));
     CHECK(avifStreamReadU32(&s, &data->properties[propertyIndex].ispe.height));
     return AVIF_TRUE;
@@ -380,7 +390,7 @@ static avifBool avifParseItemInfoBox(avifData * data, uint8_t * raw, size_t rawL
         return AVIF_FALSE;
     }
 
-    for (int entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
+    for (uint32_t entryIndex = 0; entryIndex < entryCount; ++entryIndex) {
         avifBoxHeader infeHeader;
         CHECK(avifStreamReadBoxHeader(&s, &infeHeader));
 
@@ -496,7 +506,7 @@ static avifBool avifParseFileTypeBox(avifData * data, uint8_t * raw, size_t rawL
         compatibleBrandsBytes = (4 * MAX_COMPATIBLE_BRANDS);
     }
     CHECK(avifStreamRead(&s, data->ftyp.compatibleBrands, compatibleBrandsBytes));
-    data->ftyp.compatibleBrandsCount = compatibleBrandsBytes / 4;
+    data->ftyp.compatibleBrandsCount = (int)compatibleBrandsBytes / 4;
 
     return AVIF_TRUE;
 }

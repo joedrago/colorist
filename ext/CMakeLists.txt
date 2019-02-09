@@ -148,7 +148,9 @@ add_library(jpeg
     jpeg/wrtarga.c
 )
 
+set(AVIF_EXTERNAL_GB TRUE)
 add_subdirectory(avif)
+
 set(APG_EXTERNAL_AOM TRUE)
 include_directories(
     "${CMAKE_CURRENT_SOURCE_DIR}/avif/ext/aom"
