@@ -628,6 +628,10 @@ clBool clProfilePrimariesMatch(struct clContext * C, clProfilePrimaries * p1, cl
 char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance)
 {
     char * tmp = clAllocate(1024);
-    sprintf(tmp, "Colorist P%g %gg %dnits", primaries->red[0], curve->gamma, maxLuminance);
+    if (curve->type == CL_PCT_PQ) {
+        sprintf(tmp, "Colorist P%g PQ %dnits", primaries->red[0], maxLuminance);
+    } else {
+        sprintf(tmp, "Colorist P%g %gg %dnits", primaries->red[0], curve->gamma, maxLuminance);
+    }
     return tmp;
 }
