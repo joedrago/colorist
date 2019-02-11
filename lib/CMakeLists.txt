@@ -40,6 +40,7 @@ set(COLORIST_LIB_INCLUDES
     include/colorist/version.h
     include/colorist/embedded.h
     ${CMAKE_CURRENT_BINARY_DIR}/reportTemplateBinary.h
+    ${CMAKE_CURRENT_BINARY_DIR}/pqCurveBinary.h
 )
 
 if(COLORIST_EMSCRIPTEN)
@@ -51,6 +52,7 @@ if(COLORIST_EMSCRIPTEN)
   endif()
 else()
   generate_headers(templates/reportTemplate.html)
+  generate_headers(raw/pqCurve.bin)
 endif()
 
 set(COLORIST_LIB_SRCS

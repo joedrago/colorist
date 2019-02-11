@@ -94,12 +94,14 @@ static clBool derivePrimariesAndXTF(struct clContext * C, struct clProfile * pro
         clProfileCurve curve;
         int luminance = 0;
 
-        if (clProfileHasPQSignature(C, profile, outPrimaries)) {
-            *outXTF = CL_XTF_PQ;
-            *outGamma = 0.0f;
-        } else if (clProfileQuery(C, profile, outPrimaries, &curve, &luminance)) {
-            *outXTF = CL_XTF_GAMMA;
-            *outGamma = curve.gamma;
+        if (clProfileQuery(C, profile, outPrimaries, &curve, &luminance)) {
+            if (curve.type == CL_PCT_PQ) {
+                *outXTF = CL_XTF_PQ;
+                *outGamma = 0.0f;
+            } else {
+                *outXTF = CL_XTF_GAMMA;
+                *outGamma = curve.gamma;
+            }
         } else {
             clContextLogError(C, "deriveXYZMatrix: fatal error querying profile");
             return clFalse;

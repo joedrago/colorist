@@ -7,6 +7,7 @@
 
 #include "colorist/profile.h"
 
+#include "colorist/embedded.h"
 #include "colorist/context.h"
 #include "colorist/pixelmath.h"
 #include "colorist/raw.h"
@@ -100,7 +101,7 @@ clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, size_t icc
             profile->ccmm = clTrue;
         } else if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
             // TODO: Be way more restrictive here
-            if (curve.type == CL_PCT_GAMMA) {
+            if ((curve.type == CL_PCT_GAMMA) || (curve.type == CL_PCT_PQ)) {
                 profile->ccmm = clTrue;
             }
         }
@@ -112,6 +113,7 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
 {
     clProfile * profile = clAllocateStruct(clProfile);
     cmsToneCurve * curves[3];
+    cmsToneCurve ** curvesPtr = NULL;
     cmsCIExyYTRIPLE dstPrimaries;
     cmsCIExyY dstWhitePoint;
     cmsCIEXYZ lumi;
@@ -129,14 +131,27 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
     dstWhitePoint.y = primaries->white[1];
     dstWhitePoint.Y = 1.0f;
 
-    curves[0] = cmsBuildGamma(C->lcms, curve->gamma);
-    curves[1] = curves[0];
-    curves[2] = curves[0];
-    profile->handle = cmsCreateRGBProfileTHR(C->lcms, &dstWhitePoint, &dstPrimaries, curves);
-    cmsFreeToneCurve(curves[0]);
+    if (curve->type == CL_PCT_PQ) {
+        curvesPtr = NULL;
+    } else {
+        curves[0] = cmsBuildGamma(C->lcms, curve->gamma);
+        curves[1] = curves[0];
+        curves[2] = curves[0];
+        curvesPtr = curves;
+    }
+
+    profile->handle = cmsCreateRGBProfileTHR(C->lcms, &dstWhitePoint, &dstPrimaries, curvesPtr);
+    if (curvesPtr) {
+        cmsFreeToneCurve(curves[0]);
+    }
     if (!profile->handle) {
         clFree(profile);
         return NULL;
+    }
+    if (curve->type == CL_PCT_PQ) {
+        cmsWriteRawTag(profile->handle, cmsSigRedTRCTag, pqCurveBinaryData, pqCurveBinarySize);
+        cmsLinkTag(profile->handle, cmsSigGreenTRCTag, cmsSigRedTRCTag);
+        cmsLinkTag(profile->handle, cmsSigBlueTRCTag, cmsSigRedTRCTag);
     }
 
     lumi.X = 0.0f;
@@ -383,19 +398,24 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
     }
 
     if (curve) {
-        cmsToneCurve * toneCurve = (cmsToneCurve *)cmsReadTag(profile->handle, cmsSigRedTRCTag);
-        if (toneCurve) {
-            int curveType = cmsGetToneCurveParametricType(toneCurve);
-            float gamma = (float)cmsEstimateGamma(toneCurve, 1.0f);
-            curve->type = (curveType == 1) ? CL_PCT_GAMMA : CL_PCT_COMPLEX;
-            curve->gamma = gamma;
+        if (clProfileHasPQSignature(C, profile, NULL) || clProfileCurveHasPQSignature(C, profile)) {
+            curve->type = CL_PCT_PQ;
+            curve->gamma = 1.0f;
         } else {
-            if (cmsReadRawTag(profile->handle, cmsSigAToB0Tag, NULL, 0) > 0) {
-                curve->type = CL_PCT_COMPLEX;
-                curve->gamma = -1.0f;
+            cmsToneCurve * toneCurve = (cmsToneCurve *)cmsReadTag(profile->handle, cmsSigRedTRCTag);
+            if (toneCurve) {
+                int curveType = cmsGetToneCurveParametricType(toneCurve);
+                float gamma = (float)cmsEstimateGamma(toneCurve, 1.0f);
+                curve->type = (curveType == 1) ? CL_PCT_GAMMA : CL_PCT_COMPLEX;
+                curve->gamma = gamma;
             } else {
-                curve->type = CL_PCT_UNKNOWN;
-                curve->gamma = 0.0f;
+                if (cmsReadRawTag(profile->handle, cmsSigAToB0Tag, NULL, 0) > 0) {
+                    curve->type = CL_PCT_COMPLEX;
+                    curve->gamma = -1.0f;
+                } else {
+                    curve->type = CL_PCT_UNKNOWN;
+                    curve->gamma = 0.0f;
+                }
             }
         }
 

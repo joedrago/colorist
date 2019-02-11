@@ -28,6 +28,7 @@ typedef enum clProfileCurveType
 {
     CL_PCT_UNKNOWN = 0,
     CL_PCT_GAMMA,
+    CL_PCT_PQ,
     CL_PCT_COMPLEX
 } clProfileCurveType;
 
@@ -61,6 +62,7 @@ clBool clProfileReload(struct clContext * C, clProfile * profile);
 clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * filename);
 clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries, clProfileCurve * curve, int * luminance);
 clBool clProfileHasPQSignature(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries);
+clBool clProfileCurveHasPQSignature(struct clContext * C, clProfile * profile);
 char * clProfileGetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3]);
 clBool clProfileSetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3], const char * ascii);
 clBool clProfilePack(struct clContext * C, clProfile * profile, struct clRaw * out);

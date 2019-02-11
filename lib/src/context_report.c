@@ -419,6 +419,9 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
         curve.gamma = 0.0f;
         maxLuminance = 10000;
         cJSON_AddItemToObject(jsonICC, "pq", cJSON_CreateBool(clTrue));
+    } else if (curve.type == CL_PCT_PQ) {
+        curve.gamma = 0.0f;
+        cJSON_AddItemToObject(jsonICC, "pq", cJSON_CreateBool(clTrue));
     } else {
         // Check for profiles that we can't make valid reports for
         if (curve.type != CL_PCT_GAMMA) {

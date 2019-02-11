@@ -130,7 +130,7 @@ int clContextConvert(clContext * C)
     srcInfo.depth = srcImage->depth;
     clProfileQuery(C, srcImage->profile, &srcInfo.primaries, &srcInfo.curve, &srcInfo.luminance);
     srcInfo.luminance = (srcInfo.luminance != 0) ? srcInfo.luminance : COLORIST_DEFAULT_LUMINANCE;
-    if ((srcInfo.curve.type != CL_PCT_GAMMA) && (srcInfo.curve.gamma > 0.0f)) {
+    if ((srcInfo.curve.type == CL_PCT_COMPLEX) && (srcInfo.curve.gamma > 0.0f)) {
         clContextLog(C, "info", 0, "Estimated source gamma: %g", srcInfo.curve.gamma);
     }
 
@@ -159,7 +159,7 @@ int clContextConvert(clContext * C)
 
         clProfileQuery(C, dstProfile, &dstInfo.primaries, &dstInfo.curve, &dstInfo.luminance);
         dstInfo.luminance = (dstInfo.luminance != 0) ? dstInfo.luminance : COLORIST_DEFAULT_LUMINANCE;
-        if ((dstInfo.curve.type != CL_PCT_GAMMA) && (dstInfo.curve.gamma > 0.0f)) {
+        if ((dstInfo.curve.type == CL_PCT_COMPLEX) && (dstInfo.curve.gamma > 0.0f)) {
             clContextLog(C, "info", 0, "Estimated dst gamma: %g", dstInfo.curve.gamma);
         }
 

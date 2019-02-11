@@ -8,6 +8,9 @@
 #include "colorist/profile.h"
 
 #include "colorist/context.h"
+#include "colorist/embedded.h"
+
+#include "md5.h"
 
 #include <string.h>
 
@@ -23,6 +26,8 @@ static struct PQProfile pqProfiles_[] = {
 };
 static const int pqProfileCount = sizeof(pqProfiles_) / sizeof(pqProfiles_[0]);
 
+static struct PQProfile sentinelPQCurve_ = { { 0x40, 0xb8, 0xbe, 0x41, 0x32, 0xd9, 0x58, 0x33, 0x1c, 0xaa, 0xc1, 0x20, 0x4c, 0x72, 0xdc, 0xae } }; // pqCurve.bin
+
 clBool clProfileHasPQSignature(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries)
 {
     for (int i = 0; i < pqProfileCount; ++i) {
@@ -31,6 +36,27 @@ clBool clProfileHasPQSignature(struct clContext * C, clProfile * profile, clProf
             if (primaries) {
                 clProfileQuery(C, profile, primaries, NULL, NULL);
             }
+            return clTrue;
+        }
+    }
+    return clFalse;
+}
+
+clBool clProfileCurveHasPQSignature(struct clContext * C, clProfile * profile)
+{
+    if (cmsReadRawTag(profile->handle, cmsSigRedTRCTag, NULL, 0) == (int)pqCurveBinarySize) {
+        uint8_t curveSignature[16];
+        uint8_t * rawCurve = clAllocate(pqCurveBinarySize);
+        cmsReadRawTag(profile->handle, cmsSigRedTRCTag, rawCurve, pqCurveBinarySize);
+
+        MD5_CTX ctx;
+        MD5_Init(&ctx);
+        MD5_Update(&ctx, rawCurve, (unsigned long)pqCurveBinarySize);
+        MD5_Final(curveSignature, &ctx);
+
+        clFree(rawCurve);
+
+        if (!memcmp(sentinelPQCurve_.signature, curveSignature, 16)) {
             return clTrue;
         }
     }

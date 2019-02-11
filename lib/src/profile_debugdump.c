@@ -18,6 +18,7 @@ static const char * curveTypeToString(clProfileCurveType curveType)
 {
     switch (curveType) {
         case CL_PCT_GAMMA:   return "gamma";
+        case CL_PCT_PQ:      return "pq";
         case CL_PCT_COMPLEX: return "complex";
         case CL_PCT_UNKNOWN:
         default:
@@ -48,7 +49,11 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
             primaries.blue[0], primaries.blue[1],
             primaries.white[0], primaries.white[1]);
         clContextLog(C, "profile", 1 + extraIndent, "Max Luminance: %d", luminance);
-        clContextLog(C, "profile", 1 + extraIndent, "Curve: %s(%.3g)", curveTypeToString(curve.type), curve.gamma);
+        if (curve.type == CL_PCT_PQ) {
+            clContextLog(C, "profile", 1 + extraIndent, "Curve: PQ");
+        } else {
+            clContextLog(C, "profile", 1 + extraIndent, "Curve: %s(%.3g)", curveTypeToString(curve.type), curve.gamma);
+        }
         if (!clPixelMathEqualsf(curve.implicitScale, 1.0f)) {
             clContextLog(C, "profile", 1 + extraIndent, "Implicit matrix curve scale: %g", curve.implicitScale);
             clContextLog(C, "profile", 1 + extraIndent, "Actual max luminance: %g", luminance * curve.implicitScale);
@@ -58,15 +63,6 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
         uint8_t * s = profile->signature;
         clContextLog(C, "profile", 1 + extraIndent, "MD5: %x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x",
             s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[10], s[11], s[12], s[13], s[14], s[15]);
-
-        clProfilePrimaries pqPrimaries;
-        if (clProfileHasPQSignature(C, profile, &pqPrimaries)) {
-            clContextLog(C, "profile", 1 + extraIndent, "PQ: (r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g)",
-                primaries.red[0], primaries.red[1],
-                primaries.green[0], primaries.green[1],
-                primaries.blue[0], primaries.blue[1],
-                primaries.white[0], primaries.white[1]);
-        }
 
         if (dumpTags) {
             // Dump tags
@@ -129,24 +125,6 @@ void clProfileDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clP
         cJSON_AddNumberToObject(jsonCurve, "implicitScale", curve.implicitScale);
         cJSON_AddNumberToObject(jsonOutput, "actualLuminance", luminance * curve.implicitScale);
         cJSON_AddBoolToObject(jsonOutput, "ccmm", profile->ccmm);
-        {
-            clProfilePrimaries pqPrimaries;
-            if (clProfileHasPQSignature(C, profile, &pqPrimaries)) {
-                jsonPrimaries = cJSON_AddObjectToObject(jsonOutput, "pq");
-                jsonPrimary = cJSON_AddObjectToObject(jsonPrimaries, "red");
-                cJSON_AddNumberToObject(jsonPrimary, "x", pqPrimaries.red[0]);
-                cJSON_AddNumberToObject(jsonPrimary, "y", pqPrimaries.red[1]);
-                jsonPrimary = cJSON_AddObjectToObject(jsonPrimaries, "green");
-                cJSON_AddNumberToObject(jsonPrimary, "x", pqPrimaries.green[0]);
-                cJSON_AddNumberToObject(jsonPrimary, "y", pqPrimaries.green[1]);
-                jsonPrimary = cJSON_AddObjectToObject(jsonPrimaries, "blue");
-                cJSON_AddNumberToObject(jsonPrimary, "x", pqPrimaries.blue[0]);
-                cJSON_AddNumberToObject(jsonPrimary, "y", pqPrimaries.blue[1]);
-                jsonPrimary = cJSON_AddObjectToObject(jsonPrimaries, "white");
-                cJSON_AddNumberToObject(jsonPrimary, "x", pqPrimaries.white[0]);
-                cJSON_AddNumberToObject(jsonPrimary, "y", pqPrimaries.white[1]);
-            }
-        }
 
         if (dumpTags) {
             cJSON * jsonTags = cJSON_AddArrayToObject(jsonOutput, "tags");

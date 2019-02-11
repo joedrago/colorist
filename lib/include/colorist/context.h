@@ -151,6 +151,7 @@ typedef struct clConversionParams
     const char * copyright;      // -c
     const char * description;    // -d
     const char * formatName;     // -f
+    uint32_t curveType;          // -g
     float gamma;                 // -g
     const char * hald;           // --hald
     int jobs;                    // -j

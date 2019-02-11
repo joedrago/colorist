@@ -328,6 +328,7 @@ static void clConversionParamsSetOutputProfileDefaults(clContext * C, clConversi
     params->autoGrade = clFalse;
     params->copyright = NULL;
     params->description = NULL;
+    params->curveType = CL_PCT_GAMMA;
     params->gamma = 0;
     params->luminance = 0;
     memset(params->primaries, 0, sizeof(float) * 8);
@@ -656,9 +657,14 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 }
             } else if (!strcmp(arg, "-g") || !strcmp(arg, "--gamma")) {
                 NEXTARG();
-                if (arg[0] == 's') {
+                if (!strcmp(arg, "pq")) {
+                    C->params.curveType = CL_PCT_PQ;
+                    C->params.gamma = 1.0f;
+                } else if (arg[0] == 's') {
+                    C->params.curveType = CL_PCT_GAMMA;
                     C->params.gamma = -1.0f; // Use source gamma
                 } else {
+                    C->params.curveType = CL_PCT_GAMMA;
                     C->params.gamma = (float)strtod(arg, NULL);
                 }
             } else if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
@@ -863,10 +869,15 @@ void clContextPrintArgs(clContext * C)
     clContextLog(C, "syntax", 1, "format      : %s", C->params.formatName ? C->params.formatName : "auto");
     if (C->params.gamma < 0.0f) {
         clContextLog(C, "syntax", 1, "gamma       : source gamma (forced)");
-    } else if (C->params.gamma > 0.0f)
-        clContextLog(C, "syntax", 1, "gamma       : %g", C->params.gamma);
-    else
+    } else if (C->params.gamma > 0.0f) {
+        if (C->params.curveType == CL_PCT_PQ) {
+            clContextLog(C, "syntax", 1, "gamma       : PQ");
+        } else {
+            clContextLog(C, "syntax", 1, "gamma       : %g", C->params.gamma);
+        }
+    } else {
         clContextLog(C, "syntax", 1, "gamma       : auto");
+    }
     clContextLog(C, "syntax", 1, "hald clut   : %s", C->params.hald ? C->params.hald : "--");
     clContextLog(C, "syntax", 1, "help        : %s", C->help ? "enabled" : "disabled");
     clContextLog(C, "syntax", 1, "ICC in      : %s", C->iccOverrideIn ? C->iccOverrideIn : "--");
@@ -933,7 +944,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -a,--autograde           : Enable automatic color grading of max luminance and gamma (disabled by default)");
     clContextLog(C, NULL, 0, "    -c,--copyright COPYRIGHT : ICC profile copyright string.");
     clContextLog(C, NULL, 0, "    -d,--description DESC    : ICC profile description.");
-    clContextLog(C, NULL, 0, "    -g,--gamma GAMMA         : Output gamma. 0 for auto (default), or \"source\" to force source gamma");
+    clContextLog(C, NULL, 0, "    -g,--gamma GAMMA         : Output gamma. 0 for auto (default), \"pq\" for PQ, or \"source\" to force source gamma");
     clContextLog(C, NULL, 0, "    -l,--luminance LUMINANCE : ICC profile max luminance. 0 for auto (default), or \"source\" to force source luminance");
     clContextLog(C, NULL, 0, "    -p,--primaries PRIMARIES : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy");
     clContextLog(C, NULL, 0, "");
