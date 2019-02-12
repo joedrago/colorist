@@ -37,7 +37,7 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
     avifImage * avif = avifImageCreateEmpty();
     avifResult decodeResult = avifImageRead(avif, &raw);
     if ((decodeResult != AVIF_RESULT_OK) || !avif->width || !avif->height) {
-        clContextLogError(C, "Failed to decode AVIF (%d)", (int)decodeResult);
+        clContextLogError(C, "Failed to decode AVIF (%s)", avifResultToString(decodeResult));
         goto readCleanup;
     }
 
@@ -159,7 +159,7 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
 
     avifResult encodeResult = avifImageWrite(avif, &avifOutput, rescaledQuality);
     if (encodeResult != AVIF_RESULT_OK) {
-        clContextLogError(C, "AVIF encoder failed: Error Code: %d", (int)encodeResult);
+        clContextLogError(C, "AVIF encoder failed (%s)", avifResultToString(encodeResult));
         writeResult = clFalse;
         goto writeCleanup;
     }
