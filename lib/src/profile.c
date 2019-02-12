@@ -21,6 +21,21 @@
 // from cmsio1.c
 extern cmsBool _cmsReadCHAD(cmsMAT3 * Dest, cmsHPROFILE hProfile);
 
+const char * clProfileCurveTypeToString(struct clContext * C, clProfileCurveType curveType)
+{
+    COLORIST_UNUSED(C);
+
+    switch (curveType) {
+        case CL_PCT_GAMMA:   return "Gamma";
+        case CL_PCT_PQ:      return "PQ";
+        case CL_PCT_COMPLEX: return "Complex";
+        case CL_PCT_UNKNOWN:
+        default:
+            break;
+    }
+    return "Unknown";
+}
+
 clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock)
 {
     clProfilePrimaries primaries;
@@ -604,9 +619,7 @@ const char * clProfileCMMName(struct clContext * C, clProfile * profile)
 
 static clBool matchesTo3RoundedPlaces(float a, float b)
 {
-    float fa = clPixelMathRoundf((a + 0.0005f) * 1000.0f) / 1000.0f;
-    float fb = clPixelMathRoundf((b + 0.0005f) * 1000.0f) / 1000.0f;
-    return (fabsf(fa - fb) < 0.0001f) ? clTrue : clFalse;
+    return (fabsf(a - b) < 0.001f) ? clTrue : clFalse;
 }
 
 // Due to floating point imprecision and LittleCMS primaries roundtripping, these can sometimes be ever so slightly off.

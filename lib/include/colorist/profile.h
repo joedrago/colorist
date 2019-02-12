@@ -31,6 +31,7 @@ typedef enum clProfileCurveType
     CL_PCT_PQ,
     CL_PCT_COMPLEX
 } clProfileCurveType;
+const char * clProfileCurveTypeToString(struct clContext * C, clProfileCurveType curveType);
 
 typedef struct clProfileCurve
 {

@@ -15,6 +15,9 @@
 
 #include <string.h>
 
+static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * nclx);
+static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, avifNclxColorProfile * nclx);
+
 struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clRaw * input);
 clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
@@ -38,7 +41,9 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
         goto readCleanup;
     }
 
-    if (avif->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
+    if (avif->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
+        profile = nclxToclProfile(C, &avif->nclx);
+    } else if (avif->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
         profile = clProfileParse(C, avif->icc.data, avif->icc.size, NULL);
         if (!profile) {
             clContextLogError(C, "Failed parse ICC profile chunk");
@@ -118,7 +123,17 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
     }
 
     avif = avifImageCreate(image->width, image->height, image->depth, avifYUVFormat);
-    avifImageSetProfileICC(avif, rawProfile.ptr, rawProfile.size);
+
+    avifNclxColorProfile nclx;
+    if (clProfileToNclx(C, image->profile, &nclx)) {
+        clContextLog(C, "avif", 1, "Writing colr box (nclx): C: %d / T: %d / M: %d / F: 0x%x",
+            nclx.colourPrimaries, nclx.transferCharacteristics, nclx.matrixCoefficients, nclx.fullRangeFlag);
+        avifImageSetProfileNCLX(avif, &nclx);
+    } else {
+        clContextLog(C, "avif", 1, "Writing colr box (icc): %u bytes", (uint32_t)rawProfile.size);
+        avifImageSetProfileICC(avif, rawProfile.ptr, rawProfile.size);
+    }
+
     avifImageAllocatePlanes(avif, AVIF_PLANES_RGB | AVIF_PLANES_A);
     avifRawData avifOutput = AVIF_RAW_DATA_EMPTY;
 
@@ -164,4 +179,93 @@ writeCleanup:
     avifRawDataFree(&avifOutput);
     clRawFree(C, &rawProfile);
     return writeResult;
+}
+
+static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * nclx)
+{
+    COLORIST_UNUSED(nclx);
+
+    clProfilePrimaries primaries;
+    clProfileCurve curve;
+    int maxLuminance;
+
+    // Defaults
+    clContextGetStockPrimaries(C, "bt709", &primaries);
+    curve.type = CL_PCT_GAMMA;
+    curve.gamma = 2.2f;
+    curve.implicitScale = 1.0f;
+    maxLuminance = COLORIST_DEFAULT_LUMINANCE;
+
+    float prim[8];
+    avifNclxColourPrimariesGetValues(nclx->colourPrimaries, prim);
+    primaries.red[0] = prim[0];
+    primaries.red[1] = prim[1];
+    primaries.green[0] = prim[2];
+    primaries.green[1] = prim[3];
+    primaries.blue[0] = prim[4];
+    primaries.blue[1] = prim[5];
+    primaries.white[0] = prim[6];
+    primaries.white[1] = prim[7];
+
+    switch (nclx->transferCharacteristics) {
+        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_PQ:
+            curve.type = CL_PCT_PQ;
+            curve.gamma = 1.0f;
+            maxLuminance = 10000;
+            break;
+        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_GAMMA22:
+            curve.type = CL_PCT_GAMMA;
+            curve.gamma = 2.2f;
+            break;
+        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_GAMMA28:
+            curve.type = CL_PCT_GAMMA;
+            curve.gamma = 2.8f;
+            break;
+        default:
+            clContextLog(C, "avif", 1, "WARNING: Unsupported colr (nclx) transfer_characteristics %d, using gamma:%1.1f, lum:%d", nclx->colourPrimaries, curve.gamma, maxLuminance);
+            break;
+    }
+
+    char gammaString[64];
+    if (curve.type == CL_PCT_PQ) {
+        gammaString[0] = 0;
+    } else {
+        sprintf(gammaString, "(%.2g)", curve.gamma);
+    }
+
+    clContextLog(C, "avif", 1, "nclx to ICC: Primaries: (r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g), Curve: %s%s, maxLum: %d",
+        primaries.red[0], primaries.red[1], primaries.green[0], primaries.green[1], primaries.blue[0], primaries.blue[1], primaries.white[0], primaries.white[1],
+        clProfileCurveTypeToString(C, curve.type), gammaString, maxLuminance);
+
+    char * description = clGenerateDescription(C, &primaries, &curve, maxLuminance);
+    clProfile * profile = clProfileCreate(C, &primaries, &curve, maxLuminance, description);
+    clFree(description);
+    return profile;
+}
+
+static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, avifNclxColorProfile * nclx)
+{
+    clProfilePrimaries bt2020;
+    if (!clContextGetStockPrimaries(C, "bt2020", &bt2020)) {
+        return clFalse;
+
+    }
+
+    clProfilePrimaries primaries;
+    clProfileCurve curve;
+    int luminance = 0;
+    if (!clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
+        return clFalse;
+    }
+
+    if (clProfilePrimariesMatch(C, &primaries, &bt2020) && (curve.type == CL_PCT_PQ) && (luminance == 10000)) {
+        // BT.2100: HDR10
+        nclx->colourPrimaries = AVIF_NCLX_COLOUR_PRIMARIES_BT2100;
+        nclx->transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_PQ;
+        nclx->matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2100;
+        nclx->fullRangeFlag = AVIF_NCLX_FULL_RANGE;
+        clContextLog(C, "avif", 1, "HDR10 color profile detected; switching to nclx colr box.");
+        return clTrue;
+    }
+    return clFalse;
 }
