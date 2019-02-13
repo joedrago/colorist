@@ -719,7 +719,7 @@ clImage * clImageParseString(struct clContext * C, const char * str, int depth, 
             int y;
             for (y = 0; y < stripe->image->height; ++y) {
                 memcpy(pixelPos, &stripe->image->pixels[CL_CHANNELS_PER_PIXEL * y * stripe->image->width], CL_BYTES_PER_PIXEL * stripe->image->width);
-                pixelPos += CL_BYTES_PER_PIXEL * image->width;
+                pixelPos += CL_CHANNELS_PER_PIXEL * image->width;
             }
         }
     } else {
