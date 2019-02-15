@@ -157,7 +157,7 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
 
     int rescaledQuality = 63 - (int)(((float)writeParams->quality / 100.0f) * 63.0f);
 
-    avifResult encodeResult = avifImageWrite(avif, &avifOutput, rescaledQuality);
+    avifResult encodeResult = avifImageWrite(avif, &avifOutput, C->params.jobs, rescaledQuality);
     if (encodeResult != AVIF_RESULT_OK) {
         clContextLogError(C, "AVIF encoder failed (%s)", avifResultToString(encodeResult));
         writeResult = clFalse;
