@@ -197,6 +197,12 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
         goto readCleanup;
     }
 
+    if (info.bV5Height < 0) {
+        info.bV5Height *= -1;
+    } else {
+        clContextLogError(C, "Colorist currently only supports top-down BMPs, image will appear upside down!");
+    }
+
     pixelCount = info.bV5Width * info.bV5Height;
     packedPixelBytes = sizeof(uint32_t) * pixelCount;
     packedPixels = clAllocate(packedPixelBytes);
@@ -256,7 +262,7 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     memset(&info, 0, sizeof(info));
     info.bV5Size = sizeof(info);
     info.bV5Width = image->width;
-    info.bV5Height = image->height;
+    info.bV5Height = -1 * image->height; // Negative indicates top-down
     info.bV5Planes = 1;
     info.bV5BitCount = 32;
     info.bV5Compression = BI_BITFIELDS;
@@ -266,7 +272,7 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     info.bV5ProfileData = sizeof(info);
     info.bV5ProfileSize = (uint32_t)rawProfile.size;
 
-    packedPixelBytes = sizeof(uint32_t) * info.bV5Width * info.bV5Height;
+    packedPixelBytes = sizeof(uint32_t) * image->width * image->height;
     packedPixels = clAllocate(packedPixelBytes);
     if (image->depth == 8) {
         for (int i = 0; i < pixelCount; ++i) {
