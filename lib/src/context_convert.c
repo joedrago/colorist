@@ -186,7 +186,7 @@ int clContextConvert(clContext * C)
 
         // Override gamma
         if (params.gamma > 0.0f) {
-            dstInfo.curve.type = CL_PCT_GAMMA;
+            dstInfo.curve.type = params.curveType;
             dstInfo.curve.gamma = params.gamma;
         }
     }
@@ -279,7 +279,7 @@ int clContextConvert(clContext * C)
             }
 
             // Curve
-            if (dstInfo.curve.type != CL_PCT_GAMMA) {
+            if (dstInfo.curve.type == CL_PCT_COMPLEX) {
                 // TODO: Support/pass-through any source curve
                 clContextLogError(C, "Can't create destination profile, tone curve cannot be created as it isn't just a simple gamma curve. Try choosing a new curve (-g) or autograding (-a)");
                 FAIL();
