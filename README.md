@@ -48,14 +48,12 @@ Since the dawn of computer rendering, luminance (brightness) has always been
 *relative*.\*\* Values of 0 in a pixel have always meant "emit no light / as
 little light as possible", and max values in a pixel (255 in 8-bit, etc) meant
 "as bright as possible". We've gotten by just fine for a while with this
-strategy, but times are changing. The HDR10 standard
+strategy, but times are changing. For example, the HDR10 standard
 ([BT.2100](https://en.wikipedia.org/wiki/Rec._2100)) and [Dolby
-Vision](https://en.wikipedia.org/wiki/Dolby_Laboratories#Video_processing) have
-defined a luminance range of 0-10,000 nits, and [Hybrid Log
-Gamma](https://en.wikipedia.org/wiki/Hybrid_Log-Gamma) has a max luminance of
-1000 nits, which can be adjustable on the fly. We no longer can assume that the
-author of an image containing max-channel white pixels intended to burn your
-retinas out of your head. We need more information!
+Vision](https://en.wikipedia.org/wiki/Dolby_Laboratories#Video_processing)
+have defined a luminance range of 0-10,000 nits. We no longer can assume that
+the author of an image containing max-channel white pixels intended to burn
+your retinas out of your head. We need more information!
 
 <sup><sub>\*\* *Hasn't it?*</sub></sup>
 
