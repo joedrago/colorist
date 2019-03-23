@@ -15,7 +15,7 @@
 
 #include <string.h>
 
-static void dumpPixel(struct clContext * C, clImage * image, clTransform * toXYZ, float maxLuminance, int x, int y, int extraIndent, cJSON * jsonPixels);
+static void dumpPixel(struct clContext * C, clImage * image, clTransform * toXYZ, float maxLuminance, int x, int y, int extraIndent, cJSON * jsonPixels, clImagePixelInfo * pixelInfo);
 
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent)
 {
@@ -37,7 +37,7 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
         clContextLog(C, "image", 1 + extraIndent, "Pixels:");
         for (int j = y; j < endY; ++j) {
             for (int i = x; i < endX; ++i) {
-                dumpPixel(C, image, toXYZ, maxLuminanceFloat, i, j, extraIndent, NULL);
+                dumpPixel(C, image, toXYZ, maxLuminanceFloat, i, j, extraIndent, NULL, NULL);
             }
         }
     }
@@ -74,7 +74,7 @@ void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clIma
                     // Lazily create it in case we never have to
                     jsonPixels = cJSON_AddArrayToObject(jsonOutput, "pixels");
                 }
-                dumpPixel(C, image, toXYZ, maxLuminanceFloat, i, j, 0, jsonPixels);
+                dumpPixel(C, image, toXYZ, maxLuminanceFloat, i, j, 0, jsonPixels, NULL);
             }
         }
     }
@@ -82,9 +82,30 @@ void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clIma
     clTransformDestroy(C, toXYZ);
 }
 
-static void dumpPixel(struct clContext * C, clImage * image, clTransform * toXYZ, float maxLuminance, int x, int y, int extraIndent, cJSON * jsonPixels)
+void clImageDebugDumpPixel(struct clContext * C, clImage * image, int x, int y, clImagePixelInfo * pixelInfo)
 {
-    int intRGB[4];
+    if ((x < 0) || (x >= image->width) || (y < 0) || (y >= image->height)) {
+        memset(pixelInfo, 0, sizeof(pixelInfo));
+        return;
+    }
+
+    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
+
+    int maxLuminance;
+    clProfileQuery(C, image->profile, NULL, NULL, &maxLuminance);
+    if (maxLuminance == 0) {
+        maxLuminance = COLORIST_DEFAULT_LUMINANCE;
+    }
+    float maxLuminanceFloat = (float)maxLuminance;
+
+    dumpPixel(C, image, toXYZ, maxLuminanceFloat, x, y, 0, NULL, pixelInfo);
+
+    clTransformDestroy(C, toXYZ);
+}
+
+static void dumpPixel(struct clContext * C, clImage * image, clTransform * toXYZ, float maxLuminance, int x, int y, int extraIndent, cJSON * jsonPixels, clImagePixelInfo * pixelInfo)
+{
+    uint16_t intRGB[4];
     float maxChannel = (float)((1 << image->depth) - 1);
     float floatRGBA[4];
     float floatXYZ[3];
@@ -146,6 +167,20 @@ static void dumpPixel(struct clContext * C, clImage * image, clTransform * toXYZ
         cJSON_AddNumberToObject(jsonPixel, "nits", xyY.Y * maxLuminance);
 
         cJSON_AddItemToArray(jsonPixels, jsonPixel);
+    } else if (pixelInfo) {
+        pixelInfo->rawR = intRGB[0];
+        pixelInfo->rawG = intRGB[1];
+        pixelInfo->rawB = intRGB[2];
+        pixelInfo->rawA = intRGB[3];
+        pixelInfo->normR = floatRGBA[0];
+        pixelInfo->normG = floatRGBA[1];
+        pixelInfo->normB = floatRGBA[2];
+        pixelInfo->normA = floatRGBA[3];
+        pixelInfo->X = (float)XYZ.X;
+        pixelInfo->Y = (float)XYZ.Y;
+        pixelInfo->Z = (float)XYZ.Z;
+        pixelInfo->x = (float)xyY.x;
+        pixelInfo->y = (float)xyY.y;
     } else {
         clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): rgba%d(%u, %u, %u, %u), f(%g, %g, %g, %g), XYZ(%g, %g, %g), xyY(%g, %g, %g), %g nits",
             x, y, image->depth,
