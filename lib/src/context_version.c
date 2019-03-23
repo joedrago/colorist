@@ -9,8 +9,8 @@
 
 #include "colorist/version.h"
 
-#include "jpeglib.h"
 #include "lcms2.h"
+#include "jpeglib.h"
 #include "openjpeg.h"
 #include "png.h"
 #include "zlib.h"

@@ -11,6 +11,7 @@
 #include "colorist/profile.h"
 #include "colorist/raw.h"
 
+#include "lcms2.h"
 #include "jpeglib.h"
 
 #include <setjmp.h>
@@ -210,8 +211,8 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
  */
 
 static void write_icc_profile(j_compress_ptr cinfo,
-    const JOCTET * icc_data_ptr,
-    unsigned int icc_data_len)
+                              const JOCTET * icc_data_ptr,
+                              unsigned int icc_data_len)
 {
     unsigned int num_markers; /* total number of markers we'll write */
     int cur_marker = 1;       /* per spec, counting starts at 1 */
@@ -316,9 +317,9 @@ static boolean marker_is_icc(jpeg_saved_marker_ptr marker)
  */
 
 static boolean read_icc_profile(struct clContext * C,
-    j_decompress_ptr cinfo,
-    JOCTET ** icc_data_ptr,
-    unsigned int * icc_data_len)
+                                j_decompress_ptr cinfo,
+                                JOCTET ** icc_data_ptr,
+                                unsigned int * icc_data_len)
 {
     jpeg_saved_marker_ptr marker;
     int num_markers = 0;
@@ -349,7 +350,7 @@ static boolean read_icc_profile(struct clContext * C,
             else if (num_markers != GETJOCTET(marker->data[13]))
                 return FALSE; /* inconsistent num_markers fields */
             seq_no = GETJOCTET(marker->data[12]);
-            if (( seq_no <= 0) || ( seq_no > num_markers) )
+            if (( seq_no <= 0) || ( seq_no > num_markers))
                 return FALSE; /* bogus sequence number */
             if (marker_present[seq_no])
                 return FALSE; /* duplicate sequence numbers */

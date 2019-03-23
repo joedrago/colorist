@@ -11,6 +11,7 @@
 #include "colorist/pixelmath.h"
 
 #include "cJSON.h"
+#include "lcms2.h"
 
 #include <string.h>
 

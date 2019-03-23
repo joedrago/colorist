@@ -10,8 +10,8 @@
 
 #include "colorist/types.h"
 
-// for cmsContext
-#include "lcms2.h"
+// from lcms2.h
+typedef struct _cmsContext_struct * cmsContext;
 
 // for va_list
 #include <stdarg.h>

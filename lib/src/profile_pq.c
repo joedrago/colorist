@@ -10,6 +10,7 @@
 #include "colorist/context.h"
 #include "colorist/embedded.h"
 
+#include "lcms2.h"
 #include "md5.h"
 
 #include <string.h>

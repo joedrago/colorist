@@ -10,6 +10,8 @@
 #include "colorist/profile.h"
 #include "colorist/task.h"
 
+#include "lcms2.h"
+
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>

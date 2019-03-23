@@ -11,7 +11,8 @@
 #include "colorist/raw.h"
 #include "colorist/types.h"
 
-#include "lcms2.h"
+// from lcms2.h
+typedef void * cmsHPROFILE;
 
 struct clContext;
 struct cJSON;

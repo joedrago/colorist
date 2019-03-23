@@ -10,6 +10,7 @@
 #include "colorist/image.h"
 #include "colorist/profile.h"
 
+#include <stdio.h>
 #include <string.h>
 
 struct clImage * clContextRead(clContext * C, const char * filename, const char * iccOverride, const char ** outFormatName)
