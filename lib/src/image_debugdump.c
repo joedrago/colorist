@@ -85,7 +85,7 @@ void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clIma
 void clImageDebugDumpPixel(struct clContext * C, clImage * image, int x, int y, clImagePixelInfo * pixelInfo)
 {
     if ((x < 0) || (x >= image->width) || (y < 0) || (y >= image->height)) {
-        memset(pixelInfo, 0, sizeof(pixelInfo));
+        memset(pixelInfo, 0, sizeof(clImagePixelInfo));
         return;
     }
 
