@@ -11,7 +11,7 @@
 #include "colorist/types.h"
 
 // from lcms2.h
-typedef struct _cmsContext_struct * cmsContext;
+struct _cmsContext_struct;
 
 // for va_list
 #include <stdarg.h>
@@ -183,7 +183,7 @@ typedef struct clContext
 {
     clContextSystem system;
 
-    cmsContext lcms;
+    struct _cmsContext_struct * lcms; // cmsContext
 
     clFormatRecord * formats;
 

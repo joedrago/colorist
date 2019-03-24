@@ -11,9 +11,6 @@
 #include "colorist/raw.h"
 #include "colorist/types.h"
 
-// from lcms2.h
-typedef void * cmsHPROFILE;
-
 struct clContext;
 struct cJSON;
 
@@ -44,7 +41,7 @@ typedef struct clProfileCurve
 typedef struct clProfile
 {
     char * description;
-    cmsHPROFILE handle;
+    void * handle;         // cmsHPROFILE
     clRaw raw;             // Populated during clProfileParse(), preferred during clProfilePack(), cleared on any clProfileSet*() call
     uint8_t signature[16]; // Populated during clProfileParse()
     clBool ccmm;           // Can this profile be used by colorist's built-in CMM? (if false for either src or dst, LittleCMS is used)
