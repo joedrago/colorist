@@ -158,7 +158,7 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     clProfileCurve srcCurve;
     int srcLuminance = 0;
     clProfileQuery(C, srcImage->profile, &srcPrimaries, &srcCurve, &srcLuminance);
-    srcLuminance = (srcLuminance != 0) ? srcLuminance : COLORIST_DEFAULT_LUMINANCE;
+    srcLuminance = (srcLuminance != 0) ? srcLuminance : C->defaultLuminance;
     float overbrightScale = (float)srcLuminance * srcCurve.implicitScale / (float)srgbLuminance;
 
     // clTransformCalcMaxY assumes the RGB profile is linear with a 1 nit luminance

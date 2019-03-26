@@ -87,7 +87,7 @@ int clContextGenerate(clContext * C, struct cJSON * output)
         int luminance = C->params.luminance;
         if (luminance <= 0) {
             clContextLog(C, action, 1, "No luminance specified (-l). Using default Colorist luminance.");
-            luminance = COLORIST_DEFAULT_LUMINANCE;
+            luminance = C->defaultLuminance;
         }
 
         char * description = NULL;

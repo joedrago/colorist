@@ -14,9 +14,6 @@
 // for uint*_t
 #include <stdint.h>
 
-// Output luminance colorist uses for basic profiles (sRGB, P3, etc)
-#define COLORIST_DEFAULT_LUMINANCE 300
-
 // Gamma for sRGB (sRGB is not exactly 2.2, but is closest)
 #define COLORIST_SRGB_GAMMA 2.2f
 

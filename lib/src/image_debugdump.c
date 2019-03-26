@@ -27,7 +27,7 @@ void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w
     int maxLuminance;
     clProfileQuery(C, image->profile, NULL, NULL, &maxLuminance);
     if (maxLuminance == 0) {
-        maxLuminance = COLORIST_DEFAULT_LUMINANCE;
+        maxLuminance = C->defaultLuminance;
     }
     float maxLuminanceFloat = (float)maxLuminance;
 
@@ -60,7 +60,7 @@ void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clIma
     int maxLuminance;
     clProfileQuery(C, image->profile, NULL, NULL, &maxLuminance);
     if (maxLuminance == 0) {
-        maxLuminance = COLORIST_DEFAULT_LUMINANCE;
+        maxLuminance = C->defaultLuminance;
     }
     float maxLuminanceFloat = (float)maxLuminance;
 
@@ -94,7 +94,7 @@ void clImageDebugDumpPixel(struct clContext * C, clImage * image, int x, int y, 
     int maxLuminance;
     clProfileQuery(C, image->profile, NULL, NULL, &maxLuminance);
     if (maxLuminance == 0) {
-        maxLuminance = COLORIST_DEFAULT_LUMINANCE;
+        maxLuminance = C->defaultLuminance;
     }
     float maxLuminanceFloat = (float)maxLuminance;
 

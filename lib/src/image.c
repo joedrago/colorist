@@ -218,7 +218,7 @@ void clImageColorGrade(struct clContext * C, clImage * image, int taskCount, int
 {
     int srcLuminance = 0;
     clProfileQuery(C, image->profile, NULL, NULL, &srcLuminance);
-    srcLuminance = (srcLuminance != 0) ? srcLuminance : COLORIST_DEFAULT_LUMINANCE;
+    srcLuminance = (srcLuminance != 0) ? srcLuminance : C->defaultLuminance;
 
     int pixelCount = image->width * image->height;
     float * floatPixels = clAllocate(4 * sizeof(float) * pixelCount);

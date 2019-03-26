@@ -674,7 +674,7 @@ clImage * clImageParseString(struct clContext * C, const char * str, int depth, 
     if (profile) {
         clProfileQuery(C, profile, NULL, NULL, &luminance);
     } else {
-        luminance = COLORIST_DEFAULT_LUMINANCE;
+        luminance = C->defaultLuminance;
     }
 
     for (stripeString = strtok(buffer, stripeDelims); stripeString != NULL; stripeString = strtok(NULL, stripeDelims)) {

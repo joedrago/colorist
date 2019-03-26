@@ -131,7 +131,7 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
             int srcLuminance;
 
             clProfileQuery(C, transform->srcProfile, &srcPrimaries, &srcCurve, &srcLuminance);
-            srcLuminance = (srcLuminance != 0) ? srcLuminance : COLORIST_DEFAULT_LUMINANCE;
+            srcLuminance = (srcLuminance != 0) ? srcLuminance : C->defaultLuminance;
             transform->srcLuminanceScale = (float)srcLuminance;
             transform->srcCurveScale = srcCurve.implicitScale;
             transform->whitePointX = srcPrimaries.white[0];
@@ -147,7 +147,7 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
             int dstLuminance;
 
             clProfileQuery(C, transform->dstProfile, &dstPrimaries, &dstCurve, &dstLuminance);
-            dstLuminance = (dstLuminance != 0) ? dstLuminance : COLORIST_DEFAULT_LUMINANCE;
+            dstLuminance = (dstLuminance != 0) ? dstLuminance : C->defaultLuminance;
             transform->dstLuminanceScale = (float)dstLuminance;
             transform->dstCurveScale = dstCurve.implicitScale;
             transform->whitePointX = dstPrimaries.white[0];

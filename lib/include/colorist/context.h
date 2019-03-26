@@ -195,6 +195,7 @@ typedef struct clContext
     clBool ccmmAllowed;          // --ccmm
     const char * inputFilename;  // index 0
     const char * outputFilename; // index 1
+    int defaultLuminance;
 } clContext;
 
 struct clImage;

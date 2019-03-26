@@ -16,6 +16,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Output luminance colorist uses for basic profiles (sRGB, P3, etc)
+#define COLORIST_DEFAULT_LUMINANCE 300
+
 #define CL_DEFAULT_QUALITY 90 // ?
 #define CL_DEFAULT_RATE 0     // Choosing a value here is dangerous as it is heavily impacted by image size
 
@@ -376,6 +379,7 @@ static void clContextSetDefaultArgs(clContext * C)
     C->ccmmAllowed = clTrue;
     C->inputFilename = NULL;
     C->outputFilename = NULL;
+    C->defaultLuminance = COLORIST_DEFAULT_LUMINANCE;
 }
 
 clContext * clContextCreate(clContextSystem * system)

@@ -41,7 +41,8 @@ clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock)
     clProfilePrimaries primaries;
     clProfileCurve curve;
     int maxLuminance;
-    const char * description;
+    char descriptionBuffer[128];
+    descriptionBuffer[0] = 0;
     switch (stock) {
         case CL_PS_SRGB:
         default:
@@ -55,11 +56,14 @@ clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock)
             primaries.white[1] = 0.3290f;
             curve.type = CL_PCT_GAMMA;
             curve.gamma = COLORIST_SRGB_GAMMA;
-            maxLuminance = COLORIST_DEFAULT_LUMINANCE;
-            description = "Colorist SRGB";
+            maxLuminance = C->defaultLuminance;
+            sprintf(descriptionBuffer, "Colorist SRGB (%d nits)", maxLuminance);
             break;
     }
-    return clProfileCreate(C, &primaries, &curve, maxLuminance, description);
+
+    clProfile * profile = clProfileCreate(C, &primaries, &curve, maxLuminance, NULL);
+    clProfileSetMLU(C, profile, "desc", "en", "US", descriptionBuffer);
+    return profile;
 }
 
 clProfile * clProfileClone(struct clContext * C, clProfile * profile)
