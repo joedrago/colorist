@@ -262,7 +262,7 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
         // BT.2100: HDR10
         nclx->colourPrimaries = AVIF_NCLX_COLOUR_PRIMARIES_BT2100;
         nclx->transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_PQ;
-        nclx->matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2100;
+        nclx->matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_CL;
         nclx->fullRangeFlag = AVIF_NCLX_FULL_RANGE;
         clContextLog(C, "avif", 1, "HDR10 color profile detected; switching to nclx colr box.");
         return clTrue;
