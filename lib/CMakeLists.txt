@@ -43,17 +43,8 @@ set(COLORIST_LIB_INCLUDES
     ${CMAKE_CURRENT_BINARY_DIR}/pqCurveBinary.h
 )
 
-if(COLORIST_EMSCRIPTEN)
-  if(EXISTS "${CMAKE_CURRENT_BINARY_DIR}/reportTemplateBinary.skip")
-    message(STATUS "Skipping reportTemplateBinary.h generation")
-  else()
-    message(STATUS "Generating reportTemplateBinary.h slowly (Emscripten can't use genHeader), please wait...")
-    bin2h(SOURCE_FILE "templates/reportTemplate.html" HEADER_FILE "${CMAKE_CURRENT_BINARY_DIR}/reportTemplateBinary.h" VARIABLE_NAME "reportTemplateBinary")
-  endif()
-else()
-  generate_headers(templates/reportTemplate.html)
-  generate_headers(raw/pqCurve.bin)
-endif()
+generate_headers(templates/reportTemplate.html)
+generate_headers(raw/pqCurve.bin)
 
 set(COLORIST_LIB_SRCS
     src/context.c

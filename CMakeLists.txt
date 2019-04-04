@@ -10,16 +10,8 @@ project(colorist)
 
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release")
 
-if(COLORIST_EMSCRIPTEN)
-  set(CMAKE_BUILD_TYPE "Release")
-  add_definitions(-DCOLORIST_EMSCRIPTEN=1)
-  if(COLORIST_EMSCRIPTEN_ASYNC)
-    add_definitions(-DCOLORIST_EMSCRIPTEN_ASYNC=1)
-  endif()
-else()
-  if(NOT CMAKE_BUILD_TYPE)
-      set(CMAKE_BUILD_TYPE "Debug")
-  endif()
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DCOLORIST_DEBUG=1")

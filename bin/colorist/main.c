@@ -48,13 +48,7 @@ static void clContextSilentLogError(clContext * C, const char * format, va_list 
     clFree(buffer);
 }
 
-extern int execute(int argc, char * argv[]);
-
-#ifdef COLORIST_EMSCRIPTEN
-#include <emscripten.h>
-EMSCRIPTEN_KEEPALIVE
-#endif
-int execute(int argc, char * argv[])
+int main(int argc, char * argv[])
 {
     int ret = 1;
     clContext * C;
@@ -93,12 +87,6 @@ int execute(int argc, char * argv[])
     if (C->verbose)
         clContextPrintArgs(C);
 
-#ifdef COLORIST_EMSCRIPTEN
-    EM_ASM(
-        Module.outputFilename = null;
-        );
-#endif
-
     switch (C->action) {
         case CL_ACTION_CALC:
             ret = clContextGenerate(C, jsonOutput);
@@ -126,20 +114,6 @@ int execute(int argc, char * argv[])
     }
 
 cleanup:
-#ifdef COLORIST_EMSCRIPTEN
-    if ((ret == 0) && C->outputFilename) {
-        EM_ASM_({
-            Module.outputFilename = UTF8ToString($0);
-        }, C->outputFilename);
-    }
-    EM_ASM(
-        if (Module.onExecuteFinished) {
-        setTimeout(function() {
-            Module.onExecuteFinished();
-        }, 0);
-    }
-        );
-#endif
 
     if (jsonOutput) {
         cJSON * which = errorJSON ? errorJSON : jsonOutput;
@@ -156,13 +130,4 @@ cleanup:
 
     clContextDestroy(C);
     return ret;
-}
-
-int main(int argc, char * argv[])
-{
-#ifdef COLORIST_EMSCRIPTEN
-    return 0;
-#else
-    return execute(argc, argv);
-#endif
 }

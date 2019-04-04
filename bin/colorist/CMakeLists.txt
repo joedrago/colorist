@@ -14,15 +14,3 @@ add_executable(colorist-bin
 )
 target_link_libraries(colorist-bin colorist)
 set_target_properties(colorist-bin PROPERTIES OUTPUT_NAME colorist)
-
-if(COLORIST_EMSCRIPTEN)
-    if(COLORIST_EMSCRIPTEN_ASYNC)
-        set_target_properties(colorist-bin PROPERTIES LINK_FLAGS "-s EXTRA_EXPORTED_RUNTIME_METHODS=\"['ccall', 'cwrap', 'stringToUTF8', 'setValue', 'FS']\" -s FORCE_FILESYSTEM=1 -s SINGLE_FILE=1 -s ALLOW_MEMORY_GROWTH=1 -s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1 --post-js ${CMAKE_SOURCE_DIR}/emscripten/post.js")
-    else()
-        set_target_properties(colorist-bin PROPERTIES LINK_FLAGS "-s EXTRA_EXPORTED_RUNTIME_METHODS=\"['ccall', 'cwrap', 'stringToUTF8', 'setValue', 'FS']\" -s FORCE_FILESYSTEM=1 -s SINGLE_FILE=1 -s ALLOW_MEMORY_GROWTH=1 --post-js ${CMAKE_SOURCE_DIR}/emscripten/post.js")
-    endif()
-    set_target_properties(colorist-bin PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/emscripten"
-        RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/emscripten"
-    )
-endif()

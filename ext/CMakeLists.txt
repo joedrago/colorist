@@ -53,13 +53,6 @@ add_library(gb
 
 add_subdirectory(genHeader)
 
-if(COLORIST_EMSCRIPTEN)
-    set(HAVE_WORDS_BIGENDIAN 1)
-    set(WORDS_BIGENDIAN 0)
-    set(HAVE_OPJ_BIG_ENDIAN 1)
-    set(OPJ_BIG_ENDIAN 0)
-endif()
-
 set(EXECUTABLE_OUTPUT_PATH "" CACHE PATH "Unset OpenJPEG shenanigans")
 set(LIBRARY_OUTPUT_PATH "" CACHE PATH "Unset OpenJPEG shenanigans")
 set(BUILD_THIRDPARTY ON CACHE BOOL "")
