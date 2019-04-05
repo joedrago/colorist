@@ -215,7 +215,7 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
             rotated = clImageCreate(C, image->width, image->height, image->depth, image->profile);
             memcpy(rotated->pixels, image->pixels, rotated->size);
             break;
-        case 1: // 270 degrees clockwise
+        case 1: // 90 degrees clockwise
             rotated = clImageCreate(C, image->height, image->width, image->depth, image->profile);
             for (int j = 0; j < image->height; ++j) {
                 for (int i = 0; i < image->width; ++i) {
