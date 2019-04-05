@@ -111,6 +111,73 @@ clImage * clImageResize(struct clContext * C, clImage * image, int width, int he
     return resizedImage;
 }
 
+clImage * clImageBlend(struct clContext * C, clImage * image, clImage * compositeImage, int taskCount, float blendGamma)
+{
+    COLORIST_UNUSED(compositeImage);
+    COLORIST_UNUSED(blendGamma);
+
+    // Sanity checks
+    if ((image->width != compositeImage->width) || (image->height != compositeImage->height)) {
+        return NULL;
+    }
+
+    // Query profile used for both src and dst image
+    clProfilePrimaries primaries;
+    clProfileCurve curve;
+    int maxLuminance;
+    if (!clProfileQuery(C, image->profile, &primaries, &curve, &maxLuminance)) {
+        clContextLogError(C, "clImageBlend: failed to query source profile");
+        return NULL;
+    }
+    maxLuminance = (int)((float)maxLuminance * curve.implicitScale);
+
+    // Build a profile using the same color volume, but a blend-friendly gamma
+    curve.type = CL_PCT_GAMMA;
+    curve.implicitScale = 1.0f;
+    curve.gamma = blendGamma;
+    clProfile * blendProfile = clProfileCreate(C, &primaries, &curve, maxLuminance, NULL);
+
+    // Build transforms that go [src -> blend], [cmp -> blend], [blend -> dst]
+    clTransform * srcBlendTransform = clTransformCreate(C, image->profile, CL_XF_RGBA, image->depth, blendProfile, CL_XF_RGBA, 32, CL_TONEMAP_AUTO);
+    clTransform * cmpBlendTransform = clTransformCreate(C, compositeImage->profile, CL_XF_RGBA, compositeImage->depth, blendProfile, CL_XF_RGBA, 32, CL_TONEMAP_AUTO);
+    clTransform * dstTransform = clTransformCreate(C, blendProfile, CL_XF_RGBA, 32, image->profile, CL_XF_RGBA, image->depth, CL_TONEMAP_AUTO);
+
+    // Transform src and comp images into normalized blend space
+    int pixelCount = image->width * image->height;
+    float * srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
+    clTransformRun(C, srcBlendTransform, taskCount, image->pixels, srcFloats, pixelCount);
+    float * cmpFloats = clAllocate(4 * sizeof(float) * pixelCount);
+    clTransformRun(C, cmpBlendTransform, taskCount, compositeImage->pixels, cmpFloats, pixelCount);
+
+    // Perform SourceOver blend
+    float * dstFloats = clAllocate(4 * sizeof(float) * pixelCount);
+    for (int i = 0; i < pixelCount; ++i) {
+        float * srcPixel = &srcFloats[i * 4];
+        float * cmpPixel = &cmpFloats[i * 4];
+        float * dstPixel = &dstFloats[i * 4];
+
+        // cmpPixel is the "Source" in a SourceOver Porter/Duff blend
+        dstPixel[0] = (cmpPixel[0] * cmpPixel[3]) + (srcPixel[0] * srcPixel[3] * (1 - cmpPixel[3]));
+        dstPixel[1] = (cmpPixel[1] * cmpPixel[3]) + (srcPixel[1] * srcPixel[3] * (1 - cmpPixel[3]));
+        dstPixel[2] = (cmpPixel[2] * cmpPixel[3]) + (srcPixel[2] * srcPixel[3] * (1 - cmpPixel[3]));
+        dstPixel[3] = cmpPixel[3] + (srcPixel[3] * (1 - cmpPixel[3]));
+    }
+
+    // Transform blended pixels into new destination image
+    clImage * dstImage = clImageCreate(C, image->width, image->height, image->depth, image->profile);
+    clTransformRun(C, dstTransform, taskCount, dstFloats, dstImage->pixels, pixelCount);
+
+    // Cleanup
+    clTransformDestroy(C, srcBlendTransform);
+    clTransformDestroy(C, cmpBlendTransform);
+    clTransformDestroy(C, dstTransform);
+    clProfileDestroy(C, blendProfile);
+    clFree(srcFloats);
+    clFree(cmpFloats);
+    clFree(dstFloats);
+    return dstImage;
+}
+
 clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y, int * w, int * h)
 {
     COLORIST_UNUSED(C);

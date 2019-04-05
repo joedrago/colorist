@@ -166,6 +166,7 @@ typedef struct clConversionParams
     clTonemap tonemap;           // -t
     clWriteParams writeParams;   // -q, -r, --yuv
     int rect[4];                 // -z
+    const char * composite;      // --composite
 } clConversionParams;
 
 void clConversionParamsSetDefaults(struct clContext * C, clConversionParams * params);

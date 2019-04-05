@@ -357,6 +357,7 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->stripTags = NULL;
     params->stats = clFalse;
     params->tonemap = CL_TONEMAP_AUTO;
+    params->composite = NULL;
     clWriteParamsSetDefaults(C, &params->writeParams);
 }
 
@@ -717,6 +718,9 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
             } else if (!strcmp(arg, "-t") || !strcmp(arg, "--tonemap")) {
                 NEXTARG();
                 C->params.tonemap = clTonemapFromString(C, arg);
+            } else if (!strcmp(arg, "--composite")) {
+                NEXTARG();
+                C->params.composite = arg;
             } else if (!strcmp(arg, "-v") || !strcmp(arg, "--verbose")) {
                 C->verbose = clTrue;
             } else if (!strcmp(arg, "--yuv")) {
@@ -870,6 +874,7 @@ void clContextPrintArgs(clContext * C)
         clContextLog(C, "syntax", 1, "bpc         : %d", C->params.bpc);
     else
         clContextLog(C, "syntax", 1, "bpc         : auto");
+    clContextLog(C, "syntax", 1, "composite   : %s", C->params.composite ? C->params.composite : "--");
     clContextLog(C, "syntax", 1, "copyright   : %s", C->params.copyright ? C->params.copyright : "--");
     clContextLog(C, "syntax", 1, "description : %s", C->params.description ? C->params.description : "--");
     clContextLog(C, "syntax", 1, "format      : %s", C->params.formatName ? C->params.formatName : "auto");
@@ -965,6 +970,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "Convert Options:");
     clContextLog(C, NULL, 0, "    --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)");
     clContextLog(C, NULL, 0, "    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h");
+    clContextLog(C, NULL, 0, "    --composite FILENAME     : Composite FILENAME on top of input. Must be identical dimensions to input.");
     clContextLog(C, NULL, 0, "    --hald FILENAME          : Image containing valid Hald CLUT to be used after color conversion");
     clContextLog(C, NULL, 0, "    --stats                  : Enable post-conversion stats (MSE, PSNR, etc)");
     clContextLog(C, NULL, 0, "");

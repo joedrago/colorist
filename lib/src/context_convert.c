@@ -324,6 +324,36 @@ int clContextConvert(clContext * C)
         FAIL();
     }
 
+    if (C->params.composite) {
+        clContextLog(C, "composite", 0, "Composition enabled. Reading: %s (%d bytes)", C->params.composite, clFileSize(C->params.composite));
+        timerStart(&t);
+        clImage * compositeImage = clContextRead(C, params.composite, NULL, NULL);
+        if (compositeImage == NULL) {
+            clContextLogError(C, "Can't load composite image, bailing out");
+            FAIL();
+        }
+        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+
+        if ((dstImage->width != compositeImage->width) || (dstImage->height != compositeImage->height)) {
+            clContextLogError(C, "Composite image dimensions don't match: image:%dx%d vs comp:%dx%d", dstImage->width, dstImage->height, compositeImage->width, compositeImage->height);
+            clImageDestroy(C, compositeImage);
+            FAIL();
+        }
+
+        clContextLog(C, "composite", 0, "Blending composite on top...");
+        timerStart(&t);
+        clImage * blendedImage = clImageBlend(C, dstImage, compositeImage, params.jobs, 2.2f);
+        if (!blendedImage) {
+            clContextLogError(C, "Image blend failed, bailing out");
+            clImageDestroy(C, blendedImage);
+            FAIL();
+        }
+        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+
+        clImageDestroy(C, dstImage);
+        dstImage = blendedImage;
+    }
+
     if (haldImage) {
         clContextLog(C, "hald", 0, "Performing Hald CLUT postprocessing...");
         timerStart(&t);
