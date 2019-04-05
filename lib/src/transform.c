@@ -427,9 +427,10 @@ static void transformFloatToRGB(struct clContext * C, struct clTransform * trans
 
     for (int i = 0; i < pixelCount; ++i) {
         float tmpPixel[4];
+        int tmpPixelBytes = (DST_16_HAS_ALPHA()) ? sizeof(float) * 4 : sizeof(float) * 3;
         float * srcPixel = (float *)&srcPixels[i * srcPixelBytes];
         uint16_t * dstPixel = (uint16_t *)&dstPixels[i * dstPixelBytes];
-        transformFloatToFloat(C, transform, useCCMM, (uint8_t *)srcPixel, srcPixelBytes, (uint8_t *)tmpPixel, dstPixelBytes, 1);
+        transformFloatToFloat(C, transform, useCCMM, (uint8_t *)srcPixel, srcPixelBytes, (uint8_t *)tmpPixel, tmpPixelBytes, 1);
         dstPixel[0] = (uint16_t)clPixelMathRoundNormalized(tmpPixel[0], dstRescale);
         dstPixel[1] = (uint16_t)clPixelMathRoundNormalized(tmpPixel[1], dstRescale);
         dstPixel[2] = (uint16_t)clPixelMathRoundNormalized(tmpPixel[2], dstRescale);
@@ -451,7 +452,9 @@ static void transformRGBToFloat(struct clContext * C, struct clTransform * trans
 
     for (int i = 0; i < pixelCount; ++i) {
         float tmpPixel[4];
+        int tmpPixelBytes = (SRC_16_HAS_ALPHA()) ? sizeof(float) * 4 : sizeof(float) * 3;
         uint16_t * srcPixel = (uint16_t *)&srcPixels[i * srcPixelBytes];
+        float * dstPixel = (float *)&dstPixels[i * dstPixelBytes];
         tmpPixel[0] = (float)srcPixel[0] * srcRescale;
         tmpPixel[1] = (float)srcPixel[1] * srcRescale;
         tmpPixel[2] = (float)srcPixel[2] * srcRescale;
@@ -464,7 +467,7 @@ static void transformRGBToFloat(struct clContext * C, struct clTransform * trans
                 tmpPixel[3] = 1.0f;
             }
         }
-        transformFloatToFloat(C, transform, useCCMM, (uint8_t *)tmpPixel, dstPixelBytes, dstPixels, dstPixelBytes, 1);
+        transformFloatToFloat(C, transform, useCCMM, (uint8_t *)tmpPixel, tmpPixelBytes, (uint8_t *)dstPixel, dstPixelBytes, 1);
     }
 }
 
