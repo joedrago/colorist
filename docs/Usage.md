@@ -23,20 +23,22 @@ Output Profile Options:
     -a,--autograde           : Enable automatic color grading of max luminance and gamma (disabled by default)
     -c,--copyright COPYRIGHT : ICC profile copyright string.
     -d,--description DESC    : ICC profile description.
-    -g,--gamma GAMMA         : Output gamma. 0 for auto (default), or "source" to force source gamma
+    -g,--gamma GAMMA         : Output gamma. 0 for auto (default), "pq" for PQ, or "source" to force source gamma
     -l,--luminance LUMINANCE : ICC profile max luminance. 0 for auto (default), or "source" to force source luminance
     -p,--primaries PRIMARIES : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy
 
 Output Format Options:
     -b,--bpc BPC             : Output bits-per-channel. 8 - 16, or 0 for auto (default)
-    -f,--format FORMAT       : Output format. auto (default), apg, bmp, jpg, jp2, j2k, png, tiff, webp
+    -f,--format FORMAT       : Output format. auto (default), apg, avif, bmp, jpg, jp2, j2k, png, tiff, webp
     -q,--quality QUALITY     : Output quality for supported output formats. (default: 90)
     -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)
     -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off
+    --yuv YUVFORMAT          : Choose yuv output format for supported formats. auto (default), 444, 422, 420, yv12
 
 Convert Options:
     --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)
     -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h
+    --composite FILENAME     : Composite FILENAME on top of input. Must be identical dimensions to input.
     --hald FILENAME          : Image containing valid Hald CLUT to be used after color conversion
     --stats                  : Enable post-conversion stats (MSE, PSNR, etc)
 
@@ -46,7 +48,6 @@ Identify / Calc Options:
 
 Modify Options:
     -s,--striptags TAG,...   : Strips ICC tags from profile
-
 ```
 
 ---
@@ -218,6 +219,28 @@ Choosing a width and height of 0 will disable pixel dumping during identify
 
 When using `convert`, it will crop the source image (prior to conversion) to
 the requested rect.
+
+### --composite FILENAME
+
+After converting the source image to the destination profile, but before
+writing it out to disk, this will read in a second image file and composite it
+on top of the image. The composite image is first converted into the same
+destination profile, then the two images are blended in a blend-friendly gamma
+space.
+
+Currently, this command requires that the composite image is the already same
+dimensions as the destination (post-conversion/resize) image.
+
+
+### --hald FILENAME
+
+A Hald CLUT is a 3D color lookup table; effectively a 3D texture (a cube of
+colors) laid out correctly in a regular image. Nobody seems to know where the
+name "Hald" came from.
+
+When using this option, just before writing to disk, colorist will "look up"
+every pixel's final raw value in the Hald and replace it with the interpolated
+value sampled from it.
 
 ---
 
