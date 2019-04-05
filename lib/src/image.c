@@ -113,9 +113,6 @@ clImage * clImageResize(struct clContext * C, clImage * image, int width, int he
 
 clImage * clImageBlend(struct clContext * C, clImage * image, clImage * compositeImage, int taskCount, float blendGamma)
 {
-    COLORIST_UNUSED(compositeImage);
-    COLORIST_UNUSED(blendGamma);
-
     // Sanity checks
     if ((image->width != compositeImage->width) || (image->height != compositeImage->height)) {
         return NULL;
