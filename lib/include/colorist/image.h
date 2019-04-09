@@ -70,7 +70,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount
 clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, int w, int h, clBool keepSrc);
 clImage * clImageApplyHALD(struct clContext * C, clImage * image, clImage * hald, int haldDims);
 clImage * clImageResize(struct clContext * C, clImage * image, int width, int height, clFilter resizeFilter);
-clImage * clImageBlend(struct clContext * C, clImage * image, clImage * compositeImage, int taskCount, float blendGamma);
+clImage * clImageBlend(struct clContext * C, clImage * image, clImage * compositeImage, int taskCount, clBlendParams * blendParams);
 clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y, int * w, int * h);
 void clImageColorGrade(struct clContext * C, clImage * image, int taskCount, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose);
 void clImageSetPixel(struct clContext * C, clImage * image, int x, int y, int r, int g, int b, int a);

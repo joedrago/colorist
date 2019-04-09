@@ -32,13 +32,16 @@ Output Format Options:
     -f,--format FORMAT       : Output format. auto (default), apg, avif, bmp, jpg, jp2, j2k, png, tiff, webp
     -q,--quality QUALITY     : Output quality for supported output formats. (default: 90)
     -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)
-    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off
+    -t,--tonemap TM          : Set tonemapping. auto (default), on, or off
     --yuv YUVFORMAT          : Choose yuv output format for supported formats. auto (default), 444, 422, 420, yv12
 
 Convert Options:
     --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)
     -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h
     --composite FILENAME     : Composite FILENAME on top of input. Must be identical dimensions to input.
+    --composite-gamma GAMMA  : When compositing, perform sourceover blend using this gamma (default: 2.2)
+    --composite-premultiplied: When compositing, assume composite image's alpha is premultiplied (default: false)
+    --composite-tonemap TM   : When compositing, determines if composite image is tonemapped before blend. auto (default), on, or off
     --hald FILENAME          : Image containing valid Hald CLUT to be used after color conversion
     --stats                  : Enable post-conversion stats (MSE, PSNR, etc)
 
@@ -220,13 +223,17 @@ Choosing a width and height of 0 will disable pixel dumping during identify
 When using `convert`, it will crop the source image (prior to conversion) to
 the requested rect.
 
-### --composite FILENAME
+### --composite, --composite-gamma, --composite-premultiplied, --composite-tonemap
 
 After converting the source image to the destination profile, but before
 writing it out to disk, this will read in a second image file and composite it
 on top of the image. The composite image is first converted into the same
 destination profile, then the two images are blended in a blend-friendly gamma
-space.
+space (chosen by `--composite-gamma`). By default, the composite image is
+assumed to not be premultiplied alpha, but it can be enabled with
+`--composite-premultiplied`. If the composite image is a larger luminance range
+than the destination profile's max luminance, how tonemapping should behave
+can be adjusted with `--composite-tonemap`.
 
 Currently, this command requires that the composite image is the already same
 dimensions as the destination (post-conversion/resize) image.

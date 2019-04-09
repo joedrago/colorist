@@ -357,8 +357,9 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->stripTags = NULL;
     params->stats = clFalse;
     params->tonemap = CL_TONEMAP_AUTO;
-    params->composite = NULL;
+    params->compositeFilename = NULL;
     clWriteParamsSetDefaults(C, &params->writeParams);
+    clBlendParamsSetDefaults(C, &params->compositeParams);
 }
 
 void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams)
@@ -720,7 +721,19 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 C->params.tonemap = clTonemapFromString(C, arg);
             } else if (!strcmp(arg, "--composite")) {
                 NEXTARG();
-                C->params.composite = arg;
+                C->params.compositeFilename = arg;
+            } else if (!strcmp(arg, "--composite-gamma")) {
+                NEXTARG();
+                C->params.compositeParams.gamma = (float)atof(arg);
+                if (C->params.compositeParams.gamma <= 0.0f) {
+                    clContextLogError(C, "Invalid composite gamma: %s", arg);
+                    return clFalse;
+                }
+            } else if (!strcmp(arg, "--composite-tonemap")) {
+                NEXTARG();
+                C->params.compositeParams.cmpTonemap = clTonemapFromString(C, arg);
+            } else if (!strcmp(arg, "--composite-premultiplied")) {
+                C->params.compositeParams.premultiplied = clTrue;
             } else if (!strcmp(arg, "-v") || !strcmp(arg, "--verbose")) {
                 C->verbose = clTrue;
             } else if (!strcmp(arg, "--yuv")) {
@@ -874,7 +887,10 @@ void clContextPrintArgs(clContext * C)
         clContextLog(C, "syntax", 1, "bpc         : %d", C->params.bpc);
     else
         clContextLog(C, "syntax", 1, "bpc         : auto");
-    clContextLog(C, "syntax", 1, "composite   : %s", C->params.composite ? C->params.composite : "--");
+    clContextLog(C, "syntax", 1, "composite   : %s", C->params.compositeFilename ? C->params.compositeFilename : "--");
+    clContextLog(C, "syntax", 1, "cmp. gamma  : %f", C->params.compositeParams.gamma);
+    clContextLog(C, "syntax", 1, "cmp. tonemap: %s", clTonemapToString(C, C->params.compositeParams.cmpTonemap));
+    clContextLog(C, "syntax", 1, "cmp. premul : %s", C->params.compositeParams.premultiplied ? "true" : "false");
     clContextLog(C, "syntax", 1, "copyright   : %s", C->params.copyright ? C->params.copyright : "--");
     clContextLog(C, "syntax", 1, "description : %s", C->params.description ? C->params.description : "--");
     clContextLog(C, "syntax", 1, "format      : %s", C->params.formatName ? C->params.formatName : "auto");
@@ -964,13 +980,16 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, formatLine);
     clContextLog(C, NULL, 0, "    -q,--quality QUALITY     : Output quality for supported output formats. (default: 90)");
     clContextLog(C, NULL, 0, "    -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)");
-    clContextLog(C, NULL, 0, "    -t,--tonemap TONEMAP     : Set tonemapping. auto (default), on, or off");
+    clContextLog(C, NULL, 0, "    -t,--tonemap TM          : Set tonemapping. auto (default), on, or off");
     clContextLog(C, NULL, 0, "    --yuv YUVFORMAT          : Choose yuv output format for supported formats. auto (default), 444, 422, 420, yv12");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Convert Options:");
     clContextLog(C, NULL, 0, "    --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)");
     clContextLog(C, NULL, 0, "    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h");
     clContextLog(C, NULL, 0, "    --composite FILENAME     : Composite FILENAME on top of input. Must be identical dimensions to input.");
+    clContextLog(C, NULL, 0, "    --composite-gamma GAMMA  : When compositing, perform sourceover blend using this gamma (default: 2.2)");
+    clContextLog(C, NULL, 0, "    --composite-premultiplied: When compositing, assume composite image's alpha is premultiplied (default: false)");
+    clContextLog(C, NULL, 0, "    --composite-tonemap TM   : When compositing, determines if composite image is tonemapped before blend. auto (default), on, or off");
     clContextLog(C, NULL, 0, "    --hald FILENAME          : Image containing valid Hald CLUT to be used after color conversion");
     clContextLog(C, NULL, 0, "    --stats                  : Enable post-conversion stats (MSE, PSNR, etc)");
     clContextLog(C, NULL, 0, "");

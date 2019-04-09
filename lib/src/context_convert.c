@@ -324,10 +324,10 @@ int clContextConvert(clContext * C)
         FAIL();
     }
 
-    if (C->params.composite) {
-        clContextLog(C, "composite", 0, "Composition enabled. Reading: %s (%d bytes)", C->params.composite, clFileSize(C->params.composite));
+    if (C->params.compositeFilename) {
+        clContextLog(C, "composite", 0, "Composition enabled. Reading: %s (%d bytes)", C->params.compositeFilename, clFileSize(C->params.compositeFilename));
         timerStart(&t);
-        clImage * compositeImage = clContextRead(C, params.composite, NULL, NULL);
+        clImage * compositeImage = clContextRead(C, params.compositeFilename, NULL, NULL);
         if (compositeImage == NULL) {
             clContextLogError(C, "Can't load composite image, bailing out");
             FAIL();
@@ -340,9 +340,10 @@ int clContextConvert(clContext * C)
             FAIL();
         }
 
-        clContextLog(C, "composite", 0, "Blending composite on top...");
+        clContextLog(C, "composite", 0, "Blending composite on top (%.2g gamma, %s)...",
+            params.compositeParams.gamma, params.compositeParams.premultiplied ? "premultiplied" : "not premultiplied");
         timerStart(&t);
-        clImage * blendedImage = clImageBlend(C, dstImage, compositeImage, params.jobs, 2.2f);
+        clImage * blendedImage = clImageBlend(C, dstImage, compositeImage, params.jobs, &params.compositeParams);
         if (!blendedImage) {
             clContextLogError(C, "Image blend failed, bailing out");
             clImageDestroy(C, blendedImage);

@@ -111,7 +111,17 @@ clImage * clImageResize(struct clContext * C, clImage * image, int width, int he
     return resizedImage;
 }
 
-clImage * clImageBlend(struct clContext * C, clImage * image, clImage * compositeImage, int taskCount, float blendGamma)
+void clBlendParamsSetDefaults(struct clContext * C, clBlendParams * blendParams)
+{
+    COLORIST_UNUSED(C);
+
+    blendParams->gamma = 2.2f;
+    blendParams->srcTonemap = CL_TONEMAP_AUTO;
+    blendParams->cmpTonemap = CL_TONEMAP_AUTO;
+    blendParams->premultiplied = clFalse;
+}
+
+clImage * clImageBlend(struct clContext * C, clImage * image, clImage * compositeImage, int taskCount, clBlendParams * blendParams)
 {
     // Sanity checks
     if ((image->width != compositeImage->width) || (image->height != compositeImage->height)) {
@@ -131,13 +141,13 @@ clImage * clImageBlend(struct clContext * C, clImage * image, clImage * composit
     // Build a profile using the same color volume, but a blend-friendly gamma
     curve.type = CL_PCT_GAMMA;
     curve.implicitScale = 1.0f;
-    curve.gamma = blendGamma;
+    curve.gamma = blendParams->gamma;
     clProfile * blendProfile = clProfileCreate(C, &primaries, &curve, maxLuminance, NULL);
 
     // Build transforms that go [src -> blend], [cmp -> blend], [blend -> dst]
-    clTransform * srcBlendTransform = clTransformCreate(C, image->profile, CL_XF_RGBA, image->depth, blendProfile, CL_XF_RGBA, 32, CL_TONEMAP_AUTO);
-    clTransform * cmpBlendTransform = clTransformCreate(C, compositeImage->profile, CL_XF_RGBA, compositeImage->depth, blendProfile, CL_XF_RGBA, 32, CL_TONEMAP_AUTO);
-    clTransform * dstTransform = clTransformCreate(C, blendProfile, CL_XF_RGBA, 32, image->profile, CL_XF_RGBA, image->depth, CL_TONEMAP_AUTO);
+    clTransform * srcBlendTransform = clTransformCreate(C, image->profile, CL_XF_RGBA, image->depth, blendProfile, CL_XF_RGBA, 32, blendParams->srcTonemap);
+    clTransform * cmpBlendTransform = clTransformCreate(C, compositeImage->profile, CL_XF_RGBA, compositeImage->depth, blendProfile, CL_XF_RGBA, 32, blendParams->cmpTonemap);
+    clTransform * dstTransform = clTransformCreate(C, blendProfile, CL_XF_RGBA, 32, image->profile, CL_XF_RGBA, image->depth, CL_TONEMAP_OFF); // maxLuminance should match, no need to tonemap
 
     // Transform src and comp images into normalized blend space
     int pixelCount = image->width * image->height;
@@ -148,16 +158,32 @@ clImage * clImageBlend(struct clContext * C, clImage * image, clImage * composit
 
     // Perform SourceOver blend
     float * dstFloats = clAllocate(4 * sizeof(float) * pixelCount);
-    for (int i = 0; i < pixelCount; ++i) {
-        float * srcPixel = &srcFloats[i * 4];
-        float * cmpPixel = &cmpFloats[i * 4];
-        float * dstPixel = &dstFloats[i * 4];
+    if (blendParams->premultiplied) {
+        // Premultiplied alpha
+        for (int i = 0; i < pixelCount; ++i) {
+            float * srcPixel = &srcFloats[i * 4];
+            float * cmpPixel = &cmpFloats[i * 4];
+            float * dstPixel = &dstFloats[i * 4];
 
-        // cmpPixel is the "Source" in a SourceOver Porter/Duff blend
-        dstPixel[0] = (cmpPixel[0] * cmpPixel[3]) + (srcPixel[0] * srcPixel[3] * (1 - cmpPixel[3]));
-        dstPixel[1] = (cmpPixel[1] * cmpPixel[3]) + (srcPixel[1] * srcPixel[3] * (1 - cmpPixel[3]));
-        dstPixel[2] = (cmpPixel[2] * cmpPixel[3]) + (srcPixel[2] * srcPixel[3] * (1 - cmpPixel[3]));
-        dstPixel[3] = cmpPixel[3] + (srcPixel[3] * (1 - cmpPixel[3]));
+            // cmpPixel is the "Source" in a SourceOver Porter/Duff blend
+            dstPixel[0] = cmpPixel[0] + (srcPixel[0] * (1 - cmpPixel[3]));
+            dstPixel[1] = cmpPixel[1] + (srcPixel[1] * (1 - cmpPixel[3]));
+            dstPixel[2] = cmpPixel[2] + (srcPixel[2] * (1 - cmpPixel[3]));
+            dstPixel[3] = cmpPixel[3] + (srcPixel[3] * (1 - cmpPixel[3]));
+        }
+    } else {
+        // Not Premultiplied alpha, perform the multiply during the blend
+        for (int i = 0; i < pixelCount; ++i) {
+            float * srcPixel = &srcFloats[i * 4];
+            float * cmpPixel = &cmpFloats[i * 4];
+            float * dstPixel = &dstFloats[i * 4];
+
+            // cmpPixel is the "Source" in a SourceOver Porter/Duff blend
+            dstPixel[0] = (cmpPixel[0] * cmpPixel[3]) + (srcPixel[0] * srcPixel[3] * (1 - cmpPixel[3]));
+            dstPixel[1] = (cmpPixel[1] * cmpPixel[3]) + (srcPixel[1] * srcPixel[3] * (1 - cmpPixel[3]));
+            dstPixel[2] = (cmpPixel[2] * cmpPixel[3]) + (srcPixel[2] * srcPixel[3] * (1 - cmpPixel[3]));
+            dstPixel[3] = cmpPixel[3] + (srcPixel[3] * (1 - cmpPixel[3]));
+        }
     }
 
     // Transform blended pixels into new destination image

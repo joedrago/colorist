@@ -144,29 +144,39 @@ typedef struct clContextSystem
     clContextLogErrorFunc error;
 } clContextSystem;
 
+typedef struct clBlendParams
+{
+    float gamma;          // gamma curve used when blending (instead of blending with a potentially-bad dst curve)
+    clTonemap srcTonemap; // hint to conversion pipeline when converting image to dst profile
+    clTonemap cmpTonemap; // hint to conversion pipeline when converting compositeImage to dst profile
+    clBool premultiplied; // if true, compositeImage already has premultiplied alpha
+} clBlendParams;
+void clBlendParamsSetDefaults(struct clContext * C, clBlendParams * blendParams);
+
 typedef struct clConversionParams
 {
-    clBool autoGrade;            // -a
-    int bpc;                     // -b
-    const char * copyright;      // -c
-    const char * description;    // -d
-    const char * formatName;     // -f
-    uint32_t curveType;          // -g
-    float gamma;                 // -g
-    const char * hald;           // --hald
-    int jobs;                    // -j
-    int luminance;               // -l
-    const char * iccOverrideOut; // -o
-    float primaries[8];          // -p
-    int resizeW;                 // --resize
-    int resizeH;                 // --resize
-    clFilter resizeFilter;       // --resize
-    const char * stripTags;      // -s
-    clBool stats;                // --stats
-    clTonemap tonemap;           // -t
-    clWriteParams writeParams;   // -q, -r, --yuv
-    int rect[4];                 // -z
-    const char * composite;      // --composite
+    clBool autoGrade;               // -a
+    int bpc;                        // -b
+    const char * copyright;         // -c
+    const char * description;       // -d
+    const char * formatName;        // -f
+    uint32_t curveType;             // -g
+    float gamma;                    // -g
+    const char * hald;              // --hald
+    int jobs;                       // -j
+    int luminance;                  // -l
+    const char * iccOverrideOut;    // -o
+    float primaries[8];             // -p
+    int resizeW;                    // --resize
+    int resizeH;                    // --resize
+    clFilter resizeFilter;          // --resize
+    const char * stripTags;         // -s
+    clBool stats;                   // --stats
+    clTonemap tonemap;              // -t
+    clWriteParams writeParams;      // -q, -r, --yuv
+    int rect[4];                    // -z
+    const char * compositeFilename; // --composite
+    clBlendParams compositeParams;  // --composite-gamma, --composite-premultiplied
 } clConversionParams;
 
 void clConversionParamsSetDefaults(struct clContext * C, clConversionParams * params);
