@@ -41,6 +41,8 @@ void clTaskDestroy(struct clContext * C, clTask * task)
 
 #ifdef _WIN32
 
+#pragma warning(disable: 5031)
+#pragma warning(disable: 5032)
 #include <windows.h>
 
 int clTaskLimit(void)
