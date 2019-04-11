@@ -22,6 +22,8 @@ double timerElapsedSeconds(Timer * timer)
 }
 
 #ifdef _WIN32
+#pragma warning(disable: 5031)
+#pragma warning(disable: 5032)
 #include <windows.h>
 static double now(void)
 {
