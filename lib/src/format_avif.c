@@ -17,6 +17,7 @@
 
 static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * nclx);
 static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, avifNclxColorProfile * nclx);
+static void logAvifImage(struct clContext * C, avifImage * avif);
 
 struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clRaw * input);
 clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
@@ -50,6 +51,8 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
             goto readCleanup;
         }
     }
+
+    logAvifImage(C, avif);
 
     image = clImageCreate(C, avif->width, avif->height, avif->depth, profile);
 
@@ -172,6 +175,8 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
 
     clRawSet(C, output, avifOutput.data, avifOutput.size);
 
+    logAvifImage(C, avif);
+
 writeCleanup:
     if (avif) {
         avifImageDestroy(avif);
@@ -268,4 +273,25 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
         return clTrue;
     }
     return clFalse;
+}
+
+static void logAvifImage(struct clContext * C, avifImage * avif)
+{
+    const char * yuvFormatString = "Unknown";
+    clYUVFormat yuvFormat = CL_YUVFORMAT_INVALID;
+    switch (avif->yuvFormat) {
+        case AVIF_PIXEL_FORMAT_YUV444:  yuvFormat = CL_YUVFORMAT_444;  break;
+        case AVIF_PIXEL_FORMAT_YUV422:  yuvFormat = CL_YUVFORMAT_422;  break;
+        case AVIF_PIXEL_FORMAT_YUV420:  yuvFormat = CL_YUVFORMAT_420;  break;
+        case AVIF_PIXEL_FORMAT_YV12:    yuvFormat = CL_YUVFORMAT_YV12; break;
+        case CL_YUVFORMAT_AUTO:
+        case CL_YUVFORMAT_INVALID:
+        default:
+            break;
+    }
+    if (yuvFormat != CL_YUVFORMAT_INVALID) {
+        yuvFormatString = clYUVFormatToString(C, yuvFormat);
+    }
+
+    clContextLog(C, "avif", 1, "YUV: %s / ColorOBU: %zub / AlphaOBU: %zub", yuvFormatString, avif->ioStats.colorOBUSize, avif->ioStats.alphaOBUSize);
 }
