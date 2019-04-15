@@ -109,18 +109,6 @@ typedef struct {
   MV_REFERENCE_FRAME ref_frame;
 } MV_REF;
 
-// FIXME(jack.haughton@argondesign.com): This enum was originally in
-// encoder/ratectrl.h, and is encoder specific. When we move to C++, this
-// should go back there and BufferPool should be templatized.
-enum {
-  INTER_NORMAL = 0,
-  INTER_LOW = 1,
-  INTER_HIGH = 2,
-  GF_ARF_LOW = 3,
-  GF_ARF_STD = 4,
-  KF_STD = 5,
-  RATE_FACTOR_LEVELS = 6
-} UENUM1BYTE(RATE_FACTOR_LEVEL);
 
 typedef struct RefCntBuffer {
   // For a RefCntBuffer, the following are reference-holding variables:
@@ -136,8 +124,6 @@ typedef struct RefCntBuffer {
   // - Total 'n' of the variables / array elements above have value 'k' (that
   // is, they are pointing to buffer at index 'k').
   // Then, pool->frame_bufs[k].ref_count = n.
-  // TODO(david.turner@argondesign.com) Check whether this helpful comment is
-  // still correct after we finish restructuring
   int ref_count;
 
   unsigned int order_hint;
@@ -161,6 +147,10 @@ typedef struct RefCntBuffer {
   hash_table hash_table;
   FRAME_TYPE frame_type;
 
+  // This is only used in the encoder but needs to be indexed per ref frame
+  // so it's extremely convenient to keep it here.
+  int interp_filter_selected[SWITCHABLE];
+
   // Inter frame reference frame delta for loop filter
   int8_t ref_deltas[REF_FRAMES];
 
@@ -168,7 +158,6 @@ typedef struct RefCntBuffer {
   int8_t mode_deltas[MAX_MODE_LF_DELTAS];
 
   FRAME_CONTEXT frame_context;
-  RATE_FACTOR_LEVEL frame_rf_level;
 } RefCntBuffer;
 
 typedef struct BufferPool {
@@ -192,11 +181,6 @@ typedef struct BufferPool {
   // Frame buffers allocated internally by the codec.
   InternalFrameBufferList int_frame_buffers;
 } BufferPool;
-
-typedef struct BitstreamLevel {
-  uint8_t major;
-  uint8_t minor;
-} BitstreamLevel;
 
 typedef struct {
   int cdef_pri_damping;
@@ -279,7 +263,7 @@ typedef struct SequenceHeader {
   int operating_point_idc[MAX_NUM_OPERATING_POINTS];
   uint8_t display_model_info_present_flag;
   uint8_t decoder_model_info_present_flag;
-  BitstreamLevel level[MAX_NUM_OPERATING_POINTS];
+  AV1_LEVEL seq_level_idx[MAX_NUM_OPERATING_POINTS];
   uint8_t tier[MAX_NUM_OPERATING_POINTS];  // seq_tier in the spec. One bit: 0
                                            // or 1.
 
@@ -314,6 +298,7 @@ typedef struct {
   unsigned int frame_number;
   SkipModeInfo skip_mode_info;
   int refresh_frame_flags;  // Which ref frames are overwritten by this frame
+  int frame_refs_short_signaling;
 } CurrentFrame;
 
 typedef struct AV1Common {
@@ -343,9 +328,9 @@ typedef struct AV1Common {
 
   // For encoder, we have a two-level mapping from reference frame type to the
   // corresponding buffer in the buffer pool:
-  // * 'remapped_ref_idx[i - 1]' maps reference type ‘i’ (range: LAST_FRAME ...
-  // EXTREF_FRAME) to a remapped index ‘j’ (in range: 0 ... REF_FRAMES - 1)
-  // * Later, 'cm->ref_frame_map[j]' maps the remapped index ‘j’ to a pointer to
+  // * 'remapped_ref_idx[i - 1]' maps reference type 'i' (range: LAST_FRAME ...
+  // EXTREF_FRAME) to a remapped index 'j' (in range: 0 ... REF_FRAMES - 1)
+  // * Later, 'cm->ref_frame_map[j]' maps the remapped index 'j' to a pointer to
   // the reference counted buffer structure RefCntBuffer, taken from the buffer
   // pool cm->buffer_pool->frame_bufs.
   //
@@ -364,10 +349,10 @@ typedef struct AV1Common {
   struct scale_factors ref_scale_factors[REF_FRAMES];
 
   // For decoder, ref_frame_map[i] maps reference type 'i' to a pointer to
-  // the buffer in the buffer pool ‘cm->buffer_pool.frame_bufs’.
+  // the buffer in the buffer pool 'cm->buffer_pool.frame_bufs'.
   // For encoder, ref_frame_map[j] (where j = remapped_ref_idx[i]) maps
   // remapped reference index 'j' (that is, original reference type 'i') to
-  // a pointer to the buffer in the buffer pool ‘cm->buffer_pool.frame_bufs’.
+  // a pointer to the buffer in the buffer pool 'cm->buffer_pool.frame_bufs'.
   RefCntBuffer *ref_frame_map[REF_FRAMES];
 
   // Prepare ref_frame_map for the next frame.
@@ -378,7 +363,6 @@ typedef struct AV1Common {
   int show_frame;
   int showable_frame;  // frame can be used as show existing frame in future
   int show_existing_frame;
-  int reset_decoder_state;
 
   uint8_t disable_cdf_update;
   int allow_high_precision_mv;
@@ -432,6 +416,7 @@ typedef struct AV1Common {
   int qm_v;
   int min_qmlevel;
   int max_qmlevel;
+  int use_quant_b_adapt;
 
   /* We allocate a MB_MODE_INFO struct for each macroblock, together with
      an extra row on top and column on the left to simplify prediction. */
@@ -501,7 +486,6 @@ typedef struct AV1Common {
   int primary_ref_frame;
 
   int error_resilient_mode;
-  int force_primary_ref_none;
 
   int tile_cols, tile_rows;
 
@@ -518,6 +502,7 @@ typedef struct AV1Common {
   int tile_col_start_sb[MAX_TILE_COLS + 1];  // valid for 0 <= i <= tile_cols
   int tile_row_start_sb[MAX_TILE_ROWS + 1];  // valid for 0 <= i <= tile_rows
   int tile_width, tile_height;               // In MI units
+  int min_inner_tile_width;                  // min width of non-rightmost tile
 
   unsigned int large_scale_tile;
   unsigned int single_tile_decoding;
@@ -628,6 +613,23 @@ static INLINE int get_free_fb(AV1_COMMON *cm) {
 
   unlock_buffer_pool(cm->buffer_pool);
   return i;
+}
+
+static INLINE RefCntBuffer *assign_cur_frame_new_fb(AV1_COMMON *const cm) {
+  // Release the previously-used frame-buffer
+  if (cm->cur_frame != NULL) {
+    --cm->cur_frame->ref_count;
+    cm->cur_frame = NULL;
+  }
+
+  // Assign a new framebuffer
+  const int new_fb_idx = get_free_fb(cm);
+  if (new_fb_idx == INVALID_IDX) return NULL;
+
+  cm->cur_frame = &cm->buffer_pool->frame_bufs[new_fb_idx];
+  cm->cur_frame->buf.buf_8bit_valid = 0;
+  av1_zero(cm->cur_frame->interp_filter_selected);
+  return cm->cur_frame;
 }
 
 // Modify 'lhs_ptr' to reference the buffer at 'rhs_ptr', and update the ref
@@ -915,6 +917,7 @@ static INLINE void update_partition_context(MACROBLOCKD *xd, int mi_row,
 
 static INLINE int is_chroma_reference(int mi_row, int mi_col, BLOCK_SIZE bsize,
                                       int subsampling_x, int subsampling_y) {
+  assert(bsize < BLOCK_SIZES_ALL);
   const int bw = mi_size_wide[bsize];
   const int bh = mi_size_high[bsize];
   int ref_pos = ((mi_row & 0x01) || !(bh & 0x01) || !subsampling_y) &&
@@ -924,6 +927,8 @@ static INLINE int is_chroma_reference(int mi_row, int mi_col, BLOCK_SIZE bsize,
 
 static INLINE BLOCK_SIZE scale_chroma_bsize(BLOCK_SIZE bsize, int subsampling_x,
                                             int subsampling_y) {
+  assert(subsampling_x >= 0 && subsampling_x < 2);
+  assert(subsampling_y >= 0 && subsampling_y < 2);
   BLOCK_SIZE bs = bsize;
   switch (bsize) {
     case BLOCK_4X4:
@@ -1074,6 +1079,7 @@ static INLINE int partition_cdf_length(BLOCK_SIZE bsize) {
 
 static INLINE int max_block_wide(const MACROBLOCKD *xd, BLOCK_SIZE bsize,
                                  int plane) {
+  assert(bsize < BLOCK_SIZES_ALL);
   int max_blocks_wide = block_size_wide[bsize];
   const struct macroblockd_plane *const pd = &xd->plane[plane];
 
@@ -1370,17 +1376,8 @@ static INLINE int is_coded_lossless(const AV1_COMMON *cm,
   return coded_lossless;
 }
 
-static INLINE int is_valid_seq_level_idx(uint8_t seq_level_idx) {
-  return seq_level_idx < 24 || seq_level_idx == 31;
-}
-
-static INLINE uint8_t major_minor_to_seq_level_idx(BitstreamLevel bl) {
-  assert(bl.major >= LEVEL_MAJOR_MIN && bl.major <= LEVEL_MAJOR_MAX);
-  // Since bl.minor is unsigned a comparison will return a warning:
-  // comparison is always true due to limited range of data type
-  assert(LEVEL_MINOR_MIN == 0);
-  assert(bl.minor <= LEVEL_MINOR_MAX);
-  return ((bl.major - LEVEL_MAJOR_MIN) << LEVEL_MINOR_BITS) + bl.minor;
+static INLINE int is_valid_seq_level_idx(AV1_LEVEL seq_level_idx) {
+  return seq_level_idx < SEQ_LEVELS || seq_level_idx == SEQ_LEVEL_MAX;
 }
 
 #ifdef __cplusplus

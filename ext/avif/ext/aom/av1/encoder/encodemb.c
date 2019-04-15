@@ -43,7 +43,7 @@ static void subtract_block(const MACROBLOCKD *xd, int rows, int cols,
                            const uint8_t *src8, ptrdiff_t src_stride,
                            const uint8_t *pred8, ptrdiff_t pred_stride) {
   if (check_subtract_block_size(rows, cols)) {
-    if (xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH) {
+    if (is_cur_buf_hbd(xd)) {
       aom_highbd_subtract_block_c(rows, cols, diff, diff_stride, src8,
                                   src_stride, pred8, pred_stride, xd->bd);
       return;
@@ -54,7 +54,7 @@ static void subtract_block(const MACROBLOCKD *xd, int rows, int cols,
     return;
   }
 
-  if (xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH) {
+  if (is_cur_buf_hbd(xd)) {
     aom_highbd_subtract_block(rows, cols, diff, diff_stride, src8, src_stride,
                               pred8, pred_stride, xd->bd);
     return;
@@ -86,6 +86,7 @@ void av1_subtract_txb(MACROBLOCK *x, int plane, BLOCK_SIZE plane_bsize,
 void av1_subtract_plane(MACROBLOCK *x, BLOCK_SIZE bsize, int plane) {
   struct macroblock_plane *const p = &x->plane[plane];
   const struct macroblockd_plane *const pd = &x->e_mbd.plane[plane];
+  assert(bsize < BLOCK_SIZES_ALL);
   const BLOCK_SIZE plane_bsize =
       get_plane_block_size(bsize, pd->subsampling_x, pd->subsampling_y);
   const int bw = block_size_wide[plane_bsize];
@@ -111,9 +112,8 @@ int av1_optimize_b(const struct AV1_COMP *cpi, MACROBLOCK *mb, int plane,
     return eob;
   }
 
-  (void)fast_mode;
   return av1_optimize_txb_new(cpi, mb, plane, block, tx_size, tx_type, txb_ctx,
-                              rate_cost, cpi->oxcf.sharpness);
+                              rate_cost, cpi->oxcf.sharpness, fast_mode);
 }
 
 enum {
@@ -163,6 +163,7 @@ void av1_xform_quant(const AV1_COMMON *cm, MACROBLOCK *x, int plane, int block,
   qparam.tx_size = tx_size;
   qparam.qmatrix = qmatrix;
   qparam.iqmatrix = iqmatrix;
+  qparam.use_quant_b_adapt = cm->use_quant_b_adapt;
   TxfmParam txfm_param;
   txfm_param.tx_type = tx_type;
   txfm_param.tx_size = tx_size;
@@ -171,7 +172,7 @@ void av1_xform_quant(const AV1_COMMON *cm, MACROBLOCK *x, int plane, int block,
       txfm_param.tx_size, is_inter_block(mbmi), cm->reduced_tx_set_used);
 
   txfm_param.bd = xd->bd;
-  txfm_param.is_hbd = get_bitdepth_data_path_index(xd);
+  txfm_param.is_hbd = is_cur_buf_hbd(xd);
 
   av1_fwd_txfm(src_diff, coeff, diff_stride, &txfm_param);
 
@@ -184,7 +185,7 @@ void av1_xform_quant(const AV1_COMMON *cm, MACROBLOCK *x, int plane, int block,
       av1_quantize_skip(n_coeffs, qcoeff, dqcoeff, eob);
     }
   }
-  // NOTE: optimize_b_following is ture means av1_optimze_b will be called
+  // NOTE: optimize_b_following is true means av1_optimze_b will be called
   // When the condition of doing optimize_b is changed,
   // this flag need update simultaneously
   const int optimize_b_following =
@@ -227,12 +228,16 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
     TX_TYPE tx_type = av1_get_tx_type(pd->plane_type, xd, blk_row, blk_col,
                                       tx_size, cm->reduced_tx_set_used);
     if (args->enable_optimize_b != NO_TRELLIS_OPT) {
-      av1_xform_quant(cm, x, plane, block, blk_row, blk_col, plane_bsize,
-                      tx_size, tx_type, AV1_XFORM_QUANT_FP);
+      av1_xform_quant(
+          cm, x, plane, block, blk_row, blk_col, plane_bsize, tx_size, tx_type,
+          USE_B_QUANT_NO_TRELLIS &&
+                  (args->enable_optimize_b == FINAL_PASS_TRELLIS_OPT)
+              ? AV1_XFORM_QUANT_B
+              : AV1_XFORM_QUANT_FP);
       TXB_CTX txb_ctx;
       get_txb_ctx(plane_bsize, tx_size, plane, a, l, &txb_ctx);
-      av1_optimize_b(args->cpi, x, plane, block, tx_size, tx_type, &txb_ctx, 1,
-                     &dummy_rate_cost);
+      av1_optimize_b(args->cpi, x, plane, block, tx_size, tx_type, &txb_ctx,
+                     args->cpi->sf.trellis_eob_fast, &dummy_rate_cost);
     } else {
       av1_xform_quant(
           cm, x, plane, block, blk_row, blk_col, plane_bsize, tx_size, tx_type,
@@ -255,12 +260,12 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
                                 cm->reduced_tx_set_used);
   }
 
+  // TODO(debargha, jingning): Temporarily disable txk_type check for eob=0
+  // case. It is possible that certain collision in hash index would cause
+  // the assertion failure. To further optimize the rate-distortion
+  // performance, we need to re-visit this part and enable this assert
+  // again.
   if (p->eobs[block] == 0 && plane == 0) {
-    // TODO(debargha, jingning): Temporarily disable txk_type check for eob=0
-    // case. It is possible that certain collision in hash index would cause
-    // the assertion failure. To further optimize the rate-distortion
-    // performance, we need to re-visit this part and enable this assert
-    // again.
 #if 0
     if (args->cpi->oxcf.aq_mode == NO_AQ &&
         args->cpi->oxcf.deltaq_mode == NO_DELTA_Q) {
@@ -431,7 +436,7 @@ static void encode_block_pass1(int plane, int block, int blk_row, int blk_col,
 
   if (p->eobs[block] > 0) {
     txfm_param.bd = xd->bd;
-    txfm_param.is_hbd = get_bitdepth_data_path_index(xd);
+    txfm_param.is_hbd = is_cur_buf_hbd(xd);
     txfm_param.tx_type = DCT_DCT;
     txfm_param.tx_size = tx_size;
     txfm_param.eob = p->eobs[block];
@@ -474,10 +479,11 @@ void av1_encode_sb(const struct AV1_COMP *cpi, MACROBLOCK *x, BLOCK_SIZE bsize,
 
   if (x->skip) return;
 
+  assert(bsize < BLOCK_SIZES_ALL);
+
   for (plane = 0; plane < num_planes; ++plane) {
     const int subsampling_x = xd->plane[plane].subsampling_x;
     const int subsampling_y = xd->plane[plane].subsampling_y;
-
     if (!is_chroma_reference(mi_row, mi_col, bsize, subsampling_x,
                              subsampling_y))
       continue;
@@ -489,6 +495,7 @@ void av1_encode_sb(const struct AV1_COMP *cpi, MACROBLOCK *x, BLOCK_SIZE bsize,
     const struct macroblockd_plane *const pd = &xd->plane[plane];
     const BLOCK_SIZE plane_bsize =
         get_plane_block_size(bsizec, pd->subsampling_x, pd->subsampling_y);
+    assert(plane_bsize < BLOCK_SIZES_ALL);
     const int mi_width = block_size_wide[plane_bsize] >> tx_size_wide_log2[0];
     const int mi_height = block_size_high[plane_bsize] >> tx_size_high_log2[0];
     const TX_SIZE max_tx_size = get_vartx_max_txsize(xd, plane_bsize, plane);
@@ -579,12 +586,16 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
     const ENTROPY_CONTEXT *a = &args->ta[blk_col];
     const ENTROPY_CONTEXT *l = &args->tl[blk_row];
     if (args->enable_optimize_b != NO_TRELLIS_OPT) {
-      av1_xform_quant(cm, x, plane, block, blk_row, blk_col, plane_bsize,
-                      tx_size, tx_type, AV1_XFORM_QUANT_FP);
+      av1_xform_quant(
+          cm, x, plane, block, blk_row, blk_col, plane_bsize, tx_size, tx_type,
+          USE_B_QUANT_NO_TRELLIS &&
+                  (args->enable_optimize_b == FINAL_PASS_TRELLIS_OPT)
+              ? AV1_XFORM_QUANT_B
+              : AV1_XFORM_QUANT_FP);
       TXB_CTX txb_ctx;
       get_txb_ctx(plane_bsize, tx_size, plane, a, l, &txb_ctx);
-      av1_optimize_b(args->cpi, x, plane, block, tx_size, tx_type, &txb_ctx, 1,
-                     &dummy_rate_cost);
+      av1_optimize_b(args->cpi, x, plane, block, tx_size, tx_type, &txb_ctx,
+                     args->cpi->sf.trellis_eob_fast, &dummy_rate_cost);
     } else {
       av1_xform_quant(
           cm, x, plane, block, blk_row, blk_col, plane_bsize, tx_size, tx_type,
@@ -597,12 +608,12 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
                                 dst_stride, *eob, cm->reduced_tx_set_used);
   }
 
+  // TODO(jingning): Temporarily disable txk_type check for eob=0 case.
+  // It is possible that certain collision in hash index would cause
+  // the assertion failure. To further optimize the rate-distortion
+  // performance, we need to re-visit this part and enable this assert
+  // again.
   if (*eob == 0 && plane == 0) {
-    // TODO(jingning): Temporarily disable txk_type check for eob=0 case.
-    // It is possible that certain collision in hash index would cause
-    // the assertion failure. To further optimize the rate-distortion
-    // performance, we need to re-visit this part and enable this assert
-    // again.
 #if 0
     if (args->cpi->oxcf.aq_mode == NO_AQ
         && args->cpi->oxcf.deltaq_mode == NO_DELTA_Q) {
@@ -630,6 +641,7 @@ void av1_encode_intra_block_plane(const struct AV1_COMP *cpi, MACROBLOCK *x,
   const MACROBLOCKD *const xd = &x->e_mbd;
   ENTROPY_CONTEXT ta[MAX_MIB_SIZE] = { 0 };
   ENTROPY_CONTEXT tl[MAX_MIB_SIZE] = { 0 };
+  assert(bsize < BLOCK_SIZES_ALL);
 
   struct encode_b_args arg = {
     cpi, x, NULL, &(xd->mi[0]->skip), ta, tl, enable_optimize_b

@@ -64,6 +64,9 @@
 
 #define ACCT_STR __func__
 
+#define AOM_MIN_THREADS_PER_TILE 1
+#define AOM_MAX_THREADS_PER_TILE 2
+
 // This is needed by ext_tile related unit tests.
 #define EXT_TILE_DEBUG 1
 #define MC_TEMP_BUF_PELS                       \
@@ -734,7 +737,7 @@ static INLINE void dec_build_inter_predictors(const AV1_COMMON *cm,
                                &scaled_mv, &subpel_x_mv, &subpel_y_mv);
         pre = pre_buf->buf0 + block.y0 * pre_buf->stride + block.x0;
         src_stride = pre_buf->stride;
-        highbd = xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH;
+        highbd = is_cur_buf_hbd(xd);
         extend_mc_border(sf, pre_buf, scaled_mv, block, subpel_x_mv,
                          subpel_y_mv, 0, is_intrabc, highbd, xd->mc_buf[ref],
                          &pre, &src_stride);
@@ -778,9 +781,9 @@ static INLINE void dec_build_inter_predictors(const AV1_COMMON *cm,
       dec_calc_subpel_params(xd, sf, mv, plane, pre_x, pre_y, 0, 0, pre_buf,
                              &subpel_params[ref], bw, bh, &block, mi_x, mi_y,
                              &scaled_mv, &subpel_x_mv, &subpel_y_mv);
-      pre[ref] = pre_buf->buf0 + block.y0 * pre_buf->stride + block.x0;
+      pre[ref] = pre_buf->buf0 + (int64_t)block.y0 * pre_buf->stride + block.x0;
       src_stride[ref] = pre_buf->stride;
-      highbd = xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH;
+      highbd = is_cur_buf_hbd(xd);
 
       WarpTypesAllowed warp_types;
       warp_types.global_warp_allowed = is_global[ref];
@@ -853,7 +856,7 @@ static void dec_build_inter_predictors_for_planes(const AV1_COMMON *cm,
 
 static void dec_build_inter_predictors_sby(const AV1_COMMON *cm,
                                            MACROBLOCKD *xd, int mi_row,
-                                           int mi_col, BUFFER_SET *ctx,
+                                           int mi_col, const BUFFER_SET *ctx,
                                            BLOCK_SIZE bsize) {
   dec_build_inter_predictors_for_planes(cm, xd, bsize, mi_row, mi_col, 0, 0);
 
@@ -868,7 +871,7 @@ static void dec_build_inter_predictors_sby(const AV1_COMMON *cm,
 
 static void dec_build_inter_predictors_sbuv(const AV1_COMMON *cm,
                                             MACROBLOCKD *xd, int mi_row,
-                                            int mi_col, BUFFER_SET *ctx,
+                                            int mi_col, const BUFFER_SET *ctx,
                                             BLOCK_SIZE bsize) {
   dec_build_inter_predictors_for_planes(cm, xd, bsize, mi_row, mi_col, 1,
                                         MAX_MB_PLANE - 1);
@@ -1013,7 +1016,7 @@ static void dec_build_obmc_inter_predictors_sb(const AV1_COMMON *cm,
   int dst_height1[MAX_MB_PLANE] = { MAX_SB_SIZE, MAX_SB_SIZE, MAX_SB_SIZE };
   int dst_height2[MAX_MB_PLANE] = { MAX_SB_SIZE, MAX_SB_SIZE, MAX_SB_SIZE };
 
-  if (xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH) {
+  if (is_cur_buf_hbd(xd)) {
     int len = sizeof(uint16_t);
     dst_buf1[0] = CONVERT_TO_BYTEPTR(xd->tmp_obmc_bufs[0]);
     dst_buf1[1] =
@@ -1731,6 +1734,7 @@ static PARTITION_TYPE read_partition(MACROBLOCKD *xd, int mi_row, int mi_col,
 static void decode_partition(AV1Decoder *const pbi, ThreadData *const td,
                              int mi_row, int mi_col, aom_reader *reader,
                              BLOCK_SIZE bsize, int parse_decode_flag) {
+  assert(bsize < BLOCK_SIZES_ALL);
   AV1_COMMON *const cm = &pbi->common;
   MACROBLOCKD *const xd = &td->xd;
   const int bw = mi_size_wide[bsize];
@@ -1748,9 +1752,9 @@ static void decode_partition(AV1Decoder *const pbi, ThreadData *const td,
   // 01 - do parse only
   // 10 - do decode only
   // 11 - do parse and decode
-  static const block_visitor_fn_t block_visit[4] = {
-    NULL, parse_decode_block, decode_block, parse_decode_block
-  };
+  static const block_visitor_fn_t block_visit[4] = { NULL, parse_decode_block,
+                                                     decode_block,
+                                                     parse_decode_block };
 
   if (parse_decode_flag & 1) {
     const int num_planes = av1_num_planes(cm);
@@ -1775,7 +1779,11 @@ static void decode_partition(AV1Decoder *const pbi, ThreadData *const td,
     partition = get_partition(cm, mi_row, mi_col, bsize);
   }
   subsize = get_partition_subsize(bsize, partition);
-
+  if (subsize == BLOCK_INVALID) {
+    aom_internal_error(xd->error_info, AOM_CODEC_CORRUPT_FRAME,
+                       "Partition is invalid for block size %dx%d",
+                       block_size_wide[bsize], block_size_high[bsize]);
+  }
   // Check the bitstream is conformant: if there is subsampling on the
   // chroma planes, subsize must subsample to a valid block size.
   const struct macroblockd_plane *const pd_u = &xd->plane[1];
@@ -2373,7 +2381,7 @@ static void setup_buffer_pool(AV1_COMMON *cm) {
   if (aom_realloc_frame_buffer(
           &cm->cur_frame->buf, cm->width, cm->height, seq_params->subsampling_x,
           seq_params->subsampling_y, seq_params->use_highbitdepth,
-          AOM_BORDER_IN_PIXELS, cm->byte_alignment,
+          AOM_DEC_BORDER_IN_PIXELS, cm->byte_alignment,
           &cm->cur_frame->raw_frame_buffer, pool->get_fb_cb, pool->cb_priv)) {
     unlock_buffer_pool(pool);
     aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
@@ -3361,6 +3369,20 @@ static int tile_worker_hook(void *arg1, void *arg2) {
   return !td->xd.corrupted;
 }
 
+static INLINE int get_max_row_mt_workers_per_tile(AV1_COMMON *cm,
+                                                  TileInfo tile) {
+  // NOTE: Currently value of max workers is calculated based
+  // on the parse and decode time. As per the theoretical estimate
+  // when percentage of parse time is equal to percentage of decode
+  // time, number of workers needed to parse + decode a tile can not
+  // exceed more than 2.
+  // TODO(any): Modify this value if parsing is optimized in future.
+  int sb_rows = av1_get_sb_rows_in_tile(cm, tile);
+  int max_workers =
+      sb_rows == 1 ? AOM_MIN_THREADS_PER_TILE : AOM_MAX_THREADS_PER_TILE;
+  return max_workers;
+}
+
 // The caller must hold pbi->row_mt_mutex_ when calling this function.
 // Returns 1 if either the next job is stored in *next_job_info or 1 is stored
 // in *end_of_frame.
@@ -3391,8 +3413,8 @@ static int get_next_job_info(AV1Decoder *const pbi,
   int min_threads_working = INT_MAX;
   int max_mis_to_decode = 0;
   int tile_row_idx, tile_col_idx;
-  int tile_row = 0;
-  int tile_col = 0;
+  int tile_row = -1;
+  int tile_col = -1;
 
   memset(next_job_info, 0, sizeof(*next_job_info));
 
@@ -3440,7 +3462,9 @@ static int get_next_job_info(AV1Decoder *const pbi,
           max_mis_to_decode = 0;
         }
         if (num_threads_working == min_threads_working &&
-            num_mis_to_decode > max_mis_to_decode) {
+            num_mis_to_decode > max_mis_to_decode &&
+            num_threads_working <
+                get_max_row_mt_workers_per_tile(cm, tile_data->tile_info)) {
           max_mis_to_decode = num_mis_to_decode;
           tile_row = tile_row_idx;
           tile_col = tile_col_idx;
@@ -3448,6 +3472,8 @@ static int get_next_job_info(AV1Decoder *const pbi,
       }
     }
   }
+  // No job found to process
+  if (tile_row == -1 || tile_col == -1) return 0;
 
   tile_data = pbi->tile_data + tile_row * cm->tile_cols + tile_col;
   tile_info = tile_data->tile_info;
@@ -3576,9 +3602,22 @@ static int row_mt_worker_hook(void *arg1, void *arg2) {
       TileDataDec *const tile_data = cur_job_info->tile_data;
       tile_worker_hook_init(pbi, thread_data, tile_buffer, tile_data,
                             allow_update_cdf);
-
+#if CONFIG_MULTITHREAD
+      pthread_mutex_lock(pbi->row_mt_mutex_);
+#endif
+      tile_data->dec_row_mt_sync.num_threads_working++;
+#if CONFIG_MULTITHREAD
+      pthread_mutex_unlock(pbi->row_mt_mutex_);
+#endif
       // decode tile
       parse_tile_row_mt(pbi, td, tile_data);
+#if CONFIG_MULTITHREAD
+      pthread_mutex_lock(pbi->row_mt_mutex_);
+#endif
+      tile_data->dec_row_mt_sync.num_threads_working--;
+#if CONFIG_MULTITHREAD
+      pthread_mutex_unlock(pbi->row_mt_mutex_);
+#endif
     } else {
       break;
     }
@@ -4055,7 +4094,8 @@ static const uint8_t *decode_tiles_row_mt(AV1Decoder *pbi, const uint8_t *data,
   int tile_cols_start;
   int tile_cols_end;
   int tile_count_tg;
-  int num_workers;
+  int num_workers = 0;
+  int max_threads;
   const uint8_t *raw_data_end = NULL;
   int max_sb_rows = 0;
 
@@ -4071,7 +4111,7 @@ static const uint8_t *decode_tiles_row_mt(AV1Decoder *pbi, const uint8_t *data,
     tile_cols_end = tile_cols;
   }
   tile_count_tg = end_tile - start_tile + 1;
-  num_workers = pbi->max_threads;
+  max_threads = pbi->max_threads;
 
   // No tiles to decode.
   if (tile_rows_end <= tile_rows_start || tile_cols_end <= tile_cols_start ||
@@ -4084,7 +4124,7 @@ static const uint8_t *decode_tiles_row_mt(AV1Decoder *pbi, const uint8_t *data,
   assert(tile_rows <= MAX_TILE_ROWS);
   assert(tile_cols <= MAX_TILE_COLS);
   assert(tile_count_tg > 0);
-  assert(num_workers > 0);
+  assert(max_threads > 0);
   assert(start_tile <= end_tile);
   assert(start_tile >= 0 && end_tile < n_tiles);
 
@@ -4116,8 +4156,10 @@ static const uint8_t *decode_tiles_row_mt(AV1Decoder *pbi, const uint8_t *data,
 
       max_sb_rows = AOMMAX(max_sb_rows,
                            av1_get_sb_rows_in_tile(cm, tile_data->tile_info));
+      num_workers += get_max_row_mt_workers_per_tile(cm, tile_data->tile_info);
     }
   }
+  num_workers = AOMMIN(num_workers, max_threads);
 
   if (pbi->allocated_row_mt_sync_rows != max_sb_rows) {
     for (int i = 0; i < n_tiles; ++i) {
@@ -4203,6 +4245,25 @@ void av1_read_film_grain_params(AV1_COMMON *cm,
   if (!pars->update_parameters) {
     // inherit parameters from a previous reference frame
     int film_grain_params_ref_idx = aom_rb_read_literal(rb, 3);
+    // Section 6.8.20: It is a requirement of bitstream conformance that
+    // film_grain_params_ref_idx is equal to ref_frame_idx[ j ] for some value
+    // of j in the range 0 to REFS_PER_FRAME - 1.
+    int found = 0;
+    for (int i = 0; i < INTER_REFS_PER_FRAME; ++i) {
+      if (film_grain_params_ref_idx == cm->remapped_ref_idx[i]) {
+        found = 1;
+        break;
+      }
+    }
+    if (!found) {
+      aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
+                         "Invalid film grain reference idx %d. ref_frame_idx = "
+                         "{%d, %d, %d, %d, %d, %d, %d}",
+                         film_grain_params_ref_idx, cm->remapped_ref_idx[0],
+                         cm->remapped_ref_idx[1], cm->remapped_ref_idx[2],
+                         cm->remapped_ref_idx[3], cm->remapped_ref_idx[4],
+                         cm->remapped_ref_idx[5], cm->remapped_ref_idx[6]);
+    }
     RefCntBuffer *const buf = cm->ref_frame_map[film_grain_params_ref_idx];
     if (buf == NULL) {
       aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
@@ -4431,13 +4492,13 @@ void av1_read_timing_info_header(AV1_COMMON *cm,
   cm->timing_info.equal_picture_interval =
       aom_rb_read_bit(rb);  // Equal picture interval bit
   if (cm->timing_info.equal_picture_interval) {
-    cm->timing_info.num_ticks_per_picture =
-        aom_rb_read_uvlc(rb) + 1;  // ticks per picture
-    if (cm->timing_info.num_ticks_per_picture == 0) {
+    const uint32_t num_ticks_per_picture_minus_1 = aom_rb_read_uvlc(rb);
+    if (num_ticks_per_picture_minus_1 == UINT32_MAX) {
       aom_internal_error(
           &cm->error, AOM_CODEC_UNSUP_BITSTREAM,
           "num_ticks_per_picture_minus_1 cannot be (1 << 32) − 1.");
     }
+    cm->timing_info.num_ticks_per_picture = num_ticks_per_picture_minus_1 + 1;
   }
 }
 
@@ -4717,6 +4778,7 @@ static void generate_next_ref_frame_map(AV1Decoder *const pbi) {
 // If the refresh_frame_flags bitmask is set, update reference frame id values
 // and mark frames as valid for reference.
 static void update_ref_frame_id(AV1_COMMON *const cm, int frame_id) {
+  assert(cm->seq_params.frame_id_numbers_present_flag);
   int refresh_frame_flags = cm->current_frame.refresh_frame_flags;
   for (int i = 0; i < REF_FRAMES; i++) {
     if ((refresh_frame_flags >> i) & 1) {
@@ -4816,7 +4878,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     cm->error_resilient_mode = 1;
   } else {
     cm->show_existing_frame = aom_rb_read_bit(rb);
-    cm->reset_decoder_state = 0;
+    pbi->reset_decoder_state = 0;
 
     if (cm->show_existing_frame) {
       if (pbi->sequence_header_changed) {
@@ -4827,6 +4889,10 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       // Show an existing frame directly.
       const int existing_frame_idx = aom_rb_read_literal(rb, 3);
       RefCntBuffer *const frame_to_show = cm->ref_frame_map[existing_frame_idx];
+      if (frame_to_show == NULL) {
+        aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
+                           "Buffer does not contain a decoded frame");
+      }
       if (seq_params->decoder_model_info_present_flag &&
           cm->timing_info.equal_picture_interval == 0) {
         av1_read_temporal_point_info(cm, rb);
@@ -4842,11 +4908,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                              "Reference buffer frame ID mismatch");
       }
       lock_buffer_pool(pool);
-      if (frame_to_show == NULL || frame_to_show->ref_count < 1) {
-        unlock_buffer_pool(pool);
-        aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
-                           "Buffer does not contain a decoded frame");
-      }
+      assert(frame_to_show->ref_count > 0);
       // cm->cur_frame should be the buffer referenced by the return value
       // of the get_free_fb() call in av1_receive_compressed_data(), and
       // generate_next_ref_frame_map() has not been called, so ref_count
@@ -4858,7 +4920,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       // assign_frame_buffer_p()!
       assert(!cm->cur_frame->raw_frame_buffer.data);
       assign_frame_buffer_p(&cm->cur_frame, frame_to_show);
-      cm->reset_decoder_state = frame_to_show->frame_type == KEY_FRAME;
+      pbi->reset_decoder_state = frame_to_show->frame_type == KEY_FRAME;
       unlock_buffer_pool(pool);
 
       cm->lf.filter_level[0] = 0;
@@ -4868,11 +4930,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       if (!frame_to_show->showable_frame) {
         aom_merge_corrupted_flag(&xd->corrupted, 1);
       }
-      if (cm->reset_decoder_state) frame_to_show->showable_frame = 0;
+      if (pbi->reset_decoder_state) frame_to_show->showable_frame = 0;
 
       cm->film_grain_params = frame_to_show->film_grain_params;
 
-      if (cm->reset_decoder_state) {
+      if (pbi->reset_decoder_state) {
         show_existing_frame_reset(pbi, existing_frame_idx);
       } else {
         current_frame->refresh_frame_flags = 0;
@@ -5141,7 +5203,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
           aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                              "Inter frame requests nonexistent reference");
 
-        av1_set_frame_refs(cm, lst_ref, gld_ref);
+        av1_set_frame_refs(cm, cm->remapped_ref_idx, lst_ref, gld_ref);
       }
 
       for (int i = 0; i < INTER_REFS_PER_FRAME; ++i) {
@@ -5151,7 +5213,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
           // Most of the time, streams start with a keyframe. In that case,
           // ref_frame_map will have been filled in at that point and will not
-          // contain any -1's. However, streams are explicitly allowed to start
+          // contain any NULLs. However, streams are explicitly allowed to start
           // with an intra-only frame, so long as they don't then signal a
           // reference to a slot that hasn't been set yet. That's what we are
           // checking here.
@@ -5281,6 +5343,11 @@ static int read_uncompressed_header(AV1Decoder *pbi,
   }
 
   read_tile_info(pbi, rb);
+  if (!is_min_tile_width_satisfied(cm)) {
+    aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
+                       "Minimum tile width requirement not satisfied");
+  }
+
   setup_quantization(cm, rb);
   xd->bd = (int)seq_params->bit_depth;
 
@@ -5470,7 +5537,7 @@ uint32_t av1_decode_frame_headers_and_setup(AV1Decoder *pbi,
   if (cm->show_existing_frame) {
     // showing a frame directly
     *p_data_end = data + uncomp_hdr_size;
-    if (cm->reset_decoder_state) {
+    if (pbi->reset_decoder_state) {
       // Use the default frame context values.
       *cm->fc = *cm->default_frame_context;
       if (!cm->fc->initialized)

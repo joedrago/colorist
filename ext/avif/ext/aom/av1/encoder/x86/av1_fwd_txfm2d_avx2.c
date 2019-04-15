@@ -1407,6 +1407,7 @@ static INLINE void fadst16x16_new_avx2(const __m256i *input, __m256i *output,
   output[14] = x1[15];
   output[15] = x1[0];
 }
+
 static INLINE void fidentity16x16_new_avx2(const __m256i *input,
                                            __m256i *output, int8_t cos_bit) {
   (void)cos_bit;
@@ -1990,34 +1991,36 @@ static void lowbd_fwd_txfm2d_64x16_avx2(const int16_t *input, int32_t *output,
   }
 }
 
-void btf_16_avx2(__m256i w0, __m256i w1, __m256i in0, __m256i in1,
-                 __m128i *out0, __m128i *out1, __m128i *out2, __m128i *out3,
-                 __m256i __rounding, int8_t cos_bit) {
-  __m256i t0 = _mm256_unpacklo_epi16(in0, in1);
-  __m256i t1 = _mm256_unpackhi_epi16(in0, in1);
-  __m256i u0 = _mm256_madd_epi16(t0, w0);
-  __m256i u1 = _mm256_madd_epi16(t1, w0);
-  __m256i v0 = _mm256_madd_epi16(t0, w1);
-  __m256i v1 = _mm256_madd_epi16(t1, w1);
+static INLINE void btf_16_avx2(__m256i *w0, __m256i *w1, __m256i *in0,
+                               __m256i *in1, __m128i *out0, __m128i *out1,
+                               __m128i *out2, __m128i *out3,
+                               const __m256i *__rounding, int8_t *cos_bit) {
+  __m256i t0 = _mm256_unpacklo_epi16(*in0, *in1);
+  __m256i t1 = _mm256_unpackhi_epi16(*in0, *in1);
+  __m256i u0 = _mm256_madd_epi16(t0, *w0);
+  __m256i u1 = _mm256_madd_epi16(t1, *w0);
+  __m256i v0 = _mm256_madd_epi16(t0, *w1);
+  __m256i v1 = _mm256_madd_epi16(t1, *w1);
 
-  __m256i a0 = _mm256_add_epi32(u0, __rounding);
-  __m256i a1 = _mm256_add_epi32(u1, __rounding);
-  __m256i b0 = _mm256_add_epi32(v0, __rounding);
-  __m256i b1 = _mm256_add_epi32(v1, __rounding);
+  __m256i a0 = _mm256_add_epi32(u0, *__rounding);
+  __m256i a1 = _mm256_add_epi32(u1, *__rounding);
+  __m256i b0 = _mm256_add_epi32(v0, *__rounding);
+  __m256i b1 = _mm256_add_epi32(v1, *__rounding);
 
-  __m256i c0 = _mm256_srai_epi32(a0, cos_bit);
-  __m256i c1 = _mm256_srai_epi32(a1, cos_bit);
-  __m256i d0 = _mm256_srai_epi32(b0, cos_bit);
-  __m256i d1 = _mm256_srai_epi32(b1, cos_bit);
+  __m256i c0 = _mm256_srai_epi32(a0, *cos_bit);
+  __m256i c1 = _mm256_srai_epi32(a1, *cos_bit);
+  __m256i d0 = _mm256_srai_epi32(b0, *cos_bit);
+  __m256i d1 = _mm256_srai_epi32(b1, *cos_bit);
 
   __m256i temp0 = _mm256_packs_epi32(c0, c1);
   __m256i temp1 = _mm256_packs_epi32(d0, d1);
 
   *out0 = _mm256_castsi256_si128(temp0);
   *out1 = _mm256_castsi256_si128(temp1);
-  *out2 = _mm256_extractf128_si256(temp0, 0x01);
-  *out3 = _mm256_extractf128_si256(temp1, 0x01);
+  *out2 = _mm256_extracti128_si256(temp0, 0x01);
+  *out3 = _mm256_extracti128_si256(temp1, 0x01);
 }
+
 static INLINE void fdct8x8_new_avx2(const __m256i *input, __m256i *output,
                                     int8_t cos_bit) {
   const int32_t *cospi = cospi_arr(cos_bit);
@@ -2096,6 +2099,7 @@ static INLINE void fdct8x8_new_avx2(const __m256i *input, __m256i *output,
   output[6] = x4[3];
   output[7] = x4[7];
 }
+
 static INLINE void fadst8x8_new_avx2(const __m256i *input, __m256i *output,
                                      int8_t cos_bit) {
   const int32_t *cospi = cospi_arr(cos_bit);
@@ -2208,6 +2212,7 @@ static INLINE void fadst8x8_new_avx2(const __m256i *input, __m256i *output,
   output[6] = x6[7];
   output[7] = x6[0];
 }
+
 static INLINE void fidentity8x8_new_avx2(const __m256i *input, __m256i *output,
                                          int8_t cos_bit) {
   (void)cos_bit;
@@ -2221,6 +2226,7 @@ static INLINE void fidentity8x8_new_avx2(const __m256i *input, __m256i *output,
   output[6] = _mm256_adds_epi16(input[6], input[6]);
   output[7] = _mm256_adds_epi16(input[7], input[7]);
 }
+
 static INLINE void fdct8x16_new_avx2(const __m128i *input, __m128i *output,
                                      int8_t cos_bit) {
   const int32_t *cospi = cospi_arr(cos_bit);
@@ -2293,7 +2299,7 @@ static INLINE void fdct8x16_new_avx2(const __m128i *input, __m128i *output,
       _mm256_insertf128_si256(_mm256_castsi128_si256(input[8]), input[9], 0x1);
 
   // stage 1
-  __m256i x1[16];
+  __m256i x1[8];
   x1[0] = _mm256_adds_epi16(x[0], x[1]);
   x1[7] = _mm256_subs_epi16(x[0], x[1]);
   x1[1] = _mm256_adds_epi16(x[2], x[3]);
@@ -2311,8 +2317,8 @@ static INLINE void fdct8x16_new_avx2(const __m128i *input, __m128i *output,
   x2[6] = _mm256_subs_epi16(x1[1], x1[2]);
   x2[2] = x1[4];
   x2[3] = x1[7];
-  btf_16_avx2(cospi_arr[0], cospi_arr[1], x1[5], x1[6], &temp0, &temp1, &temp2,
-              &temp3, __rounding_256, cos_bit);
+  btf_16_avx2(&cospi_arr[0], &cospi_arr[1], &x1[5], &x1[6], &temp0, &temp1,
+              &temp2, &temp3, &__rounding_256, &cos_bit);
   x2[4] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp2), temp0, 0x1);
   x2[5] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp3), temp1, 0x1);
 
@@ -2332,42 +2338,44 @@ static INLINE void fdct8x16_new_avx2(const __m128i *input, __m128i *output,
 
   // stage 4
   __m256i x4[8];
-  in0 = _mm256_blend_epi32(x3[0], x3[1], 0xf0);
-  in1 = _mm256_permute2f128_si256(x3[0], x3[1], 0x21);
-  btf_16_avx2(cospi_arr[2], cospi_arr[3], in0, in1, &output[0], &output[8],
-              &output[4], &output[12], __rounding_256, cos_bit);
+  x4[0] = _mm256_blend_epi32(x3[0], x3[1], 0xf0);
+  x4[1] = _mm256_permute2f128_si256(x3[0], x3[1], 0x21);
+  btf_16_avx2(&cospi_arr[2], &cospi_arr[3], &x4[0], &x4[1], &output[0],
+              &output[8], &output[4], &output[12], &__rounding_256, &cos_bit);
   x4[2] = _mm256_adds_epi16(x3[2], x3[7]);
   x4[3] = _mm256_subs_epi16(x3[2], x3[7]);
   x4[4] = _mm256_permute2f128_si256(x3[3], x3[4], 0x20);
   x4[5] = _mm256_permute2f128_si256(x3[6], x3[5], 0x20);
   in0 = _mm256_permute2f128_si256(x3[3], x3[4], 0x31);
   in1 = _mm256_permute2f128_si256(x3[5], x3[6], 0x31);
-  btf_16_avx2(cospi_arr[4], cospi_arr[5], in0, in1, &temp0, &temp1, &temp2,
-              &temp3, __rounding_256, cos_bit);
+  btf_16_avx2(&cospi_arr[4], &cospi_arr[5], &in0, &in1, &temp0, &temp1, &temp2,
+              &temp3, &__rounding_256, &cos_bit);
+
   x4[6] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp0), temp2, 0x1);
   x4[7] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp3), temp1, 0x1);
 
   // stage 5
-  __m256i x5[8];
+  __m256i x5[4];
   in0 = _mm256_permute2f128_si256(x4[2], x4[3], 0x31);
   in1 = _mm256_permute2f128_si256(x4[2], x4[3], 0x20);
-  btf_16_avx2(cospi_arr[6], cospi_arr[7], in0, in1, &output[2], &output[14],
-              &output[10], &output[6], __rounding_256, cos_bit);
-  x5[4] = _mm256_adds_epi16(x4[4], x4[6]);
-  x5[5] = _mm256_subs_epi16(x4[4], x4[6]);
-  x5[6] = _mm256_adds_epi16(x4[5], x4[7]);
-  x5[7] = _mm256_subs_epi16(x4[5], x4[7]);
+  btf_16_avx2(&cospi_arr[6], &cospi_arr[7], &in0, &in1, &output[2], &output[14],
+              &output[10], &output[6], &__rounding_256, &cos_bit);
+  x5[0] = _mm256_adds_epi16(x4[4], x4[6]);
+  x5[1] = _mm256_subs_epi16(x4[4], x4[6]);
+  x5[2] = _mm256_adds_epi16(x4[5], x4[7]);
+  x5[3] = _mm256_subs_epi16(x4[5], x4[7]);
 
   // stage 6
-  in0 = _mm256_permute2f128_si256(x5[4], x5[5], 0x20);
-  in1 = _mm256_permute2f128_si256(x5[6], x5[7], 0x31);
-  btf_16_avx2(cospi_arr[8], cospi_arr[9], in0, in1, &output[1], &output[15],
-              &output[9], &output[7], __rounding_256, cos_bit);
-  in0 = _mm256_permute2f128_si256(x5[5], x5[4], 0x31);
-  in1 = _mm256_permute2f128_si256(x5[7], x5[6], 0x20);
-  btf_16_avx2(cospi_arr[10], cospi_arr[11], in0, in1, &output[5], &output[11],
-              &output[13], &output[3], __rounding_256, cos_bit);
+  in0 = _mm256_permute2f128_si256(x5[0], x5[1], 0x20);
+  in1 = _mm256_permute2f128_si256(x5[2], x5[3], 0x31);
+  btf_16_avx2(&cospi_arr[8], &cospi_arr[9], &in0, &in1, &output[1], &output[15],
+              &output[9], &output[7], &__rounding_256, &cos_bit);
+  in0 = _mm256_permute2f128_si256(x5[1], x5[0], 0x31);
+  in1 = _mm256_permute2f128_si256(x5[3], x5[2], 0x20);
+  btf_16_avx2(&cospi_arr[10], &cospi_arr[11], &in0, &in1, &output[5],
+              &output[11], &output[13], &output[3], &__rounding_256, &cos_bit);
 }
+
 static INLINE void fadst8x16_new_avx2(const __m128i *input, __m128i *output,
                                       int8_t cos_bit) {
   const int32_t *cospi = cospi_arr(cos_bit);
@@ -2484,14 +2492,14 @@ static INLINE void fadst8x16_new_avx2(const __m128i *input, __m128i *output,
   x2[7] = _mm256_blend_epi32(x1[7], x1[6], 0xf0);
   in0 = _mm256_blend_epi32(x1[1], x1[0], 0xf0);
   in1 = _mm256_blend_epi32(x1[2], x1[3], 0xf0);
-  btf_16_avx2(cospi_arr[0], cospi_arr[1], in0, in1, &temp0, &temp1, &temp2,
-              &temp3, __rounding_256, cos_bit);
+  btf_16_avx2(&cospi_arr[0], &cospi_arr[1], &in0, &in1, &temp0, &temp1, &temp2,
+              &temp3, &__rounding_256, &cos_bit);
   x2[1] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp0), temp1, 0x1);
   x2[2] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp2), temp3, 0x1);
   in0 = _mm256_permute2f128_si256(x1[7], x1[6], 0x21);
   in1 = _mm256_permute2f128_si256(x1[4], x1[5], 0x21);
-  btf_16_avx2(cospi_arr[2], cospi_arr[3], in0, in1, &temp0, &temp1, &temp2,
-              &temp3, __rounding_256, cos_bit);
+  btf_16_avx2(&cospi_arr[2], &cospi_arr[3], &in0, &in1, &temp0, &temp1, &temp2,
+              &temp3, &__rounding_256, &cos_bit);
   x2[5] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp0), temp1, 0x1);
   x2[6] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp2), temp3, 0x1);
 
@@ -2514,14 +2522,14 @@ static INLINE void fadst8x16_new_avx2(const __m128i *input, __m128i *output,
   x4[5] = x3[5];
   in0 = _mm256_permute2f128_si256(x3[2], x3[3], 0x20);
   in1 = _mm256_permute2f128_si256(x3[2], x3[3], 0x31);
-  btf_16_avx2(cospi_arr[4], cospi_arr[5], in0, in1, &temp0, &temp1, &temp2,
-              &temp3, __rounding_256, cos_bit);
+  btf_16_avx2(&cospi_arr[4], &cospi_arr[5], &in0, &in1, &temp0, &temp1, &temp2,
+              &temp3, &__rounding_256, &cos_bit);
   x4[2] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp0), temp1, 0x1);
   x4[3] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp2), temp3, 0x1);
   in0 = _mm256_permute2f128_si256(x3[6], x3[7], 0x20);
   in1 = _mm256_permute2f128_si256(x3[6], x3[7], 0x31);
-  btf_16_avx2(cospi_arr[6], cospi_arr[7], in0, in1, &temp0, &temp1, &temp2,
-              &temp3, __rounding_256, cos_bit);
+  btf_16_avx2(&cospi_arr[6], &cospi_arr[7], &in0, &in1, &temp0, &temp1, &temp2,
+              &temp3, &__rounding_256, &cos_bit);
   x4[6] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp0), temp1, 0x1);
   x4[7] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp2), temp3, 0x1);
 
@@ -2544,14 +2552,14 @@ static INLINE void fadst8x16_new_avx2(const __m128i *input, __m128i *output,
   x6[3] = x5[3];
   in0 = _mm256_permute2f128_si256(x5[4], x5[6], 0x20);
   in1 = _mm256_permute2f128_si256(x5[4], x5[6], 0x31);
-  btf_16_avx2(cospi_arr[8], cospi_arr[9], in0, in1, &temp0, &temp1, &temp2,
-              &temp3, __rounding_256, cos_bit);
+  btf_16_avx2(&cospi_arr[8], &cospi_arr[9], &in0, &in1, &temp0, &temp1, &temp2,
+              &temp3, &__rounding_256, &cos_bit);
   x6[4] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp0), temp1, 0x1);
   x6[5] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp2), temp3, 0x1);
   in0 = _mm256_permute2f128_si256(x5[5], x5[7], 0x20);
   in1 = _mm256_permute2f128_si256(x5[5], x5[7], 0x31);
-  btf_16_avx2(cospi_arr[10], cospi_arr[11], in0, in1, &temp0, &temp1, &temp2,
-              &temp3, __rounding_256, cos_bit);
+  btf_16_avx2(&cospi_arr[10], &cospi_arr[11], &in0, &in1, &temp0, &temp1,
+              &temp2, &temp3, &__rounding_256, &cos_bit);
   x6[6] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp0), temp1, 0x1);
   x6[7] = _mm256_insertf128_si256(_mm256_castsi128_si256(temp2), temp3, 0x1);
 
@@ -2569,21 +2577,22 @@ static INLINE void fadst8x16_new_avx2(const __m128i *input, __m128i *output,
   // stage 8
   in0 = _mm256_permute2f128_si256(x7[0], x7[2], 0x20);
   in1 = _mm256_permute2f128_si256(x7[0], x7[2], 0x31);
-  btf_16_avx2(cospi_arr[12], cospi_arr[13], in0, in1, &output[15], &output[0],
-              &output[13], &output[2], __rounding_256, cos_bit);
+  btf_16_avx2(&cospi_arr[12], &cospi_arr[13], &in0, &in1, &output[15],
+              &output[0], &output[13], &output[2], &__rounding_256, &cos_bit);
   in0 = _mm256_permute2f128_si256(x7[4], x7[6], 0x20);
   in1 = _mm256_permute2f128_si256(x7[4], x7[6], 0x31);
-  btf_16_avx2(cospi_arr[14], cospi_arr[15], in0, in1, &output[11], &output[4],
-              &output[9], &output[6], __rounding_256, cos_bit);
+  btf_16_avx2(&cospi_arr[14], &cospi_arr[15], &in0, &in1, &output[11],
+              &output[4], &output[9], &output[6], &__rounding_256, &cos_bit);
   in0 = _mm256_permute2f128_si256(x7[1], x7[3], 0x20);
   in1 = _mm256_permute2f128_si256(x7[1], x7[3], 0x31);
-  btf_16_avx2(cospi_arr[16], cospi_arr[17], in0, in1, &output[7], &output[8],
-              &output[5], &output[10], __rounding_256, cos_bit);
+  btf_16_avx2(&cospi_arr[16], &cospi_arr[17], &in0, &in1, &output[7],
+              &output[8], &output[5], &output[10], &__rounding_256, &cos_bit);
   in0 = _mm256_permute2f128_si256(x7[5], x7[7], 0x20);
   in1 = _mm256_permute2f128_si256(x7[5], x7[7], 0x31);
-  btf_16_avx2(cospi_arr[18], cospi_arr[19], in0, in1, &output[3], &output[12],
-              &output[1], &output[14], __rounding_256, cos_bit);
+  btf_16_avx2(&cospi_arr[18], &cospi_arr[19], &in0, &in1, &output[3],
+              &output[12], &output[1], &output[14], &__rounding_256, &cos_bit);
 }
+
 static INLINE void fidentity8x16_new_avx2(const __m128i *input, __m128i *output,
                                           int8_t cos_bit) {
   (void)cos_bit;
@@ -2601,6 +2610,7 @@ static INLINE void fidentity8x16_new_avx2(const __m128i *input, __m128i *output,
     output[i + 1] = _mm256_extractf128_si256(temp, 0x1);
   }
 }
+
 static const transform_1d_avx2 row_txfm8x16_arr[TX_TYPES] = {
   fdct8x8_new_avx2,       // DCT_DCT
   fdct8x8_new_avx2,       // ADST_DCT
@@ -2638,6 +2648,7 @@ static const transform_1d_sse2 col_txfm8x16_arr[TX_TYPES] = {
   fadst8x16_new_avx2,      // V_FLIPADST
   fidentity8x16_new_avx2   // H_FLIPADST
 };
+
 static const transform_1d_avx2 col_txfm16x8_arr[TX_TYPES] = {
   fdct8x8_new_avx2,       // DCT_DCT
   fadst8x8_new_avx2,      // ADST_DCT
@@ -2675,8 +2686,9 @@ static const transform_1d_sse2 row_txfm16x8_arr[TX_TYPES] = {
   fidentity8x16_new_avx2,  // V_FLIPADST
   fadst8x16_new_avx2       // H_FLIPADST
 };
-void lowbd_fwd_txfm2d_8x16_avx2(const int16_t *input, int32_t *output,
-                                int stride, TX_TYPE tx_type, int bd) {
+
+static void lowbd_fwd_txfm2d_8x16_avx2(const int16_t *input, int32_t *output,
+                                       int stride, TX_TYPE tx_type, int bd) {
   (void)bd;
   __m128i buf0[16], buf1[16];
   __m256i buf2[8];
@@ -2719,8 +2731,9 @@ void lowbd_fwd_txfm2d_8x16_avx2(const int16_t *input, int32_t *output,
   transpose_16bit_16x8_avx2(buf2, buf2);
   store_rect_buffer_16bit_to_32bit_w8_avx2(buf2, output, width, 8);
 }
-void lowbd_fwd_txfm2d_16x8_avx2(const int16_t *input, int32_t *output,
-                                int stride, TX_TYPE tx_type, int bd) {
+
+static void lowbd_fwd_txfm2d_16x8_avx2(const int16_t *input, int32_t *output,
+                                       int stride, TX_TYPE tx_type, int bd) {
   (void)bd;
   __m128i buf0[16], buf1[16];
   __m256i buf2[8];
@@ -2765,6 +2778,7 @@ void lowbd_fwd_txfm2d_16x8_avx2(const int16_t *input, int32_t *output,
   transpose_16bit_8x8(buf + 8, buf + 8);
   store_rect_buffer_16bit_to_32bit_w8(buf + 8, output + 8, width, height);
 }
+
 static FwdTxfm2dFunc fwd_txfm2d_func_ls[TX_SIZES_ALL] = {
   av1_lowbd_fwd_txfm2d_4x4_sse2,   // 4x4 transform
   av1_lowbd_fwd_txfm2d_8x8_sse2,   // 8x8 transform

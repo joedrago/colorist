@@ -167,6 +167,7 @@ static INLINE void transpose_16bit_16x16_avx2(const __m256i *const in,
   out[6 + 8] = _mm256_permute2x128_si256(c[4 + 2], c[5 + 2], 0x31);
   out[7 + 8] = _mm256_permute2x128_si256(c[12 + 2], c[13 + 2], 0x31);
 }
+
 static INLINE void transpose_16bit_16x8_avx2(const __m256i *const in,
                                              __m256i *const out) {
   const __m256i a0 = _mm256_unpacklo_epi16(in[0], in[1]);
@@ -196,6 +197,7 @@ static INLINE void transpose_16bit_16x8_avx2(const __m256i *const in,
   out[6] = _mm256_unpacklo_epi64(b6, b7);
   out[7] = _mm256_unpackhi_epi64(b6, b7);
 }
+
 static INLINE void flip_buf_avx2(__m256i *in, __m256i *out, int size) {
   for (int i = 0; i < size; ++i) {
     out[size - i - 1] = in[i];
@@ -263,12 +265,14 @@ static INLINE void av1_round_shift_rect_array_32_avx2(__m256i *input,
     }
   }
 }
+
 static INLINE __m256i scale_round_avx2(const __m256i a, const int scale) {
   const __m256i scale_rounding =
       pair_set_w16_epi16(scale, 1 << (NewSqrt2Bits - 1));
   const __m256i b = _mm256_madd_epi16(a, scale_rounding);
   return _mm256_srai_epi32(b, NewSqrt2Bits);
 }
+
 static INLINE void store_rect_16bit_to_32bit_w8_avx2(const __m256i a,
                                                      int32_t *const b) {
   const __m256i one = _mm256_set1_epi16(1);
@@ -281,6 +285,7 @@ static INLINE void store_rect_16bit_to_32bit_w8_avx2(const __m256i a,
   _mm_store_si128((__m128i *)(b + 4), _mm256_castsi256_si128(b_hi));
   _mm256_store_si256((__m256i *)(b + 64), temp);
 }
+
 static INLINE void store_rect_buffer_16bit_to_32bit_w8_avx2(
     const __m256i *const in, int32_t *const out, const int stride,
     const int out_size) {
@@ -288,6 +293,7 @@ static INLINE void store_rect_buffer_16bit_to_32bit_w8_avx2(
     store_rect_16bit_to_32bit_w8_avx2(in[i], out + i * stride);
   }
 }
+
 static INLINE void pack_reg(const __m128i *in1, const __m128i *in2,
                             __m256i *out) {
   out[0] = _mm256_insertf128_si256(_mm256_castsi128_si256(in1[0]), in2[0], 0x1);
@@ -299,6 +305,7 @@ static INLINE void pack_reg(const __m128i *in1, const __m128i *in2,
   out[6] = _mm256_insertf128_si256(_mm256_castsi128_si256(in1[6]), in2[6], 0x1);
   out[7] = _mm256_insertf128_si256(_mm256_castsi128_si256(in1[7]), in2[7], 0x1);
 }
+
 static INLINE void extract_reg(const __m256i *in, __m128i *out1) {
   out1[0] = _mm256_castsi256_si128(in[0]);
   out1[1] = _mm256_castsi256_si128(in[1]);
@@ -309,15 +316,16 @@ static INLINE void extract_reg(const __m256i *in, __m128i *out1) {
   out1[6] = _mm256_castsi256_si128(in[6]);
   out1[7] = _mm256_castsi256_si128(in[7]);
 
-  out1[8] = _mm256_extractf128_si256(in[0], 0x01);
-  out1[9] = _mm256_extractf128_si256(in[1], 0x01);
-  out1[10] = _mm256_extractf128_si256(in[2], 0x01);
-  out1[11] = _mm256_extractf128_si256(in[3], 0x01);
-  out1[12] = _mm256_extractf128_si256(in[4], 0x01);
-  out1[13] = _mm256_extractf128_si256(in[5], 0x01);
-  out1[14] = _mm256_extractf128_si256(in[6], 0x01);
-  out1[15] = _mm256_extractf128_si256(in[7], 0x01);
+  out1[8] = _mm256_extracti128_si256(in[0], 0x01);
+  out1[9] = _mm256_extracti128_si256(in[1], 0x01);
+  out1[10] = _mm256_extracti128_si256(in[2], 0x01);
+  out1[11] = _mm256_extracti128_si256(in[3], 0x01);
+  out1[12] = _mm256_extracti128_si256(in[4], 0x01);
+  out1[13] = _mm256_extracti128_si256(in[5], 0x01);
+  out1[14] = _mm256_extracti128_si256(in[6], 0x01);
+  out1[15] = _mm256_extracti128_si256(in[7], 0x01);
 }
+
 #ifdef __cplusplus
 }
 #endif

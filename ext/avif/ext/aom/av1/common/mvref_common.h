@@ -189,18 +189,17 @@ static INLINE int16_t av1_mode_context_analyzer(
   return comp_ctx;
 }
 
-static INLINE uint8_t av1_drl_ctx(const CANDIDATE_MV *ref_mv_stack,
-                                  int ref_idx) {
-  if (ref_mv_stack[ref_idx].weight >= REF_CAT_LEVEL &&
-      ref_mv_stack[ref_idx + 1].weight >= REF_CAT_LEVEL)
+static INLINE uint8_t av1_drl_ctx(const uint16_t *ref_mv_weight, int ref_idx) {
+  if (ref_mv_weight[ref_idx] >= REF_CAT_LEVEL &&
+      ref_mv_weight[ref_idx + 1] >= REF_CAT_LEVEL)
     return 0;
 
-  if (ref_mv_stack[ref_idx].weight >= REF_CAT_LEVEL &&
-      ref_mv_stack[ref_idx + 1].weight < REF_CAT_LEVEL)
+  if (ref_mv_weight[ref_idx] >= REF_CAT_LEVEL &&
+      ref_mv_weight[ref_idx + 1] < REF_CAT_LEVEL)
     return 1;
 
-  if (ref_mv_stack[ref_idx].weight < REF_CAT_LEVEL &&
-      ref_mv_stack[ref_idx + 1].weight < REF_CAT_LEVEL)
+  if (ref_mv_weight[ref_idx] < REF_CAT_LEVEL &&
+      ref_mv_weight[ref_idx + 1] < REF_CAT_LEVEL)
     return 2;
 
   return 0;
@@ -210,7 +209,8 @@ void av1_setup_frame_buf_refs(AV1_COMMON *cm);
 void av1_setup_frame_sign_bias(AV1_COMMON *cm);
 void av1_setup_skip_mode_allowed(AV1_COMMON *cm);
 void av1_setup_motion_field(AV1_COMMON *cm);
-void av1_set_frame_refs(AV1_COMMON *const cm, int lst_map_idx, int gld_map_idx);
+void av1_set_frame_refs(AV1_COMMON *const cm, int *remapped_ref_idx,
+                        int lst_map_idx, int gld_map_idx);
 
 static INLINE void av1_collect_neighbors_ref_counts(MACROBLOCKD *const xd) {
   av1_zero(xd->neighbors_ref_counts);
@@ -243,10 +243,14 @@ void av1_copy_frame_mvs(const AV1_COMMON *const cm,
                         const MB_MODE_INFO *const mi, int mi_row, int mi_col,
                         int x_mis, int y_mis);
 
+// The global_mvs output parameter points to an array of REF_FRAMES elements.
+// The caller may pass a null global_mvs if it does not need the global_mvs
+// output.
 void av1_find_mv_refs(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                       MB_MODE_INFO *mi, MV_REFERENCE_FRAME ref_frame,
                       uint8_t ref_mv_count[MODE_CTX_REF_FRAMES],
                       CANDIDATE_MV ref_mv_stack[][MAX_REF_MV_STACK_SIZE],
+                      uint16_t ref_mv_weight[][MAX_REF_MV_STACK_SIZE],
                       int_mv mv_ref_list[][MAX_MV_REF_CANDIDATES],
                       int_mv *global_mvs, int mi_row, int mi_col,
                       int16_t *mode_context);

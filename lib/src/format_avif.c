@@ -284,8 +284,7 @@ static void logAvifImage(struct clContext * C, avifImage * avif)
         case AVIF_PIXEL_FORMAT_YUV422:  yuvFormat = CL_YUVFORMAT_422;  break;
         case AVIF_PIXEL_FORMAT_YUV420:  yuvFormat = CL_YUVFORMAT_420;  break;
         case AVIF_PIXEL_FORMAT_YV12:    yuvFormat = CL_YUVFORMAT_YV12; break;
-        case CL_YUVFORMAT_AUTO:
-        case CL_YUVFORMAT_INVALID:
+        case AVIF_PIXEL_FORMAT_NONE:
         default:
             break;
     }
