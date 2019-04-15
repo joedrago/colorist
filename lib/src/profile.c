@@ -40,9 +40,6 @@ clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock)
 {
     clProfilePrimaries primaries;
     clProfileCurve curve;
-    int maxLuminance;
-    char descriptionBuffer[128];
-    descriptionBuffer[0] = 0;
     switch (stock) {
         case CL_PS_SRGB:
         default:
@@ -56,13 +53,11 @@ clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock)
             primaries.white[1] = 0.3290f;
             curve.type = CL_PCT_GAMMA;
             curve.gamma = COLORIST_SRGB_GAMMA;
-            maxLuminance = C->defaultLuminance;
-            sprintf(descriptionBuffer, "Colorist SRGB (%d nits)", maxLuminance);
             break;
     }
 
-    clProfile * profile = clProfileCreate(C, &primaries, &curve, maxLuminance, NULL);
-    clProfileSetMLU(C, profile, "desc", "en", "US", descriptionBuffer);
+    clProfile * profile = clProfileCreate(C, &primaries, &curve, CL_LUMINANCE_UNSPECIFIED, NULL);
+    clProfileSetMLU(C, profile, "desc", "en", "US", "Colorist SRGB");
     return profile;
 }
 
@@ -173,10 +168,12 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
         cmsLinkTag(profile->handle, cmsSigBlueTRCTag, cmsSigRedTRCTag);
     }
 
-    lumi.X = 0.0f;
-    lumi.Y = (cmsFloat64Number)maxLuminance;
-    lumi.Z = 0.0f;
-    cmsWriteTag(profile->handle, cmsSigLuminanceTag, &lumi);
+    if (maxLuminance != CL_LUMINANCE_UNSPECIFIED) {
+        lumi.X = 0.0f;
+        lumi.Y = (cmsFloat64Number)maxLuminance;
+        lumi.Z = 0.0f;
+        cmsWriteTag(profile->handle, cmsSigLuminanceTag, &lumi);
+    }
 
     profile->description = description ? clContextStrdup(C, description) : NULL;
     if (profile->description) {
@@ -645,10 +642,18 @@ clBool clProfilePrimariesMatch(struct clContext * C, clProfilePrimaries * p1, cl
 char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance)
 {
     char * tmp = clAllocate(1024);
-    if (curve->type == CL_PCT_PQ) {
-        sprintf(tmp, "Colorist P%g PQ %dnits", primaries->red[0], maxLuminance);
+    if (maxLuminance > 0) {
+        if (curve->type == CL_PCT_PQ) {
+            sprintf(tmp, "Colorist P%g PQ %dnits", primaries->red[0], maxLuminance);
+        } else {
+            sprintf(tmp, "Colorist P%g %gg %dnits", primaries->red[0], curve->gamma, maxLuminance);
+        }
     } else {
-        sprintf(tmp, "Colorist P%g %gg %dnits", primaries->red[0], curve->gamma, maxLuminance);
+        if (curve->type == CL_PCT_PQ) {
+            sprintf(tmp, "Colorist P%g PQ", primaries->red[0]);
+        } else {
+            sprintf(tmp, "Colorist P%g %gg", primaries->red[0], curve->gamma);
+        }
     }
     return tmp;
 }

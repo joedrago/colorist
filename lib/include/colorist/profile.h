@@ -14,6 +14,14 @@
 struct clContext;
 struct cJSON;
 
+// During conversion, use the source profile's luminance.
+#define CL_LUMINANCE_SOURCE -1
+
+// Colorist will avoid writing out a lumi tag if a profile's max luminance
+// is unspecified (CL_LUMINANCE_UNSPECIFIED), but will use C->defaultLuminance
+// (--deflum) for the profile's luminance during any calculations.
+#define CL_LUMINANCE_UNSPECIFIED 0
+
 typedef struct clProfilePrimaries
 {
     float red[2];

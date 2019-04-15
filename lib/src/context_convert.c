@@ -129,7 +129,6 @@ int clContextConvert(clContext * C)
     srcInfo.height = srcImage->height;
     srcInfo.depth = srcImage->depth;
     clProfileQuery(C, srcImage->profile, &srcInfo.primaries, &srcInfo.curve, &srcInfo.luminance);
-    srcInfo.luminance = (srcInfo.luminance != 0) ? srcInfo.luminance : C->defaultLuminance;
     if ((srcInfo.curve.type == CL_PCT_COMPLEX) && (srcInfo.curve.gamma > 0.0f)) {
         clContextLog(C, "info", 0, "Estimated source gamma: %g", srcInfo.curve.gamma);
     }
@@ -141,7 +140,7 @@ int clContextConvert(clContext * C)
     if (params.autoGrade) {
         dstInfo.curve.type = CL_PCT_GAMMA;
         dstInfo.curve.gamma = 0;
-        dstInfo.luminance = 0;
+        dstInfo.luminance = CL_LUMINANCE_UNSPECIFIED;
     }
 
     // Load output profile override, if any
@@ -158,7 +157,6 @@ int clContextConvert(clContext * C)
         }
 
         clProfileQuery(C, dstProfile, &dstInfo.primaries, &dstInfo.curve, &dstInfo.luminance);
-        dstInfo.luminance = (dstInfo.luminance != 0) ? dstInfo.luminance : C->defaultLuminance;
         if ((dstInfo.curve.type == CL_PCT_COMPLEX) && (dstInfo.curve.gamma > 0.0f)) {
             clContextLog(C, "info", 0, "Estimated dst gamma: %g", dstInfo.curve.gamma);
         }
@@ -180,7 +178,7 @@ int clContextConvert(clContext * C)
         }
 
         // Override luminance
-        if (params.luminance > 0) {
+        if (params.luminance >= 0) {
             dstInfo.luminance = params.luminance;
         }
 
@@ -290,7 +288,7 @@ int clContextConvert(clContext * C)
                 FAIL();
             }
 
-            if (dstInfo.luminance == 0) {
+            if (dstInfo.luminance < 0) {
                 clContextLogError(C, "Can't create destination profile, luminance(%d) is invalid", dstInfo.luminance);
                 FAIL();
             }

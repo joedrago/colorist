@@ -199,7 +199,7 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
     curve.type = CL_PCT_GAMMA;
     curve.gamma = 2.2f;
     curve.implicitScale = 1.0f;
-    maxLuminance = C->defaultLuminance;
+    maxLuminance = CL_LUMINANCE_UNSPECIFIED;
 
     float prim[8];
     avifNclxColourPrimariesGetValues(nclx->colourPrimaries, prim);

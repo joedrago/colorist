@@ -335,7 +335,7 @@ static void clConversionParamsSetOutputProfileDefaults(clContext * C, clConversi
     params->description = NULL;
     params->curveType = CL_PCT_GAMMA;
     params->gamma = 0;
-    params->luminance = 0;
+    params->luminance = CL_LUMINANCE_SOURCE;
     memset(params->primaries, 0, sizeof(float) * 8);
 }
 
@@ -693,7 +693,9 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
             } else if (!strcmp(arg, "-l") || !strcmp(arg, "--luminance")) {
                 NEXTARG();
                 if (arg[0] == 's') {
-                    C->params.luminance = -1; // Use source luminance
+                    C->params.luminance = CL_LUMINANCE_SOURCE;
+                } else if (arg[0] == 'u') {
+                    C->params.luminance = CL_LUMINANCE_UNSPECIFIED;
                 } else {
                     C->params.luminance = atoi(arg);
                 }
@@ -751,6 +753,13 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                     C->ccmmAllowed = clFalse;
                 } else {
                     clContextLogError(C, "Unknown CMM: %s", arg);
+                    return clFalse;
+                }
+            } else if (!strcmp(arg, "--deflum")) {
+                NEXTARG();
+                C->defaultLuminance = atoi(arg);
+                if (C->defaultLuminance <= 0) {
+                    clContextLogError(C, "Invalid default luminance: %s", arg);
                     return clFalse;
                 }
             } else if (!strcmp(arg, "-z") || !strcmp(arg, "--rect") || !strcmp(arg, "--crop")) {
@@ -909,12 +918,12 @@ void clContextPrintArgs(clContext * C)
     clContextLog(C, "syntax", 1, "help        : %s", C->help ? "enabled" : "disabled");
     clContextLog(C, "syntax", 1, "ICC in      : %s", C->iccOverrideIn ? C->iccOverrideIn : "--");
     clContextLog(C, "syntax", 1, "ICC out     : %s", C->params.iccOverrideOut ? C->params.iccOverrideOut : "--");
-    if (C->params.luminance < 0) {
+    if (C->params.luminance == CL_LUMINANCE_SOURCE) {
         clContextLog(C, "syntax", 1, "luminance   : source luminance (forced)");
     } else if (C->params.luminance) {
         clContextLog(C, "syntax", 1, "luminance   : %d", C->params.luminance);
     } else {
-        clContextLog(C, "syntax", 1, "luminance   : auto");
+        clContextLog(C, "syntax", 1, "luminance   : unspecified");
     }
     if (C->params.primaries[0] > 0.0f)
         clContextLog(C, "syntax", 1, "primaries   : r:(%.4g,%.4g) g:(%.4g,%.4g) b:(%.4g,%.4g) w:(%.4g,%.4g)",
@@ -962,9 +971,10 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -j,--jobs JOBS           : Number of jobs to use when working. 0 for as many as possible (default)");
     clContextLog(C, NULL, 0, "    -v,--verbose             : Verbose mode.");
     clContextLog(C, NULL, 0, "    --cmm WHICH,--cms WHICH  : Choose Color Management Module/System: auto (default), lcms, colorist (built-in, uses when possible)");
+    clContextLog(C, NULL, 0, "    --deflum LUMINANCE       : Choose the default/fallback luminance value in nits when unspecified (default: %d)", COLORIST_DEFAULT_LUMINANCE);
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Input Options:");
-    clContextLog(C, NULL, 0, "    -i,--iccin file.icc      : Override source ICC profile. default is to use embedded profile (if any), or sRGB@300");
+    clContextLog(C, NULL, 0, "    -i,--iccin file.icc      : Override source ICC profile. default is to use embedded profile (if any), or sRGB@deflum");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Output Profile Options:");
     clContextLog(C, NULL, 0, "    -o,--iccout file.icc     : Override destination ICC profile. Disables all other output profile options");
@@ -972,7 +982,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -c,--copyright COPYRIGHT : ICC profile copyright string.");
     clContextLog(C, NULL, 0, "    -d,--description DESC    : ICC profile description.");
     clContextLog(C, NULL, 0, "    -g,--gamma GAMMA         : Output gamma. 0 for auto (default), \"pq\" for PQ, or \"source\" to force source gamma");
-    clContextLog(C, NULL, 0, "    -l,--luminance LUMINANCE : ICC profile max luminance. 0 for auto (default), or \"source\" to force source luminance");
+    clContextLog(C, NULL, 0, "    -l,--luminance LUMINANCE : ICC profile max luminance, in nits. \"source\" to match source lum (default), or \"unspecified\" not specify");
     clContextLog(C, NULL, 0, "    -p,--primaries PRIMARIES : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Output Format Options:");

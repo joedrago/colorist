@@ -74,6 +74,11 @@ class SummaryView extends React.Component
 
     D = COLORIST_DATA
 
+    if D.icc.luminance > 0
+      lumText = "#{D.icc.luminance} nits"
+    else
+      lumText = "#{D.srgb.highlightLuminance} nits (Unspecified in profile)"
+
     elements.push section "basic", [
       heading "Basic info"
       pair 0, "Filename", D.filename
@@ -86,15 +91,15 @@ class SummaryView extends React.Component
       pair 2, "Green", "#{utils.fr(D.icc.primaries[2], 4)}, #{utils.fr(D.icc.primaries[3], 4)}"
       pair 2, "Blue",  "#{utils.fr(D.icc.primaries[4], 4)}, #{utils.fr(D.icc.primaries[5], 4)}"
       pair 1, "White Point", "#{utils.fr(D.icc.primaries[6], 4)}, #{utils.fr(D.icc.primaries[7], 4)}"
-      pair 1, "Max Luminance", "#{D.icc.luminance} nits"
-      pair 0, "sRGB Overranging (300)", ""
-      pair 1, "Total Pixels", "#{D.srgb300.pixelCount}"
-      pair 1, "Total HDR Pixels", "#{D.srgb300.hdrPixelCount} (#{utils.fr(100 * D.srgb300.hdrPixelCount / D.srgb300.pixelCount, 2)}%)"
-      pair 2, "Overbright Pixels", "#{D.srgb300.overbrightPixelCount} (#{utils.fr(100 * D.srgb300.overbrightPixelCount / D.srgb300.pixelCount, 2)}%)"
-      pair 2, "Out of Gamut Pixels", "#{D.srgb300.outOfGamutPixelCount} (#{utils.fr(100 * D.srgb300.outOfGamutPixelCount / D.srgb300.pixelCount, 2)}%)"
-      pair 2, "Both OB and OOG", "#{D.srgb300.bothPixelCount} (#{utils.fr(100 * D.srgb300.bothPixelCount / D.srgb300.pixelCount, 2)}%)"
-      pair 1, "Brightest Pixel", "#{utils.fr(D.srgb300.brightestPixelNits, 1)} nits"
-      pair 2, "Coord", "(#{D.srgb300.brightestPixelX}, #{D.srgb300.brightestPixelY})"
+      pair 1, "Max Luminance", lumText
+      pair 0, "sRGB Overranging (#{D.srgb.highlightLuminance} nits)", ""
+      pair 1, "Total Pixels", "#{D.srgb.pixelCount}"
+      pair 1, "Total HDR Pixels", "#{D.srgb.hdrPixelCount} (#{utils.fr(100 * D.srgb.hdrPixelCount / D.srgb.pixelCount, 2)}%)"
+      pair 2, "Overbright Pixels", "#{D.srgb.overbrightPixelCount} (#{utils.fr(100 * D.srgb.overbrightPixelCount / D.srgb.pixelCount, 2)}%)"
+      pair 2, "Out of Gamut Pixels", "#{D.srgb.outOfGamutPixelCount} (#{utils.fr(100 * D.srgb.outOfGamutPixelCount / D.srgb.pixelCount, 2)}%)"
+      pair 2, "Both OB and OOG", "#{D.srgb.bothPixelCount} (#{utils.fr(100 * D.srgb.bothPixelCount / D.srgb.pixelCount, 2)}%)"
+      pair 1, "Brightest Pixel", "#{utils.fr(D.srgb.brightestPixelNits, 1)} nits"
+      pair 2, "Coord", "(#{D.srgb.brightestPixelX}, #{D.srgb.brightestPixelY})"
     ]
 
     elements.push el RaisedButton, {
@@ -107,24 +112,14 @@ class SummaryView extends React.Component
         @props.app.redirect('#pixels')
     }
 
-    # elements.push el RaisedButton, {
-    #   key: "button.srgb100"
-    #   style:
-    #     margin: 12
-    #   label: "View SRGB Highlight (100 nits)"
-    #   primary: true
-    #   onClick: =>
-    #     @props.app.redirect('#srgb100')
-    # }
-
     elements.push el RaisedButton, {
-      key: "button.srgb300"
+      key: "button.srgb"
       style:
         margin: 12
-      label: "View SRGB Highlight (300 nits)"
+      label: "View SRGB Highlight (over #{D.srgb.highlightLuminance} nits)"
       primary: true
       onClick: =>
-        @props.app.redirect('#srgb300')
+        @props.app.redirect('#srgb')
     }
 
     outerElements = []

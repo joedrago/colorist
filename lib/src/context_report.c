@@ -220,7 +220,7 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
         pixelHighlightInfo[HII_MAXNITS] = maxY;
         pixelHighlightInfo[HII_OOG] = outOfSRGB;
 
-        float baseIntensity = pixelNits / 300.0f;
+        float baseIntensity = pixelNits / (float)srgbLuminance;
         baseIntensity = CL_CLAMP(baseIntensity, 0.0f, 1.0f);
         uint8_t intensity8 = intensityToU8(baseIntensity);
 
@@ -305,6 +305,7 @@ static clBool addSRGBHighlight(clContext * C, clImage * image, int maxLuminance,
     base = cJSON_CreateObject();
     cJSON_AddItemToObject(base, "visual", cJSON_CreateString(pngB64));
     cJSON_AddItemToObject(base, "info", highlightInfo);
+    cJSON_AddItemToObject(base, "highlightLuminance", cJSON_CreateNumber(maxLuminance));
     cJSON_AddItemToObject(base, "overbrightPixelCount", cJSON_CreateNumber(stats.overbrightPixelCount));
     cJSON_AddItemToObject(base, "outOfGamutPixelCount", cJSON_CreateNumber(stats.outOfGamutPixelCount));
     cJSON_AddItemToObject(base, "bothPixelCount", cJSON_CreateNumber(stats.bothPixelCount));
@@ -400,7 +401,7 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
         clContextLog(C, "highlight", 0, "Creating out-of-gamut highlights...");
         timerStart(&t);
 
-        if (!addSRGBHighlight(C, image, 300, payload, "srgb300")) {
+        if (!addSRGBHighlight(C, image, C->defaultLuminance, payload, "srgb")) {
             return clFalse;
         }
 

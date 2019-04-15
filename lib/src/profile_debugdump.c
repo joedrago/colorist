@@ -32,7 +32,7 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
 {
     clProfilePrimaries primaries;
     clProfileCurve curve;
-    int luminance;
+    int luminance = CL_LUMINANCE_UNSPECIFIED;
 
     if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
         clContextLog(C, "profile", 0 + extraIndent, "Profile \"%s\"", profile->description);
@@ -49,7 +49,11 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
             primaries.green[0], primaries.green[1],
             primaries.blue[0], primaries.blue[1],
             primaries.white[0], primaries.white[1]);
-        clContextLog(C, "profile", 1 + extraIndent, "Max Luminance: %d", luminance);
+        if (luminance == CL_LUMINANCE_UNSPECIFIED) {
+            clContextLog(C, "profile", 1 + extraIndent, "Max Luminance: %d (default, unspecified in profile)", C->defaultLuminance);
+        } else {
+            clContextLog(C, "profile", 1 + extraIndent, "Max Luminance: %d", luminance);
+        }
         if (curve.type == CL_PCT_PQ) {
             clContextLog(C, "profile", 1 + extraIndent, "Curve: PQ");
         } else {

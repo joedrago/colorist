@@ -24,7 +24,7 @@ class App extends React.Component
 
     # Do this one time on startup, for performance
     @rawPixels = new StructArray(COLORIST_DATA.raw)
-    @highlightInfos = new StructArray(COLORIST_DATA.srgb300.info)
+    @highlightInfos = new StructArray(COLORIST_DATA.srgb.info)
 
     @state =
       width: 0
@@ -35,7 +35,7 @@ class App extends React.Component
     @views =
       summary: SummaryView
       pixels: PixelsView
-      srgb300: PixelsView
+      srgb: PixelsView
 
     @navigate(true)
     window.addEventListener('hashchange', (event) =>
@@ -110,12 +110,12 @@ class App extends React.Component
       }
 
       el MenuItem, {
-        key: "menu.srgb300"
-        primaryText: "sRGB Highlight (300)"
+        key: "menu.srgb"
+        primaryText: "sRGB Highlight (#{COLORIST_DATA.srgb.highlightLuminance})"
         leftIcon: tags.icon 'event_note'
         onClick: (e) =>
           e.preventDefault()
-          @redirect('#srgb300')
+          @redirect('#srgb')
           @setState { navOpen: false }
       }
     ]

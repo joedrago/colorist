@@ -14,9 +14,10 @@ Basic Options:
     -j,--jobs JOBS           : Number of jobs to use when working. 0 for as many as possible (default)
     -v,--verbose             : Verbose mode.
     --cmm WHICH,--cms WHICH  : Choose Color Management Module/System: auto (default), lcms, colorist (built-in, uses when possible)
+    --deflum LUMINANCE       : Choose the default/fallback luminance value in nits when unspecified (default: 300)
 
 Input Options:
-    -i,--iccin file.icc      : Override source ICC profile. default is to use embedded profile (if any), or sRGB@300
+    -i,--iccin file.icc      : Override source ICC profile. default is to use embedded profile (if any), or sRGB@deflum
 
 Output Profile Options:
     -o,--iccout file.icc     : Override destination ICC profile. Disables all other output profile options
@@ -24,7 +25,7 @@ Output Profile Options:
     -c,--copyright COPYRIGHT : ICC profile copyright string.
     -d,--description DESC    : ICC profile description.
     -g,--gamma GAMMA         : Output gamma. 0 for auto (default), "pq" for PQ, or "source" to force source gamma
-    -l,--luminance LUMINANCE : ICC profile max luminance. 0 for auto (default), or "source" to force source luminance
+    -l,--luminance LUMINANCE : ICC profile max luminance, in nits. "source" to match source lum (default), or "unspecified" not specify
     -p,--primaries PRIMARIES : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy
 
 Output Format Options:
@@ -64,6 +65,14 @@ Choose which color management module to use when performing color math
 use its own internal CMM whenever possible, but will fall back to LittleCMS'
 conversion code if the profile contains unsupported tone curves or A2B tags,
 etc.
+
+### --deflum
+
+There is no requirement for an ICC profile to contain a `lumi` tag, and in the
+case of its absence, colorist must internally supply a default/fallback
+luminance in order for any calculations to make sense. Setting `--deflum`
+allows the user to specify how bright any profiles without a lumi tag should
+be considered to be.
 
 ### -a, --autograde
 
@@ -134,6 +143,9 @@ any luminance scaling that needs to be performed. For example, if the source
 image's max luminance claims to be 10,000 nits and you specify `-l 300` for
 the output luminance, all pixels in the scene will have their luminance scaled
 up and either clipped or tonemapped to 300 nits (see `-t`).
+
+Leveraging this option along with `--deflum` should allow for smooth
+conversions to and from relative luminance images.
 
 ### -p, --primaries
 

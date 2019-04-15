@@ -47,10 +47,10 @@ class PixelsView extends React.Component
     title = "Pixels"
     image = COLORIST_DATA.visual
     maxNits = COLORIST_DATA.icc.luminance
-    if @props.name == 'srgb300'
-      title = "sRGB Highlight (300)"
-      image = COLORIST_DATA.srgb300.visual
-      maxNits = 300
+    if @props.name == 'srgb'
+      title = "sRGB Highlight (#{COLORIST_DATA.srgb.highlightLuminance})"
+      image = COLORIST_DATA.srgb.visual
+      maxNits = COLORIST_DATA.srgb.highlightLuminance
 
     elements.push el ImageRenderer, {
       width: @props.width - infoPanelWidth
