@@ -30,7 +30,7 @@ Please see the [Usage](./docs/Usage.md) documentation and the
 
 # Build Status
 
-[![Build Status](https://travis-ci.com/joedrago/colorist.svg?branch=master)](https://travis-ci.com/joedrago/colorist)
+[![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/joedrago/colorist?branch=master&svg=true)](https://ci.appveyor.com/project/joedrago/colorist) [![Travis Build Status](https://travis-ci.com/joedrago/colorist.svg?branch=master)](https://travis-ci.com/joedrago/colorist)
 
 ---
 
