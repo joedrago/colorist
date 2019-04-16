@@ -216,7 +216,6 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
         case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_HLG:
             curve.type = CL_PCT_HLG;
             curve.gamma = 1.0f;
-            maxLuminance = CL_LUMINANCE_UNSPECIFIED;
             break;
         case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_PQ:
             curve.type = CL_PCT_PQ;
@@ -262,12 +261,6 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
 
 static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, avifNclxColorProfile * nclx)
 {
-    clProfilePrimaries bt2020;
-    if (!clContextGetStockPrimaries(C, "bt2020", &bt2020)) {
-        return clFalse;
-
-    }
-
     clProfilePrimaries primaries;
     clProfileCurve curve;
     int luminance = 0;
@@ -275,26 +268,75 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
         return clFalse;
     }
 
-    if (clProfilePrimariesMatch(C, &primaries, &bt2020) && (curve.type == CL_PCT_PQ) && (luminance == 10000)) {
-        // BT.2100: HDR10
-        nclx->colourPrimaries = AVIF_NCLX_COLOUR_PRIMARIES_BT2100;
-        nclx->transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_PQ;
-        nclx->matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_CL;
-        nclx->fullRangeFlag = AVIF_NCLX_FULL_RANGE;
-        clContextLog(C, "avif", 1, "HDR10 color profile detected; switching to nclx colr box.");
-        return clTrue;
+    const char * primariesName = NULL;
+    float floatPrimaries[8];
+    floatPrimaries[0] = primaries.red[0];
+    floatPrimaries[1] = primaries.red[1];
+    floatPrimaries[2] = primaries.green[0];
+    floatPrimaries[3] = primaries.green[1];
+    floatPrimaries[4] = primaries.blue[0];
+    floatPrimaries[5] = primaries.blue[1];
+    floatPrimaries[6] = primaries.white[0];
+    floatPrimaries[7] = primaries.white[1];
+    avifNclxColourPrimaries foundNclxPrimaries = avifNclxColourPrimariesFind(floatPrimaries, &primariesName);
+    if (foundNclxPrimaries == AVIF_NCLX_COLOUR_PRIMARIES_UNKNOWN) {
+        return clFalse;
     }
 
-    if (clProfilePrimariesMatch(C, &primaries, &bt2020) && (curve.type == CL_PCT_HLG) && (luminance == CL_LUMINANCE_UNSPECIFIED)) {
-        // BT.2100: HDR10
-        nclx->colourPrimaries = AVIF_NCLX_COLOUR_PRIMARIES_BT2020;
-        nclx->transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_HLG;
-        nclx->matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL;
-        nclx->fullRangeFlag = AVIF_NCLX_FULL_RANGE;
-        clContextLog(C, "avif", 1, "BT.2020 HLG color profile detected; switching to nclx colr box.");
-        return clTrue;
+    avifNclxMatrixCoefficients matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_UNSPECIFIED;
+    switch (foundNclxPrimaries) {
+        case AVIF_NCLX_COLOUR_PRIMARIES_BT709:
+            matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT709;
+            break;
+        case AVIF_NCLX_COLOUR_PRIMARIES_BT2020:
+            if ((luminance == CL_LUMINANCE_UNSPECIFIED) || (curve.type == CL_PCT_HLG))
+                matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL;
+            else
+                matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_CL;
+            break;
+        default:
+            if ((luminance == CL_LUMINANCE_UNSPECIFIED) || (curve.type == CL_PCT_HLG))
+                matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL;
+            else
+                matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL;
+            break;
     }
-    return clFalse;
+
+    const char * transferCharacteristicsName = NULL;
+    avifNclxTransferCharacteristics transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_UNKNOWN;
+    if ((curve.type == CL_PCT_PQ) && (luminance == 10000)) {
+        transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_PQ;
+        transferCharacteristicsName = "PQ";
+    } else {
+        if (luminance != CL_LUMINANCE_UNSPECIFIED) {
+            // Other than PQ, there is no current way to specify a max luminance via nclx. Bail out!
+            return clFalse;
+        }
+
+        if (curve.type == CL_PCT_HLG) {
+            transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_HLG;
+            transferCharacteristicsName = "HLG";
+        } else if (curve.type == CL_PCT_GAMMA) {
+            if (fabsf(curve.gamma - 2.2f) < 0.001f) {
+                transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_GAMMA22;
+                transferCharacteristicsName = "2.2g";
+            } else if (fabsf(curve.gamma - 2.8f) < 0.001f) {
+                transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_GAMMA28;
+                transferCharacteristicsName = "2.8g";
+            }
+        }
+    }
+
+    if (transferCharacteristics == AVIF_NCLX_TRANSFER_CHARACTERISTICS_UNKNOWN) {
+        return clFalse;
+    }
+
+    clContextLog(C, "avif", 1, "%s %s color profile detected; switching to nclx colr box.", primariesName, transferCharacteristicsName);
+    nclx->colourPrimaries = foundNclxPrimaries;
+    nclx->transferCharacteristics = transferCharacteristics;
+    nclx->matrixCoefficients = matrixCoefficients;
+    nclx->fullRangeFlag = AVIF_NCLX_FULL_RANGE;
+    return clTrue;
 }
 
 static void logAvifImage(struct clContext * C, avifImage * avif)
