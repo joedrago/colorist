@@ -27,6 +27,7 @@ const char * clProfileCurveTypeToString(struct clContext * C, clProfileCurveType
 
     switch (curveType) {
         case CL_PCT_GAMMA:   return "Gamma";
+        case CL_PCT_HLG:     return "HLG";
         case CL_PCT_PQ:      return "PQ";
         case CL_PCT_COMPLEX: return "Complex";
         case CL_PCT_UNKNOWN:
@@ -34,6 +35,22 @@ const char * clProfileCurveTypeToString(struct clContext * C, clProfileCurveType
             break;
     }
     return "Unknown";
+}
+
+const char * clProfileCurveTypeToLowercaseString(struct clContext * C, clProfileCurveType curveType)
+{
+    COLORIST_UNUSED(C);
+
+    switch (curveType) {
+        case CL_PCT_GAMMA:   return "gamma";
+        case CL_PCT_HLG:     return "hlg";
+        case CL_PCT_PQ:      return "pq";
+        case CL_PCT_COMPLEX: return "complex";
+        case CL_PCT_UNKNOWN:
+        default:
+            break;
+    }
+    return "unknown";
 }
 
 clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock)
@@ -115,7 +132,7 @@ clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, size_t icc
             profile->ccmm = clTrue;
         } else if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
             // TODO: Be way more restrictive here
-            if ((curve.type == CL_PCT_GAMMA) || (curve.type == CL_PCT_PQ)) {
+            if ((curve.type == CL_PCT_GAMMA) || (curve.type == CL_PCT_HLG) || (curve.type == CL_PCT_PQ)) {
                 profile->ccmm = clTrue;
             }
         }
@@ -145,7 +162,7 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
     dstWhitePoint.y = primaries->white[1];
     dstWhitePoint.Y = 1.0f;
 
-    if (curve->type == CL_PCT_PQ) {
+    if ((curve->type == CL_PCT_HLG) || (curve->type == CL_PCT_PQ)) {
         curvesPtr = NULL;
     } else {
         curves[0] = cmsBuildGamma(C->lcms, curve->gamma);
@@ -162,7 +179,12 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
         clFree(profile);
         return NULL;
     }
-    if (curve->type == CL_PCT_PQ) {
+
+    if (curve->type == CL_PCT_HLG) {
+        cmsWriteRawTag(profile->handle, cmsSigRedTRCTag, hlgCurveBinaryData, hlgCurveBinarySize);
+        cmsLinkTag(profile->handle, cmsSigGreenTRCTag, cmsSigRedTRCTag);
+        cmsLinkTag(profile->handle, cmsSigBlueTRCTag, cmsSigRedTRCTag);
+    } else if (curve->type == CL_PCT_PQ) {
         cmsWriteRawTag(profile->handle, cmsSigRedTRCTag, pqCurveBinaryData, pqCurveBinarySize);
         cmsLinkTag(profile->handle, cmsSigGreenTRCTag, cmsSigRedTRCTag);
         cmsLinkTag(profile->handle, cmsSigBlueTRCTag, cmsSigRedTRCTag);
@@ -414,8 +436,12 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
     }
 
     if (curve) {
-        if (clProfileHasPQSignature(C, profile, NULL) || clProfileCurveHasPQSignature(C, profile)) {
+        clProfileCurveType curveSignature = clProfileCurveSignature(C, profile);
+        if (clProfileHasPQSignature(C, profile, NULL) || (curveSignature == CL_PCT_PQ)) {
             curve->type = CL_PCT_PQ;
+            curve->gamma = 1.0f;
+        } else if (curveSignature == CL_PCT_HLG) {
+            curve->type = CL_PCT_HLG;
             curve->gamma = 1.0f;
         } else {
             cmsToneCurve * toneCurve = (cmsToneCurve *)cmsReadTag(profile->handle, cmsSigRedTRCTag);
@@ -642,18 +668,23 @@ clBool clProfilePrimariesMatch(struct clContext * C, clProfilePrimaries * p1, cl
 char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance)
 {
     char * tmp = clAllocate(1024);
-    if (maxLuminance > 0) {
-        if (curve->type == CL_PCT_PQ) {
-            sprintf(tmp, "Colorist P%g PQ %dnits", primaries->red[0], maxLuminance);
-        } else {
-            sprintf(tmp, "Colorist P%g %gg %dnits", primaries->red[0], curve->gamma, maxLuminance);
-        }
+
+    char curveString[32];
+    if (curve->type == CL_PCT_HLG) {
+        strcpy(curveString, "HLG");
+    } else if (curve->type == CL_PCT_PQ) {
+        strcpy(curveString, "PQ");
     } else {
-        if (curve->type == CL_PCT_PQ) {
-            sprintf(tmp, "Colorist P%g PQ", primaries->red[0]);
-        } else {
-            sprintf(tmp, "Colorist P%g %gg", primaries->red[0], curve->gamma);
-        }
+        sprintf(curveString, "%gg", curve->gamma);
     }
+
+    char nitsString[32];
+    if (maxLuminance > 0) {
+        sprintf(nitsString, " %dnits", maxLuminance);
+    } else {
+        nitsString[0] = 0;
+    }
+
+    sprintf(tmp, "Colorist P%3.3f %s%s", primaries->red[0], curveString, nitsString);
     return tmp;
 }

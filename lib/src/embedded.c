@@ -1,4 +1,5 @@
 #include "colorist/embedded.h"
 
-#include "reportTemplateBinary.h"
+#include "hlgCurveBinary.h"
 #include "pqCurveBinary.h"
+#include "reportTemplateBinary.h"

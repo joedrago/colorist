@@ -7,6 +7,7 @@
 
 #include "gb_math.h"
 
+#include <math.h>
 #include <string.h>
 
 // The small amount after the 1.0 here buys us  a little imprecision wiggle
@@ -46,6 +47,92 @@ static void DEBUG_PRINT_VECTOR(const char * name, gbVec3 * v)
 
 // ----------------------------------------------------------------------------
 // Color Conversion Math
+
+// SMPTE ST.2084: https://ieeexplore.ieee.org/servlet/opac?punumber=7291450
+
+static const float PQ_C1 = 0.8359375;       // 3424.0 / 4096.0
+static const float PQ_C2 = 18.8515625;      // 2413.0 / 4096.0 * 32.0
+static const float PQ_C3 = 18.6875;         // 2392.0 / 4096.0 * 32.0
+static const float PQ_M1 = 0.1593017578125; // 2610.0 / 4096.0 / 4.0
+static const float PQ_M2 = 78.84375;        // 2523.0 / 4096.0 * 128.0
+
+// SMPTE ST.2084: Equation 4.1
+// L = ( (max(N^(1/m2) - c1, 0)) / (c2 - c3*N^(1/m2)) )^(1/m1)
+static float PQ_EOTF(float N)
+{
+    float N1m2 = powf(N, 1 / PQ_M2);
+    float N1m2c1 = N1m2 - PQ_C1;
+    if (N1m2c1 < 0.0f)
+        N1m2c1 = 0.0f;
+    float c2c3N1m2 = PQ_C2 - (PQ_C3 * N1m2);
+    return powf(N1m2c1 / c2c3N1m2, 1 / PQ_M1);
+}
+
+// SMPTE ST.2084: Equation 5.2
+// N = ( (c1 + (c2 * L^m1)) / (1 + (c3 * L^m1)) )^m2
+static float PQ_OETF(float L)
+{
+    float Lm1 = powf(L, PQ_M1);
+    float c2Lm1 = PQ_C2 * Lm1;
+    float c3Lm1 = PQ_C3 * Lm1;
+    return powf((PQ_C1 + c2Lm1) / (1 + c3Lm1), PQ_M2);
+}
+
+static const float HLG_A = 0.17883277f;
+static const float HLG_B = 0.28466892f;    // 1.0f - (4.0f * HLG_A);
+static const float HLG_C = 0.55991072953f; // 0.5f - HLG_A * logf(4.0f * HLG_A);
+static const float HLG_ONE_TWELFTH = 1.0f / 12.0f;
+
+static float HLG_EOTF(float N, float maxLuminance)
+{
+    float L;
+    if (N < 0.5f) {
+        L = (N * N) / 3.0f;
+    } else {
+        L = (expf((N - HLG_C) / HLG_A) + HLG_B) / 12.0f;
+    }
+
+    // This includes the HLG OOTF here
+    float exponent = 1.2f + (0.42f * log10f(maxLuminance / 1000.0f));
+    return powf(L, exponent);
+}
+
+static float HLG_OETF(float L, float maxLuminance)
+{
+    // This includes the HLG OOTF here
+    float exponent = 1.2f + (0.42f * log10f(maxLuminance / 1000.0f));
+    float N = powf(L, 1.0f / exponent);
+
+    if (N <= HLG_ONE_TWELFTH) {
+        return sqrtf(3.0f * N);
+    }
+    return HLG_A * logf((12.0f * N) - HLG_B) + HLG_C;
+}
+
+static float hlgDiffuseWhite(float peakWhite)
+{
+    float base = (expf((0.75f - HLG_C) / HLG_A) + HLG_B) / 12.0f;
+    float exponent = 1.2f + (0.42f * log10f(peakWhite / 1000.0f));
+    return peakWhite * powf(base, exponent);
+}
+
+// Find the next integral HLG peak white, given a goal diffuse white
+int clTransformCalcHLGLuminance(int diffuseWhite)
+{
+    float goalDiffuseWhite = (float)diffuseWhite;
+    int L = 1;
+    int R = 100000;
+    while (L < R) {
+        int M = (L + R) >> 1;
+        float attempt = hlgDiffuseWhite((float)M);
+        if (attempt <= goalDiffuseWhite) {
+            L = M + 1;
+        } else {
+            R = M;
+        }
+    }
+    return L;
+}
 
 // From http://docs-hoffmann.de/ciexyz29082000.pdf, Section 11.4
 static void deriveXYZMatrix(struct clContext * C, clProfilePrimaries * primaries, gbMat3 * toXYZ)
@@ -95,7 +182,10 @@ static clBool derivePrimariesAndXTF(struct clContext * C, struct clProfile * pro
         int luminance = 0;
 
         if (clProfileQuery(C, profile, outPrimaries, &curve, &luminance)) {
-            if (curve.type == CL_PCT_PQ) {
+            if (curve.type == CL_PCT_HLG) {
+                *outXTF = CL_XTF_HLG;
+                *outGamma = 0.0f;
+            } else if (curve.type == CL_PCT_PQ) {
                 *outXTF = CL_XTF_PQ;
                 *outGamma = 0.0f;
             } else {
@@ -125,13 +215,19 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
         transform->whitePointX = 0.3127f;
         transform->whitePointY = 0.3290f;
 
+        clBool srcUsesHLGScaling = clFalse;
         if (transform->srcProfile) {
             clProfilePrimaries srcPrimaries;
             clProfileCurve srcCurve;
             int srcLuminance;
 
             clProfileQuery(C, transform->srcProfile, &srcPrimaries, &srcCurve, &srcLuminance);
-            srcLuminance = (srcLuminance != 0) ? srcLuminance : C->defaultLuminance;
+            if (srcLuminance == CL_LUMINANCE_UNSPECIFIED) {
+                srcLuminance = C->defaultLuminance;
+                if (srcCurve.type == CL_PCT_HLG) {
+                    srcUsesHLGScaling = clTrue;
+                }
+            }
             transform->srcLuminanceScale = (float)srcLuminance;
             transform->srcCurveScale = srcCurve.implicitScale;
             transform->whitePointX = srcPrimaries.white[0];
@@ -141,13 +237,19 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
             transform->srcCurveScale = 1.0f;
         }
 
+        clBool dstUsesHLGScaling = clFalse;
         if (transform->dstProfile) {
             clProfilePrimaries dstPrimaries;
             clProfileCurve dstCurve;
             int dstLuminance;
 
             clProfileQuery(C, transform->dstProfile, &dstPrimaries, &dstCurve, &dstLuminance);
-            dstLuminance = (dstLuminance != 0) ? dstLuminance : C->defaultLuminance;
+            if (dstLuminance == CL_LUMINANCE_UNSPECIFIED) {
+                dstLuminance = C->defaultLuminance;
+                if (dstCurve.type == CL_PCT_HLG) {
+                    dstUsesHLGScaling = clTrue;
+                }
+            }
             transform->dstLuminanceScale = (float)dstLuminance;
             transform->dstCurveScale = dstCurve.implicitScale;
             transform->whitePointX = dstPrimaries.white[0];
@@ -155,6 +257,17 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
         } else {
             transform->dstLuminanceScale = 1.0f;
             transform->dstCurveScale = 1.0f;
+        }
+
+        if (srcUsesHLGScaling || dstUsesHLGScaling) {
+            transform->ccmmHLGLuminance = (float)clTransformCalcHLGLuminance(C->defaultLuminance);
+            clContextLog(C, "hlg", 1, "HLG: Max Luminance %2.2f nits, based on diffuse white of %d nits (--deflum)", transform->ccmmHLGLuminance, C->defaultLuminance);
+            if (srcUsesHLGScaling) {
+                transform->srcLuminanceScale = transform->ccmmHLGLuminance;
+            }
+            if (dstUsesHLGScaling) {
+                transform->dstLuminanceScale = transform->ccmmHLGLuminance;
+            }
         }
 
         switch (transform->tonemap) {
@@ -260,36 +373,6 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
     }
 }
 
-// SMPTE ST.2084: https://ieeexplore.ieee.org/servlet/opac?punumber=7291450
-
-static const float PQ_C1 = 0.8359375;       // 3424.0 / 4096.0
-static const float PQ_C2 = 18.8515625;      // 2413.0 / 4096.0 * 32.0
-static const float PQ_C3 = 18.6875;         // 2392.0 / 4096.0 * 32.0
-static const float PQ_M1 = 0.1593017578125; // 2610.0 / 4096.0 / 4.0
-static const float PQ_M2 = 78.84375;        // 2523.0 / 4096.0 * 128.0
-
-// SMPTE ST.2084: Equation 4.1
-// L = ( (max(N^(1/m2) - c1, 0)) / (c2 - c3*N^(1/m2)) )^(1/m1)
-static float PQ_EOTF(float N)
-{
-    float N1m2 = powf(N, 1 / PQ_M2);
-    float N1m2c1 = N1m2 - PQ_C1;
-    if (N1m2c1 < 0.0f)
-        N1m2c1 = 0.0f;
-    float c2c3N1m2 = PQ_C2 - (PQ_C3 * N1m2);
-    return powf(N1m2c1 / c2c3N1m2, 1 / PQ_M1);
-}
-
-// SMPTE ST.2084: Equation 5.2
-// N = ( (c1 + (c2 * L^m1)) / (1 + (c3 * L^m1)) )^m2
-static float PQ_OETF(float L)
-{
-    float Lm1 = powf(L, PQ_M1);
-    float c2Lm1 = PQ_C2 * Lm1;
-    float c3Lm1 = PQ_C3 * Lm1;
-    return powf((PQ_C1 + c2Lm1) / (1 + c3Lm1), PQ_M2);
-}
-
 // The real color conversion function
 static void transformFloatToFloat(struct clContext * C, struct clTransform * transform, clBool useCCMM, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
 {
@@ -309,6 +392,11 @@ static void transformFloatToFloat(struct clContext * C, struct clTransform * tra
                     src.x = powf((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f, transform->ccmmSrcGamma);
                     src.y = powf((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f, transform->ccmmSrcGamma);
                     src.z = powf((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f, transform->ccmmSrcGamma);
+                    break;
+                case CL_XTF_HLG:
+                    src.x = HLG_EOTF((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f, transform->ccmmHLGLuminance);
+                    src.y = HLG_EOTF((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f, transform->ccmmHLGLuminance);
+                    src.z = HLG_EOTF((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f, transform->ccmmHLGLuminance);
                     break;
                 case CL_XTF_PQ:
                     src.x = PQ_EOTF((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f);
@@ -382,6 +470,17 @@ static void transformFloatToFloat(struct clContext * C, struct clTransform * tra
                     dstPixel[0] = powf((tmp[0] >= 0.0f) ? tmp[0] : 0.0f, transform->ccmmDstInvGamma);
                     dstPixel[1] = powf((tmp[1] >= 0.0f) ? tmp[1] : 0.0f, transform->ccmmDstInvGamma);
                     dstPixel[2] = powf((tmp[2] >= 0.0f) ? tmp[2] : 0.0f, transform->ccmmDstInvGamma);
+                    break;
+                case CL_XTF_HLG:
+                    gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->ccmmXYZToDst, src);
+                    if (transform->dstProfile) {               // don't clamp XYZ
+                        tmp[0] = CL_CLAMP(tmp[0], 0.0f, 1.0f); // clamp
+                        tmp[1] = CL_CLAMP(tmp[1], 0.0f, 1.0f); // clamp
+                        tmp[2] = CL_CLAMP(tmp[2], 0.0f, 1.0f); // clamp
+                    }
+                    dstPixel[0] = HLG_OETF((tmp[0] >= 0.0f) ? tmp[0] : 0.0f, transform->ccmmHLGLuminance);
+                    dstPixel[1] = HLG_OETF((tmp[1] >= 0.0f) ? tmp[1] : 0.0f, transform->ccmmHLGLuminance);
+                    dstPixel[2] = HLG_OETF((tmp[2] >= 0.0f) ? tmp[2] : 0.0f, transform->ccmmHLGLuminance);
                     break;
                 case CL_XTF_PQ:
                     gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->ccmmXYZToDst, src);

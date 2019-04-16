@@ -8,6 +8,11 @@
 cmake_minimum_required(VERSION 3.5) # This is so high because of libwebp
 project(colorist)
 
+option(COLORIST_SUPPRESS_REGENERATION "Disable autodetection of CMake changes." OFF)
+if(COLORIST_SUPPRESS_REGENERATION)
+  set(CMAKE_SUPPRESS_REGENERATION TRUE)
+endif()
+
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release")
 
 if(NOT CMAKE_BUILD_TYPE)

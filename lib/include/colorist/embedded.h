@@ -8,12 +8,16 @@
 #ifndef COLORIST_EMBEDDED_H
 #define COLORIST_EMBEDDED_H
 
-// reportTemplateBinary.h
-extern unsigned int reportTemplateBinarySize;
-extern unsigned char reportTemplateBinaryData[];
+// hlgCurveBinary.h
+extern unsigned int hlgCurveBinarySize;
+extern unsigned char hlgCurveBinaryData[];
 
 // pqCurveBinary.h
 extern unsigned int pqCurveBinarySize;
 extern unsigned char pqCurveBinaryData[];
+
+// reportTemplateBinary.h
+extern unsigned int reportTemplateBinarySize;
+extern unsigned char reportTemplateBinaryData[];
 
 #endif

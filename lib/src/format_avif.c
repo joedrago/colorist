@@ -213,6 +213,11 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
     primaries.white[1] = prim[7];
 
     switch (nclx->transferCharacteristics) {
+        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_HLG:
+            curve.type = CL_PCT_HLG;
+            curve.gamma = 1.0f;
+            maxLuminance = CL_LUMINANCE_UNSPECIFIED;
+            break;
         case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_PQ:
             curve.type = CL_PCT_PQ;
             curve.gamma = 1.0f;
@@ -238,9 +243,16 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
         sprintf(gammaString, "(%.2g)", curve.gamma);
     }
 
-    clContextLog(C, "avif", 1, "nclx to ICC: Primaries: (r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g), Curve: %s%s, maxLum: %d",
+    char maxLumString[64];
+    if (maxLuminance == CL_LUMINANCE_UNSPECIFIED) {
+        strcpy(maxLumString, "Unspecified");
+    } else {
+        sprintf(maxLumString, "%d", maxLuminance);
+    }
+
+    clContextLog(C, "avif", 1, "nclx to ICC: Primaries: (r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g), Curve: %s%s, maxLum: %s",
         primaries.red[0], primaries.red[1], primaries.green[0], primaries.green[1], primaries.blue[0], primaries.blue[1], primaries.white[0], primaries.white[1],
-        clProfileCurveTypeToString(C, curve.type), gammaString, maxLuminance);
+        clProfileCurveTypeToString(C, curve.type), gammaString, maxLumString);
 
     char * description = clGenerateDescription(C, &primaries, &curve, maxLuminance);
     clProfile * profile = clProfileCreate(C, &primaries, &curve, maxLuminance, description);
@@ -270,6 +282,16 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
         nclx->matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_CL;
         nclx->fullRangeFlag = AVIF_NCLX_FULL_RANGE;
         clContextLog(C, "avif", 1, "HDR10 color profile detected; switching to nclx colr box.");
+        return clTrue;
+    }
+
+    if (clProfilePrimariesMatch(C, &primaries, &bt2020) && (curve.type == CL_PCT_HLG) && (luminance == CL_LUMINANCE_UNSPECIFIED)) {
+        // BT.2100: HDR10
+        nclx->colourPrimaries = AVIF_NCLX_COLOUR_PRIMARIES_BT2020;
+        nclx->transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_HLG;
+        nclx->matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL;
+        nclx->fullRangeFlag = AVIF_NCLX_FULL_RANGE;
+        clContextLog(C, "avif", 1, "BT.2020 HLG color profile detected; switching to nclx colr box.");
         return clTrue;
     }
     return clFalse;

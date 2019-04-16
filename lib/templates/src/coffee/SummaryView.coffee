@@ -75,9 +75,12 @@ class SummaryView extends React.Component
     D = COLORIST_DATA
 
     if D.icc.luminance > 0
-      lumText = "#{D.icc.luminance} nits"
+      lumText = "#{D.icc.luminance} nits - (lumi tag present)"
     else
-      lumText = "#{D.srgb.highlightLuminance} nits (Unspecified in profile)"
+      if D.icc.curveType == 'hlg'
+        lumText = "Unspecified - (HLG using max #{D.srgb.hlgLuminance} nits, from diffuse white of #{D.srgb.highlightLuminance} nits)"
+      else
+        lumText = "Unspecified - (using default: #{D.srgb.highlightLuminance} nits)"
 
     elements.push section "basic", [
       heading "Basic info"
@@ -91,6 +94,7 @@ class SummaryView extends React.Component
       pair 2, "Green", "#{utils.fr(D.icc.primaries[2], 4)}, #{utils.fr(D.icc.primaries[3], 4)}"
       pair 2, "Blue",  "#{utils.fr(D.icc.primaries[4], 4)}, #{utils.fr(D.icc.primaries[5], 4)}"
       pair 1, "White Point", "#{utils.fr(D.icc.primaries[6], 4)}, #{utils.fr(D.icc.primaries[7], 4)}"
+      pair 1, "Curve Type", D.icc.curveType
       pair 1, "Max Luminance", lumText
       pair 0, "sRGB Overranging (#{D.srgb.highlightLuminance} nits)", ""
       pair 1, "Total Pixels", "#{D.srgb.pixelCount}"

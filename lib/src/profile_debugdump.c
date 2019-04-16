@@ -9,24 +9,12 @@
 
 #include "colorist/context.h"
 #include "colorist/pixelmath.h"
+#include "colorist/transform.h"
 
 #include "cJSON.h"
 #include "lcms2.h"
 
 #include <string.h>
-
-static const char * curveTypeToString(clProfileCurveType curveType)
-{
-    switch (curveType) {
-        case CL_PCT_GAMMA:   return "gamma";
-        case CL_PCT_PQ:      return "pq";
-        case CL_PCT_COMPLEX: return "complex";
-        case CL_PCT_UNKNOWN:
-        default:
-            break;
-    }
-    return "unknown";
-}
 
 void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTags, int extraIndent)
 {
@@ -50,14 +38,22 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
             primaries.blue[0], primaries.blue[1],
             primaries.white[0], primaries.white[1]);
         if (luminance == CL_LUMINANCE_UNSPECIFIED) {
-            clContextLog(C, "profile", 1 + extraIndent, "Max Luminance: %d (default, unspecified in profile)", C->defaultLuminance);
+            char usingBuffer[256];
+            if (curve.type == CL_PCT_HLG) {
+                sprintf(usingBuffer, "HLG using max %d nits, from diffuse white of %d nits", clTransformCalcHLGLuminance(C->defaultLuminance), C->defaultLuminance);
+            } else {
+                sprintf(usingBuffer, "using default: %d nits", C->defaultLuminance);
+            }
+            clContextLog(C, "profile", 1 + extraIndent, "Max Luminance: Unspecified - (%s)", usingBuffer);
         } else {
-            clContextLog(C, "profile", 1 + extraIndent, "Max Luminance: %d", luminance);
+            clContextLog(C, "profile", 1 + extraIndent, "Max Luminance: %d - (lumi tag present)", luminance);
         }
-        if (curve.type == CL_PCT_PQ) {
+        if (curve.type == CL_PCT_HLG) {
+            clContextLog(C, "profile", 1 + extraIndent, "Curve: HLG");
+        } else if (curve.type == CL_PCT_PQ) {
             clContextLog(C, "profile", 1 + extraIndent, "Curve: PQ");
         } else {
-            clContextLog(C, "profile", 1 + extraIndent, "Curve: %s(%.3g)", curveTypeToString(curve.type), curve.gamma);
+            clContextLog(C, "profile", 1 + extraIndent, "Curve: %s(%.3g)", clProfileCurveTypeToLowercaseString(C, curve.type), curve.gamma);
         }
         if (!clPixelMathEqualsf(curve.implicitScale, 1.0f)) {
             clContextLog(C, "profile", 1 + extraIndent, "Implicit matrix curve scale: %g", curve.implicitScale);
@@ -125,7 +121,7 @@ void clProfileDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clP
         cJSON_AddNumberToObject(jsonOutput, "luminance", luminance);
 
         jsonCurve = cJSON_AddObjectToObject(jsonOutput, "curve");
-        cJSON_AddStringToObject(jsonCurve, "type", curveTypeToString(curve.type));
+        cJSON_AddStringToObject(jsonCurve, "type", clProfileCurveTypeToLowercaseString(C, curve.type));
         cJSON_AddNumberToObject(jsonCurve, "gamma", curve.gamma);
         cJSON_AddNumberToObject(jsonCurve, "implicitScale", curve.implicitScale);
         cJSON_AddNumberToObject(jsonOutput, "actualLuminance", luminance * curve.implicitScale);

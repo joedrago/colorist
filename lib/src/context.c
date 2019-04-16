@@ -665,7 +665,10 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 }
             } else if (!strcmp(arg, "-g") || !strcmp(arg, "--gamma")) {
                 NEXTARG();
-                if (!strcmp(arg, "pq")) {
+                if (!strcmp(arg, "hlg")) {
+                    C->params.curveType = CL_PCT_HLG;
+                    C->params.gamma = 1.0f;
+                } else if (!strcmp(arg, "pq")) {
                     C->params.curveType = CL_PCT_PQ;
                     C->params.gamma = 1.0f;
                 } else if (arg[0] == 's') {
@@ -906,7 +909,9 @@ void clContextPrintArgs(clContext * C)
     if (C->params.gamma < 0.0f) {
         clContextLog(C, "syntax", 1, "gamma       : source gamma (forced)");
     } else if (C->params.gamma > 0.0f) {
-        if (C->params.curveType == CL_PCT_PQ) {
+        if (C->params.curveType == CL_PCT_HLG) {
+            clContextLog(C, "syntax", 1, "gamma       : HLG");
+        } else if (C->params.curveType == CL_PCT_PQ) {
             clContextLog(C, "syntax", 1, "gamma       : PQ");
         } else {
             clContextLog(C, "syntax", 1, "gamma       : %g", C->params.gamma);

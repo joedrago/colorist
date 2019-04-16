@@ -158,7 +158,14 @@ static clImage * createSRGBHighlight(clContext * C, clImage * srcImage, int srgb
     clProfileCurve srcCurve;
     int srcLuminance = 0;
     clProfileQuery(C, srcImage->profile, &srcPrimaries, &srcCurve, &srcLuminance);
-    srcLuminance = (srcLuminance != 0) ? srcLuminance : C->defaultLuminance;
+    if (srcLuminance == CL_LUMINANCE_UNSPECIFIED) {
+        if (srcCurve.type == CL_PCT_HLG) {
+            srcLuminance = clTransformCalcHLGLuminance(C->defaultLuminance);
+        } else {
+            srcLuminance = C->defaultLuminance;
+        }
+    }
+
     float overbrightScale = (float)srcLuminance * srcCurve.implicitScale / (float)srgbLuminance;
 
     // clTransformCalcMaxY assumes the RGB profile is linear with a 1 nit luminance
@@ -306,6 +313,7 @@ static clBool addSRGBHighlight(clContext * C, clImage * image, int maxLuminance,
     cJSON_AddItemToObject(base, "visual", cJSON_CreateString(pngB64));
     cJSON_AddItemToObject(base, "info", highlightInfo);
     cJSON_AddItemToObject(base, "highlightLuminance", cJSON_CreateNumber(maxLuminance));
+    cJSON_AddItemToObject(base, "hlgLuminance", cJSON_CreateNumber(clTransformCalcHLGLuminance(maxLuminance)));
     cJSON_AddItemToObject(base, "overbrightPixelCount", cJSON_CreateNumber(stats.overbrightPixelCount));
     cJSON_AddItemToObject(base, "outOfGamutPixelCount", cJSON_CreateNumber(stats.outOfGamutPixelCount));
     cJSON_AddItemToObject(base, "bothPixelCount", cJSON_CreateNumber(stats.bothPixelCount));
@@ -419,10 +427,10 @@ static clBool reportBasicInfo(clContext * C, clImage * image, cJSON * payload)
     if (clProfileHasPQSignature(C, image->profile, &primaries)) {
         curve.gamma = 0.0f;
         maxLuminance = 10000;
-        cJSON_AddItemToObject(jsonICC, "pq", cJSON_CreateBool(clTrue));
-    } else if (curve.type == CL_PCT_PQ) {
+        cJSON_AddItemToObject(jsonICC, "curveType", cJSON_CreateString("pq"));
+    } else if ((curve.type == CL_PCT_HLG) || (curve.type == CL_PCT_PQ)) {
         curve.gamma = 0.0f;
-        cJSON_AddItemToObject(jsonICC, "pq", cJSON_CreateBool(clTrue));
+        cJSON_AddItemToObject(jsonICC, "curveType", cJSON_CreateString(clProfileCurveTypeToLowercaseString(C, curve.type)));
     } else {
         // Check for profiles that we can't make valid reports for
         if (curve.type != CL_PCT_GAMMA) {

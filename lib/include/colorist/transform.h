@@ -33,7 +33,8 @@ typedef enum clTransformTransferFunction
 {
     CL_XTF_NONE = 0,
     CL_XTF_GAMMA,
-    CL_XTF_PQ // partial support
+    CL_XTF_HLG,
+    CL_XTF_PQ
 } clTransformTransferFunction;
 
 // clTransform does not own either clProfile and it is expected that both will outlive the clTransform that uses them
@@ -63,6 +64,7 @@ typedef struct clTransform
     gbMat3 ccmmSrcToXYZ;
     gbMat3 ccmmXYZToDst;
     gbMat3 ccmmCombined;
+    float ccmmHLGLuminance;
     clBool ccmmReady;
 
     // Cache for LittleCMS objects
@@ -88,6 +90,7 @@ int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format
 void clTransformXYZToXYY(struct clContext * C, float * dstXYY, const float * srcXYZ, float whitePointX, float whitePointY);
 void clTransformXYYToXYZ(struct clContext * C, float * dstXYZ, const float * srcXYY);
 
+int clTransformCalcHLGLuminance(int diffuseWhite);
 float clTransformCalcMaxY(clContext * C, clTransform * linearFromXYZ, clTransform * linearToXYZ, float x, float y);
 
 // define to debug transform matrix math in colorist-test
