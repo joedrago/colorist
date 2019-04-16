@@ -997,7 +997,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -a,--autograde           : Enable automatic color grading of max luminance and gamma (disabled by default)");
     clContextLog(C, NULL, 0, "    -c,--copyright COPYRIGHT : ICC profile copyright string.");
     clContextLog(C, NULL, 0, "    -d,--description DESC    : ICC profile description.");
-    clContextLog(C, NULL, 0, "    -g,--gamma GAMMA         : Output gamma. 0 for auto (default), \"pq\" for PQ, or \"source\" to force source gamma");
+    clContextLog(C, NULL, 0, "    -g,--gamma GAMMA         : Output gamma (transfer func). 0 for auto (default), \"pq\" for PQ, \"hlg\" for HLG, or \"source\" to force source gamma");
     clContextLog(C, NULL, 0, "    -l,--luminance LUMINANCE : ICC profile max luminance, in nits. \"source\" to match source lum (default), or \"unspecified\" not specify");
     clContextLog(C, NULL, 0, "    -p,--primaries PRIMARIES : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy");
     clContextLog(C, NULL, 0, "");
