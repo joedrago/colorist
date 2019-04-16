@@ -60,19 +60,20 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     -Weverything
     -Werror
     -Wno-bad-function-cast
-	-Wno-c11-extensions
+    -Wno-c11-extensions
     -Wno-cast-align
     -Wno-cast-qual
     -Wno-covered-switch-default
-    -Wno-double-promotion
     -Wno-deprecated-declarations
     -Wno-disabled-macro-expansion
+    -Wno-double-promotion
     -Wno-format-nonliteral
     -Wno-language-extension-token
     -Wno-missing-noreturn
     -Wno-padded
     -Wno-reserved-id-macro
     -Wno-sign-conversion
+    -Wno-switch-enum
     -Wno-undef
   )
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
