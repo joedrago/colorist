@@ -28,13 +28,14 @@
 typedef struct StockPrimaries
 {
     const char * name;
+    const char * prettyName;
     clProfilePrimaries primaries;
 } StockPrimaries;
 
 static StockPrimaries stockPrimaries[] = {
-    { "bt709", { { 0.64f, 0.33f }, { 0.30f, 0.60f }, { 0.15f, 0.06f }, { 0.3127f, 0.3290f } } },
-    { "bt2020", { { 0.708f, 0.292f }, { 0.170f, 0.797f }, { 0.131f, 0.046f }, { 0.3127f, 0.3290f } } },
-    { "p3", { { 0.68f, 0.32f }, { 0.265f, 0.690f }, { 0.150f, 0.060f }, { 0.3127f, 0.3290f } } }
+    { "bt709", "BT.709", { { 0.64f, 0.33f }, { 0.30f, 0.60f }, { 0.15f, 0.06f }, { 0.3127f, 0.3290f } } },
+    { "bt2020", "BT.2020", { { 0.708f, 0.292f }, { 0.170f, 0.797f }, { 0.131f, 0.046f }, { 0.3127f, 0.3290f } } },
+    { "p3", "P3", { { 0.68f, 0.32f }, { 0.265f, 0.690f }, { 0.150f, 0.060f }, { 0.3127f, 0.3290f } } }
 };
 static const unsigned int stockPrimariesCount = sizeof(stockPrimaries) / sizeof(stockPrimaries[0]);
 
@@ -487,6 +488,16 @@ clBool clContextGetRawStockPrimaries(struct clContext * C, const char * name, fl
         }
     }
     return clFalse;
+}
+
+const char * clContextFindStockPrimariesPrettyName(struct clContext * C, clProfilePrimaries * primaries)
+{
+    for (unsigned int index = 0; index < stockPrimariesCount; ++index) {
+        if (clProfilePrimariesMatch(C, primaries, &stockPrimaries[index].primaries)) {
+            return stockPrimaries[index].prettyName;
+        }
+    }
+    return NULL;
 }
 
 // ------------------------------------------------------------------------------------------------

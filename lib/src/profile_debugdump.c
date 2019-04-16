@@ -32,7 +32,15 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
             clFree(tempStr);
         }
 
-        clContextLog(C, "profile", 1 + extraIndent, "Primaries: (r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g)",
+        char primariesPrettyName[64];
+        primariesPrettyName[0] = 0;
+        const char * prettyName = clContextFindStockPrimariesPrettyName(C, &primaries);
+        if (prettyName) {
+            sprintf(primariesPrettyName, "%s ", prettyName);
+        }
+
+        clContextLog(C, "profile", 1 + extraIndent, "Primaries: %s(r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g)",
+            primariesPrettyName,
             primaries.red[0], primaries.red[1],
             primaries.green[0], primaries.green[1],
             primaries.blue[0], primaries.blue[1],

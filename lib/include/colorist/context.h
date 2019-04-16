@@ -237,6 +237,7 @@ void clContextLogWrite(clContext * C, const char * filename, const char * format
 
 clBool clContextGetStockPrimaries(struct clContext * C, const char * name, struct clProfilePrimaries * outPrimaries);
 clBool clContextGetRawStockPrimaries(struct clContext * C, const char * name, float outPrimaries[8]);
+const char * clContextFindStockPrimariesPrettyName(struct clContext * C, struct clProfilePrimaries * primaries); // returns NULL if not found
 
 int clContextConvert(clContext * C);
 int clContextGenerate(clContext * C, struct cJSON * output); // output here only used in ACTION_CALC

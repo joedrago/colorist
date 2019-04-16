@@ -669,6 +669,14 @@ char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primarie
 {
     char * tmp = clAllocate(1024);
 
+    char primariesString[64];
+    const char * prettyName = clContextFindStockPrimariesPrettyName(C, primaries);
+    if (prettyName) {
+        strcpy(primariesString, prettyName);
+    } else {
+        sprintf(primariesString, "P%3.3f", primaries->red[0]);
+    }
+
     char curveString[32];
     if (curve->type == CL_PCT_HLG) {
         strcpy(curveString, "HLG");
@@ -685,6 +693,6 @@ char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primarie
         nitsString[0] = 0;
     }
 
-    sprintf(tmp, "Colorist P%3.3f %s%s", primaries->red[0], curveString, nitsString);
+    sprintf(tmp, "Colorist %s %s%s", primariesString, curveString, nitsString);
     return tmp;
 }
