@@ -173,7 +173,7 @@ int clFormatBestDepth(struct clContext * C, const char * formatName, int reqDept
         formatDepth = format->depth;
     }
 
-    if (reqDepth < 8) {
+    if (reqDepth <= 8) {
         return 8;
     }
 
@@ -185,9 +185,9 @@ int clFormatBestDepth(struct clContext * C, const char * formatName, int reqDept
                 return 10;
             break;
         case CL_FORMAT_DEPTH_8_OR_10_OR_12:
-            if (reqDepth == 10)
+            if ((reqDepth > 8) && (reqDepth <= 10))
                 return 10;
-            if (reqDepth == 12)
+            if (reqDepth > 10)
                 return 12;
             break;
         case CL_FORMAT_DEPTH_8_OR_16:
