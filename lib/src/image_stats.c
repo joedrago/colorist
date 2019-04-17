@@ -34,12 +34,12 @@ clBool clImageCalcDiffStats(struct clContext * C, int taskCount, clImage * srcIm
     float maxLuminanceF = (float)maxLuminance;
 
     clTransform * srcToXYZ = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, srcImage->depth, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
-    float * srcXYZ = clAllocate(4 * sizeof(float) * pixelCount);
+    float * srcXYZ = clAllocate(3 * sizeof(float) * pixelCount);
     clTransformRun(C, srcToXYZ, taskCount, srcImage->pixels, srcXYZ, pixelCount);
     clTransformDestroy(C, srcToXYZ);
 
     clTransform * dstToXYZ = clTransformCreate(C, dstImage->profile, CL_XF_RGBA, dstImage->depth, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
-    float * dstXYZ = clAllocate(4 * sizeof(float) * pixelCount);
+    float * dstXYZ = clAllocate(3 * sizeof(float) * pixelCount);
     clTransformRun(C, dstToXYZ, taskCount, dstImage->pixels, dstXYZ, pixelCount);
     clTransformDestroy(C, dstToXYZ);
 
@@ -47,8 +47,8 @@ clBool clImageCalcDiffStats(struct clContext * C, int taskCount, clImage * srcIm
     float errorSquaredSumG22 = 0.0f;
     float gamma = 1.0f / 2.2f;
     for (int i = 0; i < pixelCount; ++i) {
-        float * srcPixel = &srcXYZ[4 * i];
-        float * dstPixel = &dstXYZ[4 * i];
+        float * srcPixel = &srcXYZ[3 * i];
+        float * dstPixel = &dstXYZ[3 * i];
 
         float normLinearSrcXYZ[3];
         normLinearSrcXYZ[0] = srcPixel[0] / maxLuminanceF;
