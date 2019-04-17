@@ -13,9 +13,9 @@
 
 #include <string.h>
 
-clBool clImageCalcDiffStats(struct clContext * C, int taskCount, clImage * srcImage, clImage * dstImage, clImageDiffStats * diffStats)
+clBool clImageCalcSignals(struct clContext * C, int taskCount, clImage * srcImage, clImage * dstImage, clImageSignals * signals)
 {
-    memset(diffStats, 0, sizeof(*diffStats));
+    memset(signals, 0, sizeof(*signals));
 
     if ((srcImage->width != dstImage->width) || (srcImage->height != dstImage->height)) {
         clContextLogError(C, "Conversion stats unavailable on images of different sizes");
@@ -90,16 +90,16 @@ clBool clImageCalcDiffStats(struct clContext * C, int taskCount, clImage * srcIm
     }
 
     if (errorSquaredSumLinear > 0.0f) {
-        diffStats->mseLinear = errorSquaredSumLinear / (float)pixelCount;
-        diffStats->psnrLinear = 10.0f * log10f(1.0f / diffStats->mseLinear);
+        signals->mseLinear = errorSquaredSumLinear / (float)pixelCount;
+        signals->psnrLinear = 10.0f * log10f(1.0f / signals->mseLinear);
     } else {
-        diffStats->psnrLinear = INFINITY;
+        signals->psnrLinear = INFINITY;
     }
     if (errorSquaredSumG22 > 0.0f) {
-        diffStats->mseG22 = errorSquaredSumG22 / (float)pixelCount;
-        diffStats->psnrG22 = 10.0f * log10f(1.0f / diffStats->mseG22);
+        signals->mseG22 = errorSquaredSumG22 / (float)pixelCount;
+        signals->psnrG22 = 10.0f * log10f(1.0f / signals->mseG22);
     } else {
-        diffStats->psnrG22 = INFINITY;
+        signals->psnrG22 = INFINITY;
     }
 
     clFree(srcXYZ);

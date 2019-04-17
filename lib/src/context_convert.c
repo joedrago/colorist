@@ -383,12 +383,12 @@ int clContextConvert(clContext * C)
 
         clImage * convertedImage = clContextRead(C, C->outputFilename, NULL, NULL);
         if (convertedImage) {
-            clImageDiffStats diffStats;
-            if (clImageCalcDiffStats(C, params.jobs, srcImage, convertedImage, &diffStats)) {
-                clContextLog(C, "stats", 1, "MSE  (Lin) : %g", diffStats.mseLinear);
-                clContextLog(C, "stats", 1, "PSNR (Lin) : %g", diffStats.psnrLinear);
-                clContextLog(C, "stats", 1, "MSE  (2.2g): %g", diffStats.mseG22);
-                clContextLog(C, "stats", 1, "PSNR (2.2g): %g", diffStats.psnrG22);
+            clImageSignals signals;
+            if (clImageCalcSignals(C, params.jobs, srcImage, convertedImage, &signals)) {
+                clContextLog(C, "stats", 1, "MSE  (Lin) : %g", signals.mseLinear);
+                clContextLog(C, "stats", 1, "PSNR (Lin) : %g", signals.psnrLinear);
+                clContextLog(C, "stats", 1, "MSE  (2.2g): %g", signals.mseG22);
+                clContextLog(C, "stats", 1, "PSNR (2.2g): %g", signals.psnrG22);
             }
             clImageDestroy(C, convertedImage);
         } else {

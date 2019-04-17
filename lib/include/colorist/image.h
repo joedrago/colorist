@@ -29,13 +29,13 @@ typedef struct clImage
     struct clProfile * profile;
 } clImage;
 
-typedef struct clImageDiffStats
+typedef struct clImageSignals
 {
     float mseLinear;
     float psnrLinear;
     float mseG22;
     float psnrG22;
-} clImageDiffStats;
+} clImageSignals;
 
 typedef struct clImagePixelInfo
 {
@@ -64,6 +64,19 @@ typedef struct clImagePixelInfo
     float nits;
 } clImagePixelInfo;
 
+typedef struct clImageDiff
+{
+    clImage * image;
+    uint16_t * diffs;
+    uint16_t * intensities;
+    float minIntensity;
+    int pixelCount;
+    int matchCount;
+    int underThresholdCount;
+    int overThresholdCount;
+    int largestChannelDiff;
+} clImageDiff;
+
 clImage * clImageCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
 clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns);
 clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount, int depth, struct clProfile * dstProfile, clTonemap tonemap);
@@ -80,7 +93,11 @@ void clImageDebugDumpPixel(struct clContext * C, clImage * image, int x, int y, 
 void clImageDestroy(struct clContext * C, clImage * image);
 void clImageLogCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
 clImage * clImageParseString(struct clContext * C, const char * str, int depth, struct clProfile * profile);
-clBool clImageCalcDiffStats(struct clContext * C, int taskCount, clImage * srcImage, clImage * dstImage, clImageDiffStats * diffStats);
+clBool clImageCalcSignals(struct clContext * C, int taskCount, clImage * srcImage, clImage * dstImage, clImageSignals * signals);
+
+clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage * image2, int taskCount, float minIntensity, int threshold);
+void clImageDiffUpdate(struct clContext * C, clImageDiff * diff, int threshold);
+void clImageDiffDestroy(struct clContext * C, clImageDiff * diff);
 
 void clImageToRGB8(struct clContext * C, clImage * image, uint8_t * outPixels);
 void clImageFromRGB8(struct clContext * C, clImage * image, uint8_t * inPixels);

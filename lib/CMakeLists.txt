@@ -71,6 +71,7 @@ set(COLORIST_LIB_SRCS
     src/format_webp.c
     src/image.c
     src/image_debugdump.c
+    src/image_diff.c
     src/image_stats.c
     src/image_string.c
     src/pixelmath_grade.c
