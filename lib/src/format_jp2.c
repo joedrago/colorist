@@ -81,7 +81,7 @@ static OPJ_BOOL seekCallback(OPJ_OFF_T p_nb_bytes, void * p_user_data)
     return OPJ_TRUE;
 }
 
-static int limitedToFull(int depth, int v)
+static int limitedToFullY(int depth, int v)
 {
     switch (depth) {
         case 8:
@@ -94,6 +94,25 @@ static int limitedToFull(int depth, int v)
             return v;
         case 12:
             v = ((v - 256) * 4095) / (3760 - 256);
+            v = CL_CLAMP(v, 0, 4095);
+            return v;
+    }
+    return v;
+}
+
+static int limitedToFullUV(int depth, int v)
+{
+    switch (depth) {
+        case 8:
+            v = ((v - 16) * 255) / (240 - 16);
+            v = CL_CLAMP(v, 0, 255);
+            return v;
+        case 10:
+            v = ((v - 64) * 1023) / (960 - 64);
+            v = CL_CLAMP(v, 0, 1023);
+            return v;
+        case 12:
+            v = ((v - 256) * 4095) / (3840 - 256);
             v = CL_CLAMP(v, 0, 4095);
             return v;
     }
@@ -232,6 +251,11 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
         int yuvUNorm[3];
         for (int y = 0; y < image->height; ++y) {
             for (int x = 0; x < image->width; ++x) {
+
+                if ((x == 440) && (y == 310)) {
+                    printf("");
+                }
+
                 uint16_t * pixel = &image->pixels[(x + (y * image->width)) * CL_CHANNELS_PER_PIXEL];
                 int uvX = x >> chromaShiftX;
                 int uvY = y >> chromaShiftY;
@@ -242,9 +266,9 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
 
                 // TODO: Don't assume studio range, and support more bit depths
                 if ((dstDepth == 8) || (dstDepth == 10) || (dstDepth == 12)) {
-                    yuvUNorm[0] = limitedToFull(dstDepth, yuvUNorm[0]);
-                    yuvUNorm[1] = limitedToFull(dstDepth, yuvUNorm[1]);
-                    yuvUNorm[2] = limitedToFull(dstDepth, yuvUNorm[2]);
+                    yuvUNorm[0] = limitedToFullY(dstDepth, yuvUNorm[0]);
+                    yuvUNorm[1] = limitedToFullUV(dstDepth, yuvUNorm[1]);
+                    yuvUNorm[2] = limitedToFullUV(dstDepth, yuvUNorm[2]);
                 }
 
                 float Y  = (float)yuvUNorm[0] / maxChannel;
