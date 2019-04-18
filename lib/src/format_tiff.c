@@ -277,7 +277,7 @@ clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const cha
         rowBytes = image->width * CL_CHANNELS_PER_PIXEL * 1;
     } else {
         pixels = (uint8_t *)image->pixels;
-        rowBytes = image->width * CL_CHANNELS_PER_PIXEL * CL_BYTES_PER_PIXEL;
+        rowBytes = image->width * CL_CHANNELS_PER_PIXEL * 2;
     }
 
     TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, image->width);
