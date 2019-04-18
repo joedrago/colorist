@@ -252,10 +252,6 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
         for (int y = 0; y < image->height; ++y) {
             for (int x = 0; x < image->width; ++x) {
 
-                if ((x == 440) && (y == 310)) {
-                    printf("");
-                }
-
                 uint16_t * pixel = &image->pixels[(x + (y * image->width)) * CL_CHANNELS_PER_PIXEL];
                 int uvX = x >> chromaShiftX;
                 int uvY = y >> chromaShiftY;
