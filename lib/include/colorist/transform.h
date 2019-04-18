@@ -19,6 +19,7 @@
 
 struct clContext;
 struct clProfile;
+struct clProfilePrimaries;
 
 // Why the X's in these enums? Transform, XForm, get it? (I needed to disambiguate)
 
@@ -92,6 +93,7 @@ void clTransformXYYToXYZ(struct clContext * C, float * dstXYZ, const float * src
 
 int clTransformCalcHLGLuminance(int diffuseWhite);
 float clTransformCalcMaxY(clContext * C, clTransform * linearFromXYZ, clTransform * linearToXYZ, float x, float y);
+void clTransformDeriveXYZMatrix(struct clContext * C, struct clProfilePrimaries * primaries, gbMat3 * toXYZ);
 
 // define to debug transform matrix math in colorist-test
 // #define DEBUG_MATRIX_MATH

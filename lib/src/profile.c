@@ -11,9 +11,12 @@
 #include "colorist/context.h"
 #include "colorist/pixelmath.h"
 #include "colorist/raw.h"
+#include "colorist/transform.h"
 
 #include "lcms2_plugin.h"
 #include "md5.h"
+
+#include "gb_math.h"
 
 #include <math.h>
 #include <string.h>
@@ -507,6 +510,67 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
         }
     }
     return clTrue;
+}
+
+void clProfileYUVCoefficientsSetDefaults(struct clContext * C, clProfileYUVCoefficients * yuv)
+{
+    COLORIST_UNUSED(C);
+
+    // sRGB (BT.709) defaults
+    yuv->kr = 0.2126f;
+    yuv->kb = 0.0722f;
+    yuv->kg = 1.0f - yuv->kr - yuv->kb;
+}
+
+static void convertXYZToXYY(float XYZ[3], float xyY[3], float whitePointX, float whitePointY)
+{
+    float sum = XYZ[0] + XYZ[1] + XYZ[2];
+    if (sum <= 0.0f) {
+        xyY[0] = whitePointX;
+        xyY[1] = whitePointY;
+        xyY[2] = 0.0f;
+        return;
+    }
+    xyY[0] = XYZ[0] / sum;
+    xyY[1] = XYZ[1] / sum;
+    xyY[2] = XYZ[1];
+}
+
+static float calcMaxY(float r, float g, float b, gbMat3 * colorants)
+{
+    gbVec3 rgb, XYZ;
+    rgb.e[0] = r;
+    rgb.e[1] = g;
+    rgb.e[2] = b;
+    gb_mat3_mul_vec3(&XYZ, colorants, rgb);
+    float xyY[3];
+    convertXYZToXYY(&XYZ.e[0], xyY, 0.0f, 0.0f);
+    return xyY[2];
+}
+
+void clProfileQueryYUVCoefficients(struct clContext * C, clProfile * profile, clProfileYUVCoefficients * yuv)
+{
+    COLORIST_UNUSED(C);
+    COLORIST_UNUSED(yuv);
+
+    clProfileYUVCoefficientsSetDefaults(C, yuv);
+
+    if (profile == NULL) {
+        return;
+    }
+
+    clProfilePrimaries primaries;
+    if (!clProfileQuery(C, profile, &primaries, NULL, NULL)) {
+        return;
+    }
+
+    gbMat3 colorants;
+    clTransformDeriveXYZMatrix(C, &primaries, &colorants);
+
+    // YUV coefficients are simply the brightest Y that a primary can be (where the white point's Y is 1.0)
+    yuv->kr = calcMaxY(1.0f, 0.0f, 0.0f, &colorants);
+    yuv->kb = calcMaxY(0.0f, 0.0f, 1.0f, &colorants);
+    yuv->kg = 1.0f - yuv->kr - yuv->kb;
 }
 
 char * clProfileGetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3])

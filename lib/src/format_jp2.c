@@ -8,6 +8,7 @@
 #include "colorist/image.h"
 
 #include "colorist/context.h"
+#include "colorist/pixelmath.h"
 #include "colorist/profile.h"
 
 #include "openjpeg.h"
@@ -78,6 +79,25 @@ static OPJ_BOOL seekCallback(OPJ_OFF_T p_nb_bytes, void * p_user_data)
     struct opjCallbackInfo * ci = (struct opjCallbackInfo *)p_user_data;
     ci->offset = (uint32_t)p_nb_bytes;
     return OPJ_TRUE;
+}
+
+static int limitedToFull(int depth, int v)
+{
+    switch (depth) {
+        case 8:
+            v = ((v - 16) * 255) / (235 - 16);
+            v = CL_CLAMP(v, 0, 255);
+            return v;
+        case 10:
+            v = ((v - 64) * 1023) / (940 - 64);
+            v = CL_CLAMP(v, 0, 1023);
+            return v;
+        case 12:
+            v = ((v - 256) * 4095) / (3760 - 256);
+            v = CL_CLAMP(v, 0, 4095);
+            return v;
+    }
+    return v;
 }
 
 struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
@@ -163,10 +183,21 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
         profile = clProfileParse(C, opjImage->icc_profile_buf, opjImage->icc_profile_len, NULL);
     }
 
+    int chromaShiftX = 0;
+    int chromaShiftY = 0;
+
     dstDepth = 8;
     for (i = 0; i < (int)opjImage->numcomps; ++i) {
         // Find biggest component
         dstDepth = (dstDepth > (int)opjImage->comps[i].prec) ? dstDepth : (int)opjImage->comps[i].prec;
+
+        // Check for subsampling
+        if (opjImage->comps[i].dx == 2) {
+            chromaShiftX = 1;
+        }
+        if (opjImage->comps[i].dy == 2) {
+            chromaShiftY = 1;
+        }
     }
     if ((dstDepth < 8) || (dstDepth > 16)) {
         int srcDepth = dstDepth;
@@ -179,6 +210,16 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
     }
     maxChannel = (1 << dstDepth) - 1;
 
+    clBool isYUV = clFalse;
+    clProfileYUVCoefficients yuv;
+    clProfileYUVCoefficientsSetDefaults(C, &yuv);
+    if ((opjImage->color_space == OPJ_CLRSPC_SYCC) ||
+        (opjImage->color_space == OPJ_CLRSPC_UNSPECIFIED) && (opjImage->numcomps >= 3) && ((chromaShiftX > 0) || (chromaShiftY > 0)))
+    {
+        isYUV = clTrue;
+        clProfileQueryYUVCoefficients(C, profile, &yuv);
+    }
+
     clImageLogCreate(C, opjImage->x1, opjImage->y1, dstDepth, profile);
     image = clImageCreate(C, opjImage->x1, opjImage->y1, dstDepth, profile);
     if (profile) {
@@ -187,25 +228,71 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
 
     pixelCount = image->width * image->height;
 
-    uint16_t * pixel = image->pixels;
-    if (opjImage->numcomps == 3) {
-        // RGB, fill A
-        for (i = 0; i < pixelCount; ++i) {
-            pixel[0] = (uint16_t)(opjImage->comps[0].data[i] * channelFactor[0]);
-            pixel[1] = (uint16_t)(opjImage->comps[1].data[i] * channelFactor[1]);
-            pixel[2] = (uint16_t)(opjImage->comps[2].data[i] * channelFactor[2]);
-            pixel[3] = (uint16_t)(maxChannel);
-            pixel += 4;
+    if (isYUV) {
+        int yuvUNorm[3];
+        for (int y = 0; y < image->height; ++y) {
+            for (int x = 0; x < image->width; ++x) {
+                uint16_t * pixel = &image->pixels[(x + (y * image->width)) * CL_CHANNELS_PER_PIXEL];
+                int uvX = x >> chromaShiftX;
+                int uvY = y >> chromaShiftY;
+
+                yuvUNorm[0] = opjImage->comps[0].data[x + (y * opjImage->comps[0].w)] * channelFactor[0];
+                yuvUNorm[1] = opjImage->comps[1].data[uvX + (uvY * opjImage->comps[1].w)] * channelFactor[1];
+                yuvUNorm[2] = opjImage->comps[2].data[uvX + (uvY * opjImage->comps[2].w)] * channelFactor[2];
+
+                // TODO: Don't assume studio range, and support more bit depths
+                if ((dstDepth == 8) || (dstDepth == 10) || (dstDepth == 12)) {
+                    yuvUNorm[0] = limitedToFull(dstDepth, yuvUNorm[0]);
+                    yuvUNorm[1] = limitedToFull(dstDepth, yuvUNorm[1]);
+                    yuvUNorm[2] = limitedToFull(dstDepth, yuvUNorm[2]);
+                }
+
+                float Y  = (float)yuvUNorm[0] / maxChannel;
+                float Cb = ((float)yuvUNorm[1] / maxChannel) - 0.5f;
+                float Cr = ((float)yuvUNorm[2] / maxChannel) - 0.5f;
+
+                float R = Y + (2 * (1 - yuv.kr)) * Cr;
+                float B = Y + (2 * (1 - yuv.kb)) * Cb;
+                float G = Y - (
+                    (2 * ((yuv.kr * (1 - yuv.kr) * Cr) + (yuv.kb * (1 - yuv.kb) * Cb)))
+                    /
+                    yuv.kg);
+
+                R = CL_CLAMP(R, 0.0f, 1.0f);
+                G = CL_CLAMP(G, 0.0f, 1.0f);
+                B = CL_CLAMP(B, 0.0f, 1.0f);
+
+                pixel[0] = (uint16_t)clPixelMathRoundf(R * maxChannel);
+                pixel[1] = (uint16_t)clPixelMathRoundf(G * maxChannel);
+                pixel[2] = (uint16_t)clPixelMathRoundf(B * maxChannel);
+                if (opjImage->numcomps == 3) {
+                    pixel[3] = (uint16_t)(maxChannel);
+                } else {
+                    pixel[3] = (uint16_t)(opjImage->comps[3].data[i] * channelFactor[3]);
+                }
+            }
         }
     } else {
-        // RGBA
-        COLORIST_ASSERT(opjImage->numcomps == 4);
-        for (i = 0; i < pixelCount; ++i) {
-            pixel[0] = (uint16_t)(opjImage->comps[0].data[i] * channelFactor[0]);
-            pixel[1] = (uint16_t)(opjImage->comps[1].data[i] * channelFactor[1]);
-            pixel[2] = (uint16_t)(opjImage->comps[2].data[i] * channelFactor[2]);
-            pixel[3] = (uint16_t)(opjImage->comps[3].data[i] * channelFactor[3]);
-            pixel += 4;
+        uint16_t * pixel = image->pixels;
+        if (opjImage->numcomps == 3) {
+            // RGB, fill A
+            for (i = 0; i < pixelCount; ++i) {
+                pixel[0] = (uint16_t)(opjImage->comps[0].data[i] * channelFactor[0]);
+                pixel[1] = (uint16_t)(opjImage->comps[1].data[i] * channelFactor[1]);
+                pixel[2] = (uint16_t)(opjImage->comps[2].data[i] * channelFactor[2]);
+                pixel[3] = (uint16_t)(maxChannel);
+                pixel += 4;
+            }
+        } else {
+            // RGBA
+            COLORIST_ASSERT(opjImage->numcomps == 4);
+            for (i = 0; i < pixelCount; ++i) {
+                pixel[0] = (uint16_t)(opjImage->comps[0].data[i] * channelFactor[0]);
+                pixel[1] = (uint16_t)(opjImage->comps[1].data[i] * channelFactor[1]);
+                pixel[2] = (uint16_t)(opjImage->comps[2].data[i] * channelFactor[2]);
+                pixel[3] = (uint16_t)(opjImage->comps[3].data[i] * channelFactor[3]);
+                pixel += 4;
+            }
         }
     }
 

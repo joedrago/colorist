@@ -62,6 +62,14 @@ typedef enum clProfileStock
     CL_PS_SRGB = 0
 } clProfileStock;
 
+typedef struct clProfileYUVCoefficients
+{
+    float kr;
+    float kg;
+    float kb;
+} clProfileYUVCoefficients;
+void clProfileYUVCoefficientsSetDefaults(struct clContext * C, clProfileYUVCoefficients * yuv);
+
 clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock);
 clProfile * clProfileClone(struct clContext * C, clProfile * profile);
 clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance, const char * description);
@@ -70,6 +78,7 @@ clProfile * clProfileRead(struct clContext * C, const char * filename);
 clBool clProfileReload(struct clContext * C, clProfile * profile);
 clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * filename);
 clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries, clProfileCurve * curve, int * luminance);
+void clProfileQueryYUVCoefficients(struct clContext * C, clProfile * profile, clProfileYUVCoefficients * yuv);
 clBool clProfileHasPQSignature(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries);
 clProfileCurveType clProfileCurveSignature(struct clContext * C, clProfile * profile);
 char * clProfileGetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3]);

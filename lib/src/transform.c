@@ -135,7 +135,7 @@ int clTransformCalcHLGLuminance(int diffuseWhite)
 }
 
 // From http://docs-hoffmann.de/ciexyz29082000.pdf, Section 11.4
-static void deriveXYZMatrix(struct clContext * C, clProfilePrimaries * primaries, gbMat3 * toXYZ)
+void clTransformDeriveXYZMatrix(struct clContext * C, clProfilePrimaries * primaries, gbMat3 * toXYZ)
 {
     COLORIST_UNUSED(C);
 
@@ -193,7 +193,7 @@ static clBool derivePrimariesAndXTF(struct clContext * C, struct clProfile * pro
                 *outGamma = curve.gamma;
             }
         } else {
-            clContextLogError(C, "deriveXYZMatrix: fatal error querying profile");
+            clContextLogError(C, "clTransformDeriveXYZMatrix: fatal error querying profile");
             return clFalse;
         }
     } else {
@@ -306,12 +306,12 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
             }
 
             if (transform->srcProfile) {
-                deriveXYZMatrix(C, &srcPrimaries, &transform->ccmmSrcToXYZ);
+                clTransformDeriveXYZMatrix(C, &srcPrimaries, &transform->ccmmSrcToXYZ);
             } else {
                 gb_mat3_identity(&transform->ccmmSrcToXYZ);
             }
             if (transform->dstProfile) {
-                deriveXYZMatrix(C, &dstPrimaries, &dstToXYZ);
+                clTransformDeriveXYZMatrix(C, &dstPrimaries, &dstToXYZ);
             } else {
                 gb_mat3_identity(&dstToXYZ);
             }
