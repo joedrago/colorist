@@ -133,8 +133,7 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
     }
 
     TIFFGetField(tiff, TIFFTAG_SAMPLESPERPIXEL, &channelCount);
-    if ((channelCount != 4)) {
-        // TODO: support at least 3 channels
+    if ((channelCount != 3) && (channelCount != 4)) {
         clContextLogError(C, "unsupported channelCount(%d) from TIFF", channelCount);
         goto readCleanup;
     }
@@ -179,7 +178,7 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
         rowBytes = image->width * CL_CHANNELS_PER_PIXEL * 1;
     } else {
         pixels = (uint8_t *)image->pixels;
-        rowBytes = image->width * CL_CHANNELS_PER_PIXEL * CL_BYTES_PER_PIXEL;
+        rowBytes = image->width * CL_CHANNELS_PER_PIXEL * 2;
     }
     for (rowIndex = 0; rowIndex < image->height; ++rowIndex) {
         uint8_t * pixelRow;
@@ -194,6 +193,29 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
             clImageDestroy(C, image);
             image = NULL;
             goto readCleanup;
+        }
+
+        if (channelCount == 3) {
+            // Expand RGB in-place into RGBA, then fill A
+            if (depth == 8) {
+                for (int x = image->width - 1; x >= 0; --x) {
+                    uint8_t * srcPixel = &pixelRow[x * 3 * sizeof(uint8_t)];
+                    uint8_t * dstPixel = &pixelRow[x * 4 * sizeof(uint8_t)];
+                    dstPixel[0] = srcPixel[0];
+                    dstPixel[1] = srcPixel[1];
+                    dstPixel[2] = srcPixel[2];
+                    dstPixel[3] = 255;
+                }
+            } else {
+                for (int x = image->width - 1; x >= 0; --x) {
+                    uint16_t * srcPixel = (uint16_t *)&pixelRow[x * 3 * sizeof(uint16_t)];
+                    uint16_t * dstPixel = (uint16_t *)&pixelRow[x * 4 * sizeof(uint16_t)];
+                    dstPixel[0] = srcPixel[0];
+                    dstPixel[1] = srcPixel[1];
+                    dstPixel[2] = srcPixel[2];
+                    dstPixel[3] = 65535;
+                }
+            }
         }
     }
 
