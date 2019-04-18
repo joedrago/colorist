@@ -78,7 +78,7 @@ typedef struct BITMAPV5HEADER
 
 #define APPEND(PTR, SIZE) memcpy(p, PTR, SIZE); p += (SIZE);
 
-struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
 // ---------------------------------------------------------------------------
@@ -107,7 +107,7 @@ static int maskDepth(uint32_t mask, int currentDepth, int * channelDepth, int * 
     return (depth > currentDepth) ? depth : currentDepth;
 }
 
-struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clRaw * input)
+struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);
 
@@ -155,7 +155,9 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
         goto readCleanup;
     }
 
-    if (info.bV5CSType == PROFILE_EMBEDDED) {
+    if (overrideProfile) {
+        profile = clProfileClone(C, overrideProfile);
+    } else if (info.bV5CSType == PROFILE_EMBEDDED) {
         if ((sizeof(magic) + sizeof(fileHeader) + info.bV5ProfileData + info.bV5ProfileSize) > input->size) {
             clContextLogError(C, "Invalid BMP ICC profile offset/size");
             goto readCleanup;

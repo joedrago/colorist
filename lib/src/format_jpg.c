@@ -35,10 +35,10 @@ static void setup_read_icc_profile(j_decompress_ptr cinfo);
 static boolean read_icc_profile(struct clContext * C, j_decompress_ptr cinfo, JOCTET ** icc_data_ptr, unsigned int * icc_data_len);
 static void write_icc_profile(j_compress_ptr cinfo, const JOCTET * icc_data_ptr, unsigned int icc_data_len);
 
-struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
-struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, struct clRaw * input)
+struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);
 
@@ -66,16 +66,20 @@ struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, 
     JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr) & cinfo, JPOOL_IMAGE, row_stride, 1);
 
     clProfile * profile = NULL;
-    uint8_t * iccData = NULL;
-    unsigned int iccDataLen;
-    if (read_icc_profile(C, &cinfo, &iccData, &iccDataLen)) {
-        profile = clProfileParse(C, iccData, iccDataLen, NULL);
-        if (!profile) {
-            clContextLogError(C, "ERROR: can't parse JPEG embedded ICC profile");
-            jpeg_destroy_decompress(&cinfo);
-            return NULL;
+    if (overrideProfile) {
+        profile = clProfileClone(C, overrideProfile);
+    } else {
+        uint8_t * iccData = NULL;
+        unsigned int iccDataLen;
+        if (read_icc_profile(C, &cinfo, &iccData, &iccDataLen)) {
+            profile = clProfileParse(C, iccData, iccDataLen, NULL);
+            if (!profile) {
+                clContextLogError(C, "ERROR: can't parse JPEG embedded ICC profile");
+                jpeg_destroy_decompress(&cinfo);
+                return NULL;
+            }
+            clFree(iccData);
         }
-        clFree(iccData);
     }
 
     clImageLogCreate(C, cinfo.output_width, cinfo.output_height, 8, profile);
@@ -211,8 +215,8 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
  */
 
 static void write_icc_profile(j_compress_ptr cinfo,
-                              const JOCTET * icc_data_ptr,
-                              unsigned int icc_data_len)
+    const JOCTET * icc_data_ptr,
+    unsigned int icc_data_len)
 {
     unsigned int num_markers; /* total number of markers we'll write */
     int cur_marker = 1;       /* per spec, counting starts at 1 */
@@ -317,9 +321,9 @@ static boolean marker_is_icc(jpeg_saved_marker_ptr marker)
  */
 
 static boolean read_icc_profile(struct clContext * C,
-                                j_decompress_ptr cinfo,
-                                JOCTET ** icc_data_ptr,
-                                unsigned int * icc_data_len)
+    j_decompress_ptr cinfo,
+    JOCTET ** icc_data_ptr,
+    unsigned int * icc_data_len)
 {
     jpeg_saved_marker_ptr marker;
     int num_markers = 0;

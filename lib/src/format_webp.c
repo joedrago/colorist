@@ -16,10 +16,10 @@
 
 #include <string.h>
 
-struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
-struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName, struct clRaw * input)
+struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);
 
@@ -35,7 +35,9 @@ struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName,
     uint32_t muxFlags;
     WebPMuxGetFeatures(mux, &muxFlags);
 
-    if (muxFlags & ICCP_FLAG) {
+    if (overrideProfile) {
+        profile = clProfileClone(C, overrideProfile);
+    } else if (muxFlags & ICCP_FLAG) {
         WebPData iccChunk;
         if (WebPMuxGetChunk(mux, "ICCP", &iccChunk) != WEBP_MUX_OK) {
             clContextLogError(C, "Failed get ICC profile chunk");

@@ -14,7 +14,7 @@
 
 #include <string.h>
 
-struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
 struct readInfo
@@ -33,7 +33,7 @@ static void readCallback(png_structp png, png_bytep data, png_size_t length)
     ri->offset += length;
 }
 
-struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, struct clRaw * input)
+struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);
 
@@ -76,7 +76,9 @@ struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, 
     unsigned char * iccpData;
     png_uint_32 iccpDataLen;
 
-    if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
+    if (overrideProfile) {
+        profile = clProfileClone(C, overrideProfile);
+    } else if (png_get_iCCP(png, info, &iccpProfileName, &iccpCompression, &iccpData, &iccpDataLen) == PNG_INFO_iCCP) {
         profile = clProfileParse(C, iccpData, iccpDataLen, iccpProfileName);
     }
 

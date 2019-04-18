@@ -14,7 +14,7 @@
 
 #include <string.h>
 
-struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
 typedef struct tiffCallbackInfo
@@ -91,7 +91,7 @@ static void unmapCallback(tiffCallbackInfo * ci, void * base, toff_t size)
     COLORIST_UNUSED(size);
 }
 
-struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName, struct clRaw * input)
+struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);
 
@@ -150,7 +150,9 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
         goto readCleanup;
     }
 
-    if (TIFFGetField(tiff, TIFFTAG_ICCPROFILE, &iccLen, &iccBuf)) {
+    if (overrideProfile) {
+        profile = clProfileClone(C, overrideProfile);
+    } else if (TIFFGetField(tiff, TIFFTAG_ICCPROFILE, &iccLen, &iccBuf)) {
         profile = clProfileParse(C, iccBuf, iccLen, NULL);
         if (!profile) {
             clContextLogError(C, "cannot parse ICC profile from TIFF");

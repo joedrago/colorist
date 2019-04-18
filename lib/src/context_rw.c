@@ -24,6 +24,17 @@ struct clImage * clContextRead(clContext * C, const char * filename, const char 
         return NULL;
     }
 
+    clProfile * overrideProfile = NULL;
+    if (iccOverride) {
+        overrideProfile = clProfileRead(C, iccOverride);
+        if (overrideProfile) {
+            clContextLog(C, "profile", 1, "Overriding src profile with file: %s", iccOverride);
+        } else {
+            clContextLogError(C, "Bad ICC override file [-i]: %s", iccOverride);
+            return NULL;
+        }
+    }
+
     clRaw input = CL_RAW_EMPTY;
     if (!clRawReadFile(C, &input, filename)) {
         return clFalse;
@@ -32,24 +43,30 @@ struct clImage * clContextRead(clContext * C, const char * filename, const char 
     format = clContextFindFormat(C, formatName);
     COLORIST_ASSERT(format);
     if (format->readFunc) {
-        image = format->readFunc(C, formatName, &input);
+        image = format->readFunc(C, formatName, overrideProfile, &input);
     } else {
         clContextLogError(C, "Unimplemented file reader '%s'", formatName);
     }
 
-    if (image && iccOverride) {
-        clProfile * overrideProfile = clProfileRead(C, iccOverride);
+    if (overrideProfile) {
+        // Just in case the read plugin is a bad citizen
+        if (image) {
+            if (image->profile == overrideProfile) {
+                // if the pointers match exactly, let it take ownership
+                overrideProfile = NULL;
+            } else if (!clProfileMatches(C, image->profile, overrideProfile)) {
+                clProfileDestroy(C, image->profile);
+                image->profile = overrideProfile; // take ownership
+                overrideProfile = NULL;
+            }
+        }
+
+        // There is a chance we lost ownership, so check if it is still here
         if (overrideProfile) {
-            clContextLog(C, "profile", 1, "Overriding src profile with file: %s", iccOverride);
-            clProfileDestroy(C, image->profile);
-            image->profile = overrideProfile; // take ownership
-        } else {
-            clContextLogError(C, "Bad ICC override file [-i]: %s", iccOverride);
-            clImageDestroy(C, image);
-            image = NULL;
+            clProfileDestroy(C, overrideProfile);
+            overrideProfile = NULL;
         }
     }
-
     clRawFree(C, &input);
     return image;
 }

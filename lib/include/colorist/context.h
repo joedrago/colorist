@@ -18,6 +18,7 @@ struct _cmsContext_struct;
 
 struct clContext;
 struct clImage;
+struct clProfile;
 struct clProfilePrimaries;
 struct clRaw;
 struct cJSON;
@@ -39,7 +40,7 @@ clAction clActionFromString(struct clContext * C, const char * str);
 const char * clActionToString(struct clContext * C, clAction action);
 
 struct clWriteParams;
-typedef struct clImage * (* clFormatReadFunc)(struct clContext * C, const char * formatName, struct clRaw * input);
+typedef struct clImage * (* clFormatReadFunc)(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 typedef clBool (* clFormatWriteFunc)(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
 typedef enum clFormatDepth

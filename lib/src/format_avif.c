@@ -19,10 +19,10 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
 static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, avifNclxColorProfile * nclx);
 static void logAvifImage(struct clContext * C, avifImage * avif);
 
-struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
-struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clRaw * input)
+struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);
     COLORIST_UNUSED(input);
@@ -42,7 +42,9 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
         goto readCleanup;
     }
 
-    if (avif->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
+    if (overrideProfile) {
+        profile = clProfileClone(C, overrideProfile);
+    } else if (avif->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
         profile = nclxToclProfile(C, &avif->nclx);
     } else if (avif->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
         profile = clProfileParse(C, avif->icc.data, avif->icc.size, NULL);

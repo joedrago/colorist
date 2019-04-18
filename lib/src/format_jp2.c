@@ -15,7 +15,7 @@
 
 #include <string.h>
 
-struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
 static void error_callback(const char * msg, void * client_data)
@@ -80,7 +80,7 @@ static OPJ_BOOL seekCallback(OPJ_OFF_T p_nb_bytes, void * p_user_data)
     return OPJ_TRUE;
 }
 
-struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, struct clRaw * input)
+struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);
 
@@ -157,7 +157,9 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
         return NULL;
     }
 
-    if (opjImage->icc_profile_buf && (opjImage->icc_profile_len > 0)) {
+    if (overrideProfile) {
+        profile = clProfileClone(C, overrideProfile);
+    } else if (opjImage->icc_profile_buf && (opjImage->icc_profile_len > 0)) {
         profile = clProfileParse(C, opjImage->icc_profile_buf, opjImage->icc_profile_len, NULL);
     }
 

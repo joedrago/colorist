@@ -15,12 +15,12 @@
 
 #include <string.h>
 
-struct clImage * clFormatReadAPG(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadAPG(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteAPG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
 static void dumpAPG(struct clContext * C, apgImage * apg, uint32_t totalSize);
 
-struct clImage * clFormatReadAPG(struct clContext * C, const char * formatName, struct clRaw * input)
+struct clImage * clFormatReadAPG(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);
     COLORIST_UNUSED(input);
@@ -36,7 +36,9 @@ struct clImage * clFormatReadAPG(struct clContext * C, const char * formatName, 
         goto readCleanup;
     }
 
-    if (apg->icc && apg->iccSize) {
+    if (overrideProfile) {
+        profile = clProfileClone(C, overrideProfile);
+    } else if (apg->icc && apg->iccSize) {
         profile = clProfileParse(C, apg->icc, apg->iccSize, NULL);
         if (!profile) {
             clContextLogError(C, "Failed parse ICC profile chunk");
@@ -44,6 +46,7 @@ struct clImage * clFormatReadAPG(struct clContext * C, const char * formatName, 
         }
     }
 
+    clImageLogCreate(C, apg->width, apg->height, apg->depth, profile);
     image = clImageCreate(C, apg->width, apg->height, apg->depth, profile);
 
     int pixelChannelCount = CL_CHANNELS_PER_PIXEL * image->width * image->height;

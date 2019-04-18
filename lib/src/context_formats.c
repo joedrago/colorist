@@ -9,28 +9,28 @@
 
 #include <string.h>
 
-struct clImage * clFormatReadAPG(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadAPG(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteAPG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
-struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
-struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
-struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
-struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
-struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
-struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
-struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName, struct clRaw * input);
+struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
 void clContextRegisterBuiltinFormats(struct clContext * C)
