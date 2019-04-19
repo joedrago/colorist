@@ -13,6 +13,7 @@
 #include "colorist/transform.h"
 
 #include <string.h>
+#include <stdlib.h>
 
 clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage * image2, int taskCount, float minIntensity, int threshold)
 {
