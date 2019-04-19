@@ -9,6 +9,7 @@
 
 #include "colorist/profile.h"
 #include "colorist/task.h"
+#include "colorist/transform.h"
 
 #include "lcms2.h"
 
@@ -776,6 +777,19 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                     clContextLogError(C, "Invalid default luminance: %s", arg);
                     return clFalse;
                 }
+            } else if (!strcmp(arg, "--hlglum")) {
+                NEXTARG();
+                int hlgLum = atoi(arg);
+                if (hlgLum <= 0) {
+                    clContextLogError(C, "Invalid HLG luminance: %s", arg);
+                    return clFalse;
+                }
+                C->defaultLuminance = clTransformCalcDefaultLuminanceFromHLG(hlgLum);
+                clContextLog(C, "hlg", 0, "Choosing %d nits as default luminance based on max HLG luminance of %d nits", C->defaultLuminance, hlgLum);
+                if (hlgLum <= 1) {
+                    clContextLogError(C, "Invalid HLG luminance: %s", arg);
+                    return clFalse;
+                }
             } else if (!strcmp(arg, "-z") || !strcmp(arg, "--rect") || !strcmp(arg, "--crop")) {
                 NEXTARG();
                 if (!parseRect(C, C->params.rect, arg))
@@ -988,6 +1002,8 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -v,--verbose             : Verbose mode.");
     clContextLog(C, NULL, 0, "    --cmm WHICH,--cms WHICH  : Choose Color Management Module/System: auto (default), lcms, colorist (built-in, uses when possible)");
     clContextLog(C, NULL, 0, "    --deflum LUMINANCE       : Choose the default/fallback luminance value in nits when unspecified (default: %d)", COLORIST_DEFAULT_LUMINANCE);
+    clContextLog(C, NULL, 0, "    --hlglum LUMINANCE       : Alternative to --deflum, hlglum chooses an appropriate diffuse white for --deflum based on peak HLG lum.");
+    clContextLog(C, NULL, 0, "                               (--hlglum and --deflum are mutually exclusive as they are two ways to set the same value.)");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Input Options:");
     clContextLog(C, NULL, 0, "    -i,--iccin file.icc      : Override source ICC profile. default is to use embedded profile (if any), or sRGB@deflum");

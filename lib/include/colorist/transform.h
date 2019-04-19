@@ -92,6 +92,7 @@ void clTransformXYZToXYY(struct clContext * C, float * dstXYY, const float * src
 void clTransformXYYToXYZ(struct clContext * C, float * dstXYZ, const float * srcXYY);
 
 int clTransformCalcHLGLuminance(int diffuseWhite);
+int clTransformCalcDefaultLuminanceFromHLG(int hlgLuminance);
 float clTransformCalcMaxY(clContext * C, clTransform * linearFromXYZ, clTransform * linearToXYZ, float x, float y);
 void clTransformDeriveXYZMatrix(struct clContext * C, struct clProfilePrimaries * primaries, gbMat3 * toXYZ);
 

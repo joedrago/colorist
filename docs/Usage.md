@@ -15,6 +15,8 @@ Basic Options:
     -v,--verbose             : Verbose mode.
     --cmm WHICH,--cms WHICH  : Choose Color Management Module/System: auto (default), lcms, colorist (built-in, uses when possible)
     --deflum LUMINANCE       : Choose the default/fallback luminance value in nits when unspecified (default: 300)
+    --hlglum LUMINANCE       : Alternative to --deflum, hlglum chooses an appropriate diffuse white for --deflum based on peak HLG lum.
+                               (--hlglum and --deflum are mutually exclusive as they are two ways to set the same value.)
 
 Input Options:
     -i,--iccin file.icc      : Override source ICC profile. default is to use embedded profile (if any), or sRGB@deflum
@@ -24,7 +26,7 @@ Output Profile Options:
     -a,--autograde           : Enable automatic color grading of max luminance and gamma (disabled by default)
     -c,--copyright COPYRIGHT : ICC profile copyright string.
     -d,--description DESC    : ICC profile description.
-    -g,--gamma GAMMA         : Output gamma. 0 for auto (default), "pq" for PQ, or "source" to force source gamma
+    -g,--gamma GAMMA         : Output gamma (transfer func). 0 for auto (default), "pq" for PQ, "hlg" for HLG, or "source" to force source gamma
     -l,--luminance LUMINANCE : ICC profile max luminance, in nits. "source" to match source lum (default), or "unspecified" not specify
     -p,--primaries PRIMARIES : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy
 
@@ -66,13 +68,24 @@ use its own internal CMM whenever possible, but will fall back to LittleCMS'
 conversion code if the profile contains unsupported tone curves or A2B tags,
 etc.
 
-### --deflum
+### --deflum, --hlglum
 
 There is no requirement for an ICC profile to contain a `lumi` tag, and in the
 case of its absence, colorist must internally supply a default/fallback
 luminance in order for any calculations to make sense. Setting `--deflum`
 allows the user to specify how bright any profiles without a lumi tag should
 be considered to be.
+
+When converting to or from HLG with unspecified luminance (recommended), the
+current default luminance value (set with `--deflum`) is used for diffuse
+white, which maps to a 75% signal in HLG, and the max luminance is calculated
+with it. If you want to choose a max luminance in which to scale absolute
+luminance images into HLG, use `--hlglum` and provide the luminance you'd
+like a 100% HLG signal to represent (during conversion).
+
+Example: If a display renders diffuse white at 203 nits, it will render a
+75% HLG signal at 203 nits, and a 100% HLG signal at 1000 nits. Therefore,
+`--hlglum 1000` is synonymous with `--deflum 203`.
 
 ### -a, --autograde
 

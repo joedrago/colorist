@@ -134,6 +134,12 @@ int clTransformCalcHLGLuminance(int diffuseWhite)
     return L;
 }
 
+int clTransformCalcDefaultLuminanceFromHLG(int hlgLuminance)
+{
+    int lum = (int)clPixelMathRoundf(hlgDiffuseWhite((float)hlgLuminance));
+    return lum;
+}
+
 // From http://docs-hoffmann.de/ciexyz29082000.pdf, Section 11.4
 void clTransformDeriveXYZMatrix(struct clContext * C, clProfilePrimaries * primaries, gbMat3 * toXYZ)
 {
