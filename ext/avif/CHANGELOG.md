@@ -6,7 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.2] - 2019-04-15
+## [0.1.3] - 2019-04-23
+### Changed
+- `ftyp` - Change `major_brand` to `avif`
+- `ftyp` - Reorder `compatible_brands`, add `MA1A` or `MA1B` when appropriate
+- Write `meta` box before `mdat` box for streaming friendliness
+
+## [0.1.2] - 2019-04-18
 ### Added
 - `AVIF_NCLX_COLOUR_PRIMARIES_P3` (convenient mirrored value)
 - `avifNclxColourPrimariesFind()` - Finds a builtin avifNclxColourPrimaries and name by a set of primaries
@@ -34,7 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/joedrago/avif/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/joedrago/avif/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/joedrago/avif/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/joedrago/avif/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/joedrago/avif/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/joedrago/avif/releases/tag/v0.1.0
