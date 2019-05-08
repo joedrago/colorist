@@ -187,7 +187,7 @@ set(COLORIST_EXT_LIBS
     tiff
     z
     webp
-    webpmux
+    libwebpmux
     webpdemux
 )
 set(COLORIST_EXT_LIBS ${COLORIST_EXT_LIBS} PARENT_SCOPE)
@@ -222,7 +222,7 @@ set_folder_safe(webpdemux "ext/webp")
 set_folder_safe(webpdsp "ext/webp")
 set_folder_safe(webpdspdecode "ext/webp")
 set_folder_safe(webpencode "ext/webp")
-set_folder_safe(webpmux "ext/webp")
+set_folder_safe(libwebpmux "ext/webp")
 set_folder_safe(webputils "ext/webp")
 set_folder_safe(webputilsdecode "ext/webp")
 set_folder_safe(z "ext")
