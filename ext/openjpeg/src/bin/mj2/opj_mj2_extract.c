@@ -82,12 +82,17 @@ int main(int argc, char *argv[])
     mj2_sample_t *sample;
     unsigned char* frame_codestream;
     FILE *file, *outfile;
-    char outfilename[50];
+    char outfilename[FILENAME_MAX];
     mj2_dparameters_t parameters;
 
     if (argc != 3) {
-        printf("Usage: %s mj2filename output_location\n", argv[0]);
+        printf("Usage: %s mj2filename output_prefix\n", argv[0]);
         printf("Example: %s foreman.mj2 output/foreman\n", argv[0]);
+        return 1;
+    }
+
+    if (strlen(argv[2]) + 11 > sizeof(outfilename)) {
+        fprintf(stderr, "filename %d too long\n", strlen(argv[2]) + 11);
         return 1;
     }
 
@@ -140,10 +145,21 @@ int main(int argc, char *argv[])
         fread(frame_codestream, sample->sample_size - 8, 1,
               file); /* Assuming that jp and ftyp markers size do*/
 
-        sprintf(outfilename, "%s_%05d.j2k", argv[2], snum);
+        {
+            int num = snprintf(outfilename, sizeof(outfilename),
+                               "%s_%05d.j2k", argv[2],
+                               snum);
+            if (num >= sizeof(outfilename)) {
+                fprintf(stderr, "maximum length of output prefix exceeded\n");
+                free(frame_codestream);
+                return 1;
+            }
+        }
+
         outfile = fopen(outfilename, "wb");
         if (!outfile) {
             fprintf(stderr, "failed to open %s for writing\n", outfilename);
+            free(frame_codestream);
             return 1;
         }
         fwrite(frame_codestream, sample->sample_size - 8, 1, outfile);

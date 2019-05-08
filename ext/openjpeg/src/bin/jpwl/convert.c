@@ -41,6 +41,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
 
 #ifdef OPJ_HAVE_LIBTIFF
 #include <tiffio.h>
@@ -444,7 +445,7 @@ int imagetotga(opj_image_t * image, const char *outfile)
 {
     int width, height, bpp, x, y;
     opj_bool write_alpha;
-    int i, adjustR, adjustG, adjustB;
+    int i, adjustR, adjustG = 0, adjustB = 0;
     unsigned int alpha_channel;
     float r, g, b, a;
     unsigned char value;
@@ -485,8 +486,10 @@ int imagetotga(opj_image_t * image, const char *outfile)
     scale = 255.0f / (float)((1 << image->comps[0].prec) - 1);
 
     adjustR = (image->comps[0].sgnd ? 1 << (image->comps[0].prec - 1) : 0);
-    adjustG = (image->comps[1].sgnd ? 1 << (image->comps[1].prec - 1) : 0);
-    adjustB = (image->comps[2].sgnd ? 1 << (image->comps[2].prec - 1) : 0);
+    if (image->numcomps >= 3) {
+        adjustG = (image->comps[1].sgnd ? 1 << (image->comps[1].prec - 1) : 0);
+        adjustB = (image->comps[2].sgnd ? 1 << (image->comps[2].prec - 1) : 0);
+    }
 
     for (y = 0; y < height; y++) {
         unsigned int index = y * width;
@@ -737,6 +740,7 @@ opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *parameters)
 
         if (fread(RGB, sizeof(unsigned char), (3 * W + PAD) * H,
                   IN) != (3 * W + PAD) * H) {
+            fclose(IN);
             free(RGB);
             opj_image_destroy(image);
             fprintf(stderr,
@@ -1348,7 +1352,7 @@ opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
     }
 
     fseek(f, 0, SEEK_SET);
-    if (fscanf(f, "PG%[ \t]%c%c%[ \t+-]%d%[ \t]%d%[ \t]%d", temp, &endian1,
+    if (fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%d%31[ \t]%d%31[ \t]%d", temp, &endian1,
                &endian2, signtmp, &prec, temp, &w, temp, &h) != 9) {
         fprintf(stderr,
                 "ERROR: Failed to read the right number of element from the fscanf() function!\n");
@@ -1857,6 +1861,15 @@ opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters)
     read_pnm_header(fp, &header_info);
 
     if (!header_info.ok) {
+        fclose(fp);
+        return NULL;
+    }
+
+    /* This limitation could be removed by making sure to use size_t below */
+    if (header_info.height != 0 &&
+            header_info.width > INT_MAX / header_info.height) {
+        fprintf(stderr, "pnmtoimage:Image %dx%d too big!\n",
+                header_info.width, header_info.height);
         fclose(fp);
         return NULL;
     }
