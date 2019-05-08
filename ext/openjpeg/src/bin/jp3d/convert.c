@@ -9,7 +9,7 @@
  * Copyright (c) 2003-2005, Francois Devaux and Antonin Descampe
  * Copyright (c) 2005, Herve Drolon, FreeImage Team
  * Copyright (c) 2002-2005, Communications and remote sensing Laboratory, Universite catholique de Louvain, Belgium
- * Copyright (c) 2006, Mónica Díez García, Image Processing Laboratory, University of Valladolid, Spain
+ * Copyright (c) 2006, MÃ³nica DÃ­ez GarcÃ­a, Image Processing Laboratory, University of Valladolid, Spain
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -193,7 +193,7 @@ opj_volume_t* pgxtovolume(char *relpath, opj_cparameters_t *parameters)
     memset(pgxfiles, 0, MAX_SLICES * MAX_PATH * sizeof(char));
     memset(&cmptparm, 0, sizeof(opj_volume_cmptparm_t));
 
-    /* Separación del caso de un único slice frente al de muchos */
+    /* SeparaciÃ³n del caso de un Ãºnico slice frente al de muchos */
     if ((tmp = strrchr(relpath, '-')) == NULL) {
         /*fprintf(stdout,"[INFO] A volume of only one slice....\n");*/
         sliceno = 1;
@@ -297,8 +297,8 @@ opj_volume_t* pgxtovolume(char *relpath, opj_cparameters_t *parameters)
         fprintf(stdout, "[INFO] Loading %s \n", pgxfiles[pos]);
 
         fseek(f, 0, SEEK_SET);
-        fscanf(f, "PG%[ \t]%c%c%[ \t+-]%d%[ \t]%d%[ \t]%d", temp, &endian1, &endian2,
-               signtmp, &prec, temp, &w, temp, &h);
+        fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%d%31[ \t]%d%31[ \t]%d", temp, &endian1,
+               &endian2, signtmp, &prec, temp, &w, temp, &h);
 
         i = 0;
         sign = '+';
@@ -788,7 +788,7 @@ int volumetobin(opj_volume_t * volume, char *outfile)
 
     fclose(fdest);
 
-    sprintf(name, "%s.img", outfile);
+    snprintf(name, sizeof(name), "%s.img", outfile);
     fimgdest = fopen(name, "w");
     if (!fimgdest) {
         fprintf(stdout, "[ERROR] Failed to open %s for writing\n", name);
