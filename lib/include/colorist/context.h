@@ -122,7 +122,8 @@ typedef struct clWriteParams
 {
     int quality;
     int rate;
-    clYUVFormat yuvFormat;
+    clYUVFormat yuvFormat; // Only used when writing YUV
+    clBool writeProfile;   // Write ICC or nclx profile to output file?
 } clWriteParams;
 void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams);
 
@@ -174,7 +175,7 @@ typedef struct clConversionParams
     const char * stripTags;         // -s
     clBool stats;                   // --stats
     clTonemap tonemap;              // -t
-    clWriteParams writeParams;      // -q, -r, --yuv
+    clWriteParams writeParams;      // -n, -q, -r, --yuv
     int rect[4];                    // -z
     const char * compositeFilename; // --composite
     clBlendParams compositeParams;  // --composite-gamma, --composite-premultiplied

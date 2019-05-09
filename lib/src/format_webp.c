@@ -92,10 +92,9 @@ clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const cha
     WebPPicture picture;
     WebPMemoryWriter memoryWriter;
 
-    WebPData iccChunk, imageChunk, assembledChunk;
+    WebPData imageChunk, assembledChunk;
     WebPMux * mux = NULL;
 
-    memset(&iccChunk, 0, sizeof(iccChunk));
     memset(&imageChunk, 0, sizeof(imageChunk));
     memset(&assembledChunk, 0, sizeof(assembledChunk));
 
@@ -130,11 +129,16 @@ clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const cha
     }
 
     mux = WebPMuxNew();
-    iccChunk.bytes = rawProfile.ptr;
-    iccChunk.size = rawProfile.size;
-    if (!WebPMuxSetChunk(mux, "ICCP", &iccChunk, 0)) {
-        clContextLogError(C, "Failed create ICC profile");
-        goto writeCleanup;
+
+    if (writeParams->writeProfile) {
+        WebPData iccChunk;
+        memset(&iccChunk, 0, sizeof(iccChunk));
+        iccChunk.bytes = rawProfile.ptr;
+        iccChunk.size = rawProfile.size;
+        if (!WebPMuxSetChunk(mux, "ICCP", &iccChunk, 0)) {
+            clContextLogError(C, "Failed create ICC profile");
+            goto writeCleanup;
+        }
     }
 
     imageChunk.bytes = memoryWriter.mem;

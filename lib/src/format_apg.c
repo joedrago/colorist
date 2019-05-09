@@ -83,7 +83,10 @@ clBool clFormatWriteAPG(struct clContext * C, struct clImage * image, const char
     }
 
     apg = apgImageCreate(image->width, image->height, image->depth);
-    apgImageSetICC(apg, rawProfile.ptr, (uint32_t)rawProfile.size);
+
+    if (writeParams->writeProfile) {
+        apgImageSetICC(apg, rawProfile.ptr, (uint32_t)rawProfile.size);
+    }
 
     // Calculate proper YUV coefficients
     clProfilePrimaries primaries;

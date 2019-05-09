@@ -141,7 +141,9 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
     jpeg_set_quality(&cinfo, writeParams->quality, TRUE);
     jpeg_start_compress(&cinfo, TRUE);
 
-    write_icc_profile(&cinfo, rawProfile.ptr, (unsigned int)rawProfile.size);
+    if (writeParams->writeProfile) {
+        write_icc_profile(&cinfo, rawProfile.ptr, (unsigned int)rawProfile.size);
+    }
 
     row_stride = image->width * 3;
     while (cinfo.next_scanline < cinfo.image_height) {

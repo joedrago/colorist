@@ -213,7 +213,9 @@ clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char
         PNG_COMPRESSION_TYPE_DEFAULT,
         PNG_FILTER_TYPE_DEFAULT
         );
-    png_set_iCCP(png, info, image->profile->description, 0, rawProfile.ptr, (png_uint_32)rawProfile.size);
+    if (writeParams->writeProfile) {
+        png_set_iCCP(png, info, image->profile->description, 0, rawProfile.ptr, (png_uint_32)rawProfile.size);
+    }
     png_write_info(png, info);
 
     rowPointers = (png_bytep *)clAllocate(sizeof(png_bytep) * image->height);

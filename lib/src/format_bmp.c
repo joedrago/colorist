@@ -70,8 +70,8 @@ typedef struct BITMAPV5HEADER
 #define BI_RGB        0
 #define BI_BITFIELDS  3
 
-//#define LCS_sRGB                0x73524742 // 'sRGB'
-//#define LCS_WINDOWS_COLOR_SPACE 0x57696e20 // 'Win ', Windows default color space
+#define LCS_sRGB                0x73524742 // 'sRGB'
+// #define LCS_WINDOWS_COLOR_SPACE 0x57696e20 // 'Win ', Windows default color space
 #define PROFILE_EMBEDDED        0x4d424544 // 'MBED'
 
 #define LCS_GM_ABS_COLORIMETRIC 8
@@ -251,10 +251,6 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     uint8_t * p;
 
     clRaw rawProfile = CL_RAW_EMPTY;
-    if (!clProfilePack(C, image->profile, &rawProfile)) {
-        clContextLogError(C, "Failed to create ICC profile");
-        goto writeCleanup;
-    }
 
     if ((image->depth != 8) && (image->depth != 10)) {
         clContextLogError(C, "BMP writer can currently only handle 8 and 10 bit depths");
@@ -269,10 +265,19 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     info.bV5BitCount = 32;
     info.bV5Compression = BI_BITFIELDS;
     info.bV5SizeImage = 0;
-    info.bV5CSType = PROFILE_EMBEDDED;
     info.bV5Intent = LCS_GM_ABS_COLORIMETRIC;
-    info.bV5ProfileData = sizeof(info);
-    info.bV5ProfileSize = (uint32_t)rawProfile.size;
+
+    if (writeParams->writeProfile) {
+        if (!clProfilePack(C, image->profile, &rawProfile)) {
+            clContextLogError(C, "Failed to create ICC profile");
+            goto writeCleanup;
+        }
+        info.bV5CSType = PROFILE_EMBEDDED;
+        info.bV5ProfileData = sizeof(info);
+        info.bV5ProfileSize = (uint32_t)rawProfile.size;
+    } else {
+        info.bV5CSType = LCS_sRGB;
+    }
 
     packedPixelBytes = sizeof(uint32_t) * image->width * image->height;
     packedPixels = clAllocate(packedPixelBytes);
@@ -315,7 +320,9 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     APPEND(&magic, sizeof(magic));
     APPEND(&fileHeader, sizeof(fileHeader));
     APPEND(&info, sizeof(info));
-    APPEND(rawProfile.ptr, rawProfile.size);
+    if (rawProfile.size > 0) {
+        APPEND(rawProfile.ptr, rawProfile.size);
+    }
     APPEND(packedPixels, packedPixelBytes);
 
 writeCleanup:

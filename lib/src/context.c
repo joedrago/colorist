@@ -371,6 +371,7 @@ void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams)
     writeParams->quality = CL_DEFAULT_QUALITY;
     writeParams->rate = CL_DEFAULT_RATE;
     writeParams->yuvFormat = CL_YUVFORMAT_AUTO;
+    writeParams->writeProfile = clTrue;
 }
 
 static void clContextSetDefaultArgs(clContext * C)
@@ -714,6 +715,8 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 } else {
                     C->params.luminance = atoi(arg);
                 }
+            } else if (!strcmp(arg, "-n") || !strcmp(arg, "--noprofile")) {
+                C->params.writeParams.writeProfile = clFalse;
             } else if (!strcmp(arg, "-o") || !strcmp(arg, "--iccout")) {
                 NEXTARG();
                 C->params.iccOverrideOut = arg;
@@ -955,6 +958,7 @@ void clContextPrintArgs(clContext * C)
     } else {
         clContextLog(C, "syntax", 1, "luminance   : unspecified");
     }
+    clContextLog(C, "syntax", 1, "writeProfile: %s", C->params.writeParams.writeProfile ? "true" : "false");
     if (C->params.primaries[0] > 0.0f)
         clContextLog(C, "syntax", 1, "primaries   : r:(%.4g,%.4g) g:(%.4g,%.4g) b:(%.4g,%.4g) w:(%.4g,%.4g)",
             C->params.primaries[0], C->params.primaries[1],
@@ -1016,6 +1020,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -g,--gamma GAMMA         : Output gamma (transfer func). 0 for auto (default), \"pq\" for PQ, \"hlg\" for HLG, or \"source\" to force source gamma");
     clContextLog(C, NULL, 0, "    -l,--luminance LUMINANCE : ICC profile max luminance, in nits. \"source\" to match source lum (default), or \"unspecified\" not specify");
     clContextLog(C, NULL, 0, "    -p,--primaries PRIMARIES : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy");
+    clContextLog(C, NULL, 0, "    -n,--noprofile           : Do not write the converted image's profile to the output file. (all profile options still impact image conversion)");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Output Format Options:");
     clContextLog(C, NULL, 0, "    -b,--bpc BPC             : Output bits-per-channel. 8 - 16, or 0 for auto (default)");

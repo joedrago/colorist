@@ -129,14 +129,16 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
 
     avif = avifImageCreate(image->width, image->height, image->depth, avifYUVFormat);
 
-    avifNclxColorProfile nclx;
-    if (clProfileToNclx(C, image->profile, &nclx)) {
-        clContextLog(C, "avif", 1, "Writing colr box (nclx): C: %d / T: %d / M: %d / F: 0x%x",
-            nclx.colourPrimaries, nclx.transferCharacteristics, nclx.matrixCoefficients, nclx.fullRangeFlag);
-        avifImageSetProfileNCLX(avif, &nclx);
-    } else {
-        clContextLog(C, "avif", 1, "Writing colr box (icc): %u bytes", (uint32_t)rawProfile.size);
-        avifImageSetProfileICC(avif, rawProfile.ptr, rawProfile.size);
+    if (writeParams->writeProfile) {
+        avifNclxColorProfile nclx;
+        if (clProfileToNclx(C, image->profile, &nclx)) {
+            clContextLog(C, "avif", 1, "Writing colr box (nclx): C: %d / T: %d / M: %d / F: 0x%x",
+                nclx.colourPrimaries, nclx.transferCharacteristics, nclx.matrixCoefficients, nclx.fullRangeFlag);
+            avifImageSetProfileNCLX(avif, &nclx);
+        } else {
+            clContextLog(C, "avif", 1, "Writing colr box (icc): %u bytes", (uint32_t)rawProfile.size);
+            avifImageSetProfileICC(avif, rawProfile.ptr, rawProfile.size);
+        }
     }
 
     avifImageAllocatePlanes(avif, AVIF_PLANES_RGB | AVIF_PLANES_A);

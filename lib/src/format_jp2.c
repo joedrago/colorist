@@ -386,29 +386,14 @@ clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char
         return 0;
     }
 
-    if (image->depth > 8) {
-        unsigned short * src = (unsigned short *)image->pixels;
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                int dstOffset = i + (j * image->width);
-                int srcOffset = 4 * dstOffset;
-                opjImage->comps[0].data[dstOffset] = src[srcOffset + 0];
-                opjImage->comps[1].data[dstOffset] = src[srcOffset + 1];
-                opjImage->comps[2].data[dstOffset] = src[srcOffset + 2];
-                opjImage->comps[3].data[dstOffset] = src[srcOffset + 3];
-            }
-        }
-    } else {
-        unsigned char * src = (unsigned char *)image->pixels;
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                int dstOffset = i + (j * image->width);
-                int srcOffset = 4 * dstOffset;
-                opjImage->comps[0].data[dstOffset] = src[srcOffset + 0];
-                opjImage->comps[1].data[dstOffset] = src[srcOffset + 1];
-                opjImage->comps[2].data[dstOffset] = src[srcOffset + 2];
-                opjImage->comps[3].data[dstOffset] = src[srcOffset + 3];
-            }
+    for (int j = 0; j < image->height; ++j) {
+        for (int i = 0; i < image->width; ++i) {
+            int dstOffset = i + (j * image->width);
+            int srcOffset = 4 * dstOffset;
+            opjImage->comps[0].data[dstOffset] = image->pixels[srcOffset + 0];
+            opjImage->comps[1].data[dstOffset] = image->pixels[srcOffset + 1];
+            opjImage->comps[2].data[dstOffset] = image->pixels[srcOffset + 2];
+            opjImage->comps[3].data[dstOffset] = image->pixels[srcOffset + 3];
         }
     }
 
@@ -419,12 +404,17 @@ clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char
     opjImage->comps[3].alpha = 1;
 
     clRaw rawProfile = CL_RAW_EMPTY;
-    if (!clProfilePack(C, image->profile, &rawProfile)) {
-        return clFalse;
+    if (writeParams->writeProfile) {
+        if (!clProfilePack(C, image->profile, &rawProfile)) {
+            return clFalse;
+        }
+        opjImage->icc_profile_buf = opj_malloc(rawProfile.size);
+        memcpy(opjImage->icc_profile_buf, rawProfile.ptr, rawProfile.size);
+        opjImage->icc_profile_len = (OPJ_UINT32)rawProfile.size;
+    } else {
+        opjImage->icc_profile_buf = NULL;
+        opjImage->icc_profile_len = 0;
     }
-    opjImage->icc_profile_buf = opj_malloc(rawProfile.size);
-    memcpy(opjImage->icc_profile_buf, rawProfile.ptr, rawProfile.size);
-    opjImage->icc_profile_len = (OPJ_UINT32)rawProfile.size;
 
     opj_codec_t * opjCodec = NULL;
     clBool isJ2K = !strcmp(formatName, "j2k");

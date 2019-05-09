@@ -288,7 +288,10 @@ clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const cha
     TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
     TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
     TIFFSetField(tiff, TIFFTAG_ROWSPERSTRIP, TIFFDefaultStripSize(tiff, rowBytes));
-    TIFFSetField(tiff, TIFFTAG_ICCPROFILE, rawProfile.size, rawProfile.ptr);
+
+    if (writeParams->writeProfile) {
+        TIFFSetField(tiff, TIFFTAG_ICCPROFILE, rawProfile.size, rawProfile.ptr);
+    }
 
     for (rowIndex = 0; rowIndex < image->height; ++rowIndex) {
         uint8_t * pixelRow = &pixels[rowIndex * rowBytes];
