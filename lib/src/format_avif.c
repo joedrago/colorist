@@ -56,6 +56,7 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
 
     logAvifImage(C, avif);
 
+    clImageLogCreate(C, avif->width, avif->height, avif->depth, profile);
     image = clImageCreate(C, avif->width, avif->height, avif->depth, profile);
 
     avifBool usesU16 = avifImageUsesU16(avif);
