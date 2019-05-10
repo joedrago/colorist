@@ -67,6 +67,5 @@ matrix:
         packages:
           - nasm
           - llvm
-          - ninja-build
     script:
       - bash ./scripts/io.sh
