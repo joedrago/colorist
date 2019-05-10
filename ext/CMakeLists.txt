@@ -230,7 +230,10 @@ set_folder_safe(z "ext")
 
 # TODO: figure out how to make these go away without losing libwebpmux
 set_folder_safe(exampleutil "ext/webp")
+set_folder_safe(get_disto "ext/webp")
 set_folder_safe(imagedec "ext/webp")
 set_folder_safe(imageenc "ext/webp")
 set_folder_safe(imageioutil "ext/webp")
 set_folder_safe(img2webp "ext/webp")
+set_folder_safe(webp_quality "ext/webp")
+set_folder_safe(webpmux "ext/webp")
