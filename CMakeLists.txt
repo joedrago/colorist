@@ -132,3 +132,10 @@ if(COLORIST_COVERAGE)
       COMMENT "Open ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${TARGET_NAME}-llvm-cov/index.html in your browser to view the coverage report."
   )
 endif()
+
+if(COLORIST_TEST_IO)
+  add_custom_target(colorist-test-io
+      COMMAND $<TARGET_FILE:colorist-test> io
+      DEPENDS colorist-test
+  )
+endif()

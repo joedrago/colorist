@@ -25,4 +25,5 @@ extern clContextSystem silentSystem;
 
 // Test suites, named after their associated .c file
 int test_coverage(void);
+int test_io(void);
 int test_strings(void);

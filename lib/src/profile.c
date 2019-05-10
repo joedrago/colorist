@@ -201,6 +201,9 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
     }
 
     profile->description = description ? clContextStrdup(C, description) : NULL;
+    if (!profile->description) {
+        profile->description = clGenerateDescription(C, primaries, curve, maxLuminance);
+    }
     if (profile->description) {
         clProfileSetMLU(C, profile, "desc", "en", "US", profile->description);
     }
@@ -692,6 +695,32 @@ clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * 
     }
     // TODO: fallback to doing a double clProfilePack and comparison? tag comparisons?
     return clFalse;
+}
+
+clBool clProfileComponentsMatch(struct clContext * C, clProfile * profile1, clProfile * profile2)
+{
+    clProfilePrimaries primaries1, primaries2;
+    clProfileCurve curve1, curve2;
+    int luminance1, luminance2;
+
+    if (!clProfileQuery(C, profile1, &primaries1, &curve1, &luminance1)) {
+        return clFalse;
+    }
+    if (!clProfileQuery(C, profile2, &primaries2, &curve2, &luminance2)) {
+        return clFalse;
+    }
+
+    if (!clProfilePrimariesMatch(C, &primaries1, &primaries2)) {
+        return clFalse;
+    }
+    if (memcmp(&curve1, &curve2, sizeof(curve1)) != 0) {
+        return clFalse;
+    }
+    if (luminance1 != luminance2) {
+        return clFalse;
+    }
+
+    return clTrue;
 }
 
 clBool clProfileUsesCCMM(struct clContext * C, clProfile * profile)

@@ -56,7 +56,7 @@ matrix:
     script:
       - make
 
-  - name: "Clang Coverage"
+  - name: "Clang Test IO"
     compiler: clang
     addons:
       apt:
@@ -65,4 +65,4 @@ matrix:
           - llvm
           - ninja-build
     script:
-      - bash ./scripts/coverage.sh
+      - bash ./scripts/io.sh

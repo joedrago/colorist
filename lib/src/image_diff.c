@@ -17,7 +17,7 @@
 
 clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage * image2, int taskCount, float minIntensity, int threshold)
 {
-    if (!clProfileMatches(C, image1->profile, image2->profile) ||
+    if (!clProfileComponentsMatch(C, image1->profile, image2->profile) ||
         (image1->width != image2->width) ||
         (image1->height != image2->height) ||
         (image1->depth != image2->depth))

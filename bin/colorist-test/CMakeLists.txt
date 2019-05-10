@@ -10,6 +10,7 @@ set(COLORIST_TEST_SRCS
     main.h
 
     test_coverage.c
+    test_io.c
     test_strings.c
 )
 

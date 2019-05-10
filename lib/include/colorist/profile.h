@@ -87,7 +87,8 @@ clBool clProfilePack(struct clContext * C, clProfile * profile, struct clRaw * o
 clBool clProfileSetGamma(struct clContext * C, clProfile * profile, float gamma);
 clBool clProfileSetLuminance(struct clContext * C, clProfile * profile, int luminance);
 clBool clProfileRemoveTag(struct clContext * C, clProfile * profile, char * tag, const char * reason);
-clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * profile2);
+clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * profile2);         // *Exact* match, down to the header and tag order
+clBool clProfileComponentsMatch(struct clContext * C, clProfile * profile1, clProfile * profile2); // Primaries are close enough, Curve and Luminance are identical
 clBool clProfileUsesCCMM(struct clContext * C, clProfile * profile);
 const char * clProfileCMMName(struct clContext * C, clProfile * profile); // Convenience function
 size_t clProfileSize(struct clContext * C, clProfile * profile);

@@ -79,6 +79,7 @@ int main(int argc, char * argv[])
     silentSystem.error = clContextSilentLogError;
 
     RUN_TESTS(test_coverage, "coverage", "Coverage");
+    RUN_TESTS(test_io, "io", "I/O");
     RUN_TESTS(test_strings, "strings", "Image Strings");
 
     return 0;
