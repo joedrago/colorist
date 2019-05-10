@@ -10,7 +10,6 @@
 // #define DEBUG_TEST_IMAGES 1
 
 #define TEST_IMAGE_STRING "256x256,#ff0000,#00ff00,#0000ff,#ffff00,#ff00ff,#00ffff,#000000,#ffffff,#990000,#009900,#000099,#999900,#990099,#009999,#000000,#999999"
-#define SIMILAR_THRESHOLD 8
 
 struct clExtInfo
 {
@@ -50,7 +49,7 @@ static void test_images(const char * ext, int threshold, int additionalArgc, cha
 #endif
     TEST_ASSERT_NOT_NULL(C);
 
-    TEST_ASSERT_TRUE_MESSAGE(clContextParseArgs(C, argc, argv), "failed to parse cmdline");
+    TEST_ASSERT_TRUE_MESSAGE(clContextParseArgs(C, argc, (const char **)argv), "failed to parse cmdline");
 
     clProfilePrimaries primaries;
     primaries.red[0] = C->params.primaries[0];
