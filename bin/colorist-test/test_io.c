@@ -158,7 +158,7 @@ static void test_avif(void)
 {
     struct clExtInfo extInfo = {
         "avif",
-        3,
+        5,
         { "8", "10", "12", NULL },
         { "100", "90", NULL },
         { "bt709", "bt2020", NULL },
