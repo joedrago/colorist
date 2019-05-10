@@ -138,13 +138,14 @@ static void test_ext(struct clExtInfo * extInfo)
                                 argv[argc++] = *quality;
                             }
 
-                            printf("Testing ext:%s bpc:%s quality:%s primaries:%s curve:%s luminance:%s yuv:%s\n",
-                                extInfo->ext, *bpc, *quality, *primaries, *curve, *luminance, *yuv);
-
                             int threshold = extInfo->threshold;
                             if ((threshold > 0) && !strcmp(*quality, "100")) {
                                 threshold = 1; // rein in the threshold on lossless
                             }
+
+                            printf("Testing ext:%s threshold:%d bpc:%s q/r:%s primaries:%s curve:%s luminance:%s yuv:%s\n",
+                                extInfo->ext, threshold, *bpc, *quality, *primaries, *curve, *luminance, *yuv);
+
                             test_images(extInfo->ext, threshold, argc, argv);
                         }
                     }
