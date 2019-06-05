@@ -41,6 +41,7 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
         clContextLogError(C, "Failed to decode AVIF (%s)", avifResultToString(decodeResult));
         goto readCleanup;
     }
+    avifImageYUVToRGB(avif);
 
     if (overrideProfile) {
         profile = clProfileClone(C, overrideProfile);
