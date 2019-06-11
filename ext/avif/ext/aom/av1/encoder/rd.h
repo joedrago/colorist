@@ -290,7 +290,8 @@ typedef struct RD_OPT {
 
   int RDMULT;
 
-  double r0;
+  double r0, arf_r0;
+  double mc_saved_base, mc_count_base;
 } RD_OPT;
 
 static INLINE void av1_init_rd_stats(RD_STATS *rd_stats) {
@@ -455,6 +456,8 @@ void av1_fill_coeff_costs(MACROBLOCK *x, FRAME_CONTEXT *fc,
                           const int num_planes);
 
 int av1_get_adaptive_rdmult(const struct AV1_COMP *cpi, double beta);
+
+int av1_get_deltaq_offset(const struct AV1_COMP *cpi, int qindex, double beta);
 
 #ifdef __cplusplus
 }  // extern "C"

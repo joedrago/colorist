@@ -17,7 +17,10 @@ extern "C" {
 #endif
 
 void av1_tpl_setup_stats(AV1_COMP *cpi,
-                         const EncodeFrameInput *const frame_input);
+                         const EncodeFrameInput *const frame_input,
+                         int is_for_kf);
+
+void av1_tpl_setup_forward_stats(AV1_COMP *cpi);
 
 #ifdef __cplusplus
 }  // extern "C"

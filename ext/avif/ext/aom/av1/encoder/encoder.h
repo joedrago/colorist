@@ -157,13 +157,18 @@ enum {
   SS_CFG_TOTAL = 2
 } UENUM1BYTE(SS_CFG_OFFSET);
 
+#define MAX_LENGTH_TPL_FRAME_STATS 27
+
 typedef struct TplDepStats {
   int64_t intra_cost;
   int64_t inter_cost;
   int64_t mc_flow;
   int64_t mc_dep_cost;
+  int64_t mc_count;
+  int64_t mc_saved;
 
   int ref_frame_index;
+  int ref_disp_frame_index;
   int_mv mv;
 } TplDepStats;
 
@@ -175,7 +180,6 @@ typedef struct TplDepFrame {
   int height;
   int mi_rows;
   int mi_cols;
-  int base_qindex;
 } TplDepFrame;
 
 typedef enum {
@@ -405,6 +409,8 @@ typedef struct AV1EncoderConfig {
   // Bit mask to specify which tier each of the 32 possible operating points
   // conforms to.
   unsigned int tier_mask;
+  // min_cr / 100 is the target minimum compression ratio for each frame.
+  unsigned int min_cr;
 } AV1EncoderConfig;
 
 static INLINE int is_lossless_requested(const AV1EncoderConfig *cfg) {
@@ -606,9 +612,11 @@ typedef struct ThreadData {
   uint8_t *above_pred_buf;
   uint8_t *left_pred_buf;
   PALETTE_BUFFER *palette_buffer;
+  CompoundTypeRdBuffers comp_rd_buffer;
   CONV_BUF_TYPE *tmp_conv_dst;
   uint8_t *tmp_obmc_bufs[2];
   int intrabc_used;
+  int deltaq_used;
   FRAME_CONTEXT *tctx;
 } ThreadData;
 
@@ -665,13 +673,11 @@ enum {
   av1_compute_global_motion_time,
   av1_setup_motion_field_time,
   encode_sb_time,
-  first_partition_search_pass_time,
   rd_pick_partition_time,
   rd_pick_sb_modes_time,
   av1_rd_pick_intra_mode_sb_time,
   av1_rd_pick_inter_mode_sb_time,
   handle_intra_mode_time,
-  handle_inter_mode_time,
   do_tx_search_time,
   handle_newmv_time,
   compound_type_rd_time,
@@ -694,8 +700,6 @@ static INLINE char const *get_component_name(int index) {
       return "av1_compute_global_motion_time";
     case av1_setup_motion_field_time: return "av1_setup_motion_field_time";
     case encode_sb_time: return "encode_sb_time";
-    case first_partition_search_pass_time:
-      return "first_partition_search_pass_time";
     case rd_pick_partition_time: return "rd_pick_partition_time";
     case rd_pick_sb_modes_time: return "rd_pick_sb_modes_time";
     case av1_rd_pick_intra_mode_sb_time:
@@ -703,7 +707,6 @@ static INLINE char const *get_component_name(int index) {
     case av1_rd_pick_inter_mode_sb_time:
       return "av1_rd_pick_inter_mode_sb_time";
     case handle_intra_mode_time: return "handle_intra_mode_time";
-    case handle_inter_mode_time: return "handle_inter_mode_time";
     case do_tx_search_time: return "do_tx_search_time";
     case handle_newmv_time: return "handle_newmv_time";
     case compound_type_rd_time: return "compound_type_rd_time";
@@ -741,13 +744,10 @@ typedef struct AV1_COMP {
   YV12_BUFFER_CONFIG *unscaled_last_source;
   YV12_BUFFER_CONFIG scaled_last_source;
 
-  TplDepFrame tpl_stats[MAX_LAG_BUFFERS];
-  YV12_BUFFER_CONFIG *tpl_recon_frames[INTER_REFS_PER_FRAME + 1];
+  TplDepFrame tpl_stats[MAX_LENGTH_TPL_FRAME_STATS];
 
   // For a still frame, this flag is set to 1 to skip partition search.
   int partition_search_skippable_frame;
-  // The following item corresponds to two_pass_partition_search speed features.
-  int two_pass_partition_search;
 
   double csm_rate_array[32];
   double m_rate_array[32];
@@ -853,7 +853,18 @@ typedef struct AV1_COMP {
   uint64_t time_compress_data;
 #endif
 
+  // number of show frames encoded in current gf_group
+  int num_gf_group_show_frames;
+
+  // when two pass tpl model is used, set to 1 for the
+  // first pass, then 0 for the final pass.
+  int tpl_model_pass;
+  // Number of gf_group frames for tpl stats
+  int tpl_gf_group_frames;
+
   TWO_PASS twopass;
+
+  GF_GROUP gf_group;
 
   YV12_BUFFER_CONFIG alt_ref_buffer;
 
@@ -1000,11 +1011,16 @@ typedef struct AV1_COMP {
 
   // The following data are for AV1 bitstream levels.
   AV1_LEVEL target_seq_level_idx[MAX_NUM_OPERATING_POINTS];
-  int keep_level_stats;
-  AV1LevelInfo level_info[MAX_NUM_OPERATING_POINTS];
+  // Bit mask to indicate whether to keep level stats for corresponding
+  // operating points.
+  uint32_t keep_level_stats;
+  AV1LevelInfo *level_info[MAX_NUM_OPERATING_POINTS];
   // Count the number of OBU_FRAME and OBU_FRAME_HEADER for level calculation.
   int frame_header_count;
   FrameWindowBuffer frame_window_buffer;
+
+  // whether any no-zero delta_q was actually used
+  int deltaq_used;
 } AV1_COMP;
 
 typedef struct {
@@ -1103,6 +1119,10 @@ int av1_set_internal_size(AV1_COMP *cpi, AOM_SCALING horiz_mode,
 int av1_get_quantizer(struct AV1_COMP *cpi);
 
 int av1_convert_sect5obus_to_annexb(uint8_t *buffer, size_t *input_size);
+
+void av1_alloc_compound_type_rd_buffers(AV1_COMMON *const cm,
+                                        CompoundTypeRdBuffers *const bufs);
+void av1_release_compound_type_rd_buffers(CompoundTypeRdBuffers *const bufs);
 
 // av1 uses 10,000,000 ticks/second as time stamp
 #define TICKS_PER_SEC 10000000LL
@@ -1230,6 +1250,10 @@ static INLINE int *cond_cost_list(const struct AV1_COMP *cpi, int *cost_list) {
   return cpi->sf.mv.subpel_search_method != SUBPEL_TREE ? cost_list : NULL;
 }
 
+// Compression ratio of current frame.
+double av1_get_compression_ratio(const AV1_COMMON *const cm,
+                                 size_t encoded_frame_size);
+
 void av1_new_framerate(AV1_COMP *cpi, double framerate);
 
 void av1_setup_frame_size(AV1_COMP *cpi);
@@ -1306,6 +1330,38 @@ static const uint8_t av1_ref_frame_flag_list[REF_FRAMES] = { 0,
 // the obu_has_size_field bit is set, and the buffer contains the obu_size
 // field.
 aom_fixed_buf_t *av1_get_global_headers(AV1_COMP *cpi);
+
+#define ENABLE_KF_TPL 1
+#define MAX_PYR_LEVEL_FROMTOP_DELTAQ 0
+
+static INLINE int is_frame_kf_and_tpl_eligible(AV1_COMP *const cpi) {
+  AV1_COMMON *cm = &cpi->common;
+  if (cm->current_frame.frame_type == KEY_FRAME && cm->show_frame)
+    return 1;
+  else
+    return 0;
+}
+
+static INLINE int is_frame_arf_and_tpl_eligible(AV1_COMP *const cpi) {
+  GF_GROUP *const gf_group = &cpi->gf_group;
+  const int max_pyr_level_fromtop_deltaq = 0;
+  const int pyr_lev_from_top =
+      gf_group->pyramid_height - gf_group->pyramid_level[cpi->gf_group.index];
+  if (pyr_lev_from_top > max_pyr_level_fromtop_deltaq ||
+      gf_group->pyramid_height <= max_pyr_level_fromtop_deltaq + 1)
+    return 0;
+  else
+    return 1;
+}
+
+static INLINE int is_frame_tpl_eligible(AV1_COMP *const cpi) {
+#if ENABLE_KF_TPL
+  return is_frame_kf_and_tpl_eligible(cpi) ||
+         is_frame_arf_and_tpl_eligible(cpi);
+#else
+  return is_frame_arf_and_tpl_eligible(cpi);
+#endif  // ENABLE_KF_TPL
+}
 
 #if CONFIG_COLLECT_PARTITION_STATS == 2
 static INLINE void av1_print_partition_stats(PartitionStats *part_stats) {

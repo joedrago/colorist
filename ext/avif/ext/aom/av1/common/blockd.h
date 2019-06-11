@@ -220,7 +220,6 @@ typedef struct MB_MODE_INFO {
   // TODO(debargha): Consolidate these flags
   int interintra_wedge_index;
   int interintra_wedge_sign;
-  int overlappable_neighbors[2];
   int current_qindex;
   int delta_lf_from_base;
   int delta_lf[FRAME_LF_COUNT];
@@ -229,17 +228,11 @@ typedef struct MB_MODE_INFO {
   int mi_row;
   int mi_col;
 #endif
-  int num_proj_ref;
-
   // Index of the alpha Cb and alpha Cr combination
   int cfl_alpha_idx;
   // Joint sign of alpha Cb and alpha Cr
   int cfl_alpha_signs;
 
-  // Indicate if masked compound is used(1) or not(0).
-  int comp_group_idx;
-  // If comp_group_idx=0, indicate if dist_wtd_comp(0) or avg_comp(1) is used.
-  int compound_idx;
 #if CONFIG_INSPECTION
   int16_t tx_skip[TXK_TYPE_BUF_LEN];
 #endif
@@ -267,6 +260,12 @@ typedef struct MB_MODE_INFO {
   /* deringing gain *per-superblock* */
   int8_t cdef_strength;
   uint8_t ref_mv_idx;
+  // Indicate if masked compound is used(1) or not(0).
+  uint8_t comp_group_idx;
+  // If comp_group_idx=0, indicate if dist_wtd_comp(0) or avg_comp(1) is used.
+  uint8_t compound_idx;
+  uint8_t num_proj_ref;
+  uint8_t overlappable_neighbors[2];
 } MB_MODE_INFO;
 
 static INLINE int is_intrabc_block(const MB_MODE_INFO *mbmi) {
@@ -411,12 +410,6 @@ typedef struct macroblockd_plane {
 
   qm_val_t *seg_iqmatrix[MAX_SEGMENTS][TX_SIZES_ALL];
   qm_val_t *seg_qmatrix[MAX_SEGMENTS][TX_SIZES_ALL];
-
-  // the 'dequantizers' below are not literal dequantizer values.
-  // They're used by encoder RDO to generate ad-hoc lambda values.
-  // They use a hardwired Q3 coeff shift and do not necessarily match
-  // the TX scale in use.
-  const int16_t *dequant_Q3;
 } MACROBLOCKD_PLANE;
 
 #define BLOCK_OFFSET(x, i) \
@@ -739,7 +732,6 @@ static INLINE TX_SIZE tx_size_from_tx_mode(BLOCK_SIZE bsize, TX_MODE tx_mode) {
     return largest_tx_size;
 }
 
-extern const int16_t dr_intra_derivative[90];
 static const uint8_t mode_to_angle_map[] = {
   0, 90, 180, 45, 135, 113, 157, 203, 67, 0, 0, 0, 0,
 };

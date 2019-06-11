@@ -1393,7 +1393,8 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
   mbmi->motion_mode = SIMPLE_TRANSLATION;
   if (is_motion_variation_allowed_bsize(mbmi->sb_type) && !mbmi->skip_mode &&
       !has_second_ref(mbmi))
-    mbmi->num_proj_ref = findSamples(cm, xd, mi_row, mi_col, pts, pts_inref);
+    mbmi->num_proj_ref =
+        av1_findSamples(cm, xd, mi_row, mi_col, pts, pts_inref);
   av1_count_overlappable_neighbors(cm, xd, mi_row, mi_col);
 
   if (mbmi->ref_frame[1] != INTRA_FRAME)
@@ -1411,14 +1412,14 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
 
     if (masked_compound_used) {
       const int ctx_comp_group_idx = get_comp_group_idx_context(xd);
-      mbmi->comp_group_idx = aom_read_symbol(
+      mbmi->comp_group_idx = (uint8_t)aom_read_symbol(
           r, ec_ctx->comp_group_idx_cdf[ctx_comp_group_idx], 2, ACCT_STR);
     }
 
     if (mbmi->comp_group_idx == 0) {
       if (cm->seq_params.order_hint_info.enable_dist_wtd_comp) {
         const int comp_index_ctx = get_comp_index_context(cm, xd);
-        mbmi->compound_idx = aom_read_symbol(
+        mbmi->compound_idx = (uint8_t)aom_read_symbol(
             r, ec_ctx->compound_index_cdf[comp_index_ctx], 2, ACCT_STR);
         mbmi->interinter_comp.type =
             mbmi->compound_idx ? COMPOUND_AVERAGE : COMPOUND_DISTWTD;
@@ -1462,12 +1463,12 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
     mbmi->wm_params.invalid = 0;
 
     if (mbmi->num_proj_ref > 1)
-      mbmi->num_proj_ref = selectSamples(&mbmi->mv[0].as_mv, pts, pts_inref,
-                                         mbmi->num_proj_ref, bsize);
+      mbmi->num_proj_ref = av1_selectSamples(&mbmi->mv[0].as_mv, pts, pts_inref,
+                                             mbmi->num_proj_ref, bsize);
 
-    if (find_projection(mbmi->num_proj_ref, pts, pts_inref, bsize,
-                        mbmi->mv[0].as_mv.row, mbmi->mv[0].as_mv.col,
-                        &mbmi->wm_params, mi_row, mi_col)) {
+    if (av1_find_projection(mbmi->num_proj_ref, pts, pts_inref, bsize,
+                            mbmi->mv[0].as_mv.row, mbmi->mv[0].as_mv.col,
+                            &mbmi->wm_params, mi_row, mi_col)) {
 #if WARPED_MOTION_DEBUG
       printf("Warning: unexpected warped model from aomenc\n");
 #endif
@@ -1551,9 +1552,11 @@ void av1_read_mode_info(AV1Decoder *const pbi, MACROBLOCKD *xd, int mi_row,
 
   if (frame_is_intra_only(cm)) {
     read_intra_frame_mode_info(cm, xd, mi_row, mi_col, r);
-    intra_copy_frame_mvs(cm, mi_row, mi_col, x_mis, y_mis);
+    if (pbi->common.seq_params.order_hint_info.enable_ref_frame_mvs)
+      intra_copy_frame_mvs(cm, mi_row, mi_col, x_mis, y_mis);
   } else {
     read_inter_frame_mode_info(pbi, xd, mi_row, mi_col, r);
-    av1_copy_frame_mvs(cm, mi, mi_row, mi_col, x_mis, y_mis);
+    if (pbi->common.seq_params.order_hint_info.enable_ref_frame_mvs)
+      av1_copy_frame_mvs(cm, mi, mi_row, mi_col, x_mis, y_mis);
   }
 }

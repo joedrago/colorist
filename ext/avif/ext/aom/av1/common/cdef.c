@@ -21,25 +21,6 @@
 #include "av1/common/onyxc_int.h"
 #include "av1/common/reconinter.h"
 
-int sb_all_skip(const AV1_COMMON *const cm, int mi_row, int mi_col) {
-  int maxc, maxr;
-  int skip = 1;
-  maxc = cm->mi_cols - mi_col;
-  maxr = cm->mi_rows - mi_row;
-
-  maxr = AOMMIN(maxr, MI_SIZE_64X64);
-  maxc = AOMMIN(maxc, MI_SIZE_64X64);
-
-  for (int r = 0; r < maxr; r++) {
-    for (int c = 0; c < maxc; c++) {
-      skip =
-          skip &&
-          cm->mi_grid_visible[(mi_row + r) * cm->mi_stride + mi_col + c]->skip;
-    }
-  }
-  return skip;
-}
-
 static int is_8x8_block_skip(MB_MODE_INFO **grid, int mi_row, int mi_col,
                              int mi_stride) {
   int is_skip = 1;
@@ -50,7 +31,7 @@ static int is_8x8_block_skip(MB_MODE_INFO **grid, int mi_row, int mi_col,
   return is_skip;
 }
 
-int sb_compute_cdef_list(const AV1_COMMON *const cm, int mi_row, int mi_col,
+int cdef_compute_sb_list(const AV1_COMMON *const cm, int mi_row, int mi_col,
                          cdef_list *dlist, BLOCK_SIZE bs) {
   MB_MODE_INFO **grid = cm->mi_grid_visible;
   int maxc = cm->mi_cols - mi_col;
@@ -87,8 +68,9 @@ int sb_compute_cdef_list(const AV1_COMMON *const cm, int mi_row, int mi_col,
   return count;
 }
 
-void copy_rect8_8bit_to_16bit_c(uint16_t *dst, int dstride, const uint8_t *src,
-                                int sstride, int v, int h) {
+void cdef_copy_rect8_8bit_to_16bit_c(uint16_t *dst, int dstride,
+                                     const uint8_t *src, int sstride, int v,
+                                     int h) {
   for (int i = 0; i < v; i++) {
     for (int j = 0; j < h; j++) {
       dst[i * dstride + j] = src[i * sstride + j];
@@ -96,9 +78,9 @@ void copy_rect8_8bit_to_16bit_c(uint16_t *dst, int dstride, const uint8_t *src,
   }
 }
 
-void copy_rect8_16bit_to_16bit_c(uint16_t *dst, int dstride,
-                                 const uint16_t *src, int sstride, int v,
-                                 int h) {
+void cdef_copy_rect8_16bit_to_16bit_c(uint16_t *dst, int dstride,
+                                      const uint16_t *src, int sstride, int v,
+                                      int h) {
   for (int i = 0; i < v; i++) {
     for (int j = 0; j < h; j++) {
       dst[i * dstride + j] = src[i * sstride + j];
@@ -112,10 +94,10 @@ static void copy_sb8_16(AV1_COMMON *cm, uint16_t *dst, int dstride,
   if (cm->seq_params.use_highbitdepth) {
     const uint16_t *base =
         &CONVERT_TO_SHORTPTR(src)[src_voffset * sstride + src_hoffset];
-    copy_rect8_16bit_to_16bit(dst, dstride, base, sstride, vsize, hsize);
+    cdef_copy_rect8_16bit_to_16bit(dst, dstride, base, sstride, vsize, hsize);
   } else {
     const uint8_t *base = &src[src_voffset * sstride + src_hoffset];
-    copy_rect8_8bit_to_16bit(dst, dstride, base, sstride, vsize, hsize);
+    cdef_copy_rect8_8bit_to_16bit(dst, dstride, base, sstride, vsize, hsize);
   }
 }
 
@@ -243,7 +225,7 @@ void av1_cdef_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm,
       uv_sec_strength += uv_sec_strength == 3;
       if ((level == 0 && sec_strength == 0 && uv_level == 0 &&
            uv_sec_strength == 0) ||
-          (cdef_count = sb_compute_cdef_list(cm, fbr * MI_SIZE_64X64,
+          (cdef_count = cdef_compute_sb_list(cm, fbr * MI_SIZE_64X64,
                                              fbc * MI_SIZE_64X64, dlist,
                                              BLOCK_64X64)) == 0) {
         cdef_left = 0;

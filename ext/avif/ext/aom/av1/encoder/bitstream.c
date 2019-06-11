@@ -367,16 +367,16 @@ static void pack_txb_tokens(aom_writer *w, AV1_COMMON *cm, MACROBLOCK *const x,
                                                          blk_col)];
 
   if (tx_size == plane_tx_size || plane) {
+    const CB_COEFF_BUFFER *cb_coef_buff = x->cb_coef_buff;
     const int txb_offset =
         x->mbmi_ext->cb_offset / (TX_SIZE_W_MIN * TX_SIZE_H_MIN);
-    tran_low_t *tcoeff_txb =
-        x->mbmi_ext->cb_coef_buff->tcoeff[plane] + x->mbmi_ext->cb_offset;
-    uint16_t *eob_txb = x->mbmi_ext->cb_coef_buff->eobs[plane] + txb_offset;
-    uint8_t *txb_skip_ctx_txb =
-        x->mbmi_ext->cb_coef_buff->txb_skip_ctx[plane] + txb_offset;
-    int *dc_sign_ctx_txb =
-        x->mbmi_ext->cb_coef_buff->dc_sign_ctx[plane] + txb_offset;
-    tran_low_t *tcoeff = BLOCK_OFFSET(tcoeff_txb, block);
+    const tran_low_t *tcoeff_txb =
+        cb_coef_buff->tcoeff[plane] + x->mbmi_ext->cb_offset;
+    const uint16_t *eob_txb = cb_coef_buff->eobs[plane] + txb_offset;
+    const uint8_t *txb_skip_ctx_txb =
+        cb_coef_buff->txb_skip_ctx[plane] + txb_offset;
+    const int *dc_sign_ctx_txb = cb_coef_buff->dc_sign_ctx[plane] + txb_offset;
+    const tran_low_t *tcoeff = BLOCK_OFFSET(tcoeff_txb, block);
     const uint16_t eob = eob_txb[block];
     TXB_CTX txb_ctx = { txb_skip_ctx_txb[block], dc_sign_ctx_txb[block] };
     av1_write_coeffs_txb(cm, xd, w, blk_row, blk_col, plane, tx_size, tcoeff,
@@ -1324,27 +1324,10 @@ static void enc_dump_logs(AV1_COMP *cpi, int mi_row, int mi_col) {
 }
 #endif  // ENC_MISMATCH_DEBUG
 
-static void write_mbmi_b(AV1_COMP *cpi, const TileInfo *const tile,
-                         aom_writer *w, int mi_row, int mi_col) {
+static void write_mbmi_b(AV1_COMP *cpi, aom_writer *w, int mi_row, int mi_col) {
   AV1_COMMON *const cm = &cpi->common;
   MACROBLOCKD *const xd = &cpi->td.mb.e_mbd;
-  int bh, bw;
-  xd->mi = cm->mi_grid_visible + (mi_row * cm->mi_stride + mi_col);
   MB_MODE_INFO *m = xd->mi[0];
-
-  assert(m->sb_type <= cm->seq_params.sb_size ||
-         (m->sb_type >= BLOCK_SIZES && m->sb_type < BLOCK_SIZES_ALL));
-
-  bh = mi_size_high[m->sb_type];
-  bw = mi_size_wide[m->sb_type];
-
-  cpi->td.mb.mbmi_ext = cpi->mbmi_ext_base + (mi_row * cm->mi_cols + mi_col);
-
-  set_mi_row_col(xd, tile, mi_row, bh, mi_col, bw, cm->mi_rows, cm->mi_cols);
-
-  xd->above_txfm_context = cm->above_txfm_context[tile->tile_row] + mi_col;
-  xd->left_txfm_context =
-      xd->left_txfm_context_buffer + (mi_row & MAX_MIB_MASK);
 
   if (frame_is_intra_only(cm)) {
     write_mb_modes_kf(cpi, xd, cpi->td.mb.mbmi_ext, mi_row, mi_col, w);
@@ -1411,84 +1394,64 @@ static void write_inter_txb_coeff(AV1_COMMON *const cm, MACROBLOCK *const x,
   }
 }
 
-static void write_tokens_b(AV1_COMP *cpi, const TileInfo *const tile,
-                           aom_writer *w, const TOKENEXTRA **tok,
+static void write_tokens_b(AV1_COMP *cpi, aom_writer *w, const TOKENEXTRA **tok,
                            const TOKENEXTRA *const tok_end, int mi_row,
                            int mi_col) {
   AV1_COMMON *const cm = &cpi->common;
-  const int num_planes = av1_num_planes(cm);
-  MACROBLOCKD *const xd = &cpi->td.mb.e_mbd;
-  const int mi_offset = mi_row * cm->mi_stride + mi_col;
-  MB_MODE_INFO *const mbmi = *(cm->mi_grid_visible + mi_offset);
-  int plane;
-  int bh, bw;
   MACROBLOCK *const x = &cpi->td.mb;
-  (void)tok;
-  (void)tok_end;
-  xd->mi = cm->mi_grid_visible + mi_offset;
+  MACROBLOCKD *const xd = &x->e_mbd;
+  MB_MODE_INFO *const mbmi = xd->mi[0];
+  const BLOCK_SIZE bsize = mbmi->sb_type;
 
-  assert(mbmi->sb_type <= cm->seq_params.sb_size ||
-         (mbmi->sb_type >= BLOCK_SIZES && mbmi->sb_type < BLOCK_SIZES_ALL));
+  assert(!mbmi->skip);
 
-  bh = mi_size_high[mbmi->sb_type];
-  bw = mi_size_wide[mbmi->sb_type];
-  cpi->td.mb.mbmi_ext = cpi->mbmi_ext_base + (mi_row * cm->mi_cols + mi_col);
+  const int is_inter = is_inter_block(mbmi);
+  if (!is_inter) {
+    av1_write_coeffs_mb(cm, x, mi_row, mi_col, w, bsize);
+  } else {
+    int block[MAX_MB_PLANE] = { 0 };
+    assert(bsize == get_plane_block_size(bsize, xd->plane[0].subsampling_x,
+                                         xd->plane[0].subsampling_y));
+    const int num_4x4_w = block_size_wide[bsize] >> tx_size_wide_log2[0];
+    const int num_4x4_h = block_size_high[bsize] >> tx_size_high_log2[0];
+    TOKEN_STATS token_stats;
+    init_token_stats(&token_stats);
 
-  set_mi_row_col(xd, tile, mi_row, bh, mi_col, bw, cm->mi_rows, cm->mi_cols);
+    const BLOCK_SIZE max_unit_bsize = BLOCK_64X64;
+    assert(max_unit_bsize == get_plane_block_size(BLOCK_64X64,
+                                                  xd->plane[0].subsampling_x,
+                                                  xd->plane[0].subsampling_y));
+    int mu_blocks_wide =
+        block_size_wide[max_unit_bsize] >> tx_size_wide_log2[0];
+    int mu_blocks_high =
+        block_size_high[max_unit_bsize] >> tx_size_high_log2[0];
 
-  if (!mbmi->skip) {
-    if (!is_inter_block(mbmi))
-      av1_write_coeffs_mb(cm, x, mi_row, mi_col, w, mbmi->sb_type);
+    mu_blocks_wide = AOMMIN(num_4x4_w, mu_blocks_wide);
+    mu_blocks_high = AOMMIN(num_4x4_h, mu_blocks_high);
 
-    if (is_inter_block(mbmi)) {
-      int block[MAX_MB_PLANE] = { 0 };
-      const BLOCK_SIZE plane_bsize = mbmi->sb_type;
-      assert(plane_bsize == get_plane_block_size(mbmi->sb_type,
-                                                 xd->plane[0].subsampling_x,
-                                                 xd->plane[0].subsampling_y));
-      const int num_4x4_w =
-          block_size_wide[plane_bsize] >> tx_size_wide_log2[0];
-      const int num_4x4_h =
-          block_size_high[plane_bsize] >> tx_size_high_log2[0];
-      int row, col;
-      TOKEN_STATS token_stats;
-      init_token_stats(&token_stats);
-
-      const BLOCK_SIZE max_unit_bsize = BLOCK_64X64;
-      assert(max_unit_bsize ==
-             get_plane_block_size(BLOCK_64X64, xd->plane[0].subsampling_x,
-                                  xd->plane[0].subsampling_y));
-      int mu_blocks_wide =
-          block_size_wide[max_unit_bsize] >> tx_size_wide_log2[0];
-      int mu_blocks_high =
-          block_size_high[max_unit_bsize] >> tx_size_high_log2[0];
-
-      mu_blocks_wide = AOMMIN(num_4x4_w, mu_blocks_wide);
-      mu_blocks_high = AOMMIN(num_4x4_h, mu_blocks_high);
-
-      for (row = 0; row < num_4x4_h; row += mu_blocks_high) {
-        for (col = 0; col < num_4x4_w; col += mu_blocks_wide) {
-          for (plane = 0; plane < num_planes && is_inter_block(mbmi); ++plane) {
-            const struct macroblockd_plane *const pd = &xd->plane[plane];
-            if (!is_chroma_reference(mi_row, mi_col, mbmi->sb_type,
-                                     pd->subsampling_x, pd->subsampling_y)) {
-              continue;
-            }
-            write_inter_txb_coeff(cm, x, mbmi, w, tok, tok_end, &token_stats,
-                                  row, col, &block[plane], plane);
+    const int num_planes = av1_num_planes(cm);
+    for (int row = 0; row < num_4x4_h; row += mu_blocks_high) {
+      for (int col = 0; col < num_4x4_w; col += mu_blocks_wide) {
+        for (int plane = 0; plane < num_planes; ++plane) {
+          const struct macroblockd_plane *const pd = &xd->plane[plane];
+          if (!is_chroma_reference(mi_row, mi_col, bsize, pd->subsampling_x,
+                                   pd->subsampling_y)) {
+            continue;
           }
+          write_inter_txb_coeff(cm, x, mbmi, w, tok, tok_end, &token_stats, row,
+                                col, &block[plane], plane);
         }
       }
-#if CONFIG_RD_DEBUG
-      for (plane = 0; plane < num_planes && is_inter_block(mbmi); ++plane) {
-        if (mbmi->sb_type >= BLOCK_8X8 &&
-            rd_token_stats_mismatch(&mbmi->rd_stats, &token_stats, plane)) {
-          dump_mode_info(mbmi);
-          assert(0);
-        }
-      }
-#endif  // CONFIG_RD_DEBUG
     }
+#if CONFIG_RD_DEBUG
+    for (int plane = 0; plane < num_planes; ++plane) {
+      if (mbmi->sb_type >= BLOCK_8X8 &&
+          rd_token_stats_mismatch(&mbmi->rd_stats, &token_stats, plane)) {
+        dump_mode_info(mbmi);
+        assert(0);
+      }
+    }
+#endif  // CONFIG_RD_DEBUG
   }
 }
 
@@ -1496,11 +1459,26 @@ static void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
                           aom_writer *w, const TOKENEXTRA **tok,
                           const TOKENEXTRA *const tok_end, int mi_row,
                           int mi_col) {
-  write_mbmi_b(cpi, tile, w, mi_row, mi_col);
-
-  AV1_COMMON *cm = &cpi->common;
+  const AV1_COMMON *cm = &cpi->common;
   MACROBLOCKD *xd = &cpi->td.mb.e_mbd;
-  MB_MODE_INFO *mbmi = xd->mi[0];
+  xd->mi = cm->mi_grid_visible + (mi_row * cm->mi_stride + mi_col);
+  cpi->td.mb.mbmi_ext = cpi->mbmi_ext_base + (mi_row * cm->mi_cols + mi_col);
+
+  const MB_MODE_INFO *mbmi = xd->mi[0];
+  const BLOCK_SIZE bsize = mbmi->sb_type;
+  assert(bsize <= cm->seq_params.sb_size ||
+         (bsize >= BLOCK_SIZES && bsize < BLOCK_SIZES_ALL));
+
+  const int bh = mi_size_high[bsize];
+  const int bw = mi_size_wide[bsize];
+  set_mi_row_col(xd, tile, mi_row, bh, mi_col, bw, cm->mi_rows, cm->mi_cols);
+
+  xd->above_txfm_context = cm->above_txfm_context[tile->tile_row] + mi_col;
+  xd->left_txfm_context =
+      xd->left_txfm_context_buffer + (mi_row & MAX_MIB_MASK);
+
+  write_mbmi_b(cpi, w, mi_row, mi_col);
+
   for (int plane = 0; plane < AOMMIN(2, av1_num_planes(cm)); ++plane) {
     const uint8_t palette_size_plane =
         mbmi->palette_mode_info.palette_size[plane];
@@ -1516,10 +1494,9 @@ static void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
     }
   }
 
-  BLOCK_SIZE bsize = mbmi->sb_type;
-  int is_inter_tx = is_inter_block(mbmi) || is_intrabc_block(mbmi);
-  int skip = mbmi->skip;
-  int segment_id = mbmi->segment_id;
+  const int is_inter_tx = is_inter_block(mbmi);
+  const int skip = mbmi->skip;
+  const int segment_id = mbmi->segment_id;
   if (cm->tx_mode == TX_MODE_SELECT && block_signals_txsize(bsize) &&
       !(is_inter_tx && skip) && !xd->lossless[segment_id]) {
     if (is_inter_tx) {  // This implies skip flag is 0.
@@ -1528,20 +1505,22 @@ static void write_modes_b(AV1_COMP *cpi, const TileInfo *const tile,
       const int txbw = tx_size_wide_unit[max_tx_size];
       const int width = block_size_wide[bsize] >> tx_size_wide_log2[0];
       const int height = block_size_high[bsize] >> tx_size_high_log2[0];
-      int idx, idy;
-      for (idy = 0; idy < height; idy += txbh)
-        for (idx = 0; idx < width; idx += txbw)
+      for (int idy = 0; idy < height; idy += txbh) {
+        for (int idx = 0; idx < width; idx += txbw) {
           write_tx_size_vartx(xd, mbmi, max_tx_size, 0, idy, idx, w);
+        }
+      }
     } else {
       write_selected_tx_size(xd, w);
       set_txfm_ctxs(mbmi->tx_size, xd->n4_w, xd->n4_h, 0, xd);
     }
   } else {
-    set_txfm_ctxs(mbmi->tx_size, xd->n4_w, xd->n4_h,
-                  skip && is_inter_block(mbmi), xd);
+    set_txfm_ctxs(mbmi->tx_size, xd->n4_w, xd->n4_h, skip && is_inter_tx, xd);
   }
 
-  write_tokens_b(cpi, tile, w, tok, tok_end, mi_row, mi_col);
+  if (!mbmi->skip) {
+    write_tokens_b(cpi, w, tok, tok_end, mi_row, mi_col);
+  }
 }
 
 static void write_partition(const AV1_COMMON *const cm,
@@ -1712,6 +1691,7 @@ static void write_modes(AV1_COMP *const cpi, const TileInfo *const tile,
 
     for (mi_col = mi_col_start; mi_col < mi_col_end;
          mi_col += cm->seq_params.mib_size) {
+      cpi->td.mb.cb_coef_buff = av1_get_cb_coeff_buffer(cpi, mi_row, mi_col);
       write_modes_sb(cpi, tile, w, &tok, tok_end, mi_row, mi_col,
                      cm->seq_params.sb_size);
     }
@@ -1837,7 +1817,7 @@ static void write_sgrproj_filter(const SgrprojInfo *sgrproj_info,
                                  SgrprojInfo *ref_sgrproj_info,
                                  aom_writer *wb) {
   aom_write_literal(wb, sgrproj_info->ep, SGRPROJ_PARAMS_BITS);
-  const sgr_params_type *params = &sgr_params[sgrproj_info->ep];
+  const sgr_params_type *params = &av1_sgr_params[sgrproj_info->ep];
 
   if (params->r[0] == 0) {
     assert(sgrproj_info->xqd[0] == 0);
@@ -3258,8 +3238,8 @@ uint32_t av1_write_obu_header(AV1_COMP *const cpi, OBU_TYPE obu_type,
   return size;
 }
 
-int write_uleb_obu_size(uint32_t obu_header_size, uint32_t obu_payload_size,
-                        uint8_t *dest) {
+int av1_write_uleb_obu_size(uint32_t obu_header_size, uint32_t obu_payload_size,
+                            uint8_t *dest) {
   const uint32_t obu_size = obu_payload_size;
   const uint32_t offset = obu_header_size;
   size_t coded_obu_size = 0;
@@ -3298,7 +3278,7 @@ static void write_bitstream_level(AV1_LEVEL seq_level_idx,
   aom_wb_write_literal(wb, seq_level_idx, LEVEL_BITS);
 }
 
-uint32_t write_sequence_header_obu(AV1_COMP *cpi, uint8_t *const dst) {
+uint32_t av1_write_sequence_header_obu(AV1_COMP *cpi, uint8_t *const dst) {
   AV1_COMMON *const cm = &cpi->common;
   struct aom_write_bit_buffer wb = { dst, 0 };
   uint32_t size = 0;
@@ -3555,7 +3535,7 @@ static uint32_t write_tiles_in_tg_obus(AV1_COMP *const cpi, uint8_t *const dst,
     const uint32_t obu_payload_size = total_size - tg_hdr_size;
     const size_t length_field_size =
         obu_memmove(tg_hdr_size, obu_payload_size, dst);
-    if (write_uleb_obu_size(tg_hdr_size, obu_payload_size, dst) !=
+    if (av1_write_uleb_obu_size(tg_hdr_size, obu_payload_size, dst) !=
         AOM_CODEC_OK) {
       assert(0);
     }
@@ -3652,7 +3632,7 @@ static uint32_t write_tiles_in_tg_obus(AV1_COMP *const cpi, uint8_t *const dst,
         const uint32_t obu_payload_size = curr_tg_data_size - obu_header_size;
         const size_t length_field_size =
             obu_memmove(obu_header_size, obu_payload_size, data);
-        if (write_uleb_obu_size(obu_header_size, obu_payload_size, data) !=
+        if (av1_write_uleb_obu_size(obu_header_size, obu_payload_size, data) !=
             AOM_CODEC_OK) {
           assert(0);
         }
@@ -3756,6 +3736,11 @@ int av1_pack_bitstream(AV1_COMP *const cpi, uint8_t *dst, size_t *size,
   const uint8_t obu_extension_header =
       cm->temporal_layer_id << 5 | cm->spatial_layer_id << 3 | 0;
 
+  // If no non-zero delta_q has been used, reset delta_q_present_flag
+  if (cm->delta_q_info.delta_q_present_flag && cpi->deltaq_used == 0) {
+    cm->delta_q_info.delta_q_present_flag = 0;
+  }
+
 #if CONFIG_BITSTREAM_DEBUG
   bitstream_queue_reset_write();
 #endif
@@ -3768,10 +3753,11 @@ int av1_pack_bitstream(AV1_COMP *const cpi, uint8_t *dst, size_t *size,
   if (cm->current_frame.frame_type == KEY_FRAME && cm->show_frame) {
     obu_header_size = av1_write_obu_header(cpi, OBU_SEQUENCE_HEADER, 0, data);
 
-    obu_payload_size = write_sequence_header_obu(cpi, data + obu_header_size);
+    obu_payload_size =
+        av1_write_sequence_header_obu(cpi, data + obu_header_size);
     const size_t length_field_size =
         obu_memmove(obu_header_size, obu_payload_size, data);
-    if (write_uleb_obu_size(obu_header_size, obu_payload_size, data) !=
+    if (av1_write_uleb_obu_size(obu_header_size, obu_payload_size, data) !=
         AOM_CODEC_OK) {
       return AOM_CODEC_ERROR;
     }
@@ -3792,7 +3778,7 @@ int av1_pack_bitstream(AV1_COMP *const cpi, uint8_t *dst, size_t *size,
 
     const size_t length_field_size =
         obu_memmove(obu_header_size, obu_payload_size, data);
-    if (write_uleb_obu_size(obu_header_size, obu_payload_size, data) !=
+    if (av1_write_uleb_obu_size(obu_header_size, obu_payload_size, data) !=
         AOM_CODEC_OK) {
       return AOM_CODEC_ERROR;
     }

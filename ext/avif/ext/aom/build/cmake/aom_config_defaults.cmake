@@ -20,12 +20,6 @@ include("${AOM_ROOT}/build/cmake/util.cmake")
 # in this file.
 #
 
-set(ENABLE_OPTIONAL ON)
-if(AOM_MINIMAL_BUILD)
-  set(ENABLE_OPTIONAL OFF)
-endif()
-
-
 set_aom_detect_var(INLINE "" STRING "Sets INLINE value for current target.")
 
 # CPUs.
@@ -128,10 +122,6 @@ set_aom_config_var(CONFIG_DIST_8X8 0 NUMBER "AV1 experiment flag.")
 set_aom_config_var(CONFIG_ENTROPY_STATS 0 NUMBER "AV1 experiment flag.")
 set_aom_config_var(CONFIG_INTER_STATS_ONLY 0 NUMBER "AV1 experiment flag.")
 set_aom_config_var(CONFIG_RD_DEBUG 0 NUMBER "AV1 experiment flag.")
-set_aom_config_var(CONFIG_2PASS_PARTITION_SEARCH_LVL_START 1 NUMBER
-                   "AV1 experiment flag.")
-set_aom_config_var(CONFIG_2PASS_PARTITION_SEARCH_LVL_END 3 NUMBER
-                   "AV1 experiment flag.")
 set_aom_config_var(CONFIG_SHARP_SETTINGS 0 NUMBER "AV1 experiment flag.")
 set_aom_config_var(CONFIG_DISABLE_FULL_PIXEL_SPLIT_8X8 1 NUMBER
                    "Disable full_pixel_motion_search_based_split on BLOCK_8X8.")
@@ -139,6 +129,12 @@ set_aom_config_var(CONFIG_COLLECT_PARTITION_STATS 0 NUMBER
                    "Collect stats on partition decisions.")
 set_aom_config_var(CONFIG_COLLECT_COMPONENT_TIMING 0 NUMBER
                    "Collect encoding component timing information.")
+set_aom_config_var(CONFIG_LPF_MASK 0 NUMBER
+                   "Enable the use loop filter bitmasks for optimizations.")
+set_aom_config_var(CONFIG_HTB_TRELLIS 0 NUMBER
+                   "Enable the use of hash table for trellis optimizations.")
+set_aom_config_var(CONFIG_REALTIME_ONLY 0 NUMBER
+                   "Build for RTC-only to reduce binary size.")
 #
 # Variables in this section control optional features of the build system.
 #
@@ -147,22 +143,20 @@ set_aom_option_var(ENABLE_DECODE_PERF_TESTS "Enables decoder performance tests"
                    OFF)
 set_aom_option_var(ENABLE_DISTCC "Enable distcc support." OFF)
 set_aom_option_var(ENABLE_DOCS
-                   "Enable documentation generation (doxygen required)."
-                   ${ENABLE_OPTIONAL})
+                   "Enable documentation generation (doxygen required)." ON)
 set_aom_option_var(ENABLE_ENCODE_PERF_TESTS "Enables encoder performance tests"
                    OFF)
-set_aom_option_var(ENABLE_EXAMPLES "Enables build of example code."
-                   ${ENABLE_OPTIONAL})
+set_aom_option_var(ENABLE_EXAMPLES "Enables build of example code." ON)
 set_aom_option_var(ENABLE_GOMA "Enable goma support." OFF)
 set_aom_option_var(
   ENABLE_IDE_TEST_HOSTING
   "Enables running tests within IDEs like Visual Studio and Xcode." OFF)
 set_aom_option_var(ENABLE_NASM "Use nasm instead of yasm for x86 assembly." OFF)
 set_aom_option_var(ENABLE_TESTDATA "Enables unit test data download targets."
-                   ${ENABLE_OPTIONAL})
-set_aom_option_var(ENABLE_TESTS "Enables unit tests." ${ENABLE_OPTIONAL})
+                   ON)
+set_aom_option_var(ENABLE_TESTS "Enables unit tests." ON)
 set_aom_option_var(ENABLE_TOOLS "Enable applications in tools sub directory."
-                   ${ENABLE_OPTIONAL})
+                   ON)
 set_aom_option_var(ENABLE_WERROR "Converts warnings to errors at compile time."
                    OFF)
 
@@ -179,10 +173,10 @@ set_aom_option_var(ENABLE_VSX "Enables VSX optimizations on PowerPC targets."
                    ON)
 
 # x86/x86_64 assembly/intrinsics flags.
-set_aom_option_var(ENABLE_MMX
-                   "Enables MMX optimizations on x86/x86_64 targets." ON)
-set_aom_option_var(ENABLE_SSE
-                   "Enables SSE optimizations on x86/x86_64 targets." ON)
+set_aom_option_var(ENABLE_MMX "Enables MMX optimizations on x86/x86_64 targets."
+                   ON)
+set_aom_option_var(ENABLE_SSE "Enables SSE optimizations on x86/x86_64 targets."
+                   ON)
 set_aom_option_var(ENABLE_SSE2
                    "Enables SSE2 optimizations on x86/x86_64 targets." ON)
 set_aom_option_var(ENABLE_SSE3
@@ -193,7 +187,7 @@ set_aom_option_var(ENABLE_SSE4_1
                    "Enables SSE4_1 optimizations on x86/x86_64 targets." ON)
 set_aom_option_var(ENABLE_SSE4_2
                    "Enables SSE4_2 optimizations on x86/x86_64 targets." ON)
-set_aom_option_var(ENABLE_AVX
-                   "Enables AVX optimizations on x86/x86_64 targets." ON)
+set_aom_option_var(ENABLE_AVX "Enables AVX optimizations on x86/x86_64 targets."
+                   ON)
 set_aom_option_var(ENABLE_AVX2
                    "Enables AVX2 optimizations on x86/x86_64 targets." ON)

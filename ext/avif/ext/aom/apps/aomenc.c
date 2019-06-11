@@ -396,7 +396,7 @@ static const arg_def_t arnr_strength =
 static const struct arg_enum_list tuning_enum[] = {
   { "psnr", AOM_TUNE_PSNR },
   { "ssim", AOM_TUNE_SSIM },
-#ifdef CONFIG_DIST_8X8
+#if CONFIG_DIST_8X8
   { "cdef-dist", AOM_TUNE_CDEF_DIST },
   { "daala-dist", AOM_TUNE_DAALA_DIST },
 #endif
@@ -421,7 +421,8 @@ static const arg_def_t tile_rows =
     ARG_DEF(NULL, "tile-rows", 1, "Number of tile rows to use, log2");
 static const arg_def_t enable_tpl_model =
     ARG_DEF(NULL, "enable-tpl-model", 1,
-            "RDO modulation based on frame temporal dependency");
+            "RDO based on frame temporal dependency "
+            "(0: off, 1: backward source based, 2: forward 2-pass");
 static const arg_def_t tile_width =
     ARG_DEF(NULL, "tile-width", 1, "Tile widths (comma separated)");
 static const arg_def_t tile_height =
@@ -432,10 +433,10 @@ static const arg_def_t enable_cdef =
     ARG_DEF(NULL, "enable-cdef", 1,
             "Enable the constrained directional enhancement filter (0: false, "
             "1: true (default))");
-static const arg_def_t enable_restoration =
-    ARG_DEF(NULL, "enable-restoration", 1,
-            "Enable the loop restoration filter (0: false, "
-            "1: true (default))");
+static const arg_def_t enable_restoration = ARG_DEF(
+    NULL, "enable-restoration", 1,
+    "Enable the loop restoration filter (0: false (default in Realtime mode), "
+    "1: true (default in Non-realtime mode))");
 static const arg_def_t enable_rect_partitions =
     ARG_DEF(NULL, "enable-rect-partitions", 1,
             "Enable rectangular partitions "
@@ -667,6 +668,11 @@ static const arg_def_t target_seq_level_idx =
             "xy: Target level index for the OP. "
             "E.g. \"0\" means target level index 0 for the 0th OP; "
             "\"1021\" means target level index 21 for the 10th OP.");
+static const arg_def_t set_min_cr =
+    ARG_DEF(NULL, "min-cr", 1,
+            "Set minimum compression ratio. Take integer values. Default is 0. "
+            "If non-zero, encoder will try to keep the compression ratio of "
+            "each frame to be higher than the given value divided by 100.");
 
 static const struct arg_enum_list color_primaries_enum[] = {
   { "bt709", AOM_CICP_CP_BT_709 },
@@ -870,6 +876,7 @@ static const arg_def_t *av1_args[] = { &cpu_used_av1,
                                        &enable_ref_frame_mvs,
                                        &target_seq_level_idx,
                                        &set_tier_mask,
+                                       &set_min_cr,
                                        &bitdeptharg,
                                        &inbitdeptharg,
                                        &input_chroma_subsampling_x,
@@ -970,6 +977,7 @@ static const int av1_arg_ctrl_map[] = { AOME_SET_CPUUSED,
                                         AV1E_SET_ENABLE_REF_FRAME_MVS,
                                         AV1E_SET_TARGET_SEQ_LEVEL_IDX,
                                         AV1E_SET_TIER_MASK,
+                                        AV1E_SET_MIN_CR,
                                         0 };
 #endif  // CONFIG_AV1_ENCODER
 
@@ -1543,6 +1551,11 @@ static int parse_stream_params(struct AvxEncoderConfig *global,
     } else if (arg_match(&arg, &ext_partition, argi)) {
       config->cfg.cfg.ext_partition = !!arg_parse_uint(&arg) > 0;
 #endif
+    } else if (global->usage == AOM_USAGE_REALTIME &&
+               arg_match(&arg, &enable_restoration, argi)) {
+      if (arg_parse_uint(&arg) == 1) {
+        warn("non-zero %s option ignored in realtime mode.\n", arg.name);
+      }
     } else {
       int i, match = 0;
       for (i = 0; ctrl_args[i]; i++) {

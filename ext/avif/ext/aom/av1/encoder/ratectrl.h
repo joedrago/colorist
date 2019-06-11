@@ -142,6 +142,7 @@ typedef struct {
   float_t arf_boost_factor;
   // Q index used for ALT frame
   int arf_q;
+  int active_worst_quality;
 } RATE_CONTROL;
 
 struct AV1_COMP;
@@ -262,6 +263,10 @@ void av1_rc_set_gf_interval_range(const struct AV1_COMP *const cpi,
 void av1_set_target_rate(struct AV1_COMP *cpi, int width, int height);
 
 int av1_resize_one_pass_cbr(struct AV1_COMP *cpi);
+
+int av1_estimate_q_constant_quality_two_pass(const struct AV1_COMP *cpi,
+                                             int width, int height, int *arf_q,
+                                             int gf_index);
 
 #ifdef __cplusplus
 }  // extern "C"
