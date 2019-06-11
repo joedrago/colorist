@@ -36,14 +36,17 @@ if(EXISTS "${GIT_EXECUTABLE}")
   endif()
 endif()
 
-if("${aom_version}" STREQUAL "")
-  set(aom_version "${AOM_ROOT}/CHANGELOG")
-endif()
-
 unset(last_aom_version)
 if(EXISTS "${AOM_CONFIG_DIR}/config/aom_version.h")
   extract_version_string("${AOM_CONFIG_DIR}/config/aom_version.h"
                          last_aom_version)
+  if("${aom_version}" STREQUAL "")
+    set(aom_version ${last_aom_version})
+  endif()
+else()
+  if("${aom_version}" STREQUAL "")
+    set(aom_version "${AOM_ROOT}/CHANGELOG")
+  endif()
 endif()
 
 if(NOT "${aom_version}" STREQUAL "${last_aom_version}")
