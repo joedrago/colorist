@@ -17,7 +17,7 @@
 
 static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * nclx);
 static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, avifNclxColorProfile * nclx);
-static void logAvifImage(struct clContext * C, avifImage * avif);
+static void logAvifImage(struct clContext * C, avifImage * avif, avifIOStats * ioStats);
 
 struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
@@ -36,7 +36,8 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
     raw.size = input->size;
 
     avifImage * avif = avifImageCreateEmpty();
-    avifResult decodeResult = avifImageRead(avif, &raw);
+    avifDecoder * decoder = avifDecoderCreate();
+    avifResult decodeResult = avifDecoderRead(decoder, avif, &raw);
     if ((decodeResult != AVIF_RESULT_OK) || !avif->width || !avif->height) {
         clContextLogError(C, "Failed to decode AVIF (%s)", avifResultToString(decodeResult));
         goto readCleanup;
@@ -55,7 +56,7 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
         }
     }
 
-    logAvifImage(C, avif);
+    logAvifImage(C, avif, &decoder->ioStats);
 
     clImageLogCreate(C, avif->width, avif->height, avif->depth, profile);
     image = clImageCreate(C, avif->width, avif->height, avif->depth, profile);
@@ -93,6 +94,7 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
     }
 
 readCleanup:
+    avifDecoderDestroy(decoder);
     avifImageDestroy(avif);
     if (profile) {
         clProfileDestroy(C, profile);
@@ -107,6 +109,7 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
 
     clBool writeResult = clTrue;
     avifImage * avif = NULL;
+    avifEncoder * encoder = NULL;
 
     clRaw rawProfile = CL_RAW_EMPTY;
     if (!clProfilePack(C, image->profile, &rawProfile)) {
@@ -166,7 +169,10 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
 
     int rescaledQuality = 63 - (int)(((float)writeParams->quality / 100.0f) * 63.0f);
 
-    avifResult encodeResult = avifImageWrite(avif, &avifOutput, C->params.jobs, rescaledQuality);
+    encoder = avifEncoderCreate();
+    encoder->maxThreads = C->params.jobs;
+    encoder->quality = rescaledQuality;
+    avifResult encodeResult = avifEncoderWrite(encoder, avif, &avifOutput);
     if (encodeResult != AVIF_RESULT_OK) {
         clContextLogError(C, "AVIF encoder failed (%s)", avifResultToString(encodeResult));
         writeResult = clFalse;
@@ -181,9 +187,12 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
 
     clRawSet(C, output, avifOutput.data, avifOutput.size);
 
-    logAvifImage(C, avif);
+    logAvifImage(C, avif, &encoder->ioStats);
 
 writeCleanup:
+    if (encoder) {
+        avifEncoderDestroy(encoder);
+    }
     if (avif) {
         avifImageDestroy(avif);
     }
@@ -345,7 +354,7 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
     return clTrue;
 }
 
-static void logAvifImage(struct clContext * C, avifImage * avif)
+static void logAvifImage(struct clContext * C, avifImage * avif, avifIOStats * ioStats)
 {
     const char * yuvFormatString = "Unknown";
     clYUVFormat yuvFormat = CL_YUVFORMAT_INVALID;
@@ -362,5 +371,5 @@ static void logAvifImage(struct clContext * C, avifImage * avif)
         yuvFormatString = clYUVFormatToString(C, yuvFormat);
     }
 
-    clContextLog(C, "avif", 1, "YUV: %s / ColorOBU: %zub / AlphaOBU: %zub", yuvFormatString, avif->ioStats.colorOBUSize, avif->ioStats.alphaOBUSize);
+    clContextLog(C, "avif", 1, "YUV: %s / ColorOBU: %zub / AlphaOBU: %zub", yuvFormatString, ioStats->colorOBUSize, ioStats->alphaOBUSize);
 }

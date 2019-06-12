@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2019-06-12
+### Added
+- Added `avifEncoder` and `avifDecoder` to match `avifImage`'s pattern and allow for easier future parameterization
+
+### Changed
+- Renamed project in cmake to `libavif` to match new official repo naming
+- Updated appveyor script to use `libavif`
+- Updated examples and apps to use new encoder/decoder pattern
+
 ## [0.1.4] - 2019-06-11
 ### Added
 - `avifPixelFormatToString()` convenience function for debugging/printing
@@ -53,9 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/joedrago/avif/compare/v0.1.4...HEAD
-[0.1.4]: https://github.com/joedrago/avif/compare/v0.1.3...v0.1.4
-[0.1.3]: https://github.com/joedrago/avif/compare/v0.1.2...v0.1.3
-[0.1.2]: https://github.com/joedrago/avif/compare/v0.1.1...v0.1.2
-[0.1.1]: https://github.com/joedrago/avif/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/joedrago/avif/releases/tag/v0.1.0
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/AOMediaCodec/libavif/compare/v0.1.4...v0.2.0
+[0.1.4]: https://github.com/AOMediaCodec/libavif/compare/v0.1.3...v0.1.4
+[0.1.3]: https://github.com/AOMediaCodec/libavif/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/AOMediaCodec/libavif/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/AOMediaCodec/libavif/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/AOMediaCodec/libavif/releases/tag/v0.1.0

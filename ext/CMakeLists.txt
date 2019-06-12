@@ -64,7 +64,7 @@ set(WEBP_BUILD_GIF2WEBP OFF CACHE BOOL "")
 set(WEBP_BUILD_IMG2WEBP ON CACHE BOOL "")
 set(WEBP_BUILD_VWEBP OFF CACHE BOOL "")
 set(WEBP_BUILD_WEBPINFO OFF CACHE BOOL "")
-add_subdirectory(libwebp)
+add_subdirectory(libwebp EXCLUDE_FROM_ALL)
 
 include_directories(md5)
 add_library(md5
