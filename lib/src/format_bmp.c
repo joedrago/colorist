@@ -67,16 +67,18 @@ typedef struct BITMAPV5HEADER
     uint32_t bV5Reserved;
 } BITMAPV5HEADER;
 
-#define BI_RGB        0
-#define BI_BITFIELDS  3
+#define BI_RGB 0
+#define BI_BITFIELDS 3
 
-#define LCS_sRGB                0x73524742 // 'sRGB'
+#define LCS_sRGB 0x73524742 // 'sRGB'
 // #define LCS_WINDOWS_COLOR_SPACE 0x57696e20 // 'Win ', Windows default color space
-#define PROFILE_EMBEDDED        0x4d424544 // 'MBED'
+#define PROFILE_EMBEDDED 0x4d424544 // 'MBED'
 
 #define LCS_GM_ABS_COLORIMETRIC 8
 
-#define APPEND(PTR, SIZE) memcpy(p, PTR, SIZE); p += (SIZE);
+#define APPEND(PTR, SIZE) \
+    memcpy(p, PTR, SIZE); \
+    p += (SIZE);
 
 struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);

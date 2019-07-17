@@ -298,11 +298,11 @@ static void test_clContextParseArgs(void)
     {
         // coverage kitchen sink
         const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-a", "-b", "16", "-c", "copyright",
-                                "-d", "description", "-f", "png", "-g", "2.2", "-g", "s", "-h", "--hald", "hald.png",
-                                "--iccin", "iccin.icc", "-j", "4", "-j", "0", "--json", "-l", "1000", "-l", "s",
-                                "--iccout", "iccout.icc", "-q", "50", "--striptags", "lumi", "-t", "on", "-v",
-                                "--cmm", "lcms", "--cmm", "ccmm", "--rect", "0,0,1,1", "--crop", "0,0,1,1",
-                                "--rate", "50" };
+            "-d", "description", "-f", "png", "-g", "2.2", "-g", "s", "-h", "--hald", "hald.png",
+            "--iccin", "iccin.icc", "-j", "4", "-j", "0", "--json", "-l", "1000", "-l", "s",
+            "--iccout", "iccout.icc", "-q", "50", "--striptags", "lumi", "-t", "on", "-v",
+            "--cmm", "lcms", "--cmm", "ccmm", "--rect", "0,0,1,1", "--crop", "0,0,1,1",
+            "--rate", "50" };
         TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
     }
 
@@ -315,7 +315,7 @@ static void test_clContextParseArgs(void)
     {
         // test everything that requires an argument
         const char * needsArgs[] = { "-b", "-c", "-d", "-f", "-g", "--hald", "--iccin", "-j", "-l",
-                                     "--iccout", "-p", "-q", "--striptags", "-t", "--cms", "--crop", "--rate" };
+            "--iccout", "-p", "-q", "--striptags", "-t", "--cms", "--crop", "--rate" };
         const int needsArgsCount = sizeof(needsArgs) / sizeof(needsArgs[0]);
         const char * argv[] = { "colorist", "convert", "input.png", "output.png", NULL };
         for (int i = 0; i < needsArgsCount; ++i) {

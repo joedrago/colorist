@@ -867,8 +867,8 @@ static cmsUInt32Number clTransformFormatToLCMSFormat(struct clContext * C, clTra
     COLORIST_UNUSED(C);
 
     switch (format) {
-        case CL_XF_XYZ:  return TYPE_XYZ_FLT;
-        case CL_XF_RGB:  return TYPE_RGB_FLT;
+        case CL_XF_XYZ: return TYPE_XYZ_FLT;
+        case CL_XF_RGB: return TYPE_RGB_FLT;
         case CL_XF_RGBA: return TYPE_RGB_FLT; // CCMM deals with the alpha
     }
 

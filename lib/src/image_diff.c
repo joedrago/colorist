@@ -12,16 +12,15 @@
 #include "colorist/profile.h"
 #include "colorist/transform.h"
 
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage * image2, int taskCount, float minIntensity, int threshold)
 {
     if (!clProfileComponentsMatch(C, image1->profile, image2->profile) ||
         (image1->width != image2->width) ||
         (image1->height != image2->height) ||
-        (image1->depth != image2->depth))
-    {
+        (image1->depth != image2->depth)) {
         return NULL;
     }
 

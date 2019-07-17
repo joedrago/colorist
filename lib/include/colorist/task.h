@@ -12,7 +12,7 @@
 
 struct clContext;
 
-typedef void (* clTaskFunc)(void * userData);
+typedef void (*clTaskFunc)(void * userData);
 
 typedef struct clTask
 {

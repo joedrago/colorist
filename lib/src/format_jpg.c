@@ -11,8 +11,8 @@
 #include "colorist/profile.h"
 #include "colorist/raw.h"
 
-#include "lcms2.h"
 #include "jpeglib.h"
+#include "lcms2.h"
 
 #include <setjmp.h>
 #include <stdlib.h>
@@ -63,7 +63,7 @@ struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, 
     jpeg_start_decompress(&cinfo);
 
     int row_stride = cinfo.output_width * cinfo.output_components;
-    JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr) & cinfo, JPOOL_IMAGE, row_stride, 1);
+    JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr)&cinfo, JPOOL_IMAGE, row_stride, 1);
 
     clProfile * profile = NULL;
     if (overrideProfile) {
@@ -203,10 +203,10 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
  * rather than assuming that the APP2 markers appear in the correct sequence.
  */
 
-#define ICC_MARKER  (JPEG_APP0 + 2) /* JPEG marker code for ICC */
-#define ICC_OVERHEAD_LEN  14        /* size of non-profile data in APP2 */
-#define MAX_BYTES_IN_MARKER  65533  /* maximum data len of a JPEG marker */
-#define MAX_DATA_BYTES_IN_MARKER  (MAX_BYTES_IN_MARKER - ICC_OVERHEAD_LEN)
+#define ICC_MARKER (JPEG_APP0 + 2) /* JPEG marker code for ICC */
+#define ICC_OVERHEAD_LEN 14        /* size of non-profile data in APP2 */
+#define MAX_BYTES_IN_MARKER 65533  /* maximum data len of a JPEG marker */
+#define MAX_DATA_BYTES_IN_MARKER (MAX_BYTES_IN_MARKER - ICC_OVERHEAD_LEN)
 
 /*
  * This routine writes the given ICC profile data into a JPEG file.
@@ -285,22 +285,21 @@ static void setup_read_icc_profile(j_decompress_ptr cinfo)
 
 static boolean marker_is_icc(jpeg_saved_marker_ptr marker)
 {
-    return
-        marker->marker == ICC_MARKER &&
-        marker->data_length >= ICC_OVERHEAD_LEN &&
-        /* verify the identifying string */
-        GETJOCTET(marker->data[0]) == 0x49 &&
-        GETJOCTET(marker->data[1]) == 0x43 &&
-        GETJOCTET(marker->data[2]) == 0x43 &&
-        GETJOCTET(marker->data[3]) == 0x5F &&
-        GETJOCTET(marker->data[4]) == 0x50 &&
-        GETJOCTET(marker->data[5]) == 0x52 &&
-        GETJOCTET(marker->data[6]) == 0x4F &&
-        GETJOCTET(marker->data[7]) == 0x46 &&
-        GETJOCTET(marker->data[8]) == 0x49 &&
-        GETJOCTET(marker->data[9]) == 0x4C &&
-        GETJOCTET(marker->data[10]) == 0x45 &&
-        GETJOCTET(marker->data[11]) == 0x0;
+    return marker->marker == ICC_MARKER &&
+           marker->data_length >= ICC_OVERHEAD_LEN &&
+           /* verify the identifying string */
+           GETJOCTET(marker->data[0]) == 0x49 &&
+           GETJOCTET(marker->data[1]) == 0x43 &&
+           GETJOCTET(marker->data[2]) == 0x43 &&
+           GETJOCTET(marker->data[3]) == 0x5F &&
+           GETJOCTET(marker->data[4]) == 0x50 &&
+           GETJOCTET(marker->data[5]) == 0x52 &&
+           GETJOCTET(marker->data[6]) == 0x4F &&
+           GETJOCTET(marker->data[7]) == 0x46 &&
+           GETJOCTET(marker->data[8]) == 0x49 &&
+           GETJOCTET(marker->data[9]) == 0x4C &&
+           GETJOCTET(marker->data[10]) == 0x45 &&
+           GETJOCTET(marker->data[11]) == 0x0;
 }
 
 /*
@@ -332,7 +331,7 @@ static boolean read_icc_profile(struct clContext * C,
     int seq_no;
     JOCTET * icc_data;
     unsigned int total_length;
-#define MAX_SEQ_NO  255                       /* sufficient since marker numbers are bytes */
+#define MAX_SEQ_NO 255                        /* sufficient since marker numbers are bytes */
     char marker_present[MAX_SEQ_NO + 1];      /* 1 if marker found */
     unsigned int data_length[MAX_SEQ_NO + 1]; /* size of profile data in marker */
     unsigned int data_offset[MAX_SEQ_NO + 1]; /* offset for data in marker */
@@ -356,7 +355,7 @@ static boolean read_icc_profile(struct clContext * C,
             else if (num_markers != GETJOCTET(marker->data[13]))
                 return FALSE; /* inconsistent num_markers fields */
             seq_no = GETJOCTET(marker->data[12]);
-            if (( seq_no <= 0) || ( seq_no > num_markers))
+            if ((seq_no <= 0) || (seq_no > num_markers))
                 return FALSE; /* bogus sequence number */
             if (marker_present[seq_no])
                 return FALSE; /* duplicate sequence numbers */

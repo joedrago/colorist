@@ -14,7 +14,11 @@
 
 #include <string.h>
 
-#define FAIL() { returnCode = 1; goto convertCleanup; }
+#define FAIL()               \
+    {                        \
+        returnCode = 1;      \
+        goto convertCleanup; \
+    }
 
 struct ImageInfo
 {
@@ -264,14 +268,12 @@ int clContextConvert(clContext * C)
             (srcInfo.luminance != dstInfo.luminance) ||                                         // Custom luminance
             (params.description) ||                                                             // Custom description
             (params.copyright)                                                                  // custom copyright
-            )
-        {
+        ) {
             // Primaries
             if ((dstInfo.primaries.red[0] <= 0.0f) || (dstInfo.primaries.red[1] <= 0.0f) ||
                 (dstInfo.primaries.green[0] <= 0.0f) || (dstInfo.primaries.green[1] <= 0.0f) ||
                 (dstInfo.primaries.blue[0] <= 0.0f) || (dstInfo.primaries.blue[1] <= 0.0f) ||
-                (dstInfo.primaries.white[0] <= 0.0f) || (dstInfo.primaries.white[1] <= 0.0f))
-            {
+                (dstInfo.primaries.white[0] <= 0.0f) || (dstInfo.primaries.white[1] <= 0.0f)) {
                 clContextLogError(C, "Can't create destination profile, destination primaries are invalid");
                 FAIL();
             }

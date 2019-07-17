@@ -16,7 +16,10 @@ typedef struct clRaw
     size_t size;
 } clRaw;
 
-#define CL_RAW_EMPTY { NULL, 0 }
+#define CL_RAW_EMPTY \
+    {                \
+        NULL, 0      \
+    }
 
 typedef struct clStructArraySchema
 {

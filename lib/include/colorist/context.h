@@ -40,8 +40,8 @@ clAction clActionFromString(struct clContext * C, const char * str);
 const char * clActionToString(struct clContext * C, clAction action);
 
 struct clWriteParams;
-typedef struct clImage * (* clFormatReadFunc)(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
-typedef clBool (* clFormatWriteFunc)(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
+typedef struct clImage * (*clFormatReadFunc)(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
+typedef clBool (*clFormatWriteFunc)(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
 typedef enum clFormatDepth
 {
@@ -89,15 +89,15 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap);
 // (with minor tweaks like DEFAULT -> AUTO, addition of NEAREST)
 typedef enum clFilter
 {
-    CL_FILTER_AUTO         = 0, // Choose best based on upsampling or downsampling.
-    CL_FILTER_BOX          = 1, // A trapezoid w/1-pixel wide ramps, same result as box for integer scale ratios
-    CL_FILTER_TRIANGLE     = 2, // On upsampling, produces same results as bilinear texture filtering
+    CL_FILTER_AUTO = 0,         // Choose best based on upsampling or downsampling.
+    CL_FILTER_BOX = 1,          // A trapezoid w/1-pixel wide ramps, same result as box for integer scale ratios
+    CL_FILTER_TRIANGLE = 2,     // On upsampling, produces same results as bilinear texture filtering
     CL_FILTER_CUBICBSPLINE = 3, // The cubic b-spline (aka Mitchell-Netrevalli with B=1,C=0), gaussian-esque
-    CL_FILTER_CATMULLROM   = 4, // An interpolating cubic spline
-    CL_FILTER_MITCHELL     = 5, // Mitchell-Netrevalli filter with B=1/3, C=1/3
-    CL_FILTER_NEAREST      = 6, // Doesn't use stb_image_resize, just does an obvious nearest neighbor
+    CL_FILTER_CATMULLROM = 4,   // An interpolating cubic spline
+    CL_FILTER_MITCHELL = 5,     // Mitchell-Netrevalli filter with B=1/3, C=1/3
+    CL_FILTER_NEAREST = 6,      // Doesn't use stb_image_resize, just does an obvious nearest neighbor
 
-    CL_FILTER_INVALID      = -1
+    CL_FILTER_INVALID = -1
 } clFilter;
 
 clFilter clFilterFromString(struct clContext * C, const char * str);
@@ -127,10 +127,10 @@ typedef struct clWriteParams
 } clWriteParams;
 void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams);
 
-typedef void *(* clContextAllocFunc)(struct clContext * C, size_t bytes); // C will be NULL when allocating the clContext itself
-typedef void (* clContextFreeFunc)(struct clContext * C, void * ptr);
-typedef void (* clContextLogFunc)(struct clContext * C, const char * section, int indent, const char * format, va_list args);
-typedef void (* clContextLogErrorFunc)(struct clContext * C, const char * format, va_list args);
+typedef void * (*clContextAllocFunc)(struct clContext * C, size_t bytes); // C will be NULL when allocating the clContext itself
+typedef void (*clContextFreeFunc)(struct clContext * C, void * ptr);
+typedef void (*clContextLogFunc)(struct clContext * C, const char * section, int indent, const char * format, va_list args);
+typedef void (*clContextLogErrorFunc)(struct clContext * C, const char * format, va_list args);
 
 // Internal defaults for clContextSystem, use clContextLog*() / clAllocate / clFree below
 void * clContextDefaultAlloc(struct clContext * C, size_t bytes);

@@ -63,13 +63,13 @@ const char * clActionToString(struct clContext * C, clAction action)
     COLORIST_UNUSED(C);
 
     switch (action) {
-        case CL_ACTION_NONE:     return "--";
+        case CL_ACTION_NONE: return "--";
         case CL_ACTION_IDENTIFY: return "identify";
         case CL_ACTION_GENERATE: return "generate";
-        case CL_ACTION_CALC:     return "calc";
-        case CL_ACTION_CONVERT:  return "convert";
-        case CL_ACTION_MODIFY:   return "modify";
-        case CL_ACTION_REPORT:   return "report";
+        case CL_ACTION_CALC: return "calc";
+        case CL_ACTION_CONVERT: return "convert";
+        case CL_ACTION_MODIFY: return "modify";
+        case CL_ACTION_REPORT: return "report";
         case CL_ACTION_ERROR:
         default:
             break;
@@ -108,8 +108,7 @@ const char * clFormatDetect(struct clContext * C, const char * filename)
     const char * ext = strrchr(filename, '.');
     if ((ext == NULL) ||
         (lastBackSlash && (lastBackSlash > ext)) ||
-        (lastSlash && (lastSlash > ext)))
-    {
+        (lastSlash && (lastSlash > ext))) {
         ext = clFormatDetectHeader(C, filename);
         if (ext)
             return ext;
@@ -264,13 +263,13 @@ const char * clFilterToString(struct clContext * C, clFilter filter)
     COLORIST_UNUSED(C);
 
     switch (filter) {
-        case CL_FILTER_AUTO:  return "auto";
-        case CL_FILTER_BOX:  return "box";
-        case CL_FILTER_TRIANGLE:  return "triangle";
-        case CL_FILTER_CUBICBSPLINE:  return "cubic";
-        case CL_FILTER_CATMULLROM:  return "catmullrom";
-        case CL_FILTER_MITCHELL:  return "mitchell";
-        case CL_FILTER_NEAREST:  return "nearest";
+        case CL_FILTER_AUTO: return "auto";
+        case CL_FILTER_BOX: return "box";
+        case CL_FILTER_TRIANGLE: return "triangle";
+        case CL_FILTER_CUBICBSPLINE: return "cubic";
+        case CL_FILTER_CATMULLROM: return "catmullrom";
+        case CL_FILTER_MITCHELL: return "mitchell";
+        case CL_FILTER_NEAREST: return "nearest";
         case CL_FILTER_INVALID:
         default:
             break;
@@ -298,11 +297,11 @@ const char * clYUVFormatToString(struct clContext * C, clYUVFormat format)
     COLORIST_UNUSED(C);
 
     switch (format) {
-        case CL_YUVFORMAT_AUTO:  return "auto";
-        case CL_YUVFORMAT_444:  return "444";
-        case CL_YUVFORMAT_422:  return "422";
-        case CL_YUVFORMAT_420:  return "420";
-        case CL_YUVFORMAT_YV12:  return "yv12";
+        case CL_YUVFORMAT_AUTO: return "auto";
+        case CL_YUVFORMAT_444: return "444";
+        case CL_YUVFORMAT_422: return "422";
+        case CL_YUVFORMAT_420: return "420";
+        case CL_YUVFORMAT_YV12: return "yv12";
         case CL_YUVFORMAT_INVALID:
         default:
             break;

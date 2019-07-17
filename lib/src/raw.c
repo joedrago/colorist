@@ -86,8 +86,8 @@ static const unsigned char base64_table[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg
 
 char * clRawToBase64(struct clContext * C, clRaw * src)
 {
-    unsigned char * out, * pos;
-    const unsigned char * end, * in;
+    unsigned char *out, *pos;
+    const unsigned char *end, *in;
     size_t olen;
     // int line_len;
 
@@ -131,8 +131,8 @@ char * clRawToBase64(struct clContext * C, clRaw * src)
         // line_len += 4;
     }
 
-// if (line_len)
-//     *pos++ = '\n';
+    // if (line_len)
+    //     *pos++ = '\n';
 
     *pos = '\0';
     return (char *)out;

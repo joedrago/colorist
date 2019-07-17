@@ -165,7 +165,7 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
     opj_set_error_handler(opjCodec, error_callback, C);
     opj_set_default_decoder_parameters(&parameters);
 
-    if (!opj_setup_decoder(opjCodec, &parameters) ) {
+    if (!opj_setup_decoder(opjCodec, &parameters)) {
         clContextLogError(C, "Failed to setup %s decoder", errorExtName);
         opj_stream_destroy(opjStream);
         opj_destroy_codec(opjCodec);
@@ -233,8 +233,7 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
     clProfileYUVCoefficients yuv;
     clProfileYUVCoefficientsSetDefaults(C, &yuv);
     if ((opjImage->color_space == OPJ_CLRSPC_SYCC) ||
-        ((opjImage->color_space == OPJ_CLRSPC_UNSPECIFIED) && (opjImage->numcomps >= 3) && ((chromaShiftX > 0) || (chromaShiftY > 0))))
-    {
+        ((opjImage->color_space == OPJ_CLRSPC_UNSPECIFIED) && (opjImage->numcomps >= 3) && ((chromaShiftX > 0) || (chromaShiftY > 0)))) {
         isYUV = clTrue;
         clProfileQueryYUVCoefficients(C, profile, &yuv);
     }
@@ -251,7 +250,6 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
         int yuvUNorm[3];
         for (int y = 0; y < image->height; ++y) {
             for (int x = 0; x < image->width; ++x) {
-
                 uint16_t * pixel = &image->pixels[(x + (y * image->width)) * CL_CHANNELS_PER_PIXEL];
                 int uvX = x >> chromaShiftX;
                 int uvY = y >> chromaShiftY;
@@ -267,16 +265,14 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
                     yuvUNorm[2] = limitedToFullUV(dstDepth, yuvUNorm[2]);
                 }
 
-                float Y  = (float)yuvUNorm[0] / maxChannel;
+                float Y = (float)yuvUNorm[0] / maxChannel;
                 float Cb = ((float)yuvUNorm[1] / maxChannel) - 0.5f;
                 float Cr = ((float)yuvUNorm[2] / maxChannel) - 0.5f;
 
                 float R = Y + (2 * (1 - yuv.kr)) * Cr;
                 float B = Y + (2 * (1 - yuv.kb)) * Cb;
-                float G = Y - (
-                    (2 * ((yuv.kr * (1 - yuv.kr) * Cr) + (yuv.kb * (1 - yuv.kb) * Cb)))
-                    /
-                    yuv.kg);
+                float G = Y - ((2 * ((yuv.kr * (1 - yuv.kr) * Cr) + (yuv.kb * (1 - yuv.kb) * Cb))) /
+                                  yuv.kg);
 
                 R = CL_CLAMP(R, 0.0f, 1.0f);
                 G = CL_CLAMP(G, 0.0f, 1.0f);

@@ -120,10 +120,10 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
 
     avifPixelFormat avifYUVFormat;
     switch (writeParams->yuvFormat) {
-        case CL_YUVFORMAT_444:  avifYUVFormat = AVIF_PIXEL_FORMAT_YUV444; break;
-        case CL_YUVFORMAT_422:  avifYUVFormat = AVIF_PIXEL_FORMAT_YUV422; break;
-        case CL_YUVFORMAT_420:  avifYUVFormat = AVIF_PIXEL_FORMAT_YUV420; break;
-        case CL_YUVFORMAT_YV12: avifYUVFormat = AVIF_PIXEL_FORMAT_YV12;   break;
+        case CL_YUVFORMAT_444: avifYUVFormat = AVIF_PIXEL_FORMAT_YUV444; break;
+        case CL_YUVFORMAT_422: avifYUVFormat = AVIF_PIXEL_FORMAT_YUV422; break;
+        case CL_YUVFORMAT_420: avifYUVFormat = AVIF_PIXEL_FORMAT_YUV420; break;
+        case CL_YUVFORMAT_YV12: avifYUVFormat = AVIF_PIXEL_FORMAT_YV12; break;
         case CL_YUVFORMAT_AUTO:
         case CL_YUVFORMAT_INVALID:
         default:
@@ -359,10 +359,10 @@ static void logAvifImage(struct clContext * C, avifImage * avif, avifIOStats * i
     const char * yuvFormatString = "Unknown";
     clYUVFormat yuvFormat = CL_YUVFORMAT_INVALID;
     switch (avif->yuvFormat) {
-        case AVIF_PIXEL_FORMAT_YUV444:  yuvFormat = CL_YUVFORMAT_444;  break;
-        case AVIF_PIXEL_FORMAT_YUV422:  yuvFormat = CL_YUVFORMAT_422;  break;
-        case AVIF_PIXEL_FORMAT_YUV420:  yuvFormat = CL_YUVFORMAT_420;  break;
-        case AVIF_PIXEL_FORMAT_YV12:    yuvFormat = CL_YUVFORMAT_YV12; break;
+        case AVIF_PIXEL_FORMAT_YUV444: yuvFormat = CL_YUVFORMAT_444; break;
+        case AVIF_PIXEL_FORMAT_YUV422: yuvFormat = CL_YUVFORMAT_422; break;
+        case AVIF_PIXEL_FORMAT_YUV420: yuvFormat = CL_YUVFORMAT_420; break;
+        case AVIF_PIXEL_FORMAT_YV12: yuvFormat = CL_YUVFORMAT_YV12; break;
         case AVIF_PIXEL_FORMAT_NONE:
         default:
             break;

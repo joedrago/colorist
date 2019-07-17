@@ -110,9 +110,7 @@ static const char * parseHashColor(struct clContext * C, const char * s, clColor
         char upper = (char)toupper(*end);
         if (!(
                 ((upper >= '0') && (upper <= '9')) ||
-                ((upper >= 'A') && (upper <= 'F')))
-            )
-        {
+                ((upper >= 'A') && (upper <= 'F')))) {
             clContextLogError(C, "unexpected character in hash color: '%c'", *end);
             return NULL;
         }
@@ -492,8 +490,7 @@ static const char * parseNext(struct clContext * C, const char * s, clToken * to
                (!strncmp(s, "f(", 2)) ||
                (!strncmp(s, "float(", 6)) ||
                (!strncmp(s, "xyz(", 4)) ||
-               (!strncmp(s, "xyy(", 4)))
-    {
+               (!strncmp(s, "xyy(", 4))) {
         s = parseColor(C, s, &token->start, fromXYZ, luminance);
         if (s == NULL) {
             return NULL;

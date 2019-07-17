@@ -7,8 +7,8 @@
 
 #include "colorist/profile.h"
 
-#include "colorist/embedded.h"
 #include "colorist/context.h"
+#include "colorist/embedded.h"
 #include "colorist/pixelmath.h"
 #include "colorist/raw.h"
 #include "colorist/transform.h"
@@ -29,9 +29,9 @@ const char * clProfileCurveTypeToString(struct clContext * C, clProfileCurveType
     COLORIST_UNUSED(C);
 
     switch (curveType) {
-        case CL_PCT_GAMMA:   return "Gamma";
-        case CL_PCT_HLG:     return "HLG";
-        case CL_PCT_PQ:      return "PQ";
+        case CL_PCT_GAMMA: return "Gamma";
+        case CL_PCT_HLG: return "HLG";
+        case CL_PCT_PQ: return "PQ";
         case CL_PCT_COMPLEX: return "Complex";
         case CL_PCT_UNKNOWN:
         default:
@@ -45,9 +45,9 @@ const char * clProfileCurveTypeToLowercaseString(struct clContext * C, clProfile
     COLORIST_UNUSED(C);
 
     switch (curveType) {
-        case CL_PCT_GAMMA:   return "gamma";
-        case CL_PCT_HLG:     return "hlg";
-        case CL_PCT_PQ:      return "pq";
+        case CL_PCT_GAMMA: return "gamma";
+        case CL_PCT_HLG: return "hlg";
+        case CL_PCT_PQ: return "pq";
         case CL_PCT_COMPLEX: return "complex";
         case CL_PCT_UNKNOWN:
         default:
@@ -344,9 +344,9 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
         cmsCIEXYZ src;
         cmsCIExyY dst;
         cmsCIEXYZ adaptedWhiteXYZ;
-        cmsCIEXYZ * redXYZ   = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigRedColorantTag);
+        cmsCIEXYZ * redXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigRedColorantTag);
         cmsCIEXYZ * greenXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigGreenColorantTag);
-        cmsCIEXYZ * blueXYZ  = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigBlueColorantTag);
+        cmsCIEXYZ * blueXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigBlueColorantTag);
         cmsCIEXYZ * whiteXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigMediaWhitePointTag);
         if (whiteXYZ == NULL)
             return clFalse;
@@ -651,10 +651,7 @@ clBool clProfileSetLuminance(struct clContext * C, clProfile * profile, int lumi
 clBool clProfileRemoveTag(struct clContext * C, clProfile * profile, char * tag, const char * reason)
 {
     uint8_t * tagPtr = (uint8_t *)tag;
-    cmsTagSignature sig = (tagPtr[0] << 24)
-                          + (tagPtr[1] << 16)
-                          + (tagPtr[2] << 8)
-                          + (tagPtr[3] << 0);
+    cmsTagSignature sig = (tagPtr[0] << 24) + (tagPtr[1] << 16) + (tagPtr[2] << 8) + (tagPtr[3] << 0);
     if (cmsIsTag(profile->handle, sig)) {
         if (reason) {
             clContextLog(C, "modify", 0, "WARNING: Removing tag \"%s\" (%s)", tag, reason);

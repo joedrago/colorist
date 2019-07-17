@@ -18,7 +18,11 @@
 #include <math.h>
 #include <string.h>
 
-#define FAIL() { returnCode = 1; goto reportCleanup; }
+#define FAIL()              \
+    {                       \
+        returnCode = 1;     \
+        goto reportCleanup; \
+    }
 
 static clBool addSRGBHighlight(clContext * C, clImage * image, int maxLuminance, cJSON * payload, const char * name)
 {

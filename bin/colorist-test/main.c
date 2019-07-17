@@ -10,12 +10,45 @@
 // --------------------------------------------------------------------------------------
 // Helpers
 
-void setFloat4(float c[4], float v0, float v1, float v2, float v3) { c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; }
-void setFloat3(float c[3], float v0, float v1, float v2) { c[0] = v0; c[1] = v1; c[2] = v2; }
-void setRGBA8_4(uint8_t c[4], uint8_t v0, uint8_t v1, uint8_t v2, uint8_t v3) { c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; }
-void setRGBA8_3(uint8_t c[3], uint8_t v0, uint8_t v1, uint8_t v2) { c[0] = v0; c[1] = v1; c[2] = v2; }
-void setRGBA16_4(uint16_t c[4], uint16_t v0, uint16_t v1, uint16_t v2, uint16_t v3) { c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; }
-void setRGBA16_3(uint16_t c[3], uint16_t v0, uint16_t v1, uint16_t v2) { c[0] = v0; c[1] = v1; c[2] = v2; }
+void setFloat4(float c[4], float v0, float v1, float v2, float v3)
+{
+    c[0] = v0;
+    c[1] = v1;
+    c[2] = v2;
+    c[3] = v3;
+}
+void setFloat3(float c[3], float v0, float v1, float v2)
+{
+    c[0] = v0;
+    c[1] = v1;
+    c[2] = v2;
+}
+void setRGBA8_4(uint8_t c[4], uint8_t v0, uint8_t v1, uint8_t v2, uint8_t v3)
+{
+    c[0] = v0;
+    c[1] = v1;
+    c[2] = v2;
+    c[3] = v3;
+}
+void setRGBA8_3(uint8_t c[3], uint8_t v0, uint8_t v1, uint8_t v2)
+{
+    c[0] = v0;
+    c[1] = v1;
+    c[2] = v2;
+}
+void setRGBA16_4(uint16_t c[4], uint16_t v0, uint16_t v1, uint16_t v2, uint16_t v3)
+{
+    c[0] = v0;
+    c[1] = v1;
+    c[2] = v2;
+    c[3] = v3;
+}
+void setRGBA16_3(uint16_t c[3], uint16_t v0, uint16_t v1, uint16_t v2)
+{
+    c[0] = v0;
+    c[1] = v1;
+    c[2] = v2;
+}
 
 clContextSystem silentSystem;
 static void clContextSilentLog(clContext * C, const char * section, int indent, const char * format, va_list args)
@@ -36,10 +69,19 @@ static void clContextSilentLogError(clContext * C, const char * format, va_list 
 // --------------------------------------------------------------------------------------
 // Unity stubs
 
-void setUp(void) {}
-void tearDown(void) {}
-void suiteSetUp(void) {}
-int suiteTearDown(int num_failures) { return num_failures; }
+void setUp(void)
+{
+}
+void tearDown(void)
+{
+}
+void suiteSetUp(void)
+{
+}
+int suiteTearDown(int num_failures)
+{
+    return num_failures;
+}
 
 // --------------------------------------------------------------------------------------
 // Main / List of active tests
@@ -60,14 +102,16 @@ static clBool shouldRun(const char * cmdlineName, int argc, char * argv[])
     return clFalse;
 }
 
-#define RUN_TESTS(TESTS, CMDLINENAME, TITLE) do {        \
-        if (shouldRun(CMDLINENAME, argc, argv)) {        \
-            printf("_______________________\n");         \
-            printf("%s\n", TITLE);                       \
-            printf("-----------------------\n");         \
-            int ret = TESTS(); if (ret != 0) return ret; \
-        }                                                \
-} while (0)
+#define RUN_TESTS(TESTS, CMDLINENAME, TITLE)      \
+    do {                                          \
+        if (shouldRun(CMDLINENAME, argc, argv)) { \
+            printf("_______________________\n");  \
+            printf("%s\n", TITLE);                \
+            printf("-----------------------\n");  \
+            int ret = TESTS();                    \
+            if (ret != 0) return ret;             \
+        }                                         \
+    } while (0)
 
 int main(int argc, char * argv[])
 {

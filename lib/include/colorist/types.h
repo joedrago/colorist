@@ -19,13 +19,24 @@
 
 int clFileSize(const char * filename);
 
-#define COLORIST_WARNING(MSG) { clContextLogError(C, "WARNING: %s\n", MSG); }
+#define COLORIST_WARNING(MSG)                       \
+    {                                               \
+        clContextLogError(C, "WARNING: %s\n", MSG); \
+    }
 
 #ifdef COLORIST_DEBUG
 #include <assert.h>
 #define COLORIST_ASSERT assert
-#define COLORIST_FAILURE(MSG) { clContextLogError(C, "FAILURE: %s\n", MSG); assert(0); }
-#define COLORIST_FAILURE1(FMT, A) { clContextLogError(C, "FAILURE: " FMT "\n", A); assert(0); }
+#define COLORIST_FAILURE(MSG)                       \
+    {                                               \
+        clContextLogError(C, "FAILURE: %s\n", MSG); \
+        assert(0);                                  \
+    }
+#define COLORIST_FAILURE1(FMT, A)                      \
+    {                                                  \
+        clContextLogError(C, "FAILURE: " FMT "\n", A); \
+        assert(0);                                     \
+    }
 #else
 #define COLORIST_ASSERT(A)
 #define COLORIST_FAILURE(MSG)
@@ -35,7 +46,7 @@ int clFileSize(const char * filename);
 #define COLORIST_UNUSED(V) ((void)(V))
 
 // Yes, clamp macros are nasty. Do not use them.
-#define CL_CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+#define CL_CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
 typedef int clBool;
 #define clFalse 0

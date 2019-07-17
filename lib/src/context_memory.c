@@ -9,8 +9,8 @@
 
 #ifdef WIN32_MEMORY_LEAK_DETECTION
 #define _CRTDBG_MAP_ALLOC
-#include <stdlib.h>
 #include <crtdbg.h>
+#include <stdlib.h>
 #endif
 
 #include "colorist/task.h"
