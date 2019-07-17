@@ -123,18 +123,20 @@ int findItemID(avifData * data, int itemID)
 
 static avifBool isAlphaURN(char * urn)
 {
-    if (!strcmp(urn, URN_ALPHA0)) return AVIF_TRUE;
-    if (!strcmp(urn, URN_ALPHA1)) return AVIF_TRUE;
+    if (!strcmp(urn, URN_ALPHA0))
+        return AVIF_TRUE;
+    if (!strcmp(urn, URN_ALPHA1))
+        return AVIF_TRUE;
     return AVIF_FALSE;
 }
 
 // ---------------------------------------------------------------------------
 // BMFF Parsing
 
-#define BEGIN_STREAM(VARNAME, PTR, SIZE)             \
-    avifStream VARNAME;                              \
-    avifRawData VARNAME ## _rawData = { PTR, SIZE }; \
-    avifStreamStart(&VARNAME, &VARNAME ## _rawData)
+#define BEGIN_STREAM(VARNAME, PTR, SIZE)           \
+    avifStream VARNAME;                            \
+    avifRawData VARNAME##_rawData = { PTR, SIZE }; \
+    avifStreamStart(&VARNAME, &VARNAME##_rawData)
 
 static avifBool avifParseItemLocationBox(avifData * data, uint8_t * raw, size_t rawLen)
 {
@@ -215,10 +217,15 @@ static avifBool avifParseColourInformationBox(avifData * data, uint8_t * raw, si
         data->properties[propertyIndex].colr.icc = avifStreamCurrent(&s);
         data->properties[propertyIndex].colr.iccSize = avifStreamRemainingBytes(&s);
     } else if (!memcmp(colourType, "nclx", 4)) {
-        CHECK(avifStreamReadU16(&s, &data->properties[propertyIndex].colr.nclx.colourPrimaries));         // unsigned int(16) colour_primaries;
-        CHECK(avifStreamReadU16(&s, &data->properties[propertyIndex].colr.nclx.transferCharacteristics)); // unsigned int(16) transfer_characteristics;
-        CHECK(avifStreamReadU16(&s, &data->properties[propertyIndex].colr.nclx.matrixCoefficients));      // unsigned int(16) matrix_coefficients;
-        CHECK(avifStreamRead(&s, &data->properties[propertyIndex].colr.nclx.fullRangeFlag, 1));           // unsigned int(1) full_range_flag; unsigned int(7) reserved = 0;
+        // unsigned int(16) colour_primaries;
+        CHECK(avifStreamReadU16(&s, &data->properties[propertyIndex].colr.nclx.colourPrimaries));
+        // unsigned int(16) transfer_characteristics;
+        CHECK(avifStreamReadU16(&s, &data->properties[propertyIndex].colr.nclx.transferCharacteristics));
+        // unsigned int(16) matrix_coefficients;
+        CHECK(avifStreamReadU16(&s, &data->properties[propertyIndex].colr.nclx.matrixCoefficients));
+        // unsigned int(1) full_range_flag;
+        // unsigned int(7) reserved = 0;
+        CHECK(avifStreamRead(&s, &data->properties[propertyIndex].colr.nclx.fullRangeFlag, 1));
         data->properties[propertyIndex].colr.nclx.fullRangeFlag |= 0x80;
         data->properties[propertyIndex].colr.format = AVIF_PROFILE_FORMAT_NCLX;
     }
@@ -280,16 +287,16 @@ static avifBool avifParseItemPropertyAssociation(avifData * data, uint8_t * raw,
         uint8_t associationCount;
         CHECK(avifStreamRead(&s, &associationCount, 1));
         for (uint8_t associationIndex = 0; associationIndex < associationCount; ++associationIndex) {
-            avifBool essential = AVIF_FALSE;
+            // avifBool essential = AVIF_FALSE; // currently unused
             uint16_t propertyIndex = 0;
             if (propertyIndexIsU16) {
                 CHECK(avifStreamReadU16(&s, &propertyIndex));
-                essential = (propertyIndex & 0x8000) ? AVIF_TRUE : AVIF_FALSE;
+                // essential = (propertyIndex & 0x8000) ? AVIF_TRUE : AVIF_FALSE;
                 propertyIndex &= 0x7fff;
             } else {
                 uint8_t tmp;
                 CHECK(avifStreamRead(&s, &tmp, 1));
-                essential = (tmp & 0x80) ? AVIF_TRUE : AVIF_FALSE;
+                // essential = (tmp & 0x80) ? AVIF_TRUE : AVIF_FALSE;
                 propertyIndex = tmp & 0x7f;
             }
 
@@ -554,6 +561,11 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
 {
     avifCodec * codec = NULL;
 
+#if !defined(AVIF_CODEC_AOM) && !defined(AVIF_CODEC_DAV1D)
+    // Just bail out early, we're not surviving this function without a decoder compiled in
+    return AVIF_RESULT_NO_CODEC_AVAILABLE;
+#endif
+
     // -----------------------------------------------------------------------
     // Parse BMFF boxes
 
@@ -584,16 +596,22 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
     avifItem * colorOBUItem = NULL;
     avifItem * alphaOBUItem = NULL;
 
+    // Sanity check items
+    for (int itemIndex = 0; itemIndex < MAX_ITEMS; ++itemIndex) {
+        avifItem * item = &data.items[itemIndex];
+        if (item->offset > input->size) {
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+        uint64_t offsetSize = (uint64_t)item->offset + (uint64_t)item->size;
+        if (offsetSize > (uint64_t)input->size) {
+            return AVIF_RESULT_BMFF_PARSE_FAILED;
+        }
+    }
+
     // Find the colorOBU item
     for (int itemIndex = 0; itemIndex < MAX_ITEMS; ++itemIndex) {
         avifItem * item = &data.items[itemIndex];
         if (!item->id || !item->size) {
-            break;
-        }
-        if (item->offset > input->size) {
-            break;
-        }
-        if ((item->offset + item->size) > input->size) {
             break;
         }
         if (memcmp(item->type, "av01", 4)) {
@@ -616,12 +634,6 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
         for (int itemIndex = 0; itemIndex < MAX_ITEMS; ++itemIndex) {
             avifItem * item = &data.items[itemIndex];
             if (!item->id || !item->size) {
-                break;
-            }
-            if (item->offset > input->size) {
-                break;
-            }
-            if ((item->offset + item->size) > input->size) {
                 break;
             }
             if (memcmp(item->type, "av01", 4)) {
@@ -647,21 +659,28 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
     }
     avifBool hasAlpha = (alphaOBU.size > 0) ? AVIF_TRUE : AVIF_FALSE;
 
-    codec = avifCodecCreate();
-    if (!avifCodecDecode(codec, AVIF_CODEC_PLANES_COLOR, &colorOBU)) {
+#if defined(AVIF_CODEC_DAV1D)
+    codec = avifCodecCreateDav1d();
+#elif defined(AVIF_CODEC_AOM)
+    codec = avifCodecCreateAOM();
+#else
+    // #error No decoder available!
+    return AVIF_RESULT_NO_CODEC_AVAILABLE;
+#endif
+    if (!codec->decode(codec, AVIF_CODEC_PLANES_COLOR, &colorOBU)) {
         avifCodecDestroy(codec);
         return AVIF_RESULT_DECODE_COLOR_FAILED;
     }
-    avifCodecImageSize colorPlanesSize = avifCodecGetImageSize(codec, AVIF_CODEC_PLANES_COLOR);
+    avifCodecImageSize colorPlanesSize = codec->getImageSize(codec, AVIF_CODEC_PLANES_COLOR);
 
     avifCodecImageSize alphaPlanesSize;
     memset(&alphaPlanesSize, 0, sizeof(alphaPlanesSize));
     if (hasAlpha) {
-        if (!avifCodecDecode(codec, AVIF_CODEC_PLANES_ALPHA, &alphaOBU)) {
+        if (!codec->decode(codec, AVIF_CODEC_PLANES_ALPHA, &alphaOBU)) {
             avifCodecDestroy(codec);
             return AVIF_RESULT_DECODE_ALPHA_FAILED;
         }
-        alphaPlanesSize = avifCodecGetImageSize(codec, AVIF_CODEC_PLANES_ALPHA);
+        alphaPlanesSize = codec->getImageSize(codec, AVIF_CODEC_PLANES_ALPHA);
 
         if ((colorPlanesSize.width != alphaPlanesSize.width) || (colorPlanesSize.height != alphaPlanesSize.height)) {
             avifCodecDestroy(codec);
@@ -669,9 +688,10 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
         }
     }
 
-    if ((colorOBUItem && colorOBUItem->ispePresent && ((colorOBUItem->ispe.width != colorPlanesSize.width) || (colorOBUItem->ispe.height != colorPlanesSize.height))) ||
-        (alphaOBUItem && alphaOBUItem->ispePresent && ((alphaOBUItem->ispe.width != alphaPlanesSize.width) || (alphaOBUItem->ispe.height != alphaPlanesSize.height))))
-    {
+    if ((colorOBUItem && colorOBUItem->ispePresent &&
+         ((colorOBUItem->ispe.width != colorPlanesSize.width) || (colorOBUItem->ispe.height != colorPlanesSize.height))) ||
+        (alphaOBUItem && alphaOBUItem->ispePresent &&
+         ((alphaOBUItem->ispe.width != alphaPlanesSize.width) || (alphaOBUItem->ispe.height != alphaPlanesSize.height)))) {
         avifCodecDestroy(codec);
         return AVIF_RESULT_ISPE_SIZE_MISMATCH;
     }
@@ -686,14 +706,14 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifRawData
 
     avifImageFreePlanes(image, AVIF_PLANES_ALL);
 
-    avifResult imageResult = avifCodecGetDecodedImage(codec, image);
+    avifResult imageResult = codec->getDecodedImage(codec, image);
     if (imageResult != AVIF_RESULT_OK) {
         avifCodecDestroy(codec);
         return imageResult;
     }
 
 #if defined(AVIF_FIX_STUDIO_ALPHA)
-    if (hasAlpha && avifCodecAlphaLimitedRange(codec)) {
+    if (hasAlpha && codec->alphaLimitedRange(codec)) {
         // Naughty! Alpha planes are supposed to be full range. Correct that here.
         if (avifImageUsesU16(image)) {
             for (int j = 0; j < image->height; ++j) {

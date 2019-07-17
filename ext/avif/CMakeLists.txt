@@ -8,14 +8,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=c99) # Enforce C99 for gcc
 endif()
 
+option(AVIF_CODEC_AOM "Use the AOM codec for encoding (and decoding if no other decoder is present)" ON)
+option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding (overrides AOM decoding if also enabled)" OFF)
+
 add_subdirectory(ext)
 
-include_directories(
-    include
-    "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom"
-    "${AOM_BINARY_DIR}"
-)
-
+include_directories(include)
 if(NOT AVIF_EXTERNAL_GB)
     include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ext/gb")
 endif()
@@ -34,13 +32,42 @@ set(AVIF_SRCS
     src/write.c
 )
 
-# TODO: Support other codec implementations here
-set(AVIF_SRCS ${AVIF_SRCS}
-    src/codec_aom.c
-)
+set(AVIF_CODEC_LIBARIES)
+if(AVIF_CODEC_AOM)
+    message(STATUS "libavif: Encoding library: aom")
+    if(NOT AVIF_CODEC_DAV1D)
+        message(STATUS "libavif: Decoding library: aom")
+    endif()
+    add_definitions(-DAVIF_CODEC_AOM=1)
+    set(AVIF_SRCS ${AVIF_SRCS}
+        src/codec_aom.c
+    )
+    include_directories(
+        "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom"
+        "${AOM_BINARY_DIR}"
+    )
+    set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} aom)
+else()
+    message(STATUS "libavif: Encoding library: (none)")
+endif()
+if(AVIF_CODEC_DAV1D)
+    message(STATUS "libavif: Decoding library: dav1d")
+    add_definitions(-DAVIF_CODEC_DAV1D=1)
+    set(AVIF_SRCS ${AVIF_SRCS}
+        src/codec_dav1d.c
+    )
+    FIND_LIBRARY(dav1d NAMES dav1d)
+    set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} dav1d)
+endif()
+if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D)
+    message(FATAL_ERROR "libavif: No decoding library is enabled, bailing out.")
+endif()
 
 add_library(avif STATIC ${AVIF_SRCS})
-target_link_libraries(avif aom gb)
+target_link_libraries(avif gb ${AVIF_CODEC_LIBARIES})
+if(NOT WIN32)
+    target_link_libraries(avif m)
+endif()
 
 option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
@@ -65,6 +92,14 @@ if(AVIF_BUILD_APPS)
     target_link_libraries(avifdec avif)
 endif()
 
+option(AVIF_BUILD_TESTS "Build avif tests (fuzzing)." OFF)
+if(AVIF_BUILD_TESTS)
+    add_executable(aviffuzz
+        tests/aviffuzz.c
+    )
+    target_link_libraries(aviffuzz avif)
+endif()
+
 macro(avif_set_folder_safe target folder)
     if(TARGET ${target})
         set_target_properties(${target} PROPERTIES FOLDER ${folder})
@@ -77,7 +112,7 @@ if(WIN32)
         add_custom_command(
             OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/avif_static_x64.lib
             COMMAND link.exe /lib /nologo /MACHINE:x64 /OUT:${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/avif_static_x64.lib $<TARGET_FILE:avif> $<TARGET_FILE:aom> $<TARGET_FILE:gb>
-            DEPENDS avif aom
+            DEPENDS avif ${AVIF_CODEC_LIBARIES}
             COMMENT "Creating static avif library..."
         )
 

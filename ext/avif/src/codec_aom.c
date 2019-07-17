@@ -4,9 +4,9 @@
 #include "avif/internal.h"
 
 #include "aom/aom_decoder.h"
-#include "aom/aomdx.h"
 #include "aom/aom_encoder.h"
 #include "aom/aomcx.h"
+#include "aom/aomdx.h"
 
 #include <string.h>
 
@@ -20,15 +20,7 @@ struct avifCodecInternal
     avifCodecConfigurationBox configs[AVIF_CODEC_PLANES_COUNT];
 };
 
-avifCodec * avifCodecCreate()
-{
-    avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
-    codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));
-    memset(codec->internal, 0, sizeof(struct avifCodecInternal));
-    return codec;
-}
-
-void avifCodecDestroy(avifCodec * codec)
+static void aomCodecDestroyInternal(avifCodec * codec)
 {
     for (int plane = 0; plane < AVIF_CODEC_PLANES_COUNT; ++plane) {
         if (codec->internal->decoderInitialized[plane]) {
@@ -37,10 +29,9 @@ void avifCodecDestroy(avifCodec * codec)
         avifRawDataFree(&codec->internal->encodedOBUs[plane]);
     }
     avifFree(codec->internal);
-    avifFree(codec);
 }
 
-avifBool avifCodecDecode(avifCodec * codec, avifCodecPlanes planes, avifRawData * obu)
+static avifBool aomCodecDecode(avifCodec * codec, avifCodecPlanes planes, avifRawData * obu)
 {
     aom_codec_stream_info_t si;
     aom_codec_iface_t * decoder_interface = aom_codec_av1_dx();
@@ -63,11 +54,11 @@ avifBool avifCodecDecode(avifCodec * codec, avifCodecPlanes planes, avifRawData 
     }
 
     aom_codec_iter_t iter = NULL;
-    codec->internal->images[planes] = aom_codec_get_frame(&codec->internal->decoders[planes], &iter); // It doesn't appear that I own this / need to free this
+    codec->internal->images[planes] = aom_codec_get_frame(&codec->internal->decoders[planes], &iter);
     return (codec->internal->images[planes]) ? AVIF_TRUE : AVIF_FALSE;
 }
 
-avifCodecImageSize avifCodecGetImageSize(avifCodec * codec, avifCodecPlanes planes)
+static avifCodecImageSize aomCodecGetImageSize(avifCodec * codec, avifCodecPlanes planes)
 {
     avifCodecImageSize size;
     if (codec->internal->images[planes]) {
@@ -80,7 +71,7 @@ avifCodecImageSize avifCodecGetImageSize(avifCodec * codec, avifCodecPlanes plan
     return size;
 }
 
-avifBool avifCodecAlphaLimitedRange(avifCodec * codec)
+static avifBool aomCodecAlphaLimitedRange(avifCodec * codec)
 {
     aom_image_t * aomAlphaImage = codec->internal->images[AVIF_CODEC_PLANES_ALPHA];
     if (aomAlphaImage && (aomAlphaImage->range == AOM_CR_STUDIO_RANGE)) {
@@ -89,7 +80,7 @@ avifBool avifCodecAlphaLimitedRange(avifCodec * codec)
     return AVIF_FALSE;
 }
 
-avifResult avifCodecGetDecodedImage(avifCodec * codec, avifImage * image)
+static avifResult aomCodecGetDecodedImage(avifCodec * codec, avifImage * image)
 {
     aom_image_t * aomColorImage = codec->internal->images[AVIF_CODEC_PLANES_COLOR];
     aom_image_t * aomAlphaImage = codec->internal->images[AVIF_CODEC_PLANES_ALPHA];
@@ -237,10 +228,18 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * e
             cfg.g_profile = 0;
         } else {
             switch (image->yuvFormat) {
-                case AVIF_PIXEL_FORMAT_YUV444: cfg.g_profile = 1; break;
-                case AVIF_PIXEL_FORMAT_YUV422: cfg.g_profile = 2; break;
-                case AVIF_PIXEL_FORMAT_YUV420: cfg.g_profile = 0; break;
-                case AVIF_PIXEL_FORMAT_YV12:   cfg.g_profile = 0; break;
+                case AVIF_PIXEL_FORMAT_YUV444:
+                    cfg.g_profile = 1;
+                    break;
+                case AVIF_PIXEL_FORMAT_YUV422:
+                    cfg.g_profile = 2;
+                    break;
+                case AVIF_PIXEL_FORMAT_YUV420:
+                    cfg.g_profile = 0;
+                    break;
+                case AVIF_PIXEL_FORMAT_YV12:
+                    cfg.g_profile = 0;
+                    break;
                 case AVIF_PIXEL_FORMAT_NONE:
                 default:
                     break;
@@ -360,7 +359,7 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * e
     return success;
 }
 
-avifResult avifCodecEncodeImage(avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRawData * colorOBU, avifRawData * alphaOBU)
+static avifResult aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEncoder * encoder, avifRawData * colorOBU, avifRawData * alphaOBU)
 {
     if (colorOBU) {
         if (!encodeOBU(image, AVIF_FALSE, encoder, colorOBU, &codec->internal->configs[AVIF_CODEC_PLANES_COLOR])) {
@@ -375,7 +374,24 @@ avifResult avifCodecEncodeImage(avifCodec * codec, avifImage * image, avifEncode
     return AVIF_RESULT_OK;
 }
 
-void avifCodecGetConfigurationBox(avifCodec * codec, avifCodecPlanes planes, avifCodecConfigurationBox * outConfig)
+static void aomCodecGetConfigurationBox(avifCodec * codec, avifCodecPlanes planes, avifCodecConfigurationBox * outConfig)
 {
     memcpy(outConfig, &codec->internal->configs[planes], sizeof(avifCodecConfigurationBox));
+}
+
+avifCodec * avifCodecCreateAOM()
+{
+    avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
+    memset(codec, 0, sizeof(struct avifCodec));
+    codec->decode = aomCodecDecode;
+    codec->getImageSize = aomCodecGetImageSize;
+    codec->alphaLimitedRange = aomCodecAlphaLimitedRange;
+    codec->getDecodedImage = aomCodecGetDecodedImage;
+    codec->encodeImage = aomCodecEncodeImage;
+    codec->getConfigurationBox = aomCodecGetConfigurationBox;
+    codec->destroyInternal = aomCodecDestroyInternal;
+
+    codec->internal = (struct avifCodecInternal *)avifAlloc(sizeof(struct avifCodecInternal));
+    memset(codec->internal, 0, sizeof(struct avifCodecInternal));
+    return codec;
 }

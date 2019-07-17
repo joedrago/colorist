@@ -1,7 +1,7 @@
 // Copyright 2019 Joe Drago. All rights reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "avif/avif.h"
+#include "avif/internal.h"
 
 #include <string.h>
 
@@ -17,10 +17,14 @@ const char * avifVersion(void)
 const char * avifPixelFormatToString(avifPixelFormat format)
 {
     switch (format) {
-        case AVIF_PIXEL_FORMAT_YUV444: return "YUV444";
-        case AVIF_PIXEL_FORMAT_YUV420: return "YUV420";
-        case AVIF_PIXEL_FORMAT_YUV422: return "YUV422";
-        case AVIF_PIXEL_FORMAT_YV12:   return "YV12";
+        case AVIF_PIXEL_FORMAT_YUV444:
+            return "YUV444";
+        case AVIF_PIXEL_FORMAT_YUV420:
+            return "YUV420";
+        case AVIF_PIXEL_FORMAT_YUV422:
+            return "YUV422";
+        case AVIF_PIXEL_FORMAT_YV12:
+            return "YV12";
         case AVIF_PIXEL_FORMAT_NONE:
         default:
             break;
@@ -65,6 +69,7 @@ void avifGetPixelFormatInfo(avifPixelFormat format, avifPixelFormatInfo * info)
 
 const char * avifResultToString(avifResult result)
 {
+    // clang-format off
     switch (result) {
         case AVIF_RESULT_OK:                        return "OK";
         case AVIF_RESULT_INVALID_FTYP:              return "Invalid ftyp";
@@ -80,11 +85,12 @@ const char * avifResultToString(avifResult result)
         case AVIF_RESULT_DECODE_ALPHA_FAILED:       return "Decoding of alpha plane failed";
         case AVIF_RESULT_COLOR_ALPHA_SIZE_MISMATCH: return "Color and alpha planes size mismatch";
         case AVIF_RESULT_ISPE_SIZE_MISMATCH:        return "Plane sizes don't match ispe values";
-        case AVIF_UNSUPPORTED_PIXEL_FORMAT:         return "Unsupported pixel format";
+        case AVIF_RESULT_NO_CODEC_AVAILABLE:        return "No codec available";
         case AVIF_RESULT_UNKNOWN_ERROR:
         default:
             break;
     }
+    // clang-format on
     return "Unknown Error";
 }
 
@@ -237,4 +243,14 @@ void avifImageFreePlanes(avifImage * image, uint32_t planes)
 avifBool avifImageUsesU16(avifImage * image)
 {
     return (image->depth > 8) ? AVIF_TRUE : AVIF_FALSE;
+}
+
+// avifCodecCreate*() functions are in their respective codec_*.c files
+
+void avifCodecDestroy(avifCodec * codec)
+{
+    if (codec && codec->destroyInternal) {
+        codec->destroyInternal(codec);
+    }
+    avifFree(codec);
 }
