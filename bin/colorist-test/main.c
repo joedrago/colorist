@@ -5,6 +5,12 @@
 //                  http://www.boost.org/LICENSE_1_0.txt)
 // ---------------------------------------------------------------------------
 
+// #define WIN32_MEMORY_LEAK_DETECTION
+#ifdef WIN32_MEMORY_LEAK_DETECTION
+#define _CRTDBG_MAP_ALLOC
+#include <crtdbg.h>
+#endif
+
 #include "main.h"
 
 // --------------------------------------------------------------------------------------
@@ -116,6 +122,11 @@ static clBool shouldRun(const char * cmdlineName, int argc, char * argv[])
 
 int main(int argc, char * argv[])
 {
+#ifdef WIN32_MEMORY_LEAK_DETECTION
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+    // _CrtSetBreakAlloc(260);
+#endif
+
     // Lots of these tests will be purposefully spewing errors or requesting conversions,
     // there's no need to muddy stdout with colorist yapping away on most of them.
     silentSystem.alloc = clContextDefaultAlloc;
