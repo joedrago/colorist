@@ -11,8 +11,9 @@
 #include "colorist/profile.h"
 #include "colorist/raw.h"
 
-#include "jpeglib.h"
 #include "lcms2.h"
+
+#include "jpeglib.h"
 
 #include <setjmp.h>
 #include <stdlib.h>
@@ -63,7 +64,7 @@ struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, 
     jpeg_start_decompress(&cinfo);
 
     int row_stride = cinfo.output_width * cinfo.output_components;
-    JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr)&cinfo, JPOOL_IMAGE, row_stride, 1);
+    JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr) & cinfo, JPOOL_IMAGE, row_stride, 1);
 
     clProfile * profile = NULL;
     if (overrideProfile) {
