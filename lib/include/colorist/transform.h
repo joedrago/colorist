@@ -76,7 +76,14 @@ typedef struct clTransform
     clBool lcmsReady;
 } clTransform;
 
-clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, struct clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth, clTonemap tonemap);
+clTransform * clTransformCreate(struct clContext * C,
+                                struct clProfile * srcProfile,
+                                clTransformFormat srcFormat,
+                                int srcDepth,
+                                struct clProfile * dstProfile,
+                                clTransformFormat dstFormat,
+                                int dstDepth,
+                                clTonemap tonemap);
 void clTransformDestroy(struct clContext * C, clTransform * transform);
 void clTransformPrepare(struct clContext * C, struct clTransform * transform);
 clBool clTransformUsesCCMM(struct clContext * C, clTransform * transform);

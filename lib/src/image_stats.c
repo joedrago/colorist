@@ -70,7 +70,8 @@ clBool clImageCalcSignals(struct clContext * C, int taskCount, clImage * srcImag
         normLinearDiff[0] = normLinearDstXYZ[0] - normLinearSrcXYZ[0];
         normLinearDiff[1] = normLinearDstXYZ[1] - normLinearSrcXYZ[1];
         normLinearDiff[2] = normLinearDstXYZ[2] - normLinearSrcXYZ[2];
-        errorSquaredSumLinear += (normLinearDiff[0] * normLinearDiff[0]) + (normLinearDiff[1] * normLinearDiff[1]) + (normLinearDiff[2] * normLinearDiff[2]);
+        errorSquaredSumLinear += (normLinearDiff[0] * normLinearDiff[0]) + (normLinearDiff[1] * normLinearDiff[1]) +
+                                 (normLinearDiff[2] * normLinearDiff[2]);
 
         float normG22SrcXYZ[3];
         normG22SrcXYZ[0] = powf(normLinearSrcXYZ[0], gamma);

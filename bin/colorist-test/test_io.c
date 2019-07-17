@@ -9,7 +9,8 @@
 
 // #define DEBUG_TEST_IMAGES 1
 
-#define TEST_IMAGE_STRING "256x256,#ff0000,#00ff00,#0000ff,#ffff00,#ff00ff,#00ffff,#000000,#ffffff,#990000,#009900,#000099,#999900,#990099,#009999,#000000,#999999"
+#define TEST_IMAGE_STRING \
+    "256x256,#ff0000,#00ff00,#0000ff,#ffff00,#ff00ff,#00ffff,#000000,#ffffff,#990000,#009900,#000099,#999900,#990099,#009999,#000000,#999999"
 
 struct clExtInfo
 {
@@ -144,7 +145,14 @@ static void test_ext(struct clExtInfo * extInfo)
                             }
 
                             printf("Testing ext:%s threshold:%d bpc:%s q/r:%s primaries:%s curve:%s luminance:%s yuv:%s\n",
-                                extInfo->ext, threshold, *bpc, *quality, *primaries, *curve, *luminance, *yuv);
+                                   extInfo->ext,
+                                   threshold,
+                                   *bpc,
+                                   *quality,
+                                   *primaries,
+                                   *curve,
+                                   *luminance,
+                                   *yuv);
 
                             test_images(extInfo->ext, threshold, argc, argv);
                         }
@@ -157,91 +165,79 @@ static void test_ext(struct clExtInfo * extInfo)
 
 static void test_avif(void)
 {
-    struct clExtInfo extInfo = {
-        "avif",
-        5,
-        { "8", "10", "12", NULL },
-        { "100", "90", NULL },
-        { "bt709", "bt2020", NULL },
-        { "2.2", "pq", NULL },
-        { "un", "10000", NULL },
-        { "420", "422", "444", NULL }
-    };
+    struct clExtInfo extInfo = { "avif",
+                                 5,
+                                 { "8", "10", "12", NULL },
+                                 { "100", "90", NULL },
+                                 { "bt709", "bt2020", NULL },
+                                 { "2.2", "pq", NULL },
+                                 { "un", "10000", NULL },
+                                 { "420", "422", "444", NULL } };
     test_ext(&extInfo);
 }
 
 static void test_bmp(void)
 {
-    struct clExtInfo extInfo = {
-        "bmp",
-        0,
-        { "8", "10", NULL },
-        { "100", NULL },
-        { "bt709", "bt2020", NULL },
-        { "2.2", "pq", NULL },
-        { "un", "300", "10000", NULL },
-        { "420", NULL }
-    };
+    struct clExtInfo extInfo = { "bmp",
+                                 0,
+                                 { "8", "10", NULL },
+                                 { "100", NULL },
+                                 { "bt709", "bt2020", NULL },
+                                 { "2.2", "pq", NULL },
+                                 { "un", "300", "10000", NULL },
+                                 { "420", NULL } };
     test_ext(&extInfo);
 }
 
 static void test_jpg(void)
 {
-    struct clExtInfo extInfo = {
-        "jpg",
-        3,
-        { "8", NULL },
-        { "100", "90", NULL },
-        { "bt709", "bt2020", NULL },
-        { "2.2", "pq", NULL },
-        { "un", "300", "10000", NULL },
-        { "420", NULL }
-    };
+    struct clExtInfo extInfo = { "jpg",
+                                 3,
+                                 { "8", NULL },
+                                 { "100", "90", NULL },
+                                 { "bt709", "bt2020", NULL },
+                                 { "2.2", "pq", NULL },
+                                 { "un", "300", "10000", NULL },
+                                 { "420", NULL } };
     test_ext(&extInfo);
 }
 
 static void test_jp2(void)
 {
-    struct clExtInfo extInfo = {
-        "jp2",
-        6,
-        { "8", "10", "12", "16", NULL },
-        { "0", "20", NULL }, // these are actually rates
-        { "bt709", "bt2020", NULL },
-        { "2.2", "pq", NULL },
-        { "un", "300", "10000", NULL },
-        { "420", NULL }
-    };
+    struct clExtInfo extInfo = { "jp2",
+                                 6,
+                                 { "8", "10", "12", "16", NULL },
+                                 { "0", "20", NULL }, // these are actually rates
+                                 { "bt709", "bt2020", NULL },
+                                 { "2.2", "pq", NULL },
+                                 { "un", "300", "10000", NULL },
+                                 { "420", NULL } };
     test_ext(&extInfo);
 }
 
 static void test_png(void)
 {
-    struct clExtInfo extInfo = {
-        "png",
-        0,
-        { "8", "16", NULL },
-        { "100", NULL },
-        { "bt709", "bt2020", NULL },
-        { "2.2", "pq", NULL },
-        { "un", "300", "10000", NULL },
-        { "420", NULL }
-    };
+    struct clExtInfo extInfo = { "png",
+                                 0,
+                                 { "8", "16", NULL },
+                                 { "100", NULL },
+                                 { "bt709", "bt2020", NULL },
+                                 { "2.2", "pq", NULL },
+                                 { "un", "300", "10000", NULL },
+                                 { "420", NULL } };
     test_ext(&extInfo);
 }
 
 static void test_tif(void)
 {
-    struct clExtInfo extInfo = {
-        "tif",
-        0,
-        { "8", "16", NULL },
-        { "100", NULL },
-        { "bt709", "bt2020", NULL },
-        { "2.2", "pq", NULL },
-        { "un", "300", "10000", NULL },
-        { "420", NULL }
-    };
+    struct clExtInfo extInfo = { "tif",
+                                 0,
+                                 { "8", "16", NULL },
+                                 { "100", NULL },
+                                 { "bt709", "bt2020", NULL },
+                                 { "2.2", "pq", NULL },
+                                 { "un", "300", "10000", NULL },
+                                 { "420", NULL } };
     test_ext(&extInfo);
 }
 
@@ -250,12 +246,7 @@ static void test_webp(void)
     struct clExtInfo extInfo = {
         "webp",
         128, // webp YUV420 seams are awful
-        { "8", NULL },
-        { "100", "90", NULL },
-        { "bt709", "bt2020", NULL },
-        { "2.2", NULL },
-        { "un", "300", NULL },
-        { "420", NULL }
+        { "8", NULL }, { "100", "90", NULL }, { "bt709", "bt2020", NULL }, { "2.2", NULL }, { "un", "300", NULL }, { "420", NULL }
     };
     test_ext(&extInfo);
 }

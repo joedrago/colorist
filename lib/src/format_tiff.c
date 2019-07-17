@@ -15,7 +15,11 @@
 #include <string.h>
 
 struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
-clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
+clBool clFormatWriteTIFF(struct clContext * C,
+                         struct clImage * image,
+                         const char * formatName,
+                         struct clRaw * output,
+                         struct clWriteParams * writeParams);
 
 typedef struct tiffCallbackInfo
 {
@@ -114,12 +118,16 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
     ci.raw = input;
     ci.offset = 0;
 
-    tiff = TIFFClientOpen("tiff", "rb",
-        (thandle_t)&ci,
-        (TIFFReadWriteProc)readCallback, (TIFFReadWriteProc)writeCallback,
-        (TIFFSeekProc)seekCallback, (TIFFCloseProc)closeCalllback,
-        (TIFFSizeProc)sizeCallback,
-        (TIFFMapFileProc)mapCallback, (TIFFUnmapFileProc)unmapCallback);
+    tiff = TIFFClientOpen("tiff",
+                          "rb",
+                          (thandle_t)&ci,
+                          (TIFFReadWriteProc)readCallback,
+                          (TIFFReadWriteProc)writeCallback,
+                          (TIFFSeekProc)seekCallback,
+                          (TIFFCloseProc)closeCalllback,
+                          (TIFFSizeProc)sizeCallback,
+                          (TIFFMapFileProc)mapCallback,
+                          (TIFFUnmapFileProc)unmapCallback);
     if (!tiff) {
         clContextLogError(C, "cannot open TIFF for read");
         goto readCleanup;
@@ -258,12 +266,16 @@ clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const cha
     ci.raw = output;
     ci.offset = 0;
 
-    tiff = TIFFClientOpen("tiff", "wb",
-        (thandle_t)&ci,
-        (TIFFReadWriteProc)readCallback, (TIFFReadWriteProc)writeCallback,
-        (TIFFSeekProc)seekCallback, (TIFFCloseProc)closeCalllback,
-        (TIFFSizeProc)sizeCallback,
-        (TIFFMapFileProc)mapCallback, (TIFFUnmapFileProc)unmapCallback);
+    tiff = TIFFClientOpen("tiff",
+                          "wb",
+                          (thandle_t)&ci,
+                          (TIFFReadWriteProc)readCallback,
+                          (TIFFReadWriteProc)writeCallback,
+                          (TIFFSeekProc)seekCallback,
+                          (TIFFCloseProc)closeCalllback,
+                          (TIFFSizeProc)sizeCallback,
+                          (TIFFMapFileProc)mapCallback,
+                          (TIFFUnmapFileProc)unmapCallback);
     if (!tiff) {
         clContextLogError(C, "cannot open TIFF for write");
         writeResult = clFalse;

@@ -181,7 +181,11 @@ void clTransformDeriveXYZMatrix(struct clContext * C, clProfilePrimaries * prima
     DEBUG_PRINT_MATRIX("Cxr", toXYZ);
 }
 
-static clBool derivePrimariesAndXTF(struct clContext * C, struct clProfile * profile, clProfilePrimaries * outPrimaries, clTransformTransferFunction * outXTF, float * outGamma)
+static clBool derivePrimariesAndXTF(struct clContext * C,
+                                    struct clProfile * profile,
+                                    clProfilePrimaries * outPrimaries,
+                                    clTransformTransferFunction * outXTF,
+                                    float * outGamma)
 {
     if (profile) {
         clProfileCurve curve;
@@ -267,7 +271,12 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
 
         if (srcUsesHLGScaling || dstUsesHLGScaling) {
             transform->ccmmHLGLuminance = (float)clTransformCalcHLGLuminance(C->defaultLuminance);
-            clContextLog(C, "hlg", 1, "HLG: Max Luminance %2.2f nits, based on diffuse white of %d nits (--deflum)", transform->ccmmHLGLuminance, C->defaultLuminance);
+            clContextLog(C,
+                         "hlg",
+                         1,
+                         "HLG: Max Luminance %2.2f nits, based on diffuse white of %d nits (--deflum)",
+                         transform->ccmmHLGLuminance,
+                         C->defaultLuminance);
             if (srcUsesHLGScaling) {
                 transform->srcLuminanceScale = transform->ccmmHLGLuminance;
             }
@@ -278,7 +287,11 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
 
         switch (transform->tonemap) {
             case CL_TONEMAP_AUTO:
-                transform->tonemapEnabled = (((transform->srcLuminanceScale * transform->srcCurveScale) / (transform->dstLuminanceScale * transform->dstCurveScale)) > AUTO_TONEMAP_LUMINANCE_SCALE_THRESHOLD) ? clTrue : clFalse;
+                transform->tonemapEnabled =
+                    (((transform->srcLuminanceScale * transform->srcCurveScale) /
+                      (transform->dstLuminanceScale * transform->dstCurveScale)) > AUTO_TONEMAP_LUMINANCE_SCALE_THRESHOLD)
+                        ? clTrue
+                        : clFalse;
                 break;
             case CL_TONEMAP_ON:
                 transform->tonemapEnabled = clTrue;
@@ -288,7 +301,9 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
                 break;
         }
 
-        if (!useCCMM || !transform->srcProfile || !transform->dstProfile || transform->tonemapEnabled || (fabsf((transform->srcLuminanceScale * transform->srcCurveScale) - (transform->dstLuminanceScale * transform->dstCurveScale)) > 0.00001f)) {
+        if (!useCCMM || !transform->srcProfile || !transform->dstProfile || transform->tonemapEnabled ||
+            (fabsf((transform->srcLuminanceScale * transform->srcCurveScale) -
+                   (transform->dstLuminanceScale * transform->dstCurveScale)) > 0.00001f)) {
             transform->luminanceScaleEnabled = clTrue;
         } else {
             transform->luminanceScaleEnabled = clFalse;
@@ -360,19 +375,28 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
             }
 
             transform->lcmsSrcToXYZ = cmsCreateTransformTHR(C->lcms,
-                srcProfileHandle, srcFormat,
-                transform->lcmsXYZProfile, TYPE_XYZ_FLT,
-                INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+                                                            srcProfileHandle,
+                                                            srcFormat,
+                                                            transform->lcmsXYZProfile,
+                                                            TYPE_XYZ_FLT,
+                                                            INTENT_ABSOLUTE_COLORIMETRIC,
+                                                            cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
 
             transform->lcmsXYZToDst = cmsCreateTransformTHR(C->lcms,
-                transform->lcmsXYZProfile, TYPE_XYZ_FLT,
-                dstProfileHandle, dstFormat,
-                INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+                                                            transform->lcmsXYZProfile,
+                                                            TYPE_XYZ_FLT,
+                                                            dstProfileHandle,
+                                                            dstFormat,
+                                                            INTENT_ABSOLUTE_COLORIMETRIC,
+                                                            cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
 
             transform->lcmsCombined = cmsCreateTransformTHR(C->lcms,
-                srcProfileHandle, srcFormat,
-                dstProfileHandle, dstFormat,
-                INTENT_ABSOLUTE_COLORIMETRIC, cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
+                                                            srcProfileHandle,
+                                                            srcFormat,
+                                                            dstProfileHandle,
+                                                            dstFormat,
+                                                            INTENT_ABSOLUTE_COLORIMETRIC,
+                                                            cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
 
             transform->lcmsReady = clTrue;
         }
@@ -380,7 +404,14 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
 }
 
 // The real color conversion function
-static void transformFloatToFloat(struct clContext * C, struct clTransform * transform, clBool useCCMM, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
+static void transformFloatToFloat(struct clContext * C,
+                                  struct clTransform * transform,
+                                  clBool useCCMM,
+                                  uint8_t * srcPixels,
+                                  int srcPixelBytes,
+                                  uint8_t * dstPixels,
+                                  int dstPixelBytes,
+                                  int pixelCount)
 {
     for (int i = 0; i < pixelCount; ++i) {
         float * srcPixel = (float *)&srcPixels[i * srcPixelBytes];
@@ -525,7 +556,15 @@ static void transformFloatToFloat(struct clContext * C, struct clTransform * tra
 // ----------------------------------------------------------------------------
 // Transform wrappers for RGB/RGBA
 
-static void transformFloatToRGB(struct clContext * C, struct clTransform * transform, clBool useCCMM, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int dstDepth, int pixelCount)
+static void transformFloatToRGB(struct clContext * C,
+                                struct clTransform * transform,
+                                clBool useCCMM,
+                                uint8_t * srcPixels,
+                                int srcPixelBytes,
+                                uint8_t * dstPixels,
+                                int dstPixelBytes,
+                                int dstDepth,
+                                int pixelCount)
 {
     const int dstMaxChannel = (1 << dstDepth) - 1;
     const float dstRescale = (float)dstMaxChannel;
@@ -551,7 +590,15 @@ static void transformFloatToRGB(struct clContext * C, struct clTransform * trans
     }
 }
 
-static void transformRGBToFloat(struct clContext * C, struct clTransform * transform, clBool useCCMM, uint8_t * srcPixels, int srcPixelBytes, int srcDepth, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
+static void transformRGBToFloat(struct clContext * C,
+                                struct clTransform * transform,
+                                clBool useCCMM,
+                                uint8_t * srcPixels,
+                                int srcPixelBytes,
+                                int srcDepth,
+                                uint8_t * dstPixels,
+                                int dstPixelBytes,
+                                int pixelCount)
 {
     const float srcRescale = 1.0f / (float)((1 << srcDepth) - 1);
 
@@ -576,7 +623,16 @@ static void transformRGBToFloat(struct clContext * C, struct clTransform * trans
     }
 }
 
-static void transformRGBToRGB(struct clContext * C, struct clTransform * transform, clBool useCCMM, uint8_t * srcPixels, int srcPixelBytes, int srcDepth, uint8_t * dstPixels, int dstPixelBytes, int dstDepth, int pixelCount)
+static void transformRGBToRGB(struct clContext * C,
+                              struct clTransform * transform,
+                              clBool useCCMM,
+                              uint8_t * srcPixels,
+                              int srcPixelBytes,
+                              int srcDepth,
+                              uint8_t * dstPixels,
+                              int dstPixelBytes,
+                              int dstDepth,
+                              int pixelCount)
 {
     const int srcMaxChannel = (1 << srcDepth) - 1;
     const float srcRescale = 1.0f / (float)srcMaxChannel;
@@ -694,7 +750,14 @@ static void reformatRGBToFloat(struct clContext * C, uint8_t * srcPixels, int sr
     }
 }
 
-static void reformatRGBToRGB(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, int srcDepth, uint8_t * dstPixels, int dstPixelBytes, int dstDepth, int pixelCount)
+static void reformatRGBToRGB(struct clContext * C,
+                             uint8_t * srcPixels,
+                             int srcPixelBytes,
+                             int srcDepth,
+                             uint8_t * dstPixels,
+                             int dstPixelBytes,
+                             int dstDepth,
+                             int pixelCount)
 {
     COLORIST_UNUSED(C);
 
@@ -824,7 +887,14 @@ float clTransformCalcMaxY(clContext * C, clTransform * linearFromXYZ, clTransfor
     return floatXYZ[1];
 }
 
-clTransform * clTransformCreate(struct clContext * C, struct clProfile * srcProfile, clTransformFormat srcFormat, int srcDepth, struct clProfile * dstProfile, clTransformFormat dstFormat, int dstDepth, clTonemap tonemap)
+clTransform * clTransformCreate(struct clContext * C,
+                                struct clProfile * srcProfile,
+                                clTransformFormat srcFormat,
+                                int srcDepth,
+                                struct clProfile * dstProfile,
+                                clTransformFormat dstFormat,
+                                int dstDepth,
+                                clTonemap tonemap)
 {
     clTransform * transform = clAllocateStruct(clTransform);
     transform->srcProfile = srcProfile;
@@ -867,9 +937,12 @@ static cmsUInt32Number clTransformFormatToLCMSFormat(struct clContext * C, clTra
     COLORIST_UNUSED(C);
 
     switch (format) {
-        case CL_XF_XYZ: return TYPE_XYZ_FLT;
-        case CL_XF_RGB: return TYPE_RGB_FLT;
-        case CL_XF_RGBA: return TYPE_RGB_FLT; // CCMM deals with the alpha
+        case CL_XF_XYZ:
+            return TYPE_XYZ_FLT;
+        case CL_XF_RGB:
+            return TYPE_RGB_FLT;
+        case CL_XF_RGBA:
+            return TYPE_RGB_FLT; // CCMM deals with the alpha
     }
 
     COLORIST_FAILURE("clTransformFormatToLCMSFormat: Unknown transform format");

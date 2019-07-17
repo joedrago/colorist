@@ -29,11 +29,20 @@ void clPixelMathResize(struct clContext * C, int srcW, int srcH, float * srcPixe
         }
     } else {
         // use STB!
-        stbir_resize_float_generic(
-            srcPixels, srcW, srcH, srcW * 4 * sizeof(float),
-            dstPixels, dstW, dstH, dstW * 4 * sizeof(float),
-            4, 3, 0,
-            STBIR_EDGE_CLAMP, (stbir_filter)filter, STBIR_COLORSPACE_LINEAR,
-            NULL);
+        stbir_resize_float_generic(srcPixels,
+                                   srcW,
+                                   srcH,
+                                   srcW * 4 * sizeof(float),
+                                   dstPixels,
+                                   dstW,
+                                   dstH,
+                                   dstW * 4 * sizeof(float),
+                                   4,
+                                   3,
+                                   0,
+                                   STBIR_EDGE_CLAMP,
+                                   (stbir_filter)filter,
+                                   STBIR_COLORSPACE_LINEAR,
+                                   NULL);
     }
 }

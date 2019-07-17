@@ -39,16 +39,26 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
             sprintf(primariesPrettyName, "%s ", prettyName);
         }
 
-        clContextLog(C, "profile", 1 + extraIndent, "Primaries: %s(r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g)",
-            primariesPrettyName,
-            primaries.red[0], primaries.red[1],
-            primaries.green[0], primaries.green[1],
-            primaries.blue[0], primaries.blue[1],
-            primaries.white[0], primaries.white[1]);
+        clContextLog(C,
+                     "profile",
+                     1 + extraIndent,
+                     "Primaries: %s(r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g)",
+                     primariesPrettyName,
+                     primaries.red[0],
+                     primaries.red[1],
+                     primaries.green[0],
+                     primaries.green[1],
+                     primaries.blue[0],
+                     primaries.blue[1],
+                     primaries.white[0],
+                     primaries.white[1]);
         if (luminance == CL_LUMINANCE_UNSPECIFIED) {
             char usingBuffer[256];
             if (curve.type == CL_PCT_HLG) {
-                sprintf(usingBuffer, "HLG using max %d nits, from diffuse white of %d nits", clTransformCalcHLGLuminance(C->defaultLuminance), C->defaultLuminance);
+                sprintf(usingBuffer,
+                        "HLG using max %d nits, from diffuse white of %d nits",
+                        clTransformCalcHLGLuminance(C->defaultLuminance),
+                        C->defaultLuminance);
             } else {
                 sprintf(usingBuffer, "using default: %d nits", C->defaultLuminance);
             }
@@ -61,7 +71,12 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
         } else if (curve.type == CL_PCT_PQ) {
             clContextLog(C, "profile", 1 + extraIndent, "Curve: PQ");
         } else {
-            clContextLog(C, "profile", 1 + extraIndent, "Curve: %s(%.3g)", clProfileCurveTypeToLowercaseString(C, curve.type), curve.gamma);
+            clContextLog(C,
+                         "profile",
+                         1 + extraIndent,
+                         "Curve: %s(%.3g)",
+                         clProfileCurveTypeToLowercaseString(C, curve.type),
+                         curve.gamma);
         }
         if (!clPixelMathEqualsf(curve.implicitScale, 1.0f)) {
             clContextLog(C, "profile", 1 + extraIndent, "Implicit matrix curve scale: %g", curve.implicitScale);
@@ -70,8 +85,26 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
         clContextLog(C, "profile", 1 + extraIndent, "CCMM friendly: %s", profile->ccmm ? "true" : "false");
 
         uint8_t * s = profile->signature;
-        clContextLog(C, "profile", 1 + extraIndent, "MD5: %x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x",
-            s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[10], s[11], s[12], s[13], s[14], s[15]);
+        clContextLog(C,
+                     "profile",
+                     1 + extraIndent,
+                     "MD5: %x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x",
+                     s[0],
+                     s[1],
+                     s[2],
+                     s[3],
+                     s[4],
+                     s[5],
+                     s[6],
+                     s[7],
+                     s[8],
+                     s[9],
+                     s[10],
+                     s[11],
+                     s[12],
+                     s[13],
+                     s[14],
+                     s[15]);
 
         if (dumpTags) {
             // Dump tags

@@ -15,7 +15,15 @@
 
 #include <string.h>
 
-static void dumpPixel(struct clContext * C, clImage * image, clTransform * toXYZ, float maxLuminance, int x, int y, int extraIndent, cJSON * jsonPixels, clImagePixelInfo * pixelInfo);
+static void dumpPixel(struct clContext * C,
+                      clImage * image,
+                      clTransform * toXYZ,
+                      float maxLuminance,
+                      int x,
+                      int y,
+                      int extraIndent,
+                      cJSON * jsonPixels,
+                      clImagePixelInfo * pixelInfo);
 
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent)
 {
@@ -103,7 +111,15 @@ void clImageDebugDumpPixel(struct clContext * C, clImage * image, int x, int y, 
     clTransformDestroy(C, toXYZ);
 }
 
-static void dumpPixel(struct clContext * C, clImage * image, clTransform * toXYZ, float maxLuminance, int x, int y, int extraIndent, cJSON * jsonPixels, clImagePixelInfo * pixelInfo)
+static void dumpPixel(struct clContext * C,
+                      clImage * image,
+                      clTransform * toXYZ,
+                      float maxLuminance,
+                      int x,
+                      int y,
+                      int extraIndent,
+                      cJSON * jsonPixels,
+                      clImagePixelInfo * pixelInfo)
 {
     uint16_t intRGB[4];
     float maxChannel = (float)((1 << image->depth) - 1);
@@ -182,12 +198,27 @@ static void dumpPixel(struct clContext * C, clImage * image, clTransform * toXYZ
         pixelInfo->x = (float)xyY.x;
         pixelInfo->y = (float)xyY.y;
     } else {
-        clContextLog(C, "image", 2 + extraIndent, "Pixel(%d, %d): rgba%d(%u, %u, %u, %u), f(%g, %g, %g, %g), XYZ(%g, %g, %g), xyY(%g, %g, %g), %g nits",
-            x, y, image->depth,
-            intRGB[0], intRGB[1], intRGB[2], intRGB[3],
-            floatRGBA[0], floatRGBA[1], floatRGBA[2], floatRGBA[3],
-            XYZ.X / maxLuminance, XYZ.Y / maxLuminance, XYZ.Z / maxLuminance,
-            xyY.x, xyY.y, xyY.Y / maxLuminance,
-            xyY.Y);
+        clContextLog(C,
+                     "image",
+                     2 + extraIndent,
+                     "Pixel(%d, %d): rgba%d(%u, %u, %u, %u), f(%g, %g, %g, %g), XYZ(%g, %g, %g), xyY(%g, %g, %g), %g nits",
+                     x,
+                     y,
+                     image->depth,
+                     intRGB[0],
+                     intRGB[1],
+                     intRGB[2],
+                     intRGB[3],
+                     floatRGBA[0],
+                     floatRGBA[1],
+                     floatRGBA[2],
+                     floatRGBA[3],
+                     XYZ.X / maxLuminance,
+                     XYZ.Y / maxLuminance,
+                     XYZ.Z / maxLuminance,
+                     xyY.x,
+                     xyY.y,
+                     xyY.Y / maxLuminance,
+                     xyY.Y);
     }
 }

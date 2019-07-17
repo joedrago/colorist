@@ -20,7 +20,11 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
 static void logAvifImage(struct clContext * C, avifImage * avif, avifIOStats * ioStats);
 
 struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
-clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
+clBool clFormatWriteAVIF(struct clContext * C,
+                         struct clImage * image,
+                         const char * formatName,
+                         struct clRaw * output,
+                         struct clWriteParams * writeParams);
 
 struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
 {
@@ -120,10 +124,18 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
 
     avifPixelFormat avifYUVFormat;
     switch (writeParams->yuvFormat) {
-        case CL_YUVFORMAT_444: avifYUVFormat = AVIF_PIXEL_FORMAT_YUV444; break;
-        case CL_YUVFORMAT_422: avifYUVFormat = AVIF_PIXEL_FORMAT_YUV422; break;
-        case CL_YUVFORMAT_420: avifYUVFormat = AVIF_PIXEL_FORMAT_YUV420; break;
-        case CL_YUVFORMAT_YV12: avifYUVFormat = AVIF_PIXEL_FORMAT_YV12; break;
+        case CL_YUVFORMAT_444:
+            avifYUVFormat = AVIF_PIXEL_FORMAT_YUV444;
+            break;
+        case CL_YUVFORMAT_422:
+            avifYUVFormat = AVIF_PIXEL_FORMAT_YUV422;
+            break;
+        case CL_YUVFORMAT_420:
+            avifYUVFormat = AVIF_PIXEL_FORMAT_YUV420;
+            break;
+        case CL_YUVFORMAT_YV12:
+            avifYUVFormat = AVIF_PIXEL_FORMAT_YV12;
+            break;
         case CL_YUVFORMAT_AUTO:
         case CL_YUVFORMAT_INVALID:
         default:
@@ -137,8 +149,14 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
     if (writeParams->writeProfile) {
         avifNclxColorProfile nclx;
         if (clProfileToNclx(C, image->profile, &nclx)) {
-            clContextLog(C, "avif", 1, "Writing colr box (nclx): C: %d / T: %d / M: %d / F: 0x%x",
-                nclx.colourPrimaries, nclx.transferCharacteristics, nclx.matrixCoefficients, nclx.fullRangeFlag);
+            clContextLog(C,
+                         "avif",
+                         1,
+                         "Writing colr box (nclx): C: %d / T: %d / M: %d / F: 0x%x",
+                         nclx.colourPrimaries,
+                         nclx.transferCharacteristics,
+                         nclx.matrixCoefficients,
+                         nclx.fullRangeFlag);
             avifImageSetProfileNCLX(avif, &nclx);
         } else {
             clContextLog(C, "avif", 1, "Writing colr box (icc): %u bytes", (uint32_t)rawProfile.size);
@@ -246,7 +264,13 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
             curve.gamma = 2.8f;
             break;
         default:
-            clContextLog(C, "avif", 1, "WARNING: Unsupported colr (nclx) transfer_characteristics %d, using gamma:%1.1f, lum:%d", nclx->colourPrimaries, curve.gamma, maxLuminance);
+            clContextLog(C,
+                         "avif",
+                         1,
+                         "WARNING: Unsupported colr (nclx) transfer_characteristics %d, using gamma:%1.1f, lum:%d",
+                         nclx->colourPrimaries,
+                         curve.gamma,
+                         maxLuminance);
             break;
     }
 
@@ -264,9 +288,21 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
         sprintf(maxLumString, "%d", maxLuminance);
     }
 
-    clContextLog(C, "avif", 1, "nclx to ICC: Primaries: (r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g), Curve: %s%s, maxLum: %s",
-        primaries.red[0], primaries.red[1], primaries.green[0], primaries.green[1], primaries.blue[0], primaries.blue[1], primaries.white[0], primaries.white[1],
-        clProfileCurveTypeToString(C, curve.type), gammaString, maxLumString);
+    clContextLog(C,
+                 "avif",
+                 1,
+                 "nclx to ICC: Primaries: (r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g), Curve: %s%s, maxLum: %s",
+                 primaries.red[0],
+                 primaries.red[1],
+                 primaries.green[0],
+                 primaries.green[1],
+                 primaries.blue[0],
+                 primaries.blue[1],
+                 primaries.white[0],
+                 primaries.white[1],
+                 clProfileCurveTypeToString(C, curve.type),
+                 gammaString,
+                 maxLumString);
 
     char * description = clGenerateDescription(C, &primaries, &curve, maxLuminance);
     clProfile * profile = clProfileCreate(C, &primaries, &curve, maxLuminance, description);
@@ -359,10 +395,18 @@ static void logAvifImage(struct clContext * C, avifImage * avif, avifIOStats * i
     const char * yuvFormatString = "Unknown";
     clYUVFormat yuvFormat = CL_YUVFORMAT_INVALID;
     switch (avif->yuvFormat) {
-        case AVIF_PIXEL_FORMAT_YUV444: yuvFormat = CL_YUVFORMAT_444; break;
-        case AVIF_PIXEL_FORMAT_YUV422: yuvFormat = CL_YUVFORMAT_422; break;
-        case AVIF_PIXEL_FORMAT_YUV420: yuvFormat = CL_YUVFORMAT_420; break;
-        case AVIF_PIXEL_FORMAT_YV12: yuvFormat = CL_YUVFORMAT_YV12; break;
+        case AVIF_PIXEL_FORMAT_YUV444:
+            yuvFormat = CL_YUVFORMAT_444;
+            break;
+        case AVIF_PIXEL_FORMAT_YUV422:
+            yuvFormat = CL_YUVFORMAT_422;
+            break;
+        case AVIF_PIXEL_FORMAT_YUV420:
+            yuvFormat = CL_YUVFORMAT_420;
+            break;
+        case AVIF_PIXEL_FORMAT_YV12:
+            yuvFormat = CL_YUVFORMAT_YV12;
+            break;
         case AVIF_PIXEL_FORMAT_NONE:
         default:
             break;

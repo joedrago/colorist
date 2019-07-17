@@ -46,17 +46,15 @@ static void roundtrip(clContext * C, int depth, clProfile * profile, clProfile *
     // Attempting to hit all 12bit color patterns is 2^36 possible transformations. Ain't nobody got time for that.
     // These are some interesting color patterns that are easy to run through various combinations of.
     Pattern whitePatterns[] = { { 1, 1, 1 } };
-    Pattern colorPatterns[] = {
-        { 1, 0, 0 },   // Red
-        { 1, 0.5, 0 }, // Orange
-        { 1, 1, 0 },   // Yellow
-        { 0, 1, 0 },   // Green
-        { 0, 0, 1 },   // Blue
-        { 1, 0, 1 },   // Magenta
-        { 0, 1, 1 },   // Cyan
+    Pattern colorPatterns[] = { { 1, 0, 0 },   // Red
+                                { 1, 0.5, 0 }, // Orange
+                                { 1, 1, 0 },   // Yellow
+                                { 0, 1, 0 },   // Green
+                                { 0, 0, 1 },   // Blue
+                                { 1, 0, 1 },   // Magenta
+                                { 0, 1, 1 },   // Cyan
 
-        { 1, 1, 1 }
-    };
+                                { 1, 1, 1 } };
     const int colorPatternsCount = sizeof(colorPatterns) / sizeof(colorPatterns[0]);
 
     srcToInt = clTransformCreate(C, profile, CL_XF_RGB, depth, intermediateProfile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
@@ -104,9 +102,14 @@ static void roundtrip(clContext * C, int depth, clProfile * profile, clProfile *
     {
         float avgDiff = (totalMismatches > 0) ? ((float)totalDiffs / (float)totalMismatches) : 0;
         printf("[%s -> %s -> %s] (%s): %d/%d changed, highestDiff: %d avgDiff: %g\n",
-            profile->description, intermediateProfile->description, profile->description,
-            whiteOnly ? "whites" : "colors",
-            totalMismatches, totalAttempts, highestDiff, avgDiff);
+               profile->description,
+               intermediateProfile->description,
+               profile->description,
+               whiteOnly ? "whites" : "colors",
+               totalMismatches,
+               totalAttempts,
+               highestDiff,
+               avgDiff);
     }
 }
 

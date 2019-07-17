@@ -16,14 +16,7 @@
 
 // This much match clImageSRGBHighlightPixel member order exactly!
 #define HII_COUNT 6 // Must match clImageSRGBHighlightPixel member count!
-static const char * highlightInfoPropertyNames[HII_COUNT] = {
-    "x",
-    "y",
-    "Y",
-    "nits",
-    "maxNits",
-    "outOfGamut"
-};
+static const char * highlightInfoPropertyNames[HII_COUNT] = { "x", "y", "Y", "nits", "maxNits", "outOfGamut" };
 
 static float calcOverbright(float Y, float overbrightScale, float maxY)
 {
@@ -131,7 +124,12 @@ void clImageSRGBHighlightPixelInfoDestroy(struct clContext * C, clImageSRGBHighl
     clFree(pixelInfo);
 }
 
-clImage * clImageCreateSRGBHighlight(clContext * C, clImage * srcImage, int srgbLuminance, clImageSRGBHighlightStats * stats, clImageSRGBHighlightPixelInfo * outPixelInfo, struct cJSON ** highlightInfoJSON)
+clImage * clImageCreateSRGBHighlight(clContext * C,
+                                     clImage * srcImage,
+                                     int srgbLuminance,
+                                     clImageSRGBHighlightStats * stats,
+                                     clImageSRGBHighlightPixelInfo * outPixelInfo,
+                                     struct cJSON ** highlightInfoJSON)
 {
     const float minHighlight = 0.4f;
 

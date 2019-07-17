@@ -109,7 +109,8 @@ static clBool shouldRun(const char * cmdlineName, int argc, char * argv[])
             printf("%s\n", TITLE);                \
             printf("-----------------------\n");  \
             int ret = TESTS();                    \
-            if (ret != 0) return ret;             \
+            if (ret != 0)                         \
+                return ret;                       \
         }                                         \
     } while (0)
 

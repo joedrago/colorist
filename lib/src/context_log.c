@@ -24,12 +24,15 @@ void clContextDefaultLog(clContext * C, const char * section, int indent, const 
 
     char * buffer = clAllocate(needed + 1);
     vsnprintf(buffer, needed + 1, format, args);
-    EM_ASM_({
-        if (Module.coloristLog) {
-            Module.coloristLog(UTF8ToString($0), $1, UTF8ToString($2));
-        }
-    },
-        section, indent, buffer);
+    EM_ASM_(
+        {
+            if (Module.coloristLog) {
+                Module.coloristLog(UTF8ToString($0), $1, UTF8ToString($2));
+            }
+        },
+        section,
+        indent,
+        buffer);
 #ifdef COLORIST_EMSCRIPTEN_ASYNC
     emscripten_sleep_with_yield(1);
 #endif
@@ -46,11 +49,12 @@ void clContextDefaultLogError(clContext * C, const char * format, va_list args)
 
     char * buffer = clAllocate(needed + 1);
     vsnprintf(buffer, needed + 1, format, args);
-    EM_ASM_({
-        if (Module.coloristError) {
-            Module.coloristError(UTF8ToString($0));
-        }
-    },
+    EM_ASM_(
+        {
+            if (Module.coloristError) {
+                Module.coloristError(UTF8ToString($0));
+            }
+        },
         buffer);
 #ifdef COLORIST_EMSCRIPTEN_ASYNC
     emscripten_sleep_with_yield(1);
@@ -129,7 +133,15 @@ void clContextLogWrite(clContext * C, const char * filename, const char * format
         if ((writeParams->rate == 0) && (writeParams->quality == 100)) {
             clContextLog(C, "encode", 0, "Writing %s [Lossless]%s: %s", format->description, yuvText, filename);
         } else {
-            clContextLog(C, "encode", 0, "Writing %s [%s:%d]%s: %s", format->description, (writeParams->rate) ? "R" : "Q", (writeParams->rate) ? writeParams->rate : writeParams->quality, yuvText, filename);
+            clContextLog(C,
+                         "encode",
+                         0,
+                         "Writing %s [%s:%d]%s: %s",
+                         format->description,
+                         (writeParams->rate) ? "R" : "Q",
+                         (writeParams->rate) ? writeParams->rate : writeParams->quality,
+                         yuvText,
+                         filename);
         }
     } else if (format && format->usesQuality) {
         if (writeParams->quality == 100) {

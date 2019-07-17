@@ -216,9 +216,7 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
  * SOI and JFIF or Adobe markers, but before all else.)
  */
 
-static void write_icc_profile(j_compress_ptr cinfo,
-    const JOCTET * icc_data_ptr,
-    unsigned int icc_data_len)
+static void write_icc_profile(j_compress_ptr cinfo, const JOCTET * icc_data_ptr, unsigned int icc_data_len)
 {
     unsigned int num_markers; /* total number of markers we'll write */
     int cur_marker = 1;       /* per spec, counting starts at 1 */
@@ -285,21 +283,12 @@ static void setup_read_icc_profile(j_decompress_ptr cinfo)
 
 static boolean marker_is_icc(jpeg_saved_marker_ptr marker)
 {
-    return marker->marker == ICC_MARKER &&
-           marker->data_length >= ICC_OVERHEAD_LEN &&
+    return marker->marker == ICC_MARKER && marker->data_length >= ICC_OVERHEAD_LEN &&
            /* verify the identifying string */
-           GETJOCTET(marker->data[0]) == 0x49 &&
-           GETJOCTET(marker->data[1]) == 0x43 &&
-           GETJOCTET(marker->data[2]) == 0x43 &&
-           GETJOCTET(marker->data[3]) == 0x5F &&
-           GETJOCTET(marker->data[4]) == 0x50 &&
-           GETJOCTET(marker->data[5]) == 0x52 &&
-           GETJOCTET(marker->data[6]) == 0x4F &&
-           GETJOCTET(marker->data[7]) == 0x46 &&
-           GETJOCTET(marker->data[8]) == 0x49 &&
-           GETJOCTET(marker->data[9]) == 0x4C &&
-           GETJOCTET(marker->data[10]) == 0x45 &&
-           GETJOCTET(marker->data[11]) == 0x0;
+           GETJOCTET(marker->data[0]) == 0x49 && GETJOCTET(marker->data[1]) == 0x43 && GETJOCTET(marker->data[2]) == 0x43 &&
+           GETJOCTET(marker->data[3]) == 0x5F && GETJOCTET(marker->data[4]) == 0x50 && GETJOCTET(marker->data[5]) == 0x52 &&
+           GETJOCTET(marker->data[6]) == 0x4F && GETJOCTET(marker->data[7]) == 0x46 && GETJOCTET(marker->data[8]) == 0x49 &&
+           GETJOCTET(marker->data[9]) == 0x4C && GETJOCTET(marker->data[10]) == 0x45 && GETJOCTET(marker->data[11]) == 0x0;
 }
 
 /*
@@ -321,10 +310,7 @@ static boolean marker_is_icc(jpeg_saved_marker_ptr marker)
  * return FALSE.  You might want to issue an error message instead.
  */
 
-static boolean read_icc_profile(struct clContext * C,
-    j_decompress_ptr cinfo,
-    JOCTET ** icc_data_ptr,
-    unsigned int * icc_data_len)
+static boolean read_icc_profile(struct clContext * C, j_decompress_ptr cinfo, JOCTET ** icc_data_ptr, unsigned int * icc_data_len)
 {
     jpeg_saved_marker_ptr marker;
     int num_markers = 0;

@@ -51,10 +51,10 @@ typedef struct clProfileCurve
 typedef struct clProfile
 {
     char * description;
-    void * handle;         // cmsHPROFILE
-    clRaw raw;             // Populated during clProfileParse(), preferred during clProfilePack(), cleared on any clProfileSet*() call
+    void * handle; // cmsHPROFILE
+    clRaw raw;     // Populated during clProfileParse(), preferred during clProfilePack(), cleared on any clProfileSet*() call
     uint8_t signature[16]; // Populated during clProfileParse()
-    clBool ccmm;           // Can this profile be used by colorist's built-in CMM? (if false for either src or dst, LittleCMS is used)
+    clBool ccmm; // Can this profile be used by colorist's built-in CMM? (if false for either src or dst, LittleCMS is used)
 } clProfile;
 
 typedef enum clProfileStock
@@ -82,12 +82,17 @@ void clProfileQueryYUVCoefficients(struct clContext * C, clProfile * profile, cl
 clBool clProfileHasPQSignature(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries);
 clProfileCurveType clProfileCurveSignature(struct clContext * C, clProfile * profile);
 char * clProfileGetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3]);
-clBool clProfileSetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3], const char * ascii);
+clBool clProfileSetMLU(struct clContext * C,
+                       clProfile * profile,
+                       const char tag[5],
+                       const char languageCode[3],
+                       const char countryCode[3],
+                       const char * ascii);
 clBool clProfilePack(struct clContext * C, clProfile * profile, struct clRaw * out);
 clBool clProfileSetGamma(struct clContext * C, clProfile * profile, float gamma);
 clBool clProfileSetLuminance(struct clContext * C, clProfile * profile, int luminance);
 clBool clProfileRemoveTag(struct clContext * C, clProfile * profile, char * tag, const char * reason);
-clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * profile2);         // *Exact* match, down to the header and tag order
+clBool clProfileMatches(struct clContext * C, clProfile * profile1, clProfile * profile2); // *Exact* match, down to the header and tag order
 clBool clProfileComponentsMatch(struct clContext * C, clProfile * profile1, clProfile * profile2); // Primaries are close enough, Curve and Luminance are identical
 clBool clProfileUsesCCMM(struct clContext * C, clProfile * profile);
 const char * clProfileCMMName(struct clContext * C, clProfile * profile); // Convenience function

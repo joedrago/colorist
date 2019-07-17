@@ -108,9 +108,7 @@ static const char * parseHashColor(struct clContext * C, const char * s, clColor
     end = s + 1;
     while (*end && (*end != ',') && (*end != '.')) {
         char upper = (char)toupper(*end);
-        if (!(
-                ((upper >= '0') && (upper <= '9')) ||
-                ((upper >= 'A') && (upper <= 'F')))) {
+        if (!(((upper >= '0') && (upper <= '9')) || ((upper >= 'A') && (upper <= 'F')))) {
             clContextLogError(C, "unexpected character in hash color: '%c'", *end);
             return NULL;
         }
@@ -481,16 +479,9 @@ static const char * parseNext(struct clContext * C, const char * s, clToken * to
         token->rotate = 1;
         s += 2;
 
-    } else if ((*s == '#') ||
-               (*s == '(') ||
-               (!strncmp(s, "rgb(", 4)) ||
-               (!strncmp(s, "rgba(", 5)) ||
-               (!strncmp(s, "rgb16(", 6)) ||
-               (!strncmp(s, "rgba16(", 7)) ||
-               (!strncmp(s, "f(", 2)) ||
-               (!strncmp(s, "float(", 6)) ||
-               (!strncmp(s, "xyz(", 4)) ||
-               (!strncmp(s, "xyy(", 4))) {
+    } else if ((*s == '#') || (*s == '(') || (!strncmp(s, "rgb(", 4)) || (!strncmp(s, "rgba(", 5)) ||
+               (!strncmp(s, "rgb16(", 6)) || (!strncmp(s, "rgba16(", 7)) || (!strncmp(s, "f(", 2)) ||
+               (!strncmp(s, "float(", 6)) || (!strncmp(s, "xyz(", 4)) || (!strncmp(s, "xyy(", 4))) {
         s = parseColor(C, s, &token->start, fromXYZ, luminance);
         if (s == NULL) {
             return NULL;
@@ -547,7 +538,14 @@ static char * sanitizeString(char * s)
 
 static clImage * interpretTokens(struct clContext * C, clToken * tokens, int depth, struct clProfile * profile, int defaultW, int defaultH);
 
-static clImage * clImageParseStripe(struct clContext * C, const char * s, int depth, struct clProfile * profile, int luminance, struct clTransform * fromXYZ, int defaultW, int defaultH)
+static clImage * clImageParseStripe(struct clContext * C,
+                                    const char * s,
+                                    int depth,
+                                    struct clProfile * profile,
+                                    int luminance,
+                                    struct clTransform * fromXYZ,
+                                    int defaultW,
+                                    int defaultH)
 {
     char * sanitizedString = NULL;
     clImage * image = NULL;
@@ -715,7 +713,9 @@ clImage * clImageParseString(struct clContext * C, const char * str, int depth, 
         for (stripe = stripes; stripe != NULL; stripe = stripe->next) {
             int y;
             for (y = 0; y < stripe->image->height; ++y) {
-                memcpy(pixelPos, &stripe->image->pixels[CL_CHANNELS_PER_PIXEL * y * stripe->image->width], CL_BYTES_PER_PIXEL * stripe->image->width);
+                memcpy(pixelPos,
+                       &stripe->image->pixels[CL_CHANNELS_PER_PIXEL * y * stripe->image->width],
+                       CL_BYTES_PER_PIXEL * stripe->image->width);
                 pixelPos += CL_CHANNELS_PER_PIXEL * image->width;
             }
         }

@@ -13,7 +13,11 @@ struct clImage * clFormatReadAPG(struct clContext * C, const char * formatName, 
 clBool clFormatWriteAPG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
 struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
-clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
+clBool clFormatWriteAVIF(struct clContext * C,
+                         struct clImage * image,
+                         const char * formatName,
+                         struct clRaw * output,
+                         struct clWriteParams * writeParams);
 
 struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
@@ -28,10 +32,18 @@ struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, 
 clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
 struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
-clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
+clBool clFormatWriteTIFF(struct clContext * C,
+                         struct clImage * image,
+                         const char * formatName,
+                         struct clRaw * output,
+                         struct clWriteParams * writeParams);
 
 struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
-clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
+clBool clFormatWriteWebP(struct clContext * C,
+                         struct clImage * image,
+                         const char * formatName,
+                         struct clRaw * output,
+                         struct clWriteParams * writeParams);
 
 void clContextRegisterBuiltinFormats(struct clContext * C)
 {

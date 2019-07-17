@@ -120,7 +120,16 @@ int clContextConvert(clContext * C)
     memcpy(crop, C->params.rect, 4 * sizeof(int));
     if (clImageAdjustRect(C, srcImage, &crop[0], &crop[1], &crop[2], &crop[3])) {
         timerStart(&t);
-        clContextLog(C, "crop", 0, "Cropping source image from %dx%d to: +%d+%d %dx%d", srcImage->width, srcImage->height, crop[0], crop[1], crop[2], crop[3]);
+        clContextLog(C,
+                     "crop",
+                     0,
+                     "Cropping source image from %dx%d to: +%d+%d %dx%d",
+                     srcImage->width,
+                     srcImage->height,
+                     crop[0],
+                     crop[1],
+                     crop[2],
+                     crop[3]);
         srcImage = clImageCrop(C, srcImage, crop[0], crop[1], crop[2], crop[3], clFalse);
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
@@ -228,7 +237,15 @@ int clContextConvert(clContext * C)
     // Resize, if necessary
 
     if (((dstInfo.width != srcInfo.width) || (dstInfo.height != srcInfo.height))) {
-        clContextLog(C, "resize", 0, "Resizing %dx%d -> [filter:%s] -> %dx%d", srcInfo.width, srcInfo.height, clFilterToString(C, params.resizeFilter), dstInfo.width, dstInfo.height);
+        clContextLog(C,
+                     "resize",
+                     0,
+                     "Resizing %dx%d -> [filter:%s] -> %dx%d",
+                     srcInfo.width,
+                     srcInfo.height,
+                     clFilterToString(C, params.resizeFilter),
+                     dstInfo.width,
+                     dstInfo.height);
         timerStart(&t);
 
         clImage * resizedImage = clImageResize(C, srcImage, dstInfo.width, dstInfo.height, params.resizeFilter);
@@ -262,17 +279,15 @@ int clContextConvert(clContext * C)
 
     // Create the destination profile, or clone the source one
     if (dstProfile == NULL) {
-        if (
-            (memcmp(&srcInfo.primaries, &dstInfo.primaries, sizeof(srcInfo.primaries)) != 0) || // Custom primaries
+        if ((memcmp(&srcInfo.primaries, &dstInfo.primaries, sizeof(srcInfo.primaries)) != 0) || // Custom primaries
             (memcmp(&srcInfo.curve, &dstInfo.curve, sizeof(srcInfo.curve)) != 0) ||             // Custom curve
             (srcInfo.luminance != dstInfo.luminance) ||                                         // Custom luminance
             (params.description) ||                                                             // Custom description
             (params.copyright)                                                                  // custom copyright
         ) {
             // Primaries
-            if ((dstInfo.primaries.red[0] <= 0.0f) || (dstInfo.primaries.red[1] <= 0.0f) ||
-                (dstInfo.primaries.green[0] <= 0.0f) || (dstInfo.primaries.green[1] <= 0.0f) ||
-                (dstInfo.primaries.blue[0] <= 0.0f) || (dstInfo.primaries.blue[1] <= 0.0f) ||
+            if ((dstInfo.primaries.red[0] <= 0.0f) || (dstInfo.primaries.red[1] <= 0.0f) || (dstInfo.primaries.green[0] <= 0.0f) ||
+                (dstInfo.primaries.green[1] <= 0.0f) || (dstInfo.primaries.blue[0] <= 0.0f) || (dstInfo.primaries.blue[1] <= 0.0f) ||
                 (dstInfo.primaries.white[0] <= 0.0f) || (dstInfo.primaries.white[1] <= 0.0f)) {
                 clContextLogError(C, "Can't create destination profile, destination primaries are invalid");
                 FAIL();
@@ -325,7 +340,12 @@ int clContextConvert(clContext * C)
     }
 
     if (C->params.compositeFilename) {
-        clContextLog(C, "composite", 0, "Composition enabled. Reading: %s (%d bytes)", C->params.compositeFilename, clFileSize(C->params.compositeFilename));
+        clContextLog(C,
+                     "composite",
+                     0,
+                     "Composition enabled. Reading: %s (%d bytes)",
+                     C->params.compositeFilename,
+                     clFileSize(C->params.compositeFilename));
         timerStart(&t);
         clImage * compositeImage = clContextRead(C, params.compositeFilename, NULL, NULL);
         if (compositeImage == NULL) {
@@ -335,13 +355,22 @@ int clContextConvert(clContext * C)
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
 
         if ((dstImage->width != compositeImage->width) || (dstImage->height != compositeImage->height)) {
-            clContextLogError(C, "Composite image dimensions don't match: image:%dx%d vs comp:%dx%d", dstImage->width, dstImage->height, compositeImage->width, compositeImage->height);
+            clContextLogError(C,
+                              "Composite image dimensions don't match: image:%dx%d vs comp:%dx%d",
+                              dstImage->width,
+                              dstImage->height,
+                              compositeImage->width,
+                              compositeImage->height);
             clImageDestroy(C, compositeImage);
             FAIL();
         }
 
-        clContextLog(C, "composite", 0, "Blending composite on top (%.2g gamma, %s)...",
-            params.compositeParams.gamma, params.compositeParams.premultiplied ? "premultiplied" : "not premultiplied");
+        clContextLog(C,
+                     "composite",
+                     0,
+                     "Blending composite on top (%.2g gamma, %s)...",
+                     params.compositeParams.gamma,
+                     params.compositeParams.premultiplied ? "premultiplied" : "not premultiplied");
         timerStart(&t);
         clImage * blendedImage = clImageBlend(C, dstImage, compositeImage, params.jobs, &params.compositeParams);
         if (!blendedImage) {

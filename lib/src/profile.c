@@ -29,10 +29,14 @@ const char * clProfileCurveTypeToString(struct clContext * C, clProfileCurveType
     COLORIST_UNUSED(C);
 
     switch (curveType) {
-        case CL_PCT_GAMMA: return "Gamma";
-        case CL_PCT_HLG: return "HLG";
-        case CL_PCT_PQ: return "PQ";
-        case CL_PCT_COMPLEX: return "Complex";
+        case CL_PCT_GAMMA:
+            return "Gamma";
+        case CL_PCT_HLG:
+            return "HLG";
+        case CL_PCT_PQ:
+            return "PQ";
+        case CL_PCT_COMPLEX:
+            return "Complex";
         case CL_PCT_UNKNOWN:
         default:
             break;
@@ -45,10 +49,14 @@ const char * clProfileCurveTypeToLowercaseString(struct clContext * C, clProfile
     COLORIST_UNUSED(C);
 
     switch (curveType) {
-        case CL_PCT_GAMMA: return "gamma";
-        case CL_PCT_HLG: return "hlg";
-        case CL_PCT_PQ: return "pq";
-        case CL_PCT_COMPLEX: return "complex";
+        case CL_PCT_GAMMA:
+            return "gamma";
+        case CL_PCT_HLG:
+            return "hlg";
+        case CL_PCT_PQ:
+            return "pq";
+        case CL_PCT_COMPLEX:
+            return "complex";
         case CL_PCT_UNKNOWN:
         default:
             break;
@@ -496,7 +504,8 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
                         g = (float)_cms15Fixed16toDouble(clNTOHL(e));
                         memcpy(&e, &rawA2B0[matrixCurveOffset + 16], 4);
                         a = (float)_cms15Fixed16toDouble(clNTOHL(e));
-                        curve->implicitScale = clPixelMathRoundf(powf(a, g) * 100.0f) / 100.0f; // Round to 0.01, otherwise you get stuff like 100.0000019x
+                        curve->implicitScale = clPixelMathRoundf(powf(a, g) * 100.0f) /
+                                               100.0f; // Round to 0.01, otherwise you get stuff like 100.0000019x
                     }
                 }
                 clFree(rawA2B0);
@@ -600,7 +609,12 @@ char * clProfileGetMLU(struct clContext * C, clProfile * profile, const char tag
     return ascii;
 }
 
-clBool clProfileSetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3], const char * ascii)
+clBool clProfileSetMLU(struct clContext * C,
+                       clProfile * profile,
+                       const char tag[5],
+                       const char languageCode[3],
+                       const char countryCode[3],
+                       const char * ascii)
 {
     cmsTagSignature tagSignature;
     cmsMLU * mlu;
@@ -745,14 +759,10 @@ clBool clProfilePrimariesMatch(struct clContext * C, clProfilePrimaries * p1, cl
 {
     COLORIST_UNUSED(C);
 
-    return matchesTo3RoundedPlaces(p1->red[0], p2->red[0]) &&
-           matchesTo3RoundedPlaces(p1->red[1], p2->red[1]) &&
-           matchesTo3RoundedPlaces(p1->green[0], p2->green[0]) &&
-           matchesTo3RoundedPlaces(p1->green[1], p2->green[1]) &&
-           matchesTo3RoundedPlaces(p1->blue[0], p2->blue[0]) &&
-           matchesTo3RoundedPlaces(p1->blue[1], p2->blue[1]) &&
-           matchesTo3RoundedPlaces(p1->white[0], p2->white[0]) &&
-           matchesTo3RoundedPlaces(p1->white[1], p2->white[1]);
+    return matchesTo3RoundedPlaces(p1->red[0], p2->red[0]) && matchesTo3RoundedPlaces(p1->red[1], p2->red[1]) &&
+           matchesTo3RoundedPlaces(p1->green[0], p2->green[0]) && matchesTo3RoundedPlaces(p1->green[1], p2->green[1]) &&
+           matchesTo3RoundedPlaces(p1->blue[0], p2->blue[0]) && matchesTo3RoundedPlaces(p1->blue[1], p2->blue[1]) &&
+           matchesTo3RoundedPlaces(p1->white[0], p2->white[0]) && matchesTo3RoundedPlaces(p1->white[1], p2->white[1]);
 }
 
 char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance)

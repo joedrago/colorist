@@ -127,7 +127,8 @@ void clPixelMathHaldCLUTLookup(struct clContext * C, float * haldData, int haldD
     for (int z = 0; z < 2; ++z) {
         for (int y = 0; y < 2; ++y) {
             for (int x = 0; x < 2; ++x) {
-                int index = ((int)firstCornerX + x) + (((int)firstCornerY + y) * haldDims) + (((int)firstCornerZ + z) * haldDims * haldDims);
+                int index = ((int)firstCornerX + x) + (((int)firstCornerY + y) * haldDims) +
+                            (((int)firstCornerZ + z) * haldDims * haldDims);
                 float * lookup = &haldData[index * 4];
                 float weight = weights[I(x, y, z)];
                 dst[0] += lookup[0] * weight;

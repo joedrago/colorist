@@ -47,14 +47,22 @@ clAction clActionFromString(struct clContext * C, const char * str)
 {
     COLORIST_UNUSED(C);
 
-    if (!strcmp(str, "identify")) return CL_ACTION_IDENTIFY;
-    if (!strcmp(str, "id")) return CL_ACTION_IDENTIFY;
-    if (!strcmp(str, "generate")) return CL_ACTION_GENERATE;
-    if (!strcmp(str, "gen")) return CL_ACTION_GENERATE;
-    if (!strcmp(str, "calc")) return CL_ACTION_CALC;
-    if (!strcmp(str, "convert")) return CL_ACTION_CONVERT;
-    if (!strcmp(str, "modify")) return CL_ACTION_MODIFY;
-    if (!strcmp(str, "report")) return CL_ACTION_REPORT;
+    if (!strcmp(str, "identify"))
+        return CL_ACTION_IDENTIFY;
+    if (!strcmp(str, "id"))
+        return CL_ACTION_IDENTIFY;
+    if (!strcmp(str, "generate"))
+        return CL_ACTION_GENERATE;
+    if (!strcmp(str, "gen"))
+        return CL_ACTION_GENERATE;
+    if (!strcmp(str, "calc"))
+        return CL_ACTION_CALC;
+    if (!strcmp(str, "convert"))
+        return CL_ACTION_CONVERT;
+    if (!strcmp(str, "modify"))
+        return CL_ACTION_MODIFY;
+    if (!strcmp(str, "report"))
+        return CL_ACTION_REPORT;
     return CL_ACTION_ERROR;
 }
 
@@ -63,13 +71,20 @@ const char * clActionToString(struct clContext * C, clAction action)
     COLORIST_UNUSED(C);
 
     switch (action) {
-        case CL_ACTION_NONE: return "--";
-        case CL_ACTION_IDENTIFY: return "identify";
-        case CL_ACTION_GENERATE: return "generate";
-        case CL_ACTION_CALC: return "calc";
-        case CL_ACTION_CONVERT: return "convert";
-        case CL_ACTION_MODIFY: return "modify";
-        case CL_ACTION_REPORT: return "report";
+        case CL_ACTION_NONE:
+            return "--";
+        case CL_ACTION_IDENTIFY:
+            return "identify";
+        case CL_ACTION_GENERATE:
+            return "generate";
+        case CL_ACTION_CALC:
+            return "calc";
+        case CL_ACTION_CONVERT:
+            return "convert";
+        case CL_ACTION_MODIFY:
+            return "modify";
+        case CL_ACTION_REPORT:
+            return "report";
         case CL_ACTION_ERROR:
         default:
             break;
@@ -106,9 +121,7 @@ const char * clFormatDetect(struct clContext * C, const char * filename)
     const char * lastBackSlash = strrchr(filename, '\\');
     const char * lastSlash = strrchr(filename, '/');
     const char * ext = strrchr(filename, '.');
-    if ((ext == NULL) ||
-        (lastBackSlash && (lastBackSlash > ext)) ||
-        (lastSlash && (lastSlash > ext))) {
+    if ((ext == NULL) || (lastBackSlash && (lastBackSlash > ext)) || (lastSlash && (lastSlash > ext))) {
         ext = clFormatDetectHeader(C, filename);
         if (ext)
             return ext;
@@ -216,13 +229,19 @@ clTonemap clTonemapFromString(struct clContext * C, const char * str)
 {
     COLORIST_UNUSED(C);
 
-    if (!strcmp(str, "on")) return CL_TONEMAP_ON;
-    if (!strcmp(str, "yes")) return CL_TONEMAP_ON;
-    if (!strcmp(str, "enabled")) return CL_TONEMAP_ON;
+    if (!strcmp(str, "on"))
+        return CL_TONEMAP_ON;
+    if (!strcmp(str, "yes"))
+        return CL_TONEMAP_ON;
+    if (!strcmp(str, "enabled"))
+        return CL_TONEMAP_ON;
 
-    if (!strcmp(str, "off")) return CL_TONEMAP_OFF;
-    if (!strcmp(str, "no")) return CL_TONEMAP_OFF;
-    if (!strcmp(str, "disabled")) return CL_TONEMAP_OFF;
+    if (!strcmp(str, "off"))
+        return CL_TONEMAP_OFF;
+    if (!strcmp(str, "no"))
+        return CL_TONEMAP_OFF;
+    if (!strcmp(str, "disabled"))
+        return CL_TONEMAP_OFF;
 
     return CL_TONEMAP_AUTO;
 }
@@ -232,9 +251,12 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
     COLORIST_UNUSED(C);
 
     switch (tonemap) {
-        case CL_TONEMAP_AUTO: return "auto";
-        case CL_TONEMAP_ON: return "on";
-        case CL_TONEMAP_OFF: return "off";
+        case CL_TONEMAP_AUTO:
+            return "auto";
+        case CL_TONEMAP_ON:
+            return "on";
+        case CL_TONEMAP_OFF:
+            return "off";
         default:
             break;
     }
@@ -248,13 +270,20 @@ clFilter clFilterFromString(struct clContext * C, const char * str)
 {
     COLORIST_UNUSED(C);
 
-    if (!strcmp(str, "auto")) return CL_FILTER_AUTO;
-    if (!strcmp(str, "box")) return CL_FILTER_BOX;
-    if (!strcmp(str, "triangle")) return CL_FILTER_TRIANGLE;
-    if (!strcmp(str, "cubic")) return CL_FILTER_CUBICBSPLINE;
-    if (!strcmp(str, "catmullrom")) return CL_FILTER_CATMULLROM;
-    if (!strcmp(str, "mitchell")) return CL_FILTER_MITCHELL;
-    if (!strcmp(str, "nearest")) return CL_FILTER_NEAREST;
+    if (!strcmp(str, "auto"))
+        return CL_FILTER_AUTO;
+    if (!strcmp(str, "box"))
+        return CL_FILTER_BOX;
+    if (!strcmp(str, "triangle"))
+        return CL_FILTER_TRIANGLE;
+    if (!strcmp(str, "cubic"))
+        return CL_FILTER_CUBICBSPLINE;
+    if (!strcmp(str, "catmullrom"))
+        return CL_FILTER_CATMULLROM;
+    if (!strcmp(str, "mitchell"))
+        return CL_FILTER_MITCHELL;
+    if (!strcmp(str, "nearest"))
+        return CL_FILTER_NEAREST;
     return CL_FILTER_INVALID;
 }
 
@@ -263,13 +292,20 @@ const char * clFilterToString(struct clContext * C, clFilter filter)
     COLORIST_UNUSED(C);
 
     switch (filter) {
-        case CL_FILTER_AUTO: return "auto";
-        case CL_FILTER_BOX: return "box";
-        case CL_FILTER_TRIANGLE: return "triangle";
-        case CL_FILTER_CUBICBSPLINE: return "cubic";
-        case CL_FILTER_CATMULLROM: return "catmullrom";
-        case CL_FILTER_MITCHELL: return "mitchell";
-        case CL_FILTER_NEAREST: return "nearest";
+        case CL_FILTER_AUTO:
+            return "auto";
+        case CL_FILTER_BOX:
+            return "box";
+        case CL_FILTER_TRIANGLE:
+            return "triangle";
+        case CL_FILTER_CUBICBSPLINE:
+            return "cubic";
+        case CL_FILTER_CATMULLROM:
+            return "catmullrom";
+        case CL_FILTER_MITCHELL:
+            return "mitchell";
+        case CL_FILTER_NEAREST:
+            return "nearest";
         case CL_FILTER_INVALID:
         default:
             break;
@@ -284,11 +320,16 @@ clYUVFormat clYUVFormatFromString(struct clContext * C, const char * str)
 {
     COLORIST_UNUSED(C);
 
-    if (!strcmp(str, "auto")) return CL_YUVFORMAT_AUTO;
-    if (!strcmp(str, "444")) return CL_YUVFORMAT_444;
-    if (!strcmp(str, "422")) return CL_YUVFORMAT_422;
-    if (!strcmp(str, "420")) return CL_YUVFORMAT_420;
-    if (!strcmp(str, "yv12")) return CL_YUVFORMAT_YV12;
+    if (!strcmp(str, "auto"))
+        return CL_YUVFORMAT_AUTO;
+    if (!strcmp(str, "444"))
+        return CL_YUVFORMAT_444;
+    if (!strcmp(str, "422"))
+        return CL_YUVFORMAT_422;
+    if (!strcmp(str, "420"))
+        return CL_YUVFORMAT_420;
+    if (!strcmp(str, "yv12"))
+        return CL_YUVFORMAT_YV12;
     return CL_YUVFORMAT_INVALID;
 }
 
@@ -297,11 +338,16 @@ const char * clYUVFormatToString(struct clContext * C, clYUVFormat format)
     COLORIST_UNUSED(C);
 
     switch (format) {
-        case CL_YUVFORMAT_AUTO: return "auto";
-        case CL_YUVFORMAT_444: return "444";
-        case CL_YUVFORMAT_422: return "422";
-        case CL_YUVFORMAT_420: return "420";
-        case CL_YUVFORMAT_YV12: return "yv12";
+        case CL_YUVFORMAT_AUTO:
+            return "auto";
+        case CL_YUVFORMAT_444:
+            return "444";
+        case CL_YUVFORMAT_422:
+            return "422";
+        case CL_YUVFORMAT_420:
+            return "420";
+        case CL_YUVFORMAT_YV12:
+            return "yv12";
         case CL_YUVFORMAT_INVALID:
         default:
             break;
@@ -959,11 +1005,18 @@ void clContextPrintArgs(clContext * C)
     }
     clContextLog(C, "syntax", 1, "writeProfile: %s", C->params.writeParams.writeProfile ? "true" : "false");
     if (C->params.primaries[0] > 0.0f)
-        clContextLog(C, "syntax", 1, "primaries   : r:(%.4g,%.4g) g:(%.4g,%.4g) b:(%.4g,%.4g) w:(%.4g,%.4g)",
-            C->params.primaries[0], C->params.primaries[1],
-            C->params.primaries[2], C->params.primaries[3],
-            C->params.primaries[4], C->params.primaries[5],
-            C->params.primaries[6], C->params.primaries[7]);
+        clContextLog(C,
+                     "syntax",
+                     1,
+                     "primaries   : r:(%.4g,%.4g) g:(%.4g,%.4g) b:(%.4g,%.4g) w:(%.4g,%.4g)",
+                     C->params.primaries[0],
+                     C->params.primaries[1],
+                     C->params.primaries[2],
+                     C->params.primaries[3],
+                     C->params.primaries[4],
+                     C->params.primaries[5],
+                     C->params.primaries[6],
+                     C->params.primaries[7]);
     else
         clContextLog(C, "syntax", 1, "primaries   : auto");
     clContextLog(C, "syntax", 1, "resizeW     : %d", C->params.resizeW);
@@ -1004,7 +1057,11 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -j,--jobs JOBS           : Number of jobs to use when working. 0 for as many as possible (default)");
     clContextLog(C, NULL, 0, "    -v,--verbose             : Verbose mode.");
     clContextLog(C, NULL, 0, "    --cmm WHICH,--cms WHICH  : Choose Color Management Module/System: auto (default), lcms, colorist (built-in, uses when possible)");
-    clContextLog(C, NULL, 0, "    --deflum LUMINANCE       : Choose the default/fallback luminance value in nits when unspecified (default: %d)", COLORIST_DEFAULT_LUMINANCE);
+    clContextLog(C,
+                 NULL,
+                 0,
+                 "    --deflum LUMINANCE       : Choose the default/fallback luminance value in nits when unspecified (default: %d)",
+                 COLORIST_DEFAULT_LUMINANCE);
     clContextLog(C, NULL, 0, "    --hlglum LUMINANCE       : Alternative to --deflum, hlglum chooses an appropriate diffuse white for --deflum based on peak HLG lum.");
     clContextLog(C, NULL, 0, "                               (--hlglum and --deflum are mutually exclusive as they are two ways to set the same value.)");
     clContextLog(C, NULL, 0, "");

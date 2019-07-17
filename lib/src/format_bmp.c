@@ -286,11 +286,10 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     if (image->depth == 8) {
         for (int i = 0; i < pixelCount; ++i) {
             uint16_t * srcPixel = &image->pixels[i * CL_CHANNELS_PER_PIXEL];
-            packedPixels[i] =
-                (srcPixel[2] << 0) +  // B
-                (srcPixel[1] << 8) +  // G
-                (srcPixel[0] << 16) + // R
-                (srcPixel[3] << 24);  // A
+            packedPixels[i] = (srcPixel[2] << 0) +  // B
+                              (srcPixel[1] << 8) +  // G
+                              (srcPixel[0] << 16) + // R
+                              (srcPixel[3] << 24);  // A
         }
         info.bV5BlueMask = 255U << 0;
         info.bV5GreenMask = 255U << 8;
@@ -301,10 +300,9 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
         for (int i = 0; i < pixelCount; ++i) {
             uint16_t * pixels = (uint16_t *)image->pixels;
             uint16_t * srcPixel = &pixels[i * CL_CHANNELS_PER_PIXEL];
-            packedPixels[i] =
-                ((srcPixel[2] & 1023) << 0) +  // B
-                ((srcPixel[1] & 1023) << 10) + // G
-                ((srcPixel[0] & 1023) << 20);  // R
+            packedPixels[i] = ((srcPixel[2] & 1023) << 0) +  // B
+                              ((srcPixel[1] & 1023) << 10) + // G
+                              ((srcPixel[0] & 1023) << 20);  // R
             // (((srcPixel[3] >> 8) & 3) << 30); // no Alpha in 10 bit
         }
         info.bV5BlueMask = 1023 << 0;

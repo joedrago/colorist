@@ -232,8 +232,8 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
     clBool isYUV = clFalse;
     clProfileYUVCoefficients yuv;
     clProfileYUVCoefficientsSetDefaults(C, &yuv);
-    if ((opjImage->color_space == OPJ_CLRSPC_SYCC) ||
-        ((opjImage->color_space == OPJ_CLRSPC_UNSPECIFIED) && (opjImage->numcomps >= 3) && ((chromaShiftX > 0) || (chromaShiftY > 0)))) {
+    if ((opjImage->color_space == OPJ_CLRSPC_SYCC) || ((opjImage->color_space == OPJ_CLRSPC_UNSPECIFIED) &&
+                                                       (opjImage->numcomps >= 3) && ((chromaShiftX > 0) || (chromaShiftY > 0)))) {
         isYUV = clTrue;
         clProfileQueryYUVCoefficients(C, profile, &yuv);
     }
@@ -271,8 +271,7 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
 
                 float R = Y + (2 * (1 - yuv.kr)) * Cr;
                 float B = Y + (2 * (1 - yuv.kb)) * Cb;
-                float G = Y - ((2 * ((yuv.kr * (1 - yuv.kr) * Cr) + (yuv.kb * (1 - yuv.kb) * Cb))) /
-                                  yuv.kg);
+                float G = Y - ((2 * ((yuv.kr * (1 - yuv.kr) * Cr) + (yuv.kb * (1 - yuv.kb) * Cb))) / yuv.kg);
 
                 R = CL_CLAMP(R, 0.0f, 1.0f);
                 G = CL_CLAMP(G, 0.0f, 1.0f);

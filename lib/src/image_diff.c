@@ -17,10 +17,8 @@
 
 clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage * image2, int taskCount, float minIntensity, int threshold)
 {
-    if (!clProfileComponentsMatch(C, image1->profile, image2->profile) ||
-        (image1->width != image2->width) ||
-        (image1->height != image2->height) ||
-        (image1->depth != image2->depth)) {
+    if (!clProfileComponentsMatch(C, image1->profile, image2->profile) || (image1->width != image2->width) ||
+        (image1->height != image2->height) || (image1->depth != image2->depth)) {
         return NULL;
     }
 
@@ -61,9 +59,8 @@ clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage 
         uint16_t * diffPixel = &diff->image->pixels[i * CL_CHANNELS_PER_PIXEL];
 
         uint16_t * intensityPixel = &intensityMap->pixels[i * CL_CHANNELS_PER_PIXEL];
-        float intensity = ((intensityPixel[0] / 65535.0f) * kr) +
-                          ((intensityPixel[1] / 65535.0f) * kg) +
-                          ((intensityPixel[2] / 65535.0f) * kb);
+        float intensity =
+            ((intensityPixel[0] / 65535.0f) * kr) + ((intensityPixel[1] / 65535.0f) * kg) + ((intensityPixel[2] / 65535.0f) * kb);
         intensity = CL_CLAMP(intensity + diff->minIntensity, 0.0f, 1.0f);
         diff->intensities[i] = (uint16_t)clPixelMathRoundf(255.0f * powf(intensity, 1.0f / 2.2f));
 

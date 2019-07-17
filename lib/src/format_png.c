@@ -99,14 +99,11 @@ struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, 
         png_set_tRNS_to_alpha(png);
     }
 
-    if ((rawColorType == PNG_COLOR_TYPE_RGB) ||
-        (rawColorType == PNG_COLOR_TYPE_GRAY) ||
-        (rawColorType == PNG_COLOR_TYPE_PALETTE)) {
+    if ((rawColorType == PNG_COLOR_TYPE_RGB) || (rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_PALETTE)) {
         png_set_filler(png, 0xFFFF, PNG_FILLER_AFTER);
     }
 
-    if ((rawColorType == PNG_COLOR_TYPE_GRAY) ||
-        (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
+    if ((rawColorType == PNG_COLOR_TYPE_GRAY) || (rawColorType == PNG_COLOR_TYPE_GRAY_ALPHA)) {
         png_set_gray_to_rgb(png);
     }
 
@@ -201,15 +198,7 @@ clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char
     wi.dst = output;
     png_set_write_fn(png, &wi, writeCallback, NULL);
 
-    png_set_IHDR(
-        png,
-        info,
-        image->width, image->height,
-        image->depth,
-        PNG_COLOR_TYPE_RGBA,
-        PNG_INTERLACE_NONE,
-        PNG_COMPRESSION_TYPE_DEFAULT,
-        PNG_FILTER_TYPE_DEFAULT);
+    png_set_IHDR(png, info, image->width, image->height, image->depth, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     if (writeParams->writeProfile) {
         png_set_iCCP(png, info, image->profile->description, 0, rawProfile.ptr, (png_uint_32)rawProfile.size);
     }

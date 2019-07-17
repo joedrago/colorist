@@ -145,9 +145,12 @@ clImage * clImageBlend(struct clContext * C, clImage * image, clImage * composit
     clProfile * blendProfile = clProfileCreate(C, &primaries, &curve, maxLuminance, NULL);
 
     // Build transforms that go [src -> blend], [cmp -> blend], [blend -> dst]
-    clTransform * srcBlendTransform = clTransformCreate(C, image->profile, CL_XF_RGBA, image->depth, blendProfile, CL_XF_RGBA, 32, blendParams->srcTonemap);
-    clTransform * cmpBlendTransform = clTransformCreate(C, compositeImage->profile, CL_XF_RGBA, compositeImage->depth, blendProfile, CL_XF_RGBA, 32, blendParams->cmpTonemap);
-    clTransform * dstTransform = clTransformCreate(C, blendProfile, CL_XF_RGBA, 32, image->profile, CL_XF_RGBA, image->depth, CL_TONEMAP_OFF); // maxLuminance should match, no need to tonemap
+    clTransform * srcBlendTransform =
+        clTransformCreate(C, image->profile, CL_XF_RGBA, image->depth, blendProfile, CL_XF_RGBA, 32, blendParams->srcTonemap);
+    clTransform * cmpBlendTransform =
+        clTransformCreate(C, compositeImage->profile, CL_XF_RGBA, compositeImage->depth, blendProfile, CL_XF_RGBA, 32, blendParams->cmpTonemap);
+    clTransform * dstTransform =
+        clTransformCreate(C, blendProfile, CL_XF_RGBA, 32, image->profile, CL_XF_RGBA, image->depth, CL_TONEMAP_OFF); // maxLuminance should match, no need to tonemap
 
     // Transform src and comp images into normalized blend space
     int pixelCount = image->width * image->height;
@@ -256,7 +259,8 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
             for (int j = 0; j < image->height; ++j) {
                 for (int i = 0; i < image->width; ++i) {
                     uint16_t * srcPixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
-                    uint16_t * dstPixel = &rotated->pixels[CL_CHANNELS_PER_PIXEL * ((rotated->width - 1 - i) + ((rotated->height - 1 - j) * rotated->width))];
+                    uint16_t * dstPixel =
+                        &rotated->pixels[CL_CHANNELS_PER_PIXEL * ((rotated->width - 1 - i) + ((rotated->height - 1 - j) * rotated->width))];
                     memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL);
                 }
             }
@@ -289,12 +293,19 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount
     clImageDebugDump(C, dstImage, 0, 0, 0, 0, 1);
 
     // Create the transform
-    clTransform * transform = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, srcImage->depth, dstImage->profile, CL_XF_RGBA, depth, tonemap);
+    clTransform * transform =
+        clTransformCreate(C, srcImage->profile, CL_XF_RGBA, srcImage->depth, dstImage->profile, CL_XF_RGBA, depth, tonemap);
     clTransformPrepare(C, transform);
     float luminanceScale = clTransformGetLuminanceScale(C, transform);
 
     // Perform conversion
-    clContextLog(C, "convert", 0, "Converting (%s, lum scale %gx, %s)...", clTransformCMMName(C, transform), luminanceScale, transform->tonemapEnabled ? "tonemap" : "clip");
+    clContextLog(C,
+                 "convert",
+                 0,
+                 "Converting (%s, lum scale %gx, %s)...",
+                 clTransformCMMName(C, transform),
+                 luminanceScale,
+                 transform->tonemapEnabled ? "tonemap" : "clip");
     timerStart(&t);
     clTransformRun(C, transform, taskCount, srcImage->pixels, dstImage->pixels, srcImage->width * srcImage->height);
     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));

@@ -52,17 +52,20 @@ static float gammaErrorTerm(float gamma, float * pixels, int pixelCount, float m
 
         scaledChannel = pixel[0] * luminanceScale;
         scaledChannel = CL_CLAMP(scaledChannel, 0.0f, 1.0f);
-        channelErrorTerm = fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
+        channelErrorTerm =
+            fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
         errorTerm += channelErrorTerm; // * channelErrorTerm;
 
         scaledChannel = pixel[1] * luminanceScale;
         scaledChannel = CL_CLAMP(scaledChannel, 0.0f, 1.0f);
-        channelErrorTerm = fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
+        channelErrorTerm =
+            fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
         errorTerm += channelErrorTerm; // * channelErrorTerm;
 
         scaledChannel = pixel[2] * luminanceScale;
         scaledChannel = CL_CLAMP(scaledChannel, 0.0f, 1.0f);
-        channelErrorTerm = fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
+        channelErrorTerm =
+            fabsf(scaledChannel - powf(clPixelMathRoundf(powf(scaledChannel, invGamma) * maxChannel) / maxChannel, gamma));
         errorTerm += channelErrorTerm; // * channelErrorTerm;
 
         pixel += 4;
@@ -86,7 +89,17 @@ static void gammaErrorTermTaskFunc(clGammaErrorTermTask * info)
     info->outErrorTerm = gammaErrorTerm(info->gamma, info->pixels, info->pixelCount, info->maxChannel, info->luminanceScale);
 }
 
-void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile * pixelProfile, float * pixels, int pixelCount, int imageWidth, int srcLuminance, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose)
+void clPixelMathColorGrade(struct clContext * C,
+                           int taskCount,
+                           struct clProfile * pixelProfile,
+                           float * pixels,
+                           int pixelCount,
+                           int imageWidth,
+                           int srcLuminance,
+                           int dstColorDepth,
+                           int * outLuminance,
+                           float * outGamma,
+                           clBool verbose)
 {
     int maxLuminance = 0;
     float bestGamma = 0.0f;
@@ -135,7 +148,14 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
 
         clTransformDestroy(C, toXYZ);
 
-        clContextLog(C, "grading", 1, "Found pixel (%d,%d) with largest single RGB channel (%g nits, %g nits if white).", pixelX, pixelY, pixelLuminance, maxLuminanceFloat);
+        clContextLog(C,
+                     "grading",
+                     1,
+                     "Found pixel (%d,%d) with largest single RGB channel (%g nits, %g nits if white).",
+                     pixelX,
+                     pixelY,
+                     pixelLuminance,
+                     maxLuminanceFloat);
     } else {
         maxLuminance = *outLuminance;
         clContextLog(C, "grading", 1, "Using requested max luminance: %d nits", maxLuminance);
@@ -181,7 +201,14 @@ void clPixelMathColorGrade(struct clContext * C, int taskCount, struct clProfile
                         minGammaInt = infos[i].gammaInt;
                     }
                     if (verbose)
-                        clContextLog(C, "grading", 2, "attempt: gamma %.3g, err: %g     best -> gamma: %g, err: %g", infos[i].gamma, infos[i].outErrorTerm, (float)minGammaInt / GAMMA_INT_DIVISOR, minErrorTerm);
+                        clContextLog(C,
+                                     "grading",
+                                     2,
+                                     "attempt: gamma %.3g, err: %g     best -> gamma: %g, err: %g",
+                                     infos[i].gamma,
+                                     infos[i].outErrorTerm,
+                                     (float)minGammaInt / GAMMA_INT_DIVISOR,
+                                     minErrorTerm);
                     clTaskDestroy(C, tasks[i]);
                 }
                 tasksInFlight = 0;
