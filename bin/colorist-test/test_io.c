@@ -145,14 +145,14 @@ static void test_ext(struct clExtInfo * extInfo)
                             }
 
                             printf("Testing ext:%s threshold:%d bpc:%s q/r:%s primaries:%s curve:%s luminance:%s yuv:%s\n",
-                                   extInfo->ext,
-                                   threshold,
-                                   *bpc,
-                                   *quality,
-                                   *primaries,
-                                   *curve,
-                                   *luminance,
-                                   *yuv);
+                                extInfo->ext,
+                                threshold,
+                                *bpc,
+                                *quality,
+                                *primaries,
+                                *curve,
+                                *luminance,
+                                *yuv);
 
                             test_images(extInfo->ext, threshold, argc, argv);
                         }
@@ -166,8 +166,8 @@ static void test_ext(struct clExtInfo * extInfo)
 static void test_avif(void)
 {
     struct clExtInfo extInfo = { "avif",
-                                 5,
-                                 { "8", "10", "12", NULL },
+                                 6,
+                                 { "8", "10", NULL },
                                  { "100", "90", NULL },
                                  { "bt709", "bt2020", NULL },
                                  { "2.2", "pq", NULL },
