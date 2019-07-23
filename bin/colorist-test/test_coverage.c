@@ -206,15 +206,15 @@ static void test_clContextParseArgs(void)
 
     {
         // custom primaries
-        const char * argv[] = { "colorist",   "convert", "input.png",
-                                "output.png", "-p",      "0.64,0.33,0.30,0.60,0.15,0.06,0.3127,0.329" };
+        const char * argv[] = { "colorist", "convert", "input.png",
+                                "output.png", "-p", "0.64,0.33,0.30,0.60,0.15,0.06,0.3127,0.329" };
         TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
     }
 
     {
         // too many primaries
-        const char * argv[] = { "colorist",   "convert", "input.png",
-                                "output.png", "-p",      "0.64,0.33,0.30,0.60,0.15,0.06,0.3127,0.329,0.555" };
+        const char * argv[] = { "colorist", "convert", "input.png",
+                                "output.png", "-p", "0.64,0.33,0.30,0.60,0.15,0.06,0.3127,0.329,0.555" };
         TEST_ASSERT_FALSE(clContextParseArgs(C, ARGS(argv)));
     }
 
@@ -256,7 +256,7 @@ static void test_clContextParseArgs(void)
             // if (!filterNames[i])
             //     continue;
 
-            char description[128];
+            char description[256];
             char buffer[128];
             sprintf(buffer, "5,5,%s", filterNames[i]);
             sprintf(description, "Resize with %s", buffer);
@@ -291,13 +291,13 @@ static void test_clContextParseArgs(void)
 
     {
         // coverage kitchen sink
-        const char * argv[] = { "colorist",    "convert",   "input.png", "output.png",  "-a",         "-b",       "16",
-                                "-c",          "copyright", "-d",        "description", "-f",         "png",      "-g",
-                                "2.2",         "-g",        "s",         "-h",          "--hald",     "hald.png", "--iccin",
-                                "iccin.icc",   "-j",        "4",         "-j",          "0",          "--json",   "-l",
-                                "1000",        "-l",        "s",         "--iccout",    "iccout.icc", "-q",       "50",
-                                "--striptags", "lumi",      "-t",        "on",          "-v",         "--cmm",    "lcms",
-                                "--cmm",       "ccmm",      "--rect",    "0,0,1,1",     "--crop",     "0,0,1,1",  "--rate",
+        const char * argv[] = { "colorist", "convert", "input.png", "output.png", "-a", "-b", "16",
+                                "-c", "copyright", "-d", "description", "-f", "png", "-g",
+                                "2.2", "-g", "s", "-h", "--hald", "hald.png", "--iccin",
+                                "iccin.icc", "-j", "4", "-j", "0", "--json", "-l",
+                                "1000", "-l", "s", "--iccout", "iccout.icc", "-q", "50",
+                                "--striptags", "lumi", "-t", "on", "-v", "--cmm", "lcms",
+                                "--cmm", "ccmm", "--rect", "0,0,1,1", "--crop", "0,0,1,1", "--rate",
                                 "50" };
         TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
     }
@@ -310,8 +310,8 @@ static void test_clContextParseArgs(void)
 
     {
         // test everything that requires an argument
-        const char * needsArgs[] = { "-b",       "-c", "-d", "-f",          "-g", "--hald", "--iccin", "-j",    "-l",
-                                     "--iccout", "-p", "-q", "--striptags", "-t", "--cms",  "--crop",  "--rate" };
+        const char * needsArgs[] = { "-b", "-c", "-d", "-f", "-g", "--hald", "--iccin", "-j", "-l",
+                                     "--iccout", "-p", "-q", "--striptags", "-t", "--cms", "--crop", "--rate" };
         const int needsArgsCount = sizeof(needsArgs) / sizeof(needsArgs[0]);
         const char * argv[] = { "colorist", "convert", "input.png", "output.png", NULL };
         for (int i = 0; i < needsArgsCount; ++i) {
