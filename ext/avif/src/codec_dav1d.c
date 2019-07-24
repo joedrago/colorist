@@ -7,6 +7,11 @@
 
 #include <string.h>
 
+// For those building with an older version of dav1d (not recommended).
+#ifndef DAV1D_ERR
+#define DAV1D_ERR(e) (-(e))
+#endif
+
 struct avifCodecInternal
 {
     Dav1dSettings dav1dSettings;
@@ -75,12 +80,16 @@ static avifBool dav1dCodecAlphaLimitedRange(avifCodec * codec)
 static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
 {
     avifBool gotPicture = AVIF_FALSE;
-    Dav1dPicture nextFrame = { 0 };
+    Dav1dPicture nextFrame;
+    memset(&nextFrame, 0, sizeof(Dav1dPicture));
 
     for (;;) {
         avifBool sentData = dav1dFeedData(codec);
         int res = dav1d_get_picture(codec->internal->dav1dContext, &nextFrame);
-        if ((res < 0) && (res != DAV1D_ERR(EAGAIN)) && !sentData) {
+        if ((res == DAV1D_ERR(EAGAIN)) && sentData) {
+            // send more data
+            continue;
+        } else if (res < 0) {
             // No more frames
             return AVIF_FALSE;
         } else {
@@ -123,8 +132,8 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         }
 
         if (image->width && image->height) {
-            if ((image->width != dav1dImage->p.w) || (image->height != dav1dImage->p.h) || (image->depth != dav1dImage->p.bpc) ||
-                (image->yuvFormat != yuvFormat)) {
+            if ((image->width != (uint32_t)dav1dImage->p.w) || (image->height != (uint32_t)dav1dImage->p.h) ||
+                (image->depth != (uint32_t)dav1dImage->p.bpc) || (image->yuvFormat != yuvFormat)) {
                 // Throw it all out
                 avifImageFreePlanes(image, AVIF_PLANES_ALL);
             }
@@ -139,12 +148,10 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         avifPixelFormatInfo formatInfo;
         avifGetPixelFormatInfo(yuvFormat, &formatInfo);
 
-        int uvHeight = image->height >> formatInfo.chromaShiftY;
-
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
         for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
             image->yuvPlanes[yuvPlane] = dav1dImage->data[yuvPlane];
-            image->yuvRowBytes[yuvPlane] = dav1dImage->stride[(yuvPlane == AVIF_CHAN_Y) ? 0 : 1];
+            image->yuvRowBytes[yuvPlane] = (uint32_t)dav1dImage->stride[(yuvPlane == AVIF_CHAN_Y) ? 0 : 1];
         }
         image->decoderOwnsYUVPlanes = AVIF_TRUE;
     } else {
@@ -152,13 +159,13 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
 
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = dav1dImage->data[0];
-        image->alphaRowBytes = dav1dImage->stride[0];
+        image->alphaRowBytes = (uint32_t)dav1dImage->stride[0];
         image->decoderOwnsAlphaPlane = AVIF_TRUE;
     }
     return AVIF_TRUE;
 }
 
-avifCodec * avifCodecCreateDav1d()
+avifCodec * avifCodecCreateDav1d(void)
 {
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
     memset(codec, 0, sizeof(struct avifCodec));

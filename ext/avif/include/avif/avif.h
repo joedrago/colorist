@@ -16,7 +16,7 @@ extern "C" {
 
 #define AVIF_VERSION_MAJOR 0
 #define AVIF_VERSION_MINOR 3
-#define AVIF_VERSION_PATCH 0
+#define AVIF_VERSION_PATCH 3
 #define AVIF_VERSION (AVIF_VERSION_MAJOR * 10000) + (AVIF_VERSION_MINOR * 100) + AVIF_VERSION_PATCH
 
 typedef int avifBool;
@@ -271,9 +271,9 @@ typedef enum avifProfileFormat
 typedef struct avifImage
 {
     // Image information
-    int width;
-    int height;
-    int depth; // all planes (RGB/YUV/A) must share this depth; if depth>8, all planes are uint16_t internally
+    uint32_t width;
+    uint32_t height;
+    uint32_t depth; // all planes (RGB/YUV/A) must share this depth; if depth>8, all planes are uint16_t internally
 
     uint8_t * rgbPlanes[AVIF_PLANE_COUNT_RGB];
     uint32_t rgbRowBytes[AVIF_PLANE_COUNT_RGB];
@@ -367,6 +367,9 @@ typedef struct avifDecoder
     double duration;               // in seconds (durationInTimescales / timescale)
     uint64_t durationInTimescales; // duration in "timescales"
 
+    // stats from the most recent read, possibly 0s if reading an image sequence
+    avifIOStats ioStats;
+
     // Internals used by the decoder
     struct avifData * data;
 } avifDecoder;
@@ -416,6 +419,10 @@ void avifEncoderDestroy(avifEncoder * encoder);
 
 // Helpers
 avifBool avifImageUsesU16(avifImage * image);
+
+// Returns AVIF_TRUE if input begins with a valid FileTypeBox (ftyp) that supports
+// either the brand 'avif' or 'avis' (or both), without performing any allocations.
+avifBool avifPeekCompatibleFileType(avifRawData * input);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -6,6 +6,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2019-07-24
+### Added
+- new helper function `avifPeekCompatibleFileType()`
+- expose ioStats on avifDecoder again (currently only interesting when reading items)
+
+### Changed
+- Fixed some warnings (removed unused variables and a bad cast)
+- Add a define in dav1d layer for supporting older dav1d codecs
+- Enabled tons of warnings, and warnings-as-errors; Fixed associated fallout
+- codec_dav1d: disambiguate "needs more data" and "no more frames" in feed data pump
+
+## [0.3.2] - 2019-07-23
+### Added
+- Added `ext/aom.cmd` to perform a local checkout of the aom codebase, as an alternative to a real submodule. This allows downstream projects to use libavif without recursive submodule issues.
+- AppVeyor and Travis scripts now explicitly clone libaom into ext/ as an alternative to a submodule.
+
+### Changed
+- Remove `ext/aom` as a submodule. If libavif users want to build aom from ext/, they must enable `AVIF_BUILD_AOM` and supply their own local copy.
+- Move the handful of public domain gb_math functions used by colr.c and eliminate the dependence on the gb library
+- Detect when libaom or libdav1d is being included by a parent CMake project and allow it
+- Offer libavif's include dir alongside the library in CMake (target_include_directories)
+
+## [0.3.1] - 2019-07-22
+### Changed
+- Moved dependency on libm to avif executables, instead of directly on the library
+- Minor changes to README examples
+
 ## [0.3.0] - 2019-07-22
 ### Added
 - new CMake option `AVIF_CODEC_AOM` to enable/disable the usage of AOM's codec (default: on)
@@ -96,7 +123,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.3.3...HEAD
+[0.3.2]: https://github.com/AOMediaCodec/libavif/compare/v0.3.2...v0.3.3
+[0.3.2]: https://github.com/AOMediaCodec/libavif/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/AOMediaCodec/libavif/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/AOMediaCodec/libavif/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/AOMediaCodec/libavif/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/AOMediaCodec/libavif/compare/v0.1.3...v0.1.4

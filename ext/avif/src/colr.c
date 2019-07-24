@@ -3,9 +3,135 @@
 
 #include "avif/internal.h"
 
-#include "gb_math.h"
-
+#include <math.h>
 #include <string.h>
+
+// ------------------------------------------------------------------------------------------------
+// Adapted from gb_math:
+//
+// gb_math.h - v0.07c - public domain C math library - no warranty implied; use at your own risk
+
+typedef float gbFloat3[3];
+
+typedef union gbVec2
+{
+    struct
+    {
+        float x, y;
+    } xy;
+    float e[2];
+} gbVec2;
+
+typedef union gbVec3
+{
+    struct
+    {
+        float x, y, z;
+    } xyz;
+    struct
+    {
+        float r, g, b;
+    } rgb;
+
+    gbVec2 xy;
+    float e[3];
+} gbVec3;
+
+typedef union gbMat3
+{
+    struct
+    {
+        gbVec3 x, y, z;
+    } xyz;
+    gbVec3 col[3];
+    float e[9];
+} gbMat3;
+
+static gbFloat3 * gb_float33_m(gbMat3 * m)
+{
+    return (gbFloat3 *)m;
+}
+
+static void gb_float33_mul_vec3(gbVec3 * out, float m[3][3], gbVec3 v)
+{
+    out->xyz.x = m[0][0] * v.xyz.x + m[0][1] * v.xyz.y + m[0][2] * v.xyz.z;
+    out->xyz.y = m[1][0] * v.xyz.x + m[1][1] * v.xyz.y + m[1][2] * v.xyz.z;
+    out->xyz.z = m[2][0] * v.xyz.x + m[2][1] * v.xyz.y + m[2][2] * v.xyz.z;
+}
+
+static void gb_mat3_mul_vec3(gbVec3 * out, gbMat3 * m, gbVec3 in)
+{
+    gb_float33_mul_vec3(out, gb_float33_m(m), in);
+}
+
+static void gb_float33_transpose(float (*vec)[3])
+{
+    int i, j;
+    for (j = 0; j < 3; j++) {
+        for (i = j + 1; i < 3; i++) {
+            float t = vec[i][j];
+            vec[i][j] = vec[j][i];
+            vec[j][i] = t;
+        }
+    }
+}
+
+static void gb_mat3_transpose(gbMat3 * m)
+{
+    gb_float33_transpose(gb_float33_m(m));
+}
+
+static float gb_mat3_determinate(gbMat3 * m)
+{
+    gbFloat3 * e = gb_float33_m(m);
+    float d = +e[0][0] * (e[1][1] * e[2][2] - e[1][2] * e[2][1]) - e[0][1] * (e[1][0] * e[2][2] - e[1][2] * e[2][0]) +
+              e[0][2] * (e[1][0] * e[2][1] - e[1][1] * e[2][0]);
+    return d;
+}
+
+static void gb_float33_mul(float (*out)[3], float (*mat1)[3], float (*mat2)[3])
+{
+    int i, j;
+    float temp1[3][3], temp2[3][3];
+    if (mat1 == out) {
+        memcpy(temp1, mat1, sizeof(temp1));
+        mat1 = temp1;
+    }
+    if (mat2 == out) {
+        memcpy(temp2, mat2, sizeof(temp2));
+        mat2 = temp2;
+    }
+    for (j = 0; j < 3; j++) {
+        for (i = 0; i < 3; i++) {
+            out[j][i] = mat1[0][i] * mat2[j][0] + mat1[1][i] * mat2[j][1] + mat1[2][i] * mat2[j][2];
+        }
+    }
+}
+
+static void gb_mat3_mul(gbMat3 * out, gbMat3 * m1, gbMat3 * m2)
+{
+    gb_float33_mul(gb_float33_m(out), gb_float33_m(m1), gb_float33_m(m2));
+}
+
+static void gb_mat3_inverse(gbMat3 * out, gbMat3 * in)
+{
+    gbFloat3 * o = gb_float33_m(out);
+    gbFloat3 * i = gb_float33_m(in);
+
+    float ood = 1.0f / gb_mat3_determinate(in);
+
+    o[0][0] = +(i[1][1] * i[2][2] - i[2][1] * i[1][2]) * ood;
+    o[0][1] = -(i[1][0] * i[2][2] - i[2][0] * i[1][2]) * ood;
+    o[0][2] = +(i[1][0] * i[2][1] - i[2][0] * i[1][1]) * ood;
+    o[1][0] = -(i[0][1] * i[2][2] - i[2][1] * i[0][2]) * ood;
+    o[1][1] = +(i[0][0] * i[2][2] - i[2][0] * i[0][2]) * ood;
+    o[1][2] = -(i[0][0] * i[2][1] - i[2][0] * i[0][1]) * ood;
+    o[2][0] = +(i[0][1] * i[1][2] - i[1][1] * i[0][2]) * ood;
+    o[2][1] = -(i[0][0] * i[1][2] - i[1][0] * i[0][2]) * ood;
+    o[2][2] = +(i[0][0] * i[1][1] - i[1][0] * i[0][1]) * ood;
+}
+
+// ------------------------------------------------------------------------------------------------
 
 struct avifColourPrimariesTable
 {
@@ -133,7 +259,7 @@ static float calcMaxY(float r, float g, float b, gbMat3 * colorants)
     rgb.e[1] = g;
     rgb.e[2] = b;
     gb_mat3_mul_vec3(&XYZ, colorants, rgb);
-    return XYZ.y;
+    return XYZ.xyz.y;
 }
 
 static avifBool readXYZ(uint8_t * data, size_t size, float xyz[3])
@@ -196,6 +322,9 @@ static avifBool calcYUVInfoFromICC(avifRawData * icc, float coeffs[3])
     gbMat3 colorants;
     gbMat3 chad, invChad;
     gbVec3 wtpt;
+    wtpt.e[0] = 0.0f;
+    wtpt.e[1] = 0.0f;
+    wtpt.e[2] = 0.0f;
 
     for (uint32_t tagIndex = 0; tagIndex < tagCount; ++tagIndex) {
         uint8_t tagSignature[4];
@@ -282,28 +411,28 @@ static void deriveXYZMatrix(gbMat3 * colorants, float primaries[8])
     gbVec3 U, W;
     gbMat3 P, PInv, D;
 
-    P.col[0].x = primaries[0];
-    P.col[0].y = primaries[1];
-    P.col[0].z = 1 - primaries[0] - primaries[1];
-    P.col[1].x = primaries[2];
-    P.col[1].y = primaries[3];
-    P.col[1].z = 1 - primaries[2] - primaries[3];
-    P.col[2].x = primaries[4];
-    P.col[2].y = primaries[5];
-    P.col[2].z = 1 - primaries[4] - primaries[5];
+    P.col[0].xyz.x = primaries[0];
+    P.col[0].xyz.y = primaries[1];
+    P.col[0].xyz.z = 1 - primaries[0] - primaries[1];
+    P.col[1].xyz.x = primaries[2];
+    P.col[1].xyz.y = primaries[3];
+    P.col[1].xyz.z = 1 - primaries[2] - primaries[3];
+    P.col[2].xyz.x = primaries[4];
+    P.col[2].xyz.y = primaries[5];
+    P.col[2].xyz.z = 1 - primaries[4] - primaries[5];
 
     gb_mat3_inverse(&PInv, &P);
 
-    W.x = primaries[6];
-    W.y = primaries[7];
-    W.z = 1 - primaries[6] - primaries[7];
+    W.xyz.x = primaries[6];
+    W.xyz.y = primaries[7];
+    W.xyz.z = 1 - primaries[6] - primaries[7];
 
     gb_mat3_mul_vec3(&U, &PInv, W);
 
     memset(&D, 0, sizeof(D));
-    D.col[0].x = U.x / W.y;
-    D.col[1].y = U.y / W.y;
-    D.col[2].z = U.z / W.y;
+    D.col[0].xyz.x = U.xyz.x / W.xyz.y;
+    D.col[1].xyz.y = U.xyz.y / W.xyz.y;
+    D.col[2].xyz.z = U.xyz.z / W.xyz.y;
 
     gb_mat3_mul(colorants, &P, &D);
     gb_mat3_transpose(colorants);
