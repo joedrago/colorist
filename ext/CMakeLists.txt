@@ -142,7 +142,7 @@ add_library(jpeg
     jpeg/wrtarga.c
 )
 
-set(AVIF_EXTERNAL_GB TRUE)
+set(AVIF_BUILD_AOM ON CACHE BOOL "" FORCE)
 add_subdirectory(avif)
 
 set(APG_EXTERNAL_AOM TRUE)
