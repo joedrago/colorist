@@ -131,6 +131,8 @@ typedef struct clWriteParams
     int rate;
     clYUVFormat yuvFormat; // Only used when writing YUV
     clBool writeProfile;   // Write ICC or nclx profile to output file?
+    int quantizerMin;      // AVIF only. 0-63 range. 0 is lossless. -1 is "ignore and use quality"
+    int quantizerMax;      // AVIF only. 0-63 range. 0 is lossless. -1 is "ignore and use quality"
 } clWriteParams;
 void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams);
 

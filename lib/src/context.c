@@ -417,6 +417,8 @@ void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams)
     writeParams->rate = CL_DEFAULT_RATE;
     writeParams->yuvFormat = CL_YUVFORMAT_AUTO;
     writeParams->writeProfile = clTrue;
+    writeParams->quantizerMin = -1;
+    writeParams->quantizerMax = -1;
 }
 
 static void clContextSetDefaultArgs(clContext * C)
@@ -833,7 +835,8 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                     return clFalse;
                 }
                 C->defaultLuminance = clTransformCalcDefaultLuminanceFromHLG(hlgLum);
-                clContextLog(C, "hlg", 0, "Choosing %d nits as default luminance based on max HLG luminance of %d nits", C->defaultLuminance, hlgLum);
+                clContextLog(
+                    C, "hlg", 0, "Choosing %d nits as default luminance based on max HLG luminance of %d nits", C->defaultLuminance, hlgLum);
                 if (hlgLum <= 1) {
                     clContextLogError(C, "Invalid HLG luminance: %s", arg);
                     return clFalse;
@@ -842,6 +845,24 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 NEXTARG();
                 if (!parseRect(C, C->params.rect, arg))
                     return clFalse;
+            } else if (!strcmp(arg, "--quantizer")) {
+                NEXTARG();
+                char tmpBuffer[16]; // the biggest legal string is "63,63", so I don't mind truncation here
+                strncpy(tmpBuffer, arg, 15);
+                tmpBuffer[15] = 0;
+                char * comma = strchr(tmpBuffer, ',');
+                if (comma) {
+                    *comma = 0;
+                    ++comma;
+                    C->params.writeParams.quantizerMin = atoi(tmpBuffer);
+                    C->params.writeParams.quantizerMax = atoi(comma);
+                } else {
+                    int quantizerBoth = atoi(tmpBuffer);
+                    C->params.writeParams.quantizerMin = quantizerBoth;
+                    C->params.writeParams.quantizerMax = quantizerBoth;
+                }
+                C->params.writeParams.quantizerMin = CL_CLAMP(C->params.writeParams.quantizerMin, 0, 63);
+                C->params.writeParams.quantizerMax = CL_CLAMP(C->params.writeParams.quantizerMax, 0, 63);
             } else if (!strcmp(arg, "-r") || !strcmp(arg, "--rate")) {
                 NEXTARG();
                 C->params.writeParams.rate = atoi(arg);
@@ -1022,7 +1043,8 @@ void clContextPrintArgs(clContext * C)
     clContextLog(C, "syntax", 1, "resizeW     : %d", C->params.resizeW);
     clContextLog(C, "syntax", 1, "resizeH     : %d", C->params.resizeH);
     clContextLog(C, "syntax", 1, "resizeFilter: %s", clFilterToString(C, C->params.resizeFilter));
-    clContextLog(C, "syntax", 1, "rect        : (%d,%d) %dx%d", C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3]);
+    clContextLog(
+        C, "syntax", 1, "rect        : (%d,%d) %dx%d", C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3]);
     clContextLog(C, "syntax", 1, "stripTags   : %s", C->params.stripTags ? C->params.stripTags : "--");
     clContextLog(C, "syntax", 1, "stats       : %s", C->params.stats ? "true" : "false");
     clContextLog(C, "syntax", 1, "tonemap     : %s", clTonemapToString(C, C->params.tonemap));
@@ -1085,6 +1107,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)");
     clContextLog(C, NULL, 0, "    -t,--tonemap TM          : Set tonemapping. auto (default), on, or off");
     clContextLog(C, NULL, 0, "    --yuv YUVFORMAT          : Choose yuv output format for supported formats. auto (default), 444, 422, 420, yv12");
+    clContextLog(C, NULL, 0, "    --quantizer MIN,MAX      : Choose min and max quantizer values directly instead of using -q (AVIF only, 0-63 range, 0,0 is lossless)");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Convert Options:");
     clContextLog(C, NULL, 0, "    --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)");

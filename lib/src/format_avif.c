@@ -21,10 +21,10 @@ static void logAvifImage(struct clContext * C, avifImage * avif, avifIOStats * i
 
 struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteAVIF(struct clContext * C,
-    struct clImage * image,
-    const char * formatName,
-    struct clRaw * output,
-    struct clWriteParams * writeParams);
+                         struct clImage * image,
+                         const char * formatName,
+                         struct clRaw * output,
+                         struct clWriteParams * writeParams);
 
 struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
 {
@@ -150,13 +150,13 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
         avifNclxColorProfile nclx;
         if (clProfileToNclx(C, image->profile, &nclx)) {
             clContextLog(C,
-                "avif",
-                1,
-                "Writing colr box (nclx): C: %d / T: %d / M: %d / F: 0x%x",
-                nclx.colourPrimaries,
-                nclx.transferCharacteristics,
-                nclx.matrixCoefficients,
-                nclx.fullRangeFlag);
+                         "avif",
+                         1,
+                         "Writing colr box (nclx): C: %d / T: %d / M: %d / F: 0x%x",
+                         nclx.colourPrimaries,
+                         nclx.transferCharacteristics,
+                         nclx.matrixCoefficients,
+                         nclx.fullRangeFlag);
             avifImageSetProfileNCLX(avif, &nclx);
         } else {
             clContextLog(C, "avif", 1, "Writing colr box (icc): %u bytes", (uint32_t)rawProfile.size);
@@ -185,12 +185,25 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
         }
     }
 
-    int rescaledQuality = 63 - (int)(((float)writeParams->quality / 100.0f) * 63.0f);
-
     encoder = avifEncoderCreate();
     encoder->maxThreads = C->params.jobs;
-    encoder->minQuantizer = 0; // TODO: Adjust this as well?
-    encoder->maxQuantizer = rescaledQuality;
+    if ((writeParams->quantizerMin == -1) && (writeParams->quantizerMax == -1)) {
+        int rescaledQuality = 63 - (int)(((float)writeParams->quality / 100.0f) * 63.0f);
+        encoder->minQuantizer = 0;
+        encoder->maxQuantizer = rescaledQuality;
+        clContextLog(C,
+                     "avif",
+                     1,
+                     "Encoding quantizer (0=lossless, 63=worst) min/max: %d/%d    (derived from Q=%d)",
+                     encoder->minQuantizer,
+                     encoder->maxQuantizer,
+                     writeParams->quality);
+    } else {
+        encoder->minQuantizer = writeParams->quantizerMin;
+        encoder->maxQuantizer = writeParams->quantizerMax;
+        clContextLog(
+            C, "avif", 1, "Encoding quantizer (0=lossless, 63=worst) min/max: %d/%d    (explicit)", encoder->minQuantizer, encoder->maxQuantizer);
+    }
     avifResult encodeResult = avifEncoderWrite(encoder, avif, &avifOutput);
     if (encodeResult != AVIF_RESULT_OK) {
         clContextLogError(C, "AVIF encoder failed (%s)", avifResultToString(encodeResult));
@@ -266,12 +279,12 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
             break;
         default:
             clContextLog(C,
-            "avif",
-            1,
-            "WARNING: Unsupported colr (nclx) transfer_characteristics %d, using gamma:%1.1f, lum:%d",
-            nclx->colourPrimaries,
-            curve.gamma,
-            maxLuminance);
+                         "avif",
+                         1,
+                         "WARNING: Unsupported colr (nclx) transfer_characteristics %d, using gamma:%1.1f, lum:%d",
+                         nclx->colourPrimaries,
+                         curve.gamma,
+                         maxLuminance);
             break;
     }
 
@@ -290,20 +303,20 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
     }
 
     clContextLog(C,
-        "avif",
-        1,
-        "nclx to ICC: Primaries: (r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g), Curve: %s%s, maxLum: %s",
-        primaries.red[0],
-        primaries.red[1],
-        primaries.green[0],
-        primaries.green[1],
-        primaries.blue[0],
-        primaries.blue[1],
-        primaries.white[0],
-        primaries.white[1],
-        clProfileCurveTypeToString(C, curve.type),
-        gammaString,
-        maxLumString);
+                 "avif",
+                 1,
+                 "nclx to ICC: Primaries: (r:%.4g,%.4g g:%.4g,%.4g b:%.4g,%.4g w:%.4g,%.4g), Curve: %s%s, maxLum: %s",
+                 primaries.red[0],
+                 primaries.red[1],
+                 primaries.green[0],
+                 primaries.green[1],
+                 primaries.blue[0],
+                 primaries.blue[1],
+                 primaries.white[0],
+                 primaries.white[1],
+                 clProfileCurveTypeToString(C, curve.type),
+                 gammaString,
+                 maxLumString);
 
     char * description = clGenerateDescription(C, &primaries, &curve, maxLuminance);
     clProfile * profile = clProfileCreate(C, &primaries, &curve, maxLuminance, description);
