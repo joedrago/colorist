@@ -16,7 +16,7 @@ extern "C" {
 
 #define AVIF_VERSION_MAJOR 0
 #define AVIF_VERSION_MINOR 3
-#define AVIF_VERSION_PATCH 5
+#define AVIF_VERSION_PATCH 6
 #define AVIF_VERSION (AVIF_VERSION_MAJOR * 10000) + (AVIF_VERSION_MINOR * 100) + AVIF_VERSION_PATCH
 
 typedef int avifBool;
@@ -402,12 +402,16 @@ avifResult avifDecoderReset(avifDecoder * decoder);
 // * if avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRawDataFree()
 // * if (maxThreads < 2), multithreading is disabled
 // * quality range: [AVIF_BEST_QUALITY - AVIF_WORST_QUALITY]
+// * To enable tiling, set tileRowsLog2 > 0 and/or tileColsLog2 > 0.
+//   Tiling values range [0-6], where the value indicates a request for 2^n tiles in that dimension.
 typedef struct avifEncoder
 {
     // settings
     int maxThreads;
     int minQuantizer;
     int maxQuantizer;
+    int tileRowsLog2;
+    int tileColsLog2;
 
     // stats from the most recent write
     avifIOStats ioStats;

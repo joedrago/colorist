@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.6] - 2019-07-25
+### Added
+- Exposed tile encoding to avifEncoder
+
 ## [0.3.5] - 2019-07-25
 ### Changed
 - Fixed copypasta bug in libaom encoding quantizer setup
@@ -131,7 +135,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.3.6...HEAD
+[0.3.6]: https://github.com/AOMediaCodec/libavif/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/AOMediaCodec/libavif/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/AOMediaCodec/libavif/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/AOMediaCodec/libavif/compare/v0.3.2...v0.3.3
