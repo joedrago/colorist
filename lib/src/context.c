@@ -419,6 +419,8 @@ void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams)
     writeParams->writeProfile = clTrue;
     writeParams->quantizerMin = -1;
     writeParams->quantizerMax = -1;
+    writeParams->tileRowsLog2 = 0;
+    writeParams->tileColsLog2 = 0;
 }
 
 static void clContextSetDefaultArgs(clContext * C)
@@ -683,7 +685,7 @@ static clBool parseResize(clContext * C, clConversionParams * params, const char
 
 #define NEXTARG()                                                     \
     if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
-        clContextLogError(C, "-%c requires an argument.", arg[1]);    \
+        clContextLogError(C, "%s requires an argument.", arg);        \
         return clFalse;                                               \
     }                                                                 \
     arg = argv[++argIndex]
@@ -863,6 +865,24 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 }
                 C->params.writeParams.quantizerMin = CL_CLAMP(C->params.writeParams.quantizerMin, 0, 63);
                 C->params.writeParams.quantizerMax = CL_CLAMP(C->params.writeParams.quantizerMax, 0, 63);
+            } else if (!strcmp(arg, "--tiling")) {
+                NEXTARG();
+                char tmpBuffer[16]; // the biggest legal string is "6,6", so I don't mind truncation here
+                strncpy(tmpBuffer, arg, 15);
+                tmpBuffer[15] = 0;
+                char * comma = strchr(tmpBuffer, ',');
+                if (comma) {
+                    *comma = 0;
+                    ++comma;
+                    C->params.writeParams.tileRowsLog2 = atoi(tmpBuffer);
+                    C->params.writeParams.tileColsLog2 = atoi(comma);
+                } else {
+                    int tileBoth = atoi(tmpBuffer);
+                    C->params.writeParams.tileRowsLog2 = tileBoth;
+                    C->params.writeParams.tileColsLog2 = tileBoth;
+                }
+                C->params.writeParams.tileRowsLog2 = CL_CLAMP(C->params.writeParams.tileRowsLog2, 0, 6);
+                C->params.writeParams.tileColsLog2 = CL_CLAMP(C->params.writeParams.tileColsLog2, 0, 6);
             } else if (!strcmp(arg, "-r") || !strcmp(arg, "--rate")) {
                 NEXTARG();
                 C->params.writeParams.rate = atoi(arg);
@@ -1108,6 +1128,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -t,--tonemap TM          : Set tonemapping. auto (default), on, or off");
     clContextLog(C, NULL, 0, "    --yuv YUVFORMAT          : Choose yuv output format for supported formats. auto (default), 444, 422, 420, yv12");
     clContextLog(C, NULL, 0, "    --quantizer MIN,MAX      : Choose min and max quantizer values directly instead of using -q (AVIF only, 0-63 range, 0,0 is lossless)");
+    clContextLog(C, NULL, 0, "    --tiling ROWS,COLS       : Enable tiling when encoding (AVIF only, 0-6 range, log2 based. Enables 2^ROWS rows and/or 2^COLS cols)");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Convert Options:");
     clContextLog(C, NULL, 0, "    --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)");

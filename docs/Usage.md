@@ -39,6 +39,7 @@ Output Format Options:
     -t,--tonemap TM          : Set tonemapping. auto (default), on, or off
     --yuv YUVFORMAT          : Choose yuv output format for supported formats. auto (default), 444, 422, 420, yv12
     --quantizer MIN,MAX      : Choose min and max quantizer values directly instead of using -q (AVIF only, 0-63 range, 0,0 is lossless)
+    --tiling ROWS,COLS       : Enable tiling when encoding (AVIF only, 0-6 range, log2 based. Enables 2^ROWS rows and/or 2^COLS cols)
 
 Convert Options:
     --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)
@@ -266,6 +267,13 @@ quality. Q100->Q60 has a reasonable descent in quality, and Q30->Q1 really
 trashes the image.
 
 Use this option if you want to specify your own min/max quantizers instead.
+
+### --tiling
+
+AVIF only. Enables tiling when encoding, and is log2 based (as these values
+are simply passed through to the encoder and it requests it as such).
+
+Example: `--tiling 2,3` will create 4 rows and 8 columns during encoding.
 
 ### -v, --verbose
 

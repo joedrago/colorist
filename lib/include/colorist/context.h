@@ -133,6 +133,8 @@ typedef struct clWriteParams
     clBool writeProfile;   // Write ICC or nclx profile to output file?
     int quantizerMin;      // AVIF only. 0-63 range. 0 is lossless. -1 is "ignore and use quality"
     int quantizerMax;      // AVIF only. 0-63 range. 0 is lossless. -1 is "ignore and use quality"
+    int tileRowsLog2;      // AVIF only. 0-6 range. 0 is disabled. Requests 2^n tile rows during encoding.
+    int tileColsLog2;      // AVIF only. 0-6 range. 0 is disabled. Requests 2^n tile cols during encoding.
 } clWriteParams;
 void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams);
 

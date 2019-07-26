@@ -213,6 +213,13 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
         clContextLog(
             C, "avif", 1, "Encoding quantizer (0=lossless, 63=worst) min/max: %d/%d    (explicit)", encoder->minQuantizer, encoder->maxQuantizer);
     }
+    encoder->tileRowsLog2 = writeParams->tileRowsLog2;
+    encoder->tileColsLog2 = writeParams->tileColsLog2;
+    if (encoder->tileRowsLog2 || encoder->tileColsLog2) {
+        clContextLog(C, "avif", 1, "Encoding tiling (log2): 2^%d rows / 2^%d cols", encoder->tileRowsLog2, encoder->tileColsLog2);
+    } else {
+        clContextLog(C, "avif", 1, "Encoding tiling (log2): disabled");
+    }
     avifResult encodeResult = avifEncoderWrite(encoder, avif, &avifOutput);
     if (encodeResult != AVIF_RESULT_OK) {
         clContextLogError(C, "AVIF encoder failed (%s)", avifResultToString(encodeResult));
