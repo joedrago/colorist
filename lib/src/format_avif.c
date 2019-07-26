@@ -188,16 +188,25 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
     encoder = avifEncoderCreate();
     encoder->maxThreads = C->params.jobs;
     if ((writeParams->quantizerMin == -1) && (writeParams->quantizerMax == -1)) {
-        int rescaledQuality = 63 - (int)(((float)writeParams->quality / 100.0f) * 63.0f);
-        encoder->minQuantizer = 0;
-        encoder->maxQuantizer = rescaledQuality;
+        int quality = writeParams->quality ? writeParams->quality : 100; // consider 0 to be lossless (100)
+
+        // minQuantizer ramps up from quality 63 -> 1 linearly, and arrives at 63 right when Q=1.
+        // maxQuantizer ramps up from quality 100 -> 37 linearly, and then clamps at 63 all the way to Q=1.
+        // Q=1 should end up with [63,63], which is as bad as possible.
+        // There is still a bit of a flat spot in the 30s/40s, but this feels like a reasonable quality
+        // dial in general. End users can use --quantizer if they want to be exact.
+        encoder->minQuantizer = 64 - quality;
+        encoder->minQuantizer = CL_CLAMP(encoder->minQuantizer, 0, 63);
+        encoder->maxQuantizer = 100 - quality;
+        encoder->maxQuantizer = CL_CLAMP(encoder->maxQuantizer, 0, 63);
         clContextLog(C,
                      "avif",
                      1,
-                     "Encoding quantizer (0=lossless, 63=worst) min/max: %d/%d    (derived from Q=%d)",
+                     "Encoding quantizer (0=lossless, 63=worst) min/max: %d/%d    (derived from Q=%d%s)",
                      encoder->minQuantizer,
                      encoder->maxQuantizer,
-                     writeParams->quality);
+                     writeParams->quality,
+                     (quality == 100) ? " [Lossless]" : "");
     } else {
         encoder->minQuantizer = writeParams->quantizerMin;
         encoder->maxQuantizer = writeParams->quantizerMax;

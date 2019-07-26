@@ -29,6 +29,7 @@ Output Profile Options:
     -g,--gamma GAMMA         : Output gamma (transfer func). 0 for auto (default), "pq" for PQ, "hlg" for HLG, or "source" to force source gamma
     -l,--luminance LUMINANCE : ICC profile max luminance, in nits. "source" to match source lum (default), or "unspecified" not specify
     -p,--primaries PRIMARIES : Color primaries. Use builtin (bt709, bt2020, p3) or in the form: rx,ry,gx,gy,bx,by,wx,wy
+    -n,--noprofile           : Do not write the converted image's profile to the output file. (all profile options still impact image conversion)
 
 Output Format Options:
     -b,--bpc BPC             : Output bits-per-channel. 8 - 16, or 0 for auto (default)
@@ -37,6 +38,7 @@ Output Format Options:
     -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)
     -t,--tonemap TM          : Set tonemapping. auto (default), on, or off
     --yuv YUVFORMAT          : Choose yuv output format for supported formats. auto (default), 444, 422, 420, yv12
+    --quantizer MIN,MAX      : Choose min and max quantizer values directly instead of using -q (AVIF only, 0-63 range, 0,0 is lossless)
 
 Convert Options:
     --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)
@@ -175,11 +177,18 @@ There are a handful of builtin primaries for convenience:
 * `bt2020` - [BT. 2020](https://en.wikipedia.org/wiki/Rec._2020#System_colorimetry)
 * `p3`     - [DCI-P3](https://en.wikipedia.org/wiki/DCI-P3#System_colorimetry)
 
+### -n, --noprofile
+
+By default, colorist will try to write an ICC profile to the destination file,
+even if it is sRGB. This disables all ICC profile chunk writing.
+
 ### -q, --quality
 
 Choose a lossy quality (0-100) for any output file format that supports it
 (JPG, JP2 if not using `-2`, WebP). The lower the value, the lower the file
 size and quality. For WebP and JP2 (without `-2`), 100 is lossless.
+
+See `--quantizer` for an explanation of how quality is mapped to AVIF encoding.
 
 ### -r, --rate
 
@@ -231,6 +240,32 @@ Automatic grading will automatically turn this off if you allow it to choose a
 max luminance, as it will never choose a luminance that will cause a pixel to
 clip. Use this switch (`-t off`) to achieve this with a manually specified max
 luminance.
+
+### --yuv
+
+Choose yuv output format for supported formats. auto (default), 444, 422, 420, yv12
+
+### --quantizer MIN,MAX
+
+Quantizer Ranges: 0-63
+
+The quality emitted by AVIF encoder is controlled by two quantizer values (a
+minimum and maximum). The higher these numbers are, the worse the image
+quality will be. For example, choosing [0,0] will create a lossless AVIF, and
+choosing [63,63] will encode something that barely looks like the original image.
+
+If this option isn't used, colorist will map the single `-q` quality value to
+these, by slowly ramping up the maximum quantizer first as you turn down the
+quality from 100, until it caps out at 63 (e.g. Q=99 will have a max quantizer
+of 1). The min quantizer will begin to ramp up from 0 in the 60s until it hits
+63 right at Q=1, making Q=1 have quantizer settings of [63,63].
+
+Due to how the encoder uses these values, there can be a bit of a plateau in
+the Q30-Q50 range, but dual ramp provides a reasonable single dial for
+quality. Q100->Q60 has a reasonable descent in quality, and Q30->Q1 really
+trashes the image.
+
+Use this option if you want to specify your own min/max quantizers instead.
 
 ### -v, --verbose
 
