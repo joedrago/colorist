@@ -5,7 +5,11 @@
 #                  http://www.boost.org/LICENSE_1_0.txt)
 # ---------------------------------------------------------------------------
 
-add_subdirectory(colorist)
-add_subdirectory(colorist-benchmark)
-add_subdirectory(colorist-roundtrip)
-add_subdirectory(colorist-test)
+set(COLORIST_BENCHMARK_SRCS
+    main.c
+)
+
+add_executable(colorist-benchmark
+     ${COLORIST_BENCHMARK_SRCS}
+)
+target_link_libraries(colorist-benchmark colorist)
