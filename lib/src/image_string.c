@@ -53,6 +53,9 @@
 //
 // color bars
 // 100x600,#ff0000,#00ff00,#0000ff,#ffff00,#ff00ff,#00ffff
+//
+// identity HALD CLUT of NxNxN
+// hald(N)
 
 typedef struct clColor
 {
@@ -77,6 +80,9 @@ typedef struct clToken
 
     // xN
     int repeat;
+
+    // HALD clut: if non-zero, generate an identity hald of NxNxN
+    int hald;
 
     // cw, ccw
     // -1 is ccw, 1 is cw
@@ -446,6 +452,43 @@ static const char * parseDimensions(struct clContext * C, const char * s, clToke
     return end;
 }
 
+static const char * parseHald(struct clContext * C, const char * s, clToken * token)
+{
+    char buffer[32];
+    size_t len;
+    const char * end;
+
+    if (strncmp(s, "hald(", 5) != 0) {
+        return NULL;
+    }
+    s += 5;
+
+    // Dimension
+    end = s;
+    while (isdigit(*end)) {
+        ++end;
+    }
+    len = end - s;
+    if (len == 0) {
+        clContextLogError(C, "Invalid HALD dimension here: %s", s);
+        return NULL;
+    }
+    if (len > 31) {
+        clContextLogError(C, "Dimension number too long [%d] here: %s", len, s);
+        return NULL;
+    }
+    memcpy(buffer, s, len);
+    buffer[len] = 0;
+    token->hald = atoi(buffer);
+    if (*end == ')') {
+        ++end; // Skip past close paren
+    } else {
+        clContextLogError(C, "Unexpected character here: %s", len, end);
+        return NULL;
+    }
+    return end;
+}
+
 static const char * parseRepeat(struct clContext * C, const char * s, clToken * token)
 {
     char buffer[32];
@@ -504,6 +547,11 @@ static const char * parseNext(struct clContext * C, const char * s, clToken * to
         }
     } else if (*s == 'x') {
         s = parseRepeat(C, s, token);
+        if (s == NULL) {
+            return NULL;
+        }
+    } else if ((!strncmp(s, "hald(", 5))) {
+        s = parseHald(C, s, token);
         if (s == NULL) {
             return NULL;
         }
@@ -820,6 +868,7 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
     int rotate = 0;
     int every = 0;
     int colorIndex = 0;
+    int hald = 0;
     clToken * t;
 
     colorCount = 0;
@@ -835,6 +884,9 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
         if (t->width) {
             imageHeight = t->height;
         }
+        if (t->hald) {
+            hald = t->hald;
+        }
         rotate += t->rotate;
     }
     while (rotate < 0) {
@@ -842,54 +894,107 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
     }
     rotate = rotate % 4;
 
-    clContextLog(C, "parse", 1, "Image stripe describes %d color%s.", colorCount, (colorCount != 1) ? "s" : "");
-    if (colorCount < 1) {
-        clContextLogError(C, "Image stripe specifies no colors, bailing out");
-        return NULL;
-    }
-    if (imageWidth && imageHeight) {
-        clContextLog(C, "parse", 1, "Image stripe requests a resolution of %dx%d", imageWidth, imageHeight);
-    } else {
-        imageWidth = colorCount;
-        imageHeight = 1;
-        clContextLog(C, "parse", 1, "Image stripe does not specify a resolution, choosing %dx%d", imageWidth, imageHeight);
-    }
-    pixelCount = imageWidth * imageHeight;
+    if (hald > 0) {
+        int imageDimensions = 0;
+        for (int i = 0; i < 32; ++i) {
+            if ((i * i) == hald) {
+                imageDimensions = i * i * i;
+                break;
+            }
+        }
+        if (imageDimensions == 0) {
+            clContextLogError(C, "Image stripe specifies an invalid hald (%dx%dx%d, please use a square number), bailing out", hald, hald, hald);
+            return NULL;
+        }
 
+        imageWidth = imageDimensions;
+        imageHeight = imageDimensions;
+        clContextLog(C,
+                     "parse",
+                     1,
+                     "Image stripe specifies an identity HALD (%dbpc) of %dx%dx%d, using %dx%d for image dimensions",
+                     depth,
+                     hald,
+                     hald,
+                     hald,
+                     imageWidth,
+                     imageHeight);
+    } else {
+        clContextLog(C, "parse", 1, "Image stripe describes %d color%s.", colorCount, (colorCount != 1) ? "s" : "");
+        if (colorCount < 1) {
+            clContextLogError(C, "Image stripe specifies no colors, bailing out");
+            return NULL;
+        }
+        if (imageWidth && imageHeight) {
+            clContextLog(C, "parse", 1, "Image stripe requests a resolution of %dx%d", imageWidth, imageHeight);
+        } else {
+            imageWidth = colorCount;
+            imageHeight = 1;
+            clContextLog(C, "parse", 1, "Image stripe does not specify a resolution, choosing %dx%d", imageWidth, imageHeight);
+        }
+    }
+
+    pixelCount = imageWidth * imageHeight;
     image = clImageCreate(C, imageWidth, imageHeight, depth, profile);
 
-    if (colorCount < imageWidth) {
-        clContextLog(C, "parse", 1, "More width than colors. Spreading colors evenly.");
-        every = imageHeight * (imageWidth / colorCount);
-    } else {
-        clContextLog(C, "parse", 1, "One color per row until no rows are left.");
-        every = imageHeight;
-    }
+    if (hald > 0) {
+        uint16_t maxChannel = (uint16_t)((1 << depth) - 1);
+        float maxChannelf = (float)maxChannel;
+        float haldMaxf = (float)(hald - 1);
+        for (int z = 0; z < hald; ++z) {
+            uint16_t zValue = (uint16_t)clPixelMathRoundf((float)z * maxChannelf / haldMaxf);
+            zValue = CL_CLAMP(zValue, 0, maxChannel);
 
-    for (pixelIndex = 0; pixelIndex < pixelCount; ++pixelIndex) {
-        clColor color;
-        int x = pixelIndex / imageHeight;
-        int y = pixelIndex % imageHeight;
-        int verticalPixelIndex = x + (y * imageWidth); // this fills columns down, then to the right
-        if (pixelIndex && ((pixelIndex % every) == 0)) {
-            ++colorIndex;
+            for (int y = 0; y < hald; ++y) {
+                uint16_t yValue = (uint16_t)clPixelMathRoundf((float)y * maxChannelf / haldMaxf);
+                yValue = CL_CLAMP(yValue, 0, maxChannel);
+
+                for (int x = 0; x < hald; ++x) {
+                    uint16_t xValue = (uint16_t)clPixelMathRoundf((float)x * maxChannelf / haldMaxf);
+                    xValue = CL_CLAMP(xValue, 0, maxChannel);
+
+                    uint16_t * pixel = &image->pixels[4 * (x + (y * hald) + (z * hald * hald))];
+                    pixel[0] = xValue;
+                    pixel[1] = yValue;
+                    pixel[2] = zValue;
+                    pixel[3] = maxChannel;
+                }
+            }
         }
-        colorIndex = CL_CLAMP(colorIndex, 0, colorCount - 1);
-        getColor(C, tokens, colorIndex, depth, &color);
-        uint16_t * pixel = &image->pixels[4 * verticalPixelIndex];
-        pixel[0] = (uint16_t)(color.r);
-        pixel[1] = (uint16_t)(color.g);
-        pixel[2] = (uint16_t)(color.b);
-        pixel[3] = (uint16_t)(color.a);
-    }
+    } else {
+        if (colorCount < imageWidth) {
+            clContextLog(C, "parse", 1, "More width than colors. Spreading colors evenly.");
+            every = imageHeight * (imageWidth / colorCount);
+        } else {
+            clContextLog(C, "parse", 1, "One color per row until no rows are left.");
+            every = imageHeight;
+        }
 
-    if (rotate != 0) {
-        clImage * rotated;
-        clContextLog(C, "parse", 1, "Rotating image %d turn%s clockwise", rotate, (rotate > 1) ? "s" : "");
-        rotated = clImageRotate(C, image, rotate);
-        clImageDestroy(C, image);
-        image = rotated;
-        clContextLog(C, "parse", 1, "Final resolution after rotation: %dx%d", image->width, image->height);
+        for (pixelIndex = 0; pixelIndex < pixelCount; ++pixelIndex) {
+            clColor color;
+            int x = pixelIndex / imageHeight;
+            int y = pixelIndex % imageHeight;
+            int verticalPixelIndex = x + (y * imageWidth); // this fills columns down, then to the right
+            if (pixelIndex && ((pixelIndex % every) == 0)) {
+                ++colorIndex;
+            }
+            colorIndex = CL_CLAMP(colorIndex, 0, colorCount - 1);
+            getColor(C, tokens, colorIndex, depth, &color);
+            uint16_t * pixel = &image->pixels[4 * verticalPixelIndex];
+            pixel[0] = (uint16_t)(color.r);
+            pixel[1] = (uint16_t)(color.g);
+            pixel[2] = (uint16_t)(color.b);
+            pixel[3] = (uint16_t)(color.a);
+        }
+
+        if (rotate != 0) {
+            clImage * rotated;
+            clContextLog(C, "parse", 1, "Rotating image %d turn%s clockwise", rotate, (rotate > 1) ? "s" : "");
+            rotated = clImageRotate(C, image, rotate);
+            clImageDestroy(C, image);
+            image = rotated;
+            clContextLog(C, "parse", 1, "Final resolution after rotation: %dx%d", image->width, image->height);
+        }
     }
     return image;
 }
