@@ -352,10 +352,10 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
         cmsCIEXYZ src;
         cmsCIExyY dst;
         cmsCIEXYZ adaptedWhiteXYZ;
-        cmsCIEXYZ * redXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigRedColorantTag);
-        cmsCIEXYZ * greenXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigGreenColorantTag);
-        cmsCIEXYZ * blueXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigBlueColorantTag);
-        cmsCIEXYZ * whiteXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigMediaWhitePointTag);
+        const cmsCIEXYZ * redXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigRedColorantTag);
+        const cmsCIEXYZ * greenXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigGreenColorantTag);
+        const cmsCIEXYZ * blueXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigBlueColorantTag);
+        const cmsCIEXYZ * whiteXYZ = (cmsCIEXYZ *)cmsReadTag(profile->handle, cmsSigMediaWhitePointTag);
         if (whiteXYZ == NULL)
             return clFalse;
 
@@ -405,8 +405,13 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
             // Always adapt the colorants with the chad tag (if wtpt is D50, it'll be identity)
             _cmsMAT3per(&colorants, &invChad, &tmpColorants);
 
-            if ((cmsGetEncodedICCversion(profile->handle) >= 0x4000000) && cmsIsTag(profile->handle, cmsSigChromaticAdaptationTag)) {
-                // Newer version with a chad tag set, adapt white point
+            if (cmsGetEncodedICCversion(profile->handle) >= 0x4000000) {
+                // v4+ ICC profiles *must* have D50 as the pre-chad whitepoint. Enforce this here.
+                whiteXYZ = cmsD50_XYZ();
+            }
+
+            if (cmsIsTag(profile->handle, cmsSigChromaticAdaptationTag)) {
+                // chad exists, adapt white point
                 cmsVEC3 srcWP, dstWP;
                 cmsCIExyY whiteXYY;
                 cmsXYZ2xyY(&whiteXYY, whiteXYZ);
@@ -418,7 +423,7 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
                 adaptedWhiteXYZ.Y = dstWP.n[VY];
                 adaptedWhiteXYZ.Z = dstWP.n[VZ];
             } else {
-                // Old version, or new version without a chad tag, leave wtpt alone
+                // no chad tag, leave wtpt alone
                 adaptedWhiteXYZ = *whiteXYZ;
             }
         } else {
