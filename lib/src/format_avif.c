@@ -210,8 +210,12 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
     } else {
         encoder->minQuantizer = writeParams->quantizerMin;
         encoder->maxQuantizer = writeParams->quantizerMax;
-        clContextLog(
-            C, "avif", 1, "Encoding quantizer (0=lossless, 63=worst) min/max: %d/%d    (explicit)", encoder->minQuantizer, encoder->maxQuantizer);
+        clContextLog(C,
+                     "avif",
+                     1,
+                     "Encoding quantizer (0=lossless, 63=worst) min/max: %d/%d    (explicit)",
+                     encoder->minQuantizer,
+                     encoder->maxQuantizer);
     }
     encoder->tileRowsLog2 = writeParams->tileRowsLog2;
     encoder->tileColsLog2 = writeParams->tileColsLog2;
@@ -413,9 +417,9 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
     }
 
     clContextLog(C, "avif", 1, "%s %s color profile detected; switching to nclx colr box.", primariesName, transferCharacteristicsName);
-    nclx->colourPrimaries = foundNclxPrimaries;
-    nclx->transferCharacteristics = transferCharacteristics;
-    nclx->matrixCoefficients = matrixCoefficients;
+    nclx->colourPrimaries = (uint16_t)foundNclxPrimaries;
+    nclx->transferCharacteristics = (uint16_t)transferCharacteristics;
+    nclx->matrixCoefficients = (uint16_t)matrixCoefficients;
     nclx->fullRangeFlag = AVIF_NCLX_FULL_RANGE;
     return clTrue;
 }

@@ -943,15 +943,21 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
         float haldMaxf = (float)(hald - 1);
         for (int z = 0; z < hald; ++z) {
             uint16_t zValue = (uint16_t)clPixelMathRoundf((float)z * maxChannelf / haldMaxf);
-            zValue = CL_CLAMP(zValue, 0, maxChannel);
+            if (zValue > maxChannel) {
+                zValue = maxChannel;
+            }
 
             for (int y = 0; y < hald; ++y) {
                 uint16_t yValue = (uint16_t)clPixelMathRoundf((float)y * maxChannelf / haldMaxf);
-                yValue = CL_CLAMP(yValue, 0, maxChannel);
+                if (yValue > maxChannel) {
+                    yValue = maxChannel;
+                }
 
                 for (int x = 0; x < hald; ++x) {
                     uint16_t xValue = (uint16_t)clPixelMathRoundf((float)x * maxChannelf / haldMaxf);
-                    xValue = CL_CLAMP(xValue, 0, maxChannel);
+                    if (xValue > maxChannel) {
+                        xValue = maxChannel;
+                    }
 
                     uint16_t * pixel = &image->pixels[4 * (x + (y * hald) + (z * hald * hald))];
                     pixel[0] = xValue;
