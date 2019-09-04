@@ -14,8 +14,8 @@
 // Original source:
 //  https://chromium.googlesource.com/webm/libwebp
 
-#ifndef AOM_THREAD_H_
-#define AOM_THREAD_H_
+#ifndef AOM_AOM_UTIL_AOM_THREAD_H_
+#define AOM_AOM_UTIL_AOM_THREAD_H_
 
 #include "config/aom_config.h"
 
@@ -26,6 +26,7 @@ extern "C" {
 // Set maximum decode threads to be 8 due to the limit of frame buffers
 // and not enough semaphores in the emulation layer on windows.
 #define MAX_DECODE_THREADS 8
+#define MAX_NUM_THREADS 64
 
 #if CONFIG_MULTITHREAD
 
@@ -369,7 +370,8 @@ typedef enum {
 } AVxWorkerStatus;
 
 // Function to be called by the worker thread. Takes two opaque pointers as
-// arguments (data1 and data2), and should return false in case of error.
+// arguments (data1 and data2). Should return true on success and return false
+// in case of error.
 typedef int (*AVxWorkerHook)(void *, void *);
 
 // Platform-dependent implementation details for the worker.
@@ -379,10 +381,14 @@ typedef struct AVxWorkerImpl AVxWorkerImpl;
 typedef struct {
   AVxWorkerImpl *impl_;
   AVxWorkerStatus status_;
+  // Thread name for the debugger. If not NULL, must point to a string that
+  // outlives the worker thread. For portability, use a name <= 15 characters
+  // long (not including the terminating NUL character).
+  const char *thread_name;
   AVxWorkerHook hook;  // hook to call
   void *data1;         // first argument passed to 'hook'
   void *data2;         // second argument passed to 'hook'
-  int had_error;       // return value of the last call to 'hook'
+  int had_error;       // true if a call to 'hook' returned false
 } AVxWorker;
 
 // The interface for all thread-worker related functions. All these functions
@@ -426,4 +432,4 @@ const AVxWorkerInterface *aom_get_worker_interface(void);
 }  // extern "C"
 #endif
 
-#endif  // AOM_THREAD_H_
+#endif  // AOM_AOM_UTIL_AOM_THREAD_H_

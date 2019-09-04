@@ -9,14 +9,14 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AV1_ENCODER_CORNER_DETECT_H_
-#define AV1_ENCODER_CORNER_DETECT_H_
+#ifndef AOM_AV1_ENCODER_CORNER_DETECT_H_
+#define AOM_AV1_ENCODER_CORNER_DETECT_H_
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
 
-int fast_corner_detect(unsigned char *buf, int width, int height, int stride,
-                       int *points, int max_points);
+int av1_fast_corner_detect(unsigned char *buf, int width, int height,
+                           int stride, int *points, int max_points);
 
-#endif  // AV1_ENCODER_CORNER_DETECT_H_
+#endif  // AOM_AV1_ENCODER_CORNER_DETECT_H_

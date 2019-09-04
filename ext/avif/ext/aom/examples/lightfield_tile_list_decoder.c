@@ -32,11 +32,10 @@
 
 #include "aom/aom_decoder.h"
 #include "aom/aomdx.h"
+#include "aom_scale/yv12config.h"
+#include "av1/common/enums.h"
 #include "common/tools_common.h"
 #include "common/video_reader.h"
-
-#define MAX_EXTERNAL_REFERENCES 128
-#define AOM_BORDER_IN_PIXELS 288
 
 static const char *exec_name;
 
@@ -161,7 +160,7 @@ int main(int argc, char **argv) {
       // Allocate memory to store decoded references. Allocate memory with the
       // border so that it can be used as a reference.
       for (j = 0; j < num_references; j++) {
-        unsigned int border = AOM_BORDER_IN_PIXELS;
+        unsigned int border = AOM_DEC_BORDER_IN_PIXELS;
         if (!aom_img_alloc_with_border(&reference_images[j], ref_fmt,
                                        frame_res[0], frame_res[1], 32, 8,
                                        border)) {

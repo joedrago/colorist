@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AV1_COMMON_ENTROPY_H_
-#define AV1_COMMON_ENTROPY_H_
+#ifndef AOM_AV1_COMMON_ENTROPY_H_
+#define AOM_AV1_COMMON_ENTROPY_H_
 
 #include "config/aom_config.h"
 
@@ -54,12 +54,12 @@ extern "C" {
 
 #define BASE_CONTEXT_POSITION_NUM 12
 
-typedef enum TX_CLASS {
+enum {
   TX_CLASS_2D = 0,
   TX_CLASS_HORIZ = 1,
   TX_CLASS_VERT = 2,
   TX_CLASSES = 3,
-} TX_CLASS;
+} UENUM1BYTE(TX_CLASS);
 
 #define DCT_MAX_VALUE 16384
 #define DCT_MAX_VALUE_HIGH10 65536
@@ -178,4 +178,4 @@ static INLINE TX_SIZE get_txsize_entropy_ctx(TX_SIZE txsize) {
 }  // extern "C"
 #endif
 
-#endif  // AV1_COMMON_ENTROPY_H_
+#endif  // AOM_AV1_COMMON_ENTROPY_H_

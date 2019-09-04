@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_DSP_DAALABOOLREADER_H_
-#define AOM_DSP_DAALABOOLREADER_H_
+#ifndef AOM_AOM_DSP_DAALABOOLREADER_H_
+#define AOM_AOM_DSP_DAALABOOLREADER_H_
 
 #include "aom/aom_integer.h"
 #include "aom_dsp/entdec.h"
@@ -44,6 +44,9 @@ const uint8_t *aom_daala_reader_find_begin(daala_reader *r);
 const uint8_t *aom_daala_reader_find_end(daala_reader *r);
 uint32_t aom_daala_reader_tell(const daala_reader *r);
 uint32_t aom_daala_reader_tell_frac(const daala_reader *r);
+// Returns true if the reader has tried to decode more data from the buffer
+// than was actually provided.
+int aom_daala_reader_has_overflowed(const daala_reader *r);
 
 static INLINE int aom_daala_read(daala_reader *r, int prob) {
   int bit;
@@ -51,7 +54,7 @@ static INLINE int aom_daala_read(daala_reader *r, int prob) {
 #if CONFIG_BITSTREAM_DEBUG
 /*{
   const int queue_r = bitstream_queue_get_read();
-  const int frame_idx = bitstream_queue_get_frame_read();
+  const int frame_idx = aom_bitstream_queue_get_frame_read();
   if (frame_idx == 0 && queue_r == 0) {
     fprintf(stderr, "\n *** bitstream queue at frame_idx_r %d queue_r %d\n",
             frame_idx, queue_r);
@@ -67,7 +70,7 @@ static INLINE int aom_daala_read(daala_reader *r, int prob) {
     int ref_bit, ref_nsymbs;
     aom_cdf_prob ref_cdf[16];
     const int queue_r = bitstream_queue_get_read();
-    const int frame_idx = bitstream_queue_get_frame_read();
+    const int frame_idx = aom_bitstream_queue_get_frame_read();
     bitstream_queue_pop(&ref_bit, ref_cdf, &ref_nsymbs);
     if (ref_nsymbs != 2) {
       fprintf(stderr,
@@ -98,10 +101,6 @@ static INLINE int aom_daala_read(daala_reader *r, int prob) {
   return bit;
 }
 
-static INLINE int aom_daala_reader_has_error(daala_reader *r) {
-  return r->ec.error;
-}
-
 static INLINE int daala_read_symbol(daala_reader *r, const aom_cdf_prob *cdf,
                                     int nsymbs) {
   int symb;
@@ -115,7 +114,7 @@ static INLINE int daala_read_symbol(daala_reader *r, const aom_cdf_prob *cdf,
     int ref_symb, ref_nsymbs;
     aom_cdf_prob ref_cdf[16];
     const int queue_r = bitstream_queue_get_read();
-    const int frame_idx = bitstream_queue_get_frame_read();
+    const int frame_idx = aom_bitstream_queue_get_frame_read();
     bitstream_queue_pop(&ref_symb, ref_cdf, &ref_nsymbs);
     if (nsymbs != ref_nsymbs) {
       fprintf(stderr,
@@ -154,4 +153,4 @@ static INLINE int daala_read_symbol(daala_reader *r, const aom_cdf_prob *cdf,
 }  // extern "C"
 #endif
 
-#endif
+#endif  // AOM_AOM_DSP_DAALABOOLREADER_H_

@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_SCALE_YV12CONFIG_H_
-#define AOM_SCALE_YV12CONFIG_H_
+#ifndef AOM_AOM_SCALE_YV12CONFIG_H_
+#define AOM_AOM_SCALE_YV12CONFIG_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,28 +24,25 @@ extern "C" {
 
 #define AOMINNERBORDERINPIXELS 160
 #define AOM_INTERP_EXTEND 4
-
-// TODO(jingning): Use unified inter predictor for encoder and
-// decoder during the development process. Revisit the frame border
-// to improve the decoder performance.
 #define AOM_BORDER_IN_PIXELS 288
+#define AOM_ENC_NO_SCALE_BORDER 160
+#define AOM_ENC_LOOKAHEAD_BORDER 64
+#define AOM_DEC_BORDER_IN_PIXELS 64
 
 typedef struct yv12_buffer_config {
   union {
     struct {
       int y_width;
       int uv_width;
-      int alpha_width;
     };
-    int widths[3];
+    int widths[2];
   };
   union {
     struct {
       int y_height;
       int uv_height;
-      int alpha_height;
     };
-    int heights[3];
+    int heights[2];
   };
   union {
     struct {
@@ -65,23 +62,21 @@ typedef struct yv12_buffer_config {
     struct {
       int y_stride;
       int uv_stride;
-      int alpha_stride;
     };
-    int strides[3];
+    int strides[2];
   };
   union {
     struct {
       uint8_t *y_buffer;
       uint8_t *u_buffer;
       uint8_t *v_buffer;
-      uint8_t *alpha_buffer;
     };
-    uint8_t *buffers[4];
+    uint8_t *buffers[3];
   };
 
   // Indicate whether y_buffer, u_buffer, and v_buffer points to the internally
   // allocated memory or external buffers.
-  int use_external_refernce_buffers;
+  int use_external_reference_buffers;
   // This is needed to store y_buffer, u_buffer, and v_buffer when set reference
   // uses an external refernece, and restore those buffer pointers after the
   // external reference frame is no longer used.
@@ -102,7 +97,7 @@ typedef struct yv12_buffer_config {
   aom_color_primaries_t color_primaries;
   aom_transfer_characteristics_t transfer_characteristics;
   aom_matrix_coefficients_t matrix_coefficients;
-  int monochrome;
+  uint8_t monochrome;
   aom_chroma_sample_position_t chroma_sample_position;
   aom_color_range_t color_range;
   int render_width;
@@ -130,10 +125,18 @@ int aom_realloc_frame_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height,
                              int border, int byte_alignment,
                              aom_codec_frame_buffer_t *fb,
                              aom_get_frame_buffer_cb_fn_t cb, void *cb_priv);
+
+int aom_realloc_lookahead_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height,
+                                 int ss_x, int ss_y, int use_highbitdepth,
+                                 int border, int byte_alignment,
+                                 aom_codec_frame_buffer_t *fb,
+                                 aom_get_frame_buffer_cb_fn_t cb,
+                                 void *cb_priv);
+
 int aom_free_frame_buffer(YV12_BUFFER_CONFIG *ybf);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // AOM_SCALE_YV12CONFIG_H_
+#endif  // AOM_AOM_SCALE_YV12CONFIG_H_

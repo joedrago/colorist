@@ -31,7 +31,7 @@ int av1_get_MBs(int width, int height) {
   return mb_rows * mb_cols;
 }
 
-#if LOOP_FILTER_BITMASK
+#if CONFIG_LPF_MASK
 static int alloc_loop_filter_mask(AV1_COMMON *cm) {
   aom_free(cm->lf.lfm);
   cm->lf.lfm = NULL;
@@ -80,7 +80,7 @@ void av1_set_mb_mi(AV1_COMMON *cm, int width, int height) {
   cm->mb_rows = (cm->mi_rows + 2) >> 2;
   cm->MBs = cm->mb_rows * cm->mb_cols;
 
-#if LOOP_FILTER_BITMASK
+#if CONFIG_LPF_MASK
   alloc_loop_filter_mask(cm);
 #endif
 }
@@ -92,6 +92,9 @@ void av1_free_ref_frame_buffers(BufferPool *pool) {
     if (pool->frame_bufs[i].ref_count > 0 &&
         pool->frame_bufs[i].raw_frame_buffer.data != NULL) {
       pool->release_fb_cb(pool->cb_priv, &pool->frame_bufs[i].raw_frame_buffer);
+      pool->frame_bufs[i].raw_frame_buffer.data = NULL;
+      pool->frame_bufs[i].raw_frame_buffer.size = 0;
+      pool->frame_bufs[i].raw_frame_buffer.priv = NULL;
       pool->frame_bufs[i].ref_count = 0;
     }
     aom_free(pool->frame_bufs[i].mvs);
@@ -131,17 +134,16 @@ void av1_alloc_restoration_buffers(AV1_COMMON *cm) {
     const int ext_h = RESTORATION_UNIT_OFFSET + (mi_h << MI_SIZE_LOG2);
     const int tile_stripes = (ext_h + 63) / 64;
     num_stripes += tile_stripes;
-    cm->rst_end_stripe[i] = num_stripes;
   }
 
   // Now we need to allocate enough space to store the line buffers for the
   // stripes
   const int frame_w = cm->superres_upscaled_width;
-  const int use_highbd = cm->use_highbitdepth ? 1 : 0;
+  const int use_highbd = cm->seq_params.use_highbitdepth;
 
   for (int p = 0; p < num_planes; ++p) {
     const int is_uv = p > 0;
-    const int ss_x = is_uv && cm->subsampling_x;
+    const int ss_x = is_uv && cm->seq_params.subsampling_x;
     const int plane_w = ((frame_w + ss_x) >> ss_x) + 2 * RESTORATION_EXTRA_HORZ;
     const int stride = ALIGN_POWER_OF_TWO(plane_w, 5);
     const int buf_size = num_stripes * stride * RESTORATION_CTX_VERT
@@ -220,7 +222,7 @@ void av1_free_context_buffers(AV1_COMMON *cm) {
 
   av1_free_above_context_buffers(cm, cm->num_allocated_above_contexts);
 
-#if LOOP_FILTER_BITMASK
+#if CONFIG_LPF_MASK
   free_loop_filter_mask(cm);
 #endif
 }
@@ -293,8 +295,8 @@ void av1_remove_common(AV1_COMMON *cm) {
 
   aom_free(cm->fc);
   cm->fc = NULL;
-  aom_free(cm->frame_contexts);
-  cm->frame_contexts = NULL;
+  aom_free(cm->default_frame_context);
+  cm->default_frame_context = NULL;
 }
 
 void av1_init_context_buffers(AV1_COMMON *cm) { cm->setup_mi(cm); }

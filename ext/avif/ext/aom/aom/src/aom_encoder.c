@@ -16,7 +16,9 @@
 #include "config/aom_config.h"
 
 #if HAVE_FEXCEPT
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include <fenv.h>
 #endif
 
@@ -45,9 +47,6 @@ aom_codec_err_t aom_codec_enc_init_ver(aom_codec_ctx_t *ctx,
   else if (!(iface->caps & AOM_CODEC_CAP_ENCODER))
     res = AOM_CODEC_INCAPABLE;
   else if ((flags & AOM_CODEC_USE_PSNR) && !(iface->caps & AOM_CODEC_CAP_PSNR))
-    res = AOM_CODEC_INCAPABLE;
-  else if ((flags & AOM_CODEC_USE_OUTPUT_PARTITION) &&
-           !(iface->caps & AOM_CODEC_CAP_OUTPUT_PARTITION))
     res = AOM_CODEC_INCAPABLE;
   else {
     ctx->iface = iface;
@@ -80,9 +79,6 @@ aom_codec_err_t aom_codec_enc_init_multi_ver(
   else if (!(iface->caps & AOM_CODEC_CAP_ENCODER))
     res = AOM_CODEC_INCAPABLE;
   else if ((flags & AOM_CODEC_USE_PSNR) && !(iface->caps & AOM_CODEC_CAP_PSNR))
-    res = AOM_CODEC_INCAPABLE;
-  else if ((flags & AOM_CODEC_USE_OUTPUT_PARTITION) &&
-           !(iface->caps & AOM_CODEC_CAP_OUTPUT_PARTITION))
     res = AOM_CODEC_INCAPABLE;
   else {
     int i;
@@ -148,12 +144,12 @@ aom_codec_err_t aom_codec_enc_init_multi_ver(
 
 aom_codec_err_t aom_codec_enc_config_default(aom_codec_iface_t *iface,
                                              aom_codec_enc_cfg_t *cfg,
-                                             unsigned int usage) {
+                                             unsigned int reserved) {
   aom_codec_err_t res;
   aom_codec_enc_cfg_map_t *map;
   int i;
 
-  if (!iface || !cfg || usage > INT_MAX)
+  if (!iface || !cfg || reserved > INT_MAX)
     res = AOM_CODEC_INVALID_PARAM;
   else if (!(iface->caps & AOM_CODEC_CAP_ENCODER))
     res = AOM_CODEC_INCAPABLE;
@@ -162,9 +158,9 @@ aom_codec_err_t aom_codec_enc_config_default(aom_codec_iface_t *iface,
 
     for (i = 0; i < iface->enc.cfg_map_count; ++i) {
       map = iface->enc.cfg_maps + i;
-      if (map->usage == (int)usage) {
+      if (map->usage == (int)reserved) {
         *cfg = map->cfg;
-        cfg->g_usage = usage;
+        cfg->g_usage = reserved;
         res = AOM_CODEC_OK;
         break;
       }
@@ -194,7 +190,8 @@ aom_codec_err_t aom_codec_enc_config_default(aom_codec_iface_t *iface,
 
 #if HAVE_FEXCEPT && CONFIG_DEBUG
 #define FLOATING_POINT_SET_EXCEPTIONS \
-  const int float_excepts = feenableexcept(FE_DIVBYZERO);
+  const int float_excepts =           \
+      feenableexcept(FE_DIVBYZERO | FE_UNDERFLOW | FE_OVERFLOW);
 #define FLOATING_POINT_RESTORE_EXCEPTIONS feenableexcept(float_excepts);
 #else
 #define FLOATING_POINT_SET_EXCEPTIONS

@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AV1_COMMON_AV1_CONVOLVE_H_
-#define AV1_COMMON_AV1_CONVOLVE_H_
+#ifndef AOM_AV1_COMMON_CONVOLVE_H_
+#define AOM_AV1_COMMON_CONVOLVE_H_
 #include "av1/common/filter.h"
 
 #ifdef __cplusplus
@@ -19,7 +19,6 @@ extern "C" {
 
 typedef uint16_t CONV_BUF_TYPE;
 typedef struct ConvolveParams {
-  int ref;
   int do_average;
   CONV_BUF_TYPE *dst;
   int dst_stride;
@@ -27,7 +26,7 @@ typedef struct ConvolveParams {
   int round_1;
   int plane;
   int is_compound;
-  int use_jnt_comp_avg;
+  int use_dist_wtd_comp_avg;
   int fwd_offset;
   int bck_offset;
 } ConvolveParams;
@@ -40,44 +39,32 @@ typedef struct ConvolveParams {
 
 typedef void (*aom_convolve_fn_t)(const uint8_t *src, int src_stride,
                                   uint8_t *dst, int dst_stride, int w, int h,
-                                  InterpFilterParams *filter_params_x,
-                                  InterpFilterParams *filter_params_y,
-                                  const int subpel_x_q4, const int subpel_y_q4,
+                                  const InterpFilterParams *filter_params_x,
+                                  const InterpFilterParams *filter_params_y,
+                                  const int subpel_x_qn, const int subpel_y_qn,
                                   ConvolveParams *conv_params);
 
 typedef void (*aom_highbd_convolve_fn_t)(
     const uint16_t *src, int src_stride, uint16_t *dst, int dst_stride, int w,
-    int h, InterpFilterParams *filter_params_x,
-    InterpFilterParams *filter_params_y, const int subpel_x_q4,
-    const int subpel_y_q4, ConvolveParams *conv_params, int bd);
-
-static INLINE void av1_get_convolve_filter_params(InterpFilters interp_filters,
-                                                  InterpFilterParams *params_x,
-                                                  InterpFilterParams *params_y,
-                                                  int w, int h) {
-  InterpFilter filter_x = av1_extract_interp_filter(interp_filters, 1);
-  InterpFilter filter_y = av1_extract_interp_filter(interp_filters, 0);
-  *params_x = av1_get_interp_filter_params_with_block_size(filter_x, w);
-  *params_y = av1_get_interp_filter_params_with_block_size(filter_y, h);
-}
+    int h, const InterpFilterParams *filter_params_x,
+    const InterpFilterParams *filter_params_y, const int subpel_x_qn,
+    const int subpel_y_qn, ConvolveParams *conv_params, int bd);
 
 struct AV1Common;
 struct scale_factors;
 
 void av1_convolve_2d_facade(const uint8_t *src, int src_stride, uint8_t *dst,
                             int dst_stride, int w, int h,
-                            InterpFilters interp_filters, const int subpel_x_q4,
-                            int x_step_q4, const int subpel_y_q4, int y_step_q4,
+                            InterpFilters interp_filters, const int subpel_x_qn,
+                            int x_step_q4, const int subpel_y_qn, int y_step_q4,
                             int scaled, ConvolveParams *conv_params,
-                            const struct scale_factors *sf);
+                            const struct scale_factors *sf, int is_intrabc);
 
-static INLINE ConvolveParams get_conv_params_no_round(int ref, int do_average,
-                                                      int plane,
+static INLINE ConvolveParams get_conv_params_no_round(int do_average, int plane,
                                                       CONV_BUF_TYPE *dst,
                                                       int dst_stride,
                                                       int is_compound, int bd) {
   ConvolveParams conv_params;
-  conv_params.ref = ref;
   conv_params.do_average = do_average;
   assert(IMPLIES(do_average, is_compound));
   conv_params.is_compound = is_compound;
@@ -98,15 +85,14 @@ static INLINE ConvolveParams get_conv_params_no_round(int ref, int do_average,
   return conv_params;
 }
 
-static INLINE ConvolveParams get_conv_params(int ref, int do_average, int plane,
+static INLINE ConvolveParams get_conv_params(int do_average, int plane,
                                              int bd) {
-  return get_conv_params_no_round(ref, do_average, plane, NULL, 0, 0, bd);
+  return get_conv_params_no_round(do_average, plane, NULL, 0, 0, bd);
 }
 
 static INLINE ConvolveParams get_conv_params_wiener(int bd) {
   ConvolveParams conv_params;
   (void)bd;
-  conv_params.ref = 0;
   conv_params.do_average = 0;
   conv_params.is_compound = 0;
   conv_params.round_0 = WIENER_ROUND0_BITS;
@@ -126,13 +112,19 @@ static INLINE ConvolveParams get_conv_params_wiener(int bd) {
 void av1_highbd_convolve_2d_facade(const uint8_t *src8, int src_stride,
                                    uint8_t *dst, int dst_stride, int w, int h,
                                    InterpFilters interp_filters,
-                                   const int subpel_x_q4, int x_step_q4,
-                                   const int subpel_y_q4, int y_step_q4,
+                                   const int subpel_x_qn, int x_step_q4,
+                                   const int subpel_y_qn, int y_step_q4,
                                    int scaled, ConvolveParams *conv_params,
-                                   const struct scale_factors *sf, int bd);
+                                   const struct scale_factors *sf,
+                                   int is_intrabc, int bd);
+
+// TODO(sarahparker) This will need to be integerized and optimized
+void av1_convolve_2d_sobel_y_c(const uint8_t *src, int src_stride, double *dst,
+                               int dst_stride, int w, int h, int dir,
+                               double norm);
 
 #ifdef __cplusplus
 }  // extern "C"
 #endif
 
-#endif  // AV1_COMMON_AV1_CONVOLVE_H_
+#endif  // AOM_AV1_COMMON_CONVOLVE_H_

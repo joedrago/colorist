@@ -219,12 +219,12 @@ static __m256i compute_p(__m256i sum1, __m256i sum2, int bit_depth, int n) {
 static void calc_ab(int32_t *A, int32_t *B, const int32_t *C, const int32_t *D,
                     int width, int height, int buf_stride, int bit_depth,
                     int sgr_params_idx, int radius_idx) {
-  const sgr_params_type *const params = &sgr_params[sgr_params_idx];
+  const sgr_params_type *const params = &av1_sgr_params[sgr_params_idx];
   const int r = params->r[radius_idx];
   const int n = (2 * r + 1) * (2 * r + 1);
   const __m256i s = _mm256_set1_epi32(params->s[radius_idx]);
   // one_over_n[n-1] is 2^12/n, so easily fits in an int16
-  const __m256i one_over_n = _mm256_set1_epi32(one_by_x[n - 1]);
+  const __m256i one_over_n = _mm256_set1_epi32(av1_one_by_x[n - 1]);
 
   const __m256i rnd_z = round_for_shift(SGRPROJ_MTABLE_BITS);
   const __m256i rnd_res = round_for_shift(SGRPROJ_RECIP_BITS);
@@ -263,7 +263,7 @@ static void calc_ab(int32_t *A, int32_t *B, const int32_t *C, const int32_t *D,
                             SGRPROJ_MTABLE_BITS),
           _mm256_set1_epi32(255));
 
-      const __m256i a_res = _mm256_i32gather_epi32(x_by_xplus1, z, 4);
+      const __m256i a_res = _mm256_i32gather_epi32(av1_x_by_xplus1, z, 4);
 
       yy_storeu_256(A + i * buf_stride + j, a_res);
 
@@ -356,12 +356,12 @@ static void calc_ab_fast(int32_t *A, int32_t *B, const int32_t *C,
                          const int32_t *D, int width, int height,
                          int buf_stride, int bit_depth, int sgr_params_idx,
                          int radius_idx) {
-  const sgr_params_type *const params = &sgr_params[sgr_params_idx];
+  const sgr_params_type *const params = &av1_sgr_params[sgr_params_idx];
   const int r = params->r[radius_idx];
   const int n = (2 * r + 1) * (2 * r + 1);
   const __m256i s = _mm256_set1_epi32(params->s[radius_idx]);
   // one_over_n[n-1] is 2^12/n, so easily fits in an int16
-  const __m256i one_over_n = _mm256_set1_epi32(one_by_x[n - 1]);
+  const __m256i one_over_n = _mm256_set1_epi32(av1_one_by_x[n - 1]);
 
   const __m256i rnd_z = round_for_shift(SGRPROJ_MTABLE_BITS);
   const __m256i rnd_res = round_for_shift(SGRPROJ_RECIP_BITS);
@@ -400,7 +400,7 @@ static void calc_ab_fast(int32_t *A, int32_t *B, const int32_t *C,
                             SGRPROJ_MTABLE_BITS),
           _mm256_set1_epi32(255));
 
-      const __m256i a_res = _mm256_i32gather_epi32(x_by_xplus1, z, 4);
+      const __m256i a_res = _mm256_i32gather_epi32(av1_x_by_xplus1, z, 4);
 
       yy_storeu_256(A + i * buf_stride + j, a_res);
 
@@ -546,17 +546,18 @@ static void final_filter_fast(int32_t *dst, int dst_stride, const int32_t *A,
   }
 }
 
-void av1_selfguided_restoration_avx2(const uint8_t *dgd8, int width, int height,
-                                     int dgd_stride, int32_t *flt0,
-                                     int32_t *flt1, int flt_stride,
-                                     int sgr_params_idx, int bit_depth,
-                                     int highbd) {
+int av1_selfguided_restoration_avx2(const uint8_t *dgd8, int width, int height,
+                                    int dgd_stride, int32_t *flt0,
+                                    int32_t *flt1, int flt_stride,
+                                    int sgr_params_idx, int bit_depth,
+                                    int highbd) {
   // The ALIGN_POWER_OF_TWO macro here ensures that column 1 of Atl, Btl,
   // Ctl and Dtl is 32-byte aligned.
   const int buf_elts = ALIGN_POWER_OF_TWO(RESTORATION_PROC_UNIT_PELS, 3);
 
-  DECLARE_ALIGNED(32, int32_t,
-                  buf[4 * ALIGN_POWER_OF_TWO(RESTORATION_PROC_UNIT_PELS, 3)]);
+  int32_t *buf = aom_memalign(
+      32, 4 * sizeof(*buf) * ALIGN_POWER_OF_TWO(RESTORATION_PROC_UNIT_PELS, 3));
+  if (!buf) return -1;
 
   const int width_ext = width + 2 * SGRPROJ_BORDER_HORZ;
   const int height_ext = height + 2 * SGRPROJ_BORDER_VERT;
@@ -603,7 +604,7 @@ void av1_selfguided_restoration_avx2(const uint8_t *dgd8, int width, int height,
     integral_images(dgd0, dgd_stride, width_ext, height_ext, Ctl, Dtl,
                     buf_stride);
 
-  const sgr_params_type *const params = &sgr_params[sgr_params_idx];
+  const sgr_params_type *const params = &av1_sgr_params[sgr_params_idx];
   // Write to flt0 and flt1
   // If params->r == 0 we skip the corresponding filter. We only allow one of
   // the radii to be 0, as having both equal to 0 would be equivalent to
@@ -625,21 +626,25 @@ void av1_selfguided_restoration_avx2(const uint8_t *dgd8, int width, int height,
     final_filter(flt1, flt_stride, A, B, buf_stride, dgd8, dgd_stride, width,
                  height, highbd);
   }
+  aom_free(buf);
+  return 0;
 }
 
-void apply_selfguided_restoration_avx2(const uint8_t *dat8, int width,
-                                       int height, int stride, int eps,
-                                       const int *xqd, uint8_t *dst8,
-                                       int dst_stride, int32_t *tmpbuf,
-                                       int bit_depth, int highbd) {
+void av1_apply_selfguided_restoration_avx2(const uint8_t *dat8, int width,
+                                           int height, int stride, int eps,
+                                           const int *xqd, uint8_t *dst8,
+                                           int dst_stride, int32_t *tmpbuf,
+                                           int bit_depth, int highbd) {
   int32_t *flt0 = tmpbuf;
   int32_t *flt1 = flt0 + RESTORATION_UNITPELS_MAX;
   assert(width * height <= RESTORATION_UNITPELS_MAX);
-  av1_selfguided_restoration_avx2(dat8, width, height, stride, flt0, flt1,
-                                  width, eps, bit_depth, highbd);
-  const sgr_params_type *const params = &sgr_params[eps];
+  const int ret = av1_selfguided_restoration_avx2(
+      dat8, width, height, stride, flt0, flt1, width, eps, bit_depth, highbd);
+  (void)ret;
+  assert(!ret);
+  const sgr_params_type *const params = &av1_sgr_params[eps];
   int xq[2];
-  decode_xq(xqd, xq, params);
+  av1_decode_xq(xqd, xq, params);
 
   __m256i xq0 = _mm256_set1_epi32(xq[0]);
   __m256i xq1 = _mm256_set1_epi32(xq[1]);

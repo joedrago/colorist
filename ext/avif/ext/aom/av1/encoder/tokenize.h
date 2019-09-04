@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AV1_ENCODER_TOKENIZE_H_
-#define AV1_ENCODER_TOKENIZE_H_
+#ifndef AOM_AV1_ENCODER_TOKENIZE_H_
+#define AOM_AV1_ENCODER_TOKENIZE_H_
 
 #include "av1/common/entropy.h"
 #include "av1/encoder/block.h"
@@ -38,11 +38,11 @@ struct tokenize_b_args {
   uint8_t allow_update_cdf;
 };
 
-typedef enum {
+enum {
   OUTPUT_ENABLED = 0,
   DRY_RUN_NORMAL,
   DRY_RUN_COSTCOEFFS,
-} RUN_TYPE;
+} UENUM1BYTE(RUN_TYPE);
 
 // Note in all the tokenize functions rate if non NULL is incremented
 // with the coefficient token cost only if dry_run = DRY_RUN_COSTCOEFS,
@@ -70,4 +70,4 @@ static INLINE int av1_get_tx_eob(const struct segmentation *seg, int segment_id,
 }  // extern "C"
 #endif
 
-#endif  // AV1_ENCODER_TOKENIZE_H_
+#endif  // AOM_AV1_ENCODER_TOKENIZE_H_

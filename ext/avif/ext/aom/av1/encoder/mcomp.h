@@ -9,10 +9,11 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AV1_ENCODER_MCOMP_H_
-#define AV1_ENCODER_MCOMP_H_
+#ifndef AOM_AV1_ENCODER_MCOMP_H_
+#define AOM_AV1_ENCODER_MCOMP_H_
 
 #include "av1/encoder/block.h"
+
 #include "aom_dsp/variance.h"
 
 #ifdef __cplusplus
@@ -31,6 +32,11 @@ extern "C" {
 // for Block_16x16
 #define BORDER_MV_PIXELS_B16 (16 + AOM_INTERP_EXTEND)
 
+#define SEARCH_RANGE_8P 3
+#define SEARCH_GRID_STRIDE_8P (2 * SEARCH_RANGE_8P + 1)
+#define SEARCH_GRID_CENTER_8P \
+  (SEARCH_RANGE_8P * SEARCH_GRID_STRIDE_8P + SEARCH_RANGE_8P)
+
 // motion search site
 typedef struct search_site {
   MV mv;
@@ -41,7 +47,13 @@ typedef struct search_site_config {
   search_site ss[8 * MAX_MVSEARCH_STEPS + 1];
   int ss_count;
   int searches_per_step;
+  int stride;
 } search_site_config;
+
+typedef struct {
+  MV coord;
+  int coord_offset;
+} search_neighbors;
 
 void av1_init_dsmotion_compensation(search_site_config *cfg, int stride);
 void av1_init3smotion_compensation(search_site_config *cfg, int stride);
@@ -73,6 +85,11 @@ int av1_refining_search_sad(struct macroblock *x, MV *ref_mv, int sad_per_bit,
                             int distance, const aom_variance_fn_ptr_t *fn_ptr,
                             const MV *center_mv);
 
+unsigned int av1_int_pro_motion_estimation(const struct AV1_COMP *cpi,
+                                           MACROBLOCK *x, BLOCK_SIZE bsize,
+                                           int mi_row, int mi_col,
+                                           const MV *ref_mv);
+
 // Runs sequence of diamond searches in smaller steps for RD.
 int av1_full_pixel_diamond(const struct AV1_COMP *cpi, MACROBLOCK *x,
                            MV *mvp_full, int step_param, int sadpb,
@@ -93,7 +110,7 @@ typedef int(fractional_mv_step_fp)(
     int iters_per_step, int *cost_list, int *mvjcost, int *mvcost[2],
     int *distortion, unsigned int *sse1, const uint8_t *second_pred,
     const uint8_t *mask, int mask_stride, int invert_mask, int w, int h,
-    int use_accurate_subpel_search);
+    int use_accurate_subpel_search, const int do_reset_fractional_mv);
 
 extern fractional_mv_step_fp av1_find_best_sub_pixel_tree;
 extern fractional_mv_step_fp av1_find_best_sub_pixel_tree_pruned;
@@ -120,14 +137,17 @@ int av1_refining_search_8p_c(MACROBLOCK *x, int error_per_bit, int search_range,
 
 int av1_full_pixel_search(const struct AV1_COMP *cpi, MACROBLOCK *x,
                           BLOCK_SIZE bsize, MV *mvp_full, int step_param,
-                          int error_per_bit, int *cost_list, const MV *ref_mv,
-                          int var_max, int rd, int x_pos, int y_pos, int intra);
+                          int method, int run_mesh_search, int error_per_bit,
+                          int *cost_list, const MV *ref_mv, int var_max, int rd,
+                          int x_pos, int y_pos, int intra,
+                          const search_site_config *cfg);
 
-int av1_obmc_full_pixel_diamond(const struct AV1_COMP *cpi, MACROBLOCK *x,
-                                MV *mvp_full, int step_param, int sadpb,
-                                int further_steps, int do_refine,
-                                const aom_variance_fn_ptr_t *fn_ptr,
-                                const MV *ref_mv, MV *dst_mv, int is_second);
+int av1_obmc_full_pixel_search(const struct AV1_COMP *cpi, MACROBLOCK *x,
+                               MV *mvp_full, int step_param, int sadpb,
+                               int further_steps, int do_refine,
+                               const aom_variance_fn_ptr_t *fn_ptr,
+                               const MV *ref_mv, MV *dst_mv, int is_second,
+                               const search_site_config *cfg);
 int av1_find_best_obmc_sub_pixel_tree_up(
     MACROBLOCK *x, const AV1_COMMON *const cm, int mi_row, int mi_col,
     MV *bestmv, const MV *ref_mv, int allow_hp, int error_per_bit,
@@ -143,8 +163,27 @@ unsigned int av1_refine_warped_mv(const struct AV1_COMP *cpi,
                                   int mi_row, int mi_col, int *pts0,
                                   int *pts_inref0, int total_samples);
 
+// Performs a motion search in SIMPLE_TRANSLATION mode using reference frame
+// ref. Note that this sets the offset of mbmi, so we will need to reset it
+// after calling this function.
+void av1_simple_motion_search(struct AV1_COMP *const cpi, MACROBLOCK *x,
+                              int mi_row, int mi_col, BLOCK_SIZE bsize, int ref,
+                              MV ref_mv_full, int num_planes, int use_subpixel);
+
+// Performs a simple motion search to calculate the sse and var of the residue
+void av1_simple_motion_sse_var(struct AV1_COMP *cpi, MACROBLOCK *x, int mi_row,
+                               int mi_col, BLOCK_SIZE bsize,
+                               const MV ref_mv_full, int use_subpixel,
+                               unsigned int *sse, unsigned int *var);
+
+static INLINE void av1_set_fractional_mv(int_mv *fractional_best_mv) {
+  for (int z = 0; z < 3; z++) {
+    fractional_best_mv[z].as_int = INVALID_MV;
+  }
+}
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
 
-#endif  // AV1_ENCODER_MCOMP_H_
+#endif  // AOM_AV1_ENCODER_MCOMP_H_

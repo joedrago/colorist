@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AOM_FRAME_BUFFER_H_
-#define AOM_AOM_FRAME_BUFFER_H_
+#ifndef AOM_AOM_AOM_FRAME_BUFFER_H_
+#define AOM_AOM_AOM_FRAME_BUFFER_H_
 
 /*!\file
  * \brief Describes the decoder external frame buffer interface.
@@ -53,9 +53,9 @@ typedef struct aom_codec_frame_buffer {
  * data. The callback is triggered when the decoder needs a frame buffer to
  * decode a compressed image into. This function may be called more than once
  * for every call to aom_codec_decode. The application may set fb->priv to
- * some data which will be passed back in the ximage and the release function
- * call. |fb| is guaranteed to not be NULL. On success the callback must
- * return 0. Any failure the callback must return a value less than 0.
+ * some data which will be passed back in the aom_image_t and the release
+ * function call. |fb| is guaranteed to not be NULL. On success the callback
+ * must return 0. Any failure the callback must return a value less than 0.
  *
  * \param[in] priv         Callback's private data
  * \param[in] new_size     Size in bytes needed by the buffer
@@ -81,4 +81,4 @@ typedef int (*aom_release_frame_buffer_cb_fn_t)(void *priv,
 }  // extern "C"
 #endif
 
-#endif  // AOM_AOM_FRAME_BUFFER_H_
+#endif  // AOM_AOM_AOM_FRAME_BUFFER_H_

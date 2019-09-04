@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AV1_COMMON_ENTROPYMODE_H_
-#define AV1_COMMON_ENTROPYMODE_H_
+#ifndef AOM_AV1_COMMON_ENTROPYMODE_H_
+#define AOM_AV1_COMMON_ENTROPYMODE_H_
 
 #include "av1/common/entropy.h"
 #include "av1/common/entropymv.h"
@@ -92,7 +92,8 @@ typedef struct frame_contexts {
 
   aom_cdf_prob inter_compound_mode_cdf[INTER_MODE_CONTEXTS]
                                       [CDF_SIZE(INTER_COMPOUND_MODES)];
-  aom_cdf_prob compound_type_cdf[BLOCK_SIZES_ALL][CDF_SIZE(COMPOUND_TYPES - 1)];
+  aom_cdf_prob compound_type_cdf[BLOCK_SIZES_ALL]
+                                [CDF_SIZE(MASKED_COMPOUND_TYPES)];
   aom_cdf_prob wedge_idx_cdf[BLOCK_SIZES_ALL][CDF_SIZE(16)];
   aom_cdf_prob interintra_cdf[BLOCK_SIZE_GROUPS][CDF_SIZE(2)];
   aom_cdf_prob wedge_interintra_cdf[BLOCK_SIZES_ALL][CDF_SIZE(2)];
@@ -186,6 +187,8 @@ void av1_set_default_mode_deltas(int8_t *mode_deltas);
 void av1_setup_frame_contexts(struct AV1Common *cm);
 void av1_setup_past_independence(struct AV1Common *cm);
 
+// Returns (int)ceil(log2(n)).
+// NOTE: This implementation only works for n <= 2^30.
 static INLINE int av1_ceil_log2(int n) {
   if (n < 2) return 0;
   int i = 1, p = 2;
@@ -207,4 +210,4 @@ int av1_get_palette_color_index_context(const uint8_t *color_map, int stride,
 }  // extern "C"
 #endif
 
-#endif  // AV1_COMMON_ENTROPYMODE_H_
+#endif  // AOM_AV1_COMMON_ENTROPYMODE_H_

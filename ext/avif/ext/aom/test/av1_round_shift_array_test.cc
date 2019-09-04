@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "config/aom_dsp_rtcd.h"
+#include "config/av1_rtcd.h"
 
 #include "aom_mem/aom_mem.h"
 #include "aom_ports/aom_timer.h"
@@ -28,8 +28,10 @@ namespace AV1CompRoundShift {
 typedef void (*comp_round_shift_array_func)(int32_t *arr, int size, int bit);
 
 #if HAVE_SSE4_1 || HAVE_NEON
-  const int kValidBitCheck[] = {-4, -3, -2, -1, 0, 1, 2, 3, 4};
-#endif
+const int kValidBitCheck[] = {
+  -4, -3, -2, -1, 0, 1, 2, 3, 4,
+};
+#endif  // HAVE_SSE4_1 || HAVE_NEON
 
 typedef ::testing::tuple<comp_round_shift_array_func, BLOCK_SIZE, int>
     CompRoundShiftParam;

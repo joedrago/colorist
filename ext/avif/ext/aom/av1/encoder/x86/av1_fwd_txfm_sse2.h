@@ -8,8 +8,8 @@
  * Media Patent License 1.0 was not distributed with this source code in the
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
-#ifndef AV1_COMMON_X86_AV1_FWD_TXFM_SSE2_H_
-#define AV1_COMMON_X86_AV1_FWD_TXFM_SSE2_H_
+#ifndef AOM_AV1_ENCODER_X86_AV1_FWD_TXFM_SSE2_H_
+#define AOM_AV1_ENCODER_X86_AV1_FWD_TXFM_SSE2_H_
 
 #include <immintrin.h>
 
@@ -24,8 +24,10 @@
 extern "C" {
 #endif
 
-void fdct8x32_new_sse2(const __m128i *input, __m128i *output, int8_t cos_bit);
-void fdct8x64_new_sse2(const __m128i *input, __m128i *output, int8_t cos_bit);
+void av1_fdct8x32_new_sse2(const __m128i *input, __m128i *output,
+                           int8_t cos_bit);
+void av1_fdct8x64_new_sse2(const __m128i *input, __m128i *output,
+                           int8_t cos_bit);
 
 static INLINE void fidentity4x4_new_sse2(const __m128i *const input,
                                          __m128i *const output,
@@ -92,7 +94,7 @@ static INLINE void fidentity8x32_new_sse2(const __m128i *input, __m128i *output,
 }
 
 static const transform_1d_sse2 col_txfm8x32_arr[TX_TYPES] = {
-  fdct8x32_new_sse2,       // DCT_DCT
+  av1_fdct8x32_new_sse2,   // DCT_DCT
   NULL,                    // ADST_DCT
   NULL,                    // DCT_ADST
   NULL,                    // ADST_ADST
@@ -102,7 +104,7 @@ static const transform_1d_sse2 col_txfm8x32_arr[TX_TYPES] = {
   NULL,                    // ADST_FLIPADST
   NULL,                    // FLIPADST_ADST
   fidentity8x32_new_sse2,  // IDTX
-  fdct8x32_new_sse2,       // V_DCT
+  av1_fdct8x32_new_sse2,   // V_DCT
   fidentity8x32_new_sse2,  // H_DCT
   NULL,                    // V_ADST
   NULL,                    // H_ADST
@@ -114,4 +116,4 @@ static const transform_1d_sse2 col_txfm8x32_arr[TX_TYPES] = {
 }
 #endif
 
-#endif  // AV1_COMMON_X86_AV1_FWD_TXFM_SSE2_H_
+#endif  // AOM_AV1_ENCODER_X86_AV1_FWD_TXFM_SSE2_H_

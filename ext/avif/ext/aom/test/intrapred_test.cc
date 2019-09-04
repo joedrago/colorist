@@ -37,6 +37,15 @@ typedef void (*HighbdIntraPred)(uint16_t *dst, ptrdiff_t stride,
 typedef void (*IntraPred)(uint8_t *dst, ptrdiff_t stride, const uint8_t *above,
                           const uint8_t *left);
 
+}  // namespace
+
+// NOTE: Under gcc version 7.3.0 (Debian 7.3.0-5), if this template is in the
+// anonymous namespace, then we get a strange compiler warning in
+// the begin() and end() methods of the ParamGenerator template class in
+// gtest/internal/gtest-param-util.h:
+//   warning: ‘<anonymous>’ is used uninitialized in this function
+// As a workaround, put this template outside the anonymous namespace.
+// See bug aomedia:2003.
 template <typename FuncType>
 struct IntraPredFunc {
   IntraPredFunc(FuncType pred = NULL, FuncType ref = NULL,
@@ -51,6 +60,8 @@ struct IntraPredFunc {
   int block_height;
   int bit_depth;
 };
+
+namespace {
 
 template <typename FuncType, typename Pixel>
 class AV1IntraPredTest
@@ -186,8 +197,8 @@ TEST_P(LowbdIntraPredTest, Bitexact) {
       highbd_entry(type, 32, 16, opt, bd), highbd_entry(type, 32, 32, opt, bd)
 #endif
 
-  // ---------------------------------------------------------------------------
-  // Low Bit Depth Tests
+// ---------------------------------------------------------------------------
+// Low Bit Depth Tests
 
 #define lowbd_entry(type, width, height, opt)                                  \
   IntraPredFunc<IntraPred>(&aom_##type##_predictor_##width##x##height##_##opt, \

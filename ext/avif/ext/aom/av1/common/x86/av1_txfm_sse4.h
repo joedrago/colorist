@@ -1,5 +1,16 @@
-#ifndef AV1_TXFM_SSE4_H_
-#define AV1_TXFM_SSE4_H_
+/*
+ * Copyright (c) 2018, Alliance for Open Media. All rights reserved
+ *
+ * This source code is subject to the terms of the BSD 2 Clause License and
+ * the Alliance for Open Media Patent License 1.0. If the BSD 2 Clause License
+ * was not distributed with this source code in the LICENSE file, you can
+ * obtain it at www.aomedia.org/license/software. If the Alliance for Open
+ * Media Patent License 1.0 was not distributed with this source code in the
+ * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
+ */
+
+#ifndef AOM_AV1_COMMON_X86_AV1_TXFM_SSE4_H_
+#define AOM_AV1_COMMON_X86_AV1_TXFM_SSE4_H_
 
 #include <smmintrin.h>
 
@@ -34,8 +45,9 @@ static INLINE void av1_round_shift_array_32_sse4_1(__m128i *input,
 static INLINE void av1_round_shift_rect_array_32_sse4_1(__m128i *input,
                                                         __m128i *output,
                                                         const int size,
-                                                        const int bit) {
-  const __m128i sqrt2 = _mm_set1_epi32(NewSqrt2);
+                                                        const int bit,
+                                                        const int val) {
+  const __m128i sqrt2 = _mm_set1_epi32(val);
   if (bit > 0) {
     int i;
     for (i = 0; i < size; i++) {
@@ -57,4 +69,4 @@ static INLINE void av1_round_shift_rect_array_32_sse4_1(__m128i *input,
 }
 #endif
 
-#endif  // AV1_TXFM_SSE4_H_
+#endif  // AOM_AV1_COMMON_X86_AV1_TXFM_SSE4_H_

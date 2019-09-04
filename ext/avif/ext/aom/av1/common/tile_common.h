@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AV1_COMMON_TILE_COMMON_H_
-#define AV1_COMMON_TILE_COMMON_H_
+#ifndef AOM_AV1_COMMON_TILE_COMMON_H_
+#define AOM_AV1_COMMON_TILE_COMMON_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,7 +25,6 @@ struct AV1Common;
 typedef struct TileInfo {
   int mi_row_start, mi_row_end;
   int mi_col_start, mi_col_end;
-  int tg_horz_boundary;
   int tile_row;
   int tile_col;
 } TileInfo;
@@ -37,12 +36,9 @@ void av1_tile_init(TileInfo *tile, const struct AV1Common *cm, int row,
 
 void av1_tile_set_row(TileInfo *tile, const struct AV1Common *cm, int row);
 void av1_tile_set_col(TileInfo *tile, const struct AV1Common *cm, int col);
-void av1_get_tile_n_bits(int mi_cols, int *min_log2_tile_cols,
-                         int *max_log2_tile_cols);
 
-// Calculate the correct tile size (width or height) for (1 << log2_tile_num)
-// tiles horizontally or vertically in the frame.
-int get_tile_size(int mi_frame_size, int log2_tile_num, int *ntiles);
+int av1_get_sb_rows_in_tile(struct AV1Common *cm, TileInfo tile);
+int av1_get_sb_cols_in_tile(struct AV1Common *cm, TileInfo tile);
 
 typedef struct {
   int left, top, right, bottom;
@@ -63,8 +59,11 @@ void av1_get_tile_limits(struct AV1Common *const cm);
 void av1_calculate_tile_cols(struct AV1Common *const cm);
 void av1_calculate_tile_rows(struct AV1Common *const cm);
 
+// Checks if the minimum tile_width requirement is satisfied
+int av1_is_min_tile_width_satisfied(const struct AV1Common *cm);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
 
-#endif  // AV1_COMMON_TILE_COMMON_H_
+#endif  // AOM_AV1_COMMON_TILE_COMMON_H_

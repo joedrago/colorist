@@ -59,7 +59,7 @@ class TileIndependenceTest
 
   virtual void PreEncodeFrameHook(libaom_test::VideoSource *video,
                                   libaom_test::Encoder *encoder) {
-    if (video->frame() == 1) {
+    if (video->frame() == 0) {
       encoder->Control(AV1E_SET_TILE_COLUMNS, n_tile_cols_);
       encoder->Control(AV1E_SET_TILE_ROWS, n_tile_rows_);
       SetCpuUsed(encoder);
@@ -146,25 +146,28 @@ AV1_INSTANTIATE_TEST_CASE(TileIndependenceTestLarge, ::testing::Values(0, 1),
 
 class TileIndependenceLSTest : public TileIndependenceTest {};
 
-TEST_P(TileIndependenceLSTest, DISABLED_MD5Match) {
+TEST_P(TileIndependenceLSTest, MD5Match) {
   cfg_.large_scale_tile = 1;
   fw_dec_->Control(AV1_SET_TILE_MODE, 1);
+  fw_dec_->Control(AV1D_EXT_TILE_DEBUG, 1);
   inv_dec_->Control(AV1_SET_TILE_MODE, 1);
+  inv_dec_->Control(AV1D_EXT_TILE_DEBUG, 1);
   DoTest();
 }
 
 class TileIndependenceLSTestLarge : public TileIndependenceTestLarge {};
 
-TEST_P(TileIndependenceLSTestLarge, DISABLED_MD5Match) {
+TEST_P(TileIndependenceLSTestLarge, MD5Match) {
   cfg_.large_scale_tile = 1;
   fw_dec_->Control(AV1_SET_TILE_MODE, 1);
+  fw_dec_->Control(AV1D_EXT_TILE_DEBUG, 1);
   inv_dec_->Control(AV1_SET_TILE_MODE, 1);
+  inv_dec_->Control(AV1D_EXT_TILE_DEBUG, 1);
   DoTest();
 }
 
-AV1_INSTANTIATE_TEST_CASE(TileIndependenceLSTest, ::testing::Values(1, 2, 32),
-                          ::testing::Values(1, 2, 32), ::testing::Values(1));
-AV1_INSTANTIATE_TEST_CASE(TileIndependenceLSTestLarge,
-                          ::testing::Values(1, 2, 32),
-                          ::testing::Values(1, 2, 32), ::testing::Values(1));
+AV1_INSTANTIATE_TEST_CASE(TileIndependenceLSTest, ::testing::Values(6),
+                          ::testing::Values(6), ::testing::Values(1));
+AV1_INSTANTIATE_TEST_CASE(TileIndependenceLSTestLarge, ::testing::Values(6),
+                          ::testing::Values(6), ::testing::Values(1));
 }  // namespace

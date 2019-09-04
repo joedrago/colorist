@@ -17,11 +17,12 @@
 #include "aom_dsp/aom_dsp_common.h"
 #include "aom_mem/aom_mem.h"
 #include "aom_ports/system_state.h"
-#include "av1/encoder/segmentation.h"
-#include "av1/encoder/mcomp.h"
 #include "av1/common/blockd.h"
 #include "av1/common/reconinter.h"
 #include "av1/common/reconintra.h"
+#include "av1/encoder/mcomp.h"
+#include "av1/encoder/reconinter_enc.h"
+#include "av1/encoder/segmentation.h"
 
 static unsigned int do_16x16_motion_iteration(AV1_COMP *cpi, const MV *ref_mv,
                                               int mb_row, int mb_col) {
@@ -59,7 +60,7 @@ static unsigned int do_16x16_motion_iteration(AV1_COMP *cpi, const MV *ref_mv,
         x, &cpi->common, mb_row, mb_col, ref_mv,
         cpi->common.allow_high_precision_mv, x->errorperbit, &v_fn_ptr, 0,
         mv_sf->subpel_iters_per_step, cond_cost_list(cpi, cost_list), NULL,
-        NULL, &distortion, &sse, NULL, NULL, 0, 0, 0, 0, 0);
+        NULL, &distortion, &sse, NULL, NULL, 0, 0, 0, 0, 0, 1);
   }
 
   if (has_second_ref(xd->mi[0]))
@@ -70,8 +71,8 @@ static unsigned int do_16x16_motion_iteration(AV1_COMP *cpi, const MV *ref_mv,
   xd->mi[0]->mv[0] = x->best_mv;
   xd->mi[0]->ref_frame[1] = NONE_FRAME;
 
-  av1_build_inter_predictors_sby(&cpi->common, xd, mb_row, mb_col, NULL,
-                                 BLOCK_16X16);
+  av1_enc_build_inter_predictor(&cpi->common, xd, mb_row, mb_col, NULL,
+                                BLOCK_16X16, AOM_PLANE_Y, AOM_PLANE_Y);
 
   /* restore UMV window */
   x->mv_limits = tmp_mv_limits;
@@ -140,7 +141,7 @@ static int find_best_16x16_intra(AV1_COMP *cpi, PREDICTION_MODE *pbest_mode) {
 
   // calculate SATD for each intra prediction mode;
   // we're intentionally not doing 4x4, we just want a rough estimate
-  for (mode = DC_PRED; mode <= PAETH_PRED; mode++) {
+  for (mode = INTRA_MODE_START; mode < INTRA_MODE_END; mode++) {
     unsigned int err;
 
     xd->mi[0]->mode = mode;
@@ -178,8 +179,8 @@ static void update_mbgraph_mb_stats(AV1_COMP *cpi, MBGRAPH_MB_STATS *stats,
   x->plane[0].src.buf = buf->y_buffer + mb_y_offset;
   x->plane[0].src.stride = buf->y_stride;
 
-  xd->plane[0].dst.buf = get_frame_new_buffer(cm)->y_buffer + mb_y_offset;
-  xd->plane[0].dst.stride = get_frame_new_buffer(cm)->y_stride;
+  xd->plane[0].dst.buf = cm->cur_frame->buf.y_buffer + mb_y_offset;
+  xd->plane[0].dst.stride = cm->cur_frame->buf.y_stride;
 
   // do intra 16x16 prediction
   intra_error = find_best_16x16_intra(cpi, &stats->ref[INTRA_FRAME].m.mode);
@@ -363,7 +364,7 @@ static void separate_arf_mbs(AV1_COMP *cpi) {
 void av1_update_mbgraph_stats(AV1_COMP *cpi) {
   AV1_COMMON *const cm = &cpi->common;
   int i, n_frames = av1_lookahead_depth(cpi->lookahead);
-  YV12_BUFFER_CONFIG *golden_ref = get_ref_frame_buffer(cpi, GOLDEN_FRAME);
+  YV12_BUFFER_CONFIG *golden_ref = &get_ref_frame_buf(cm, GOLDEN_FRAME)->buf;
 
   assert(golden_ref != NULL);
 

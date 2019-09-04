@@ -8,8 +8,8 @@
  * Media Patent License 1.0 was not distributed with this source code in the
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
-#ifndef AOM_AOM_ENCODER_H_
-#define AOM_AOM_ENCODER_H_
+#ifndef AOM_AOM_AOM_ENCODER_H_
+#define AOM_AOM_AOM_ENCODER_H_
 
 /*!\defgroup encoder Encoder Algorithm Interface
  * \ingroup codec
@@ -54,13 +54,6 @@ extern "C" {
  */
 #define AOM_CODEC_CAP_PSNR 0x10000 /**< Can issue PSNR packets */
 
-/*! Can output one partition at a time. Each partition is returned in its
- *  own AOM_CODEC_CX_FRAME_PKT, with the FRAME_IS_FRAGMENT flag set for
- *  every partition but the last. In this mode all frames are always
- *  returned partition by partition.
- */
-#define AOM_CODEC_CAP_OUTPUT_PARTITION 0x20000
-
 /*! Can support input images at greater than 8 bitdepth.
  */
 #define AOM_CODEC_CAP_HIGHBITDEPTH 0x40000
@@ -74,7 +67,6 @@ extern "C" {
  */
 #define AOM_CODEC_USE_PSNR 0x10000 /**< Calculate PSNR on each frame */
 /*!\brief Make the encoder output one  partition at a time. */
-#define AOM_CODEC_USE_OUTPUT_PARTITION 0x20000
 #define AOM_CODEC_USE_HIGHBITDEPTH 0x40000 /**< Use high bitdepth */
 
 /*!\brief Generic fixed size buffer structure
@@ -82,7 +74,7 @@ extern "C" {
  * This structure is able to hold a reference to any fixed size buffer.
  */
 typedef struct aom_fixed_buf {
-  void *buf;       /**< Pointer to the data */
+  void *buf;       /**< Pointer to the data. Does NOT own the data! */
   size_t sz;       /**< Length of the buffer, in chars */
 } aom_fixed_buf_t; /**< alias for struct aom_fixed_buf */
 
@@ -105,10 +97,14 @@ typedef uint32_t aom_codec_frame_flags_t;
 /*!\brief frame can be dropped without affecting the stream (no future frame
  * depends on this one) */
 #define AOM_FRAME_IS_DROPPABLE 0x2
-/*!\brief frame should be decoded but will not be shown */
-#define AOM_FRAME_IS_INVISIBLE 0x4
-/*!\brief this is a fragment of the encoded frame */
-#define AOM_FRAME_IS_FRAGMENT 0x8
+/*!\brief this is an INTRA_ONLY frame */
+#define AOM_FRAME_IS_INTRAONLY 0x10
+/*!\brief this is an S-frame */
+#define AOM_FRAME_IS_SWITCH 0x20
+/*!\brief this is an error-resilient frame */
+#define AOM_FRAME_IS_ERROR_RESILIENT 0x40
+/*!\brief this is a key-frame dependent recovery-point frame */
+#define AOM_FRAME_IS_DELAYED_RANDOM_ACCESS_POINT 0x80
 
 /*!\brief Error Resilient flags
  *
@@ -119,11 +115,6 @@ typedef uint32_t aom_codec_frame_flags_t;
 typedef uint32_t aom_codec_er_flags_t;
 /*!\brief Improve resiliency against losses of whole frames */
 #define AOM_ERROR_RESILIENT_DEFAULT 0x1
-/*!\brief The frame partitions are independently decodable by the bool decoder,
- * meaning that partitions can be decoded even though earlier partitions have
- * been lost. Note that intra prediction is still done over the partition
- * boundary. */
-#define AOM_ERROR_RESILIENT_PARTITIONS 0x2
 
 /*!\brief Encoder output packet variants
  *
@@ -415,8 +406,7 @@ typedef struct aom_codec_enc_cfg {
    * upscaling after the encode/decode process. Taking control of upscaling and
    * using restoration filters should allow it to outperform normal resizing.
    *
-   * Mode 0 is SUPERRES_NONE, mode 1 is SUPERRES_FIXED, mode 2 is
-   * SUPERRES_RANDOM and mode 3 is SUPERRES_QTHRESH.
+   * Valid values are 0 to 4 as defined in enum SUPERRES_MODE.
    */
   unsigned int rc_superres_mode;
 
@@ -849,15 +839,32 @@ aom_codec_err_t aom_codec_enc_config_set(aom_codec_ctx_t *ctx,
 /*!\brief Get global stream headers
  *
  * Retrieves a stream level global header packet, if supported by the codec.
+ * Calls to this function should be deferred until all configuration information
+ * has been passed to libaom. Otherwise the global header data may be
+ * invalidated by additional configuration changes.
+ *
+ * The AV1 implementation of this function returns an OBU. The OBU returned is
+ * in Low Overhead Bitstream Format. Specifically, the obu_has_size_field bit is
+ * set, and the buffer contains the obu_size field for the returned OBU.
  *
  * \param[in]    ctx     Pointer to this instance's context
  *
  * \retval NULL
- *     Encoder does not support global header
+ *     Encoder does not support global header, or an error occurred while
+ *     generating the global header.
+ *
  * \retval Non-NULL
- *     Pointer to buffer containing global header packet
+ *     Pointer to buffer containing global header packet. The caller owns the
+ *     memory associated with this buffer, and must free the 'buf' member of the
+ *     aom_fixed_buf_t as well as the aom_fixed_buf_t pointer. Memory returned
+ *     must be freed via call to free().
  */
 aom_fixed_buf_t *aom_codec_get_global_headers(aom_codec_ctx_t *ctx);
+
+/*!\brief usage parameter analogous to AV1 GOOD QUALITY mode. */
+#define AOM_USAGE_GOOD_QUALITY (0)
+/*!\brief usage parameter analogous to AV1 REALTIME mode. */
+#define AOM_USAGE_REALTIME (1)
 
 /*!\brief Encode a frame
  *
@@ -979,4 +986,4 @@ const aom_image_t *aom_codec_get_preview_frame(aom_codec_ctx_t *ctx);
 #ifdef __cplusplus
 }
 #endif
-#endif  // AOM_AOM_ENCODER_H_
+#endif  // AOM_AOM_AOM_ENCODER_H_

@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_DSP_VARIANCE_H_
-#define AOM_DSP_VARIANCE_H_
+#ifndef AOM_AOM_DSP_VARIANCE_H_
+#define AOM_AOM_DSP_VARIANCE_H_
 
 #include "config/aom_config.h"
 
@@ -50,15 +50,14 @@ typedef unsigned int (*aom_subp_avg_variance_fn_t)(
     const uint8_t *a, int a_stride, int xoffset, int yoffset, const uint8_t *b,
     int b_stride, unsigned int *sse, const uint8_t *second_pred);
 
-typedef unsigned int (*aom_jnt_sad_avg_fn_t)(const uint8_t *a, int a_stride,
-                                             const uint8_t *b, int b_stride,
-                                             const uint8_t *second_pred,
-                                             const JNT_COMP_PARAMS *jcp_param);
+typedef unsigned int (*aom_dist_wtd_sad_avg_fn_t)(
+    const uint8_t *a, int a_stride, const uint8_t *b, int b_stride,
+    const uint8_t *second_pred, const DIST_WTD_COMP_PARAMS *jcp_param);
 
-typedef unsigned int (*aom_jnt_subp_avg_variance_fn_t)(
+typedef unsigned int (*aom_dist_wtd_subp_avg_variance_fn_t)(
     const uint8_t *a, int a_stride, int xoffset, int yoffset, const uint8_t *b,
     int b_stride, unsigned int *sse, const uint8_t *second_pred,
-    const JNT_COMP_PARAMS *jcp_param);
+    const DIST_WTD_COMP_PARAMS *jcp_param);
 
 typedef unsigned int (*aom_masked_sad_fn_t)(const uint8_t *src, int src_stride,
                                             const uint8_t *ref, int ref_stride,
@@ -70,11 +69,12 @@ typedef unsigned int (*aom_masked_subpixvariance_fn_t)(
     const uint8_t *ref, int ref_stride, const uint8_t *second_pred,
     const uint8_t *msk, int msk_stride, int invert_mask, unsigned int *sse);
 
-void aom_comp_mask_upsampled_pred(
+void aom_highbd_comp_mask_upsampled_pred(
     MACROBLOCKD *xd, const struct AV1Common *const cm, int mi_row, int mi_col,
-    const MV *const mv, uint8_t *comp_pred, const uint8_t *pred, int width,
-    int height, int subpel_x_q3, int subpel_y_q3, const uint8_t *ref,
-    int ref_stride, const uint8_t *mask, int mask_stride, int invert_mask);
+    const MV *const mv, uint8_t *comp_pred8, const uint8_t *pred8, int width,
+    int height, int subpel_x_q3, int subpel_y_q3, const uint8_t *ref8,
+    int ref_stride, const uint8_t *mask, int mask_stride, int invert_mask,
+    int bd, int subpel_search);
 
 typedef unsigned int (*aom_obmc_sad_fn_t)(const uint8_t *pred, int pred_stride,
                                           const int32_t *wsrc,
@@ -100,8 +100,8 @@ typedef struct aom_variance_vtable {
   aom_obmc_sad_fn_t osdf;
   aom_obmc_variance_fn_t ovf;
   aom_obmc_subpixvariance_fn_t osvf;
-  aom_jnt_sad_avg_fn_t jsdaf;
-  aom_jnt_subp_avg_variance_fn_t jsvaf;
+  aom_dist_wtd_sad_avg_fn_t jsdaf;
+  aom_dist_wtd_subp_avg_variance_fn_t jsvaf;
 } aom_variance_fn_ptr_t;
 
 void aom_highbd_var_filter_block2d_bil_first_pass(
@@ -126,4 +126,4 @@ uint64_t aom_highbd_sse_odd_size(const uint8_t *a, int a_stride,
 }  // extern "C"
 #endif
 
-#endif  // AOM_DSP_VARIANCE_H_
+#endif  // AOM_AOM_DSP_VARIANCE_H_

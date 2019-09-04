@@ -24,19 +24,21 @@
 #define CFL_LINE_2 128
 #define CFL_LINE_3 192
 
-typedef vector int8_t int8x16_t;
-typedef vector uint8_t uint8x16_t;
-typedef vector int16_t int16x8_t;
-typedef vector uint16_t uint16x8_t;
-typedef vector int32_t int32x4_t;
-typedef vector uint32_t uint32x4_t;
-typedef vector uint64_t uint64x2_t;
+typedef vector signed char int8x16_t;          // NOLINT(runtime/int)
+typedef vector unsigned char uint8x16_t;       // NOLINT(runtime/int)
+typedef vector signed short int16x8_t;         // NOLINT(runtime/int)
+typedef vector unsigned short uint16x8_t;      // NOLINT(runtime/int)
+typedef vector signed int int32x4_t;           // NOLINT(runtime/int)
+typedef vector unsigned int uint32x4_t;        // NOLINT(runtime/int)
+typedef vector unsigned long long uint64x2_t;  // NOLINT(runtime/int)
 
-static INLINE void subtract_average_vsx(int16_t *pred_buf, int width,
-                                        int height, int round_offset,
+static INLINE void subtract_average_vsx(const uint16_t *src_ptr, int16_t *dst,
+                                        int width, int height, int round_offset,
                                         int num_pel_log2) {
-  const int16_t *end = pred_buf + height * CFL_BUF_LINE;
-  const int16_t *sum_buf = pred_buf;
+  //  int16_t *dst = dst_ptr;
+  const int16_t *dst_end = dst + height * CFL_BUF_LINE;
+  const int16_t *sum_buf = (const int16_t *)src_ptr;
+  const int16_t *end = sum_buf + height * CFL_BUF_LINE;
   const uint32x4_t div_shift = vec_splats((uint32_t)num_pel_log2);
   const uint8x16_t mask_64 = { 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
                                0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
@@ -71,43 +73,40 @@ static INLINE void subtract_average_vsx(int16_t *pred_buf, int width,
   const int32x4_t avg = vec_sr(sum_32x4, div_shift);
   const int16x8_t vec_avg = vec_pack(avg, avg);
   do {
-    vec_vsx_st(vec_sub(vec_vsx_ld(OFF_0, pred_buf), vec_avg), OFF_0, pred_buf);
-    vec_vsx_st(vec_sub(vec_vsx_ld(OFF_0 + CFL_LINE_1, pred_buf), vec_avg),
-               OFF_0 + CFL_BUF_LINE_BYTES, pred_buf);
-    vec_vsx_st(vec_sub(vec_vsx_ld(OFF_0 + CFL_LINE_2, pred_buf), vec_avg),
-               OFF_0 + CFL_LINE_2, pred_buf);
-    vec_vsx_st(vec_sub(vec_vsx_ld(OFF_0 + CFL_LINE_3, pred_buf), vec_avg),
-               OFF_0 + CFL_LINE_3, pred_buf);
+    vec_vsx_st(vec_sub(vec_vsx_ld(OFF_0, dst), vec_avg), OFF_0, dst);
+    vec_vsx_st(vec_sub(vec_vsx_ld(OFF_0 + CFL_LINE_1, dst), vec_avg),
+               OFF_0 + CFL_BUF_LINE_BYTES, dst);
+    vec_vsx_st(vec_sub(vec_vsx_ld(OFF_0 + CFL_LINE_2, dst), vec_avg),
+               OFF_0 + CFL_LINE_2, dst);
+    vec_vsx_st(vec_sub(vec_vsx_ld(OFF_0 + CFL_LINE_3, dst), vec_avg),
+               OFF_0 + CFL_LINE_3, dst);
     if (width >= 16) {
-      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_1, pred_buf), vec_avg), OFF_1,
-                 pred_buf);
-      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_1 + CFL_LINE_1, pred_buf), vec_avg),
-                 OFF_1 + CFL_LINE_1, pred_buf);
-      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_1 + CFL_LINE_2, pred_buf), vec_avg),
-                 OFF_1 + CFL_LINE_2, pred_buf);
-      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_1 + CFL_LINE_3, pred_buf), vec_avg),
-                 OFF_1 + CFL_LINE_3, pred_buf);
+      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_1, dst), vec_avg), OFF_1, dst);
+      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_1 + CFL_LINE_1, dst), vec_avg),
+                 OFF_1 + CFL_LINE_1, dst);
+      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_1 + CFL_LINE_2, dst), vec_avg),
+                 OFF_1 + CFL_LINE_2, dst);
+      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_1 + CFL_LINE_3, dst), vec_avg),
+                 OFF_1 + CFL_LINE_3, dst);
     }
     if (width == 32) {
-      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_2, pred_buf), vec_avg), OFF_2,
-                 pred_buf);
-      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_2 + CFL_LINE_1, pred_buf), vec_avg),
-                 OFF_2 + CFL_LINE_1, pred_buf);
-      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_2 + CFL_LINE_2, pred_buf), vec_avg),
-                 OFF_2 + CFL_LINE_2, pred_buf);
-      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_2 + CFL_LINE_3, pred_buf), vec_avg),
-                 OFF_2 + CFL_LINE_3, pred_buf);
+      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_2, dst), vec_avg), OFF_2, dst);
+      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_2 + CFL_LINE_1, dst), vec_avg),
+                 OFF_2 + CFL_LINE_1, dst);
+      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_2 + CFL_LINE_2, dst), vec_avg),
+                 OFF_2 + CFL_LINE_2, dst);
+      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_2 + CFL_LINE_3, dst), vec_avg),
+                 OFF_2 + CFL_LINE_3, dst);
 
-      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_3, pred_buf), vec_avg), OFF_3,
-                 pred_buf);
-      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_3 + CFL_LINE_1, pred_buf), vec_avg),
-                 OFF_3 + CFL_LINE_1, pred_buf);
-      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_3 + CFL_LINE_2, pred_buf), vec_avg),
-                 OFF_3 + CFL_LINE_2, pred_buf);
-      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_3 + CFL_LINE_3, pred_buf), vec_avg),
-                 OFF_3 + CFL_LINE_3, pred_buf);
+      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_3, dst), vec_avg), OFF_3, dst);
+      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_3 + CFL_LINE_1, dst), vec_avg),
+                 OFF_3 + CFL_LINE_1, dst);
+      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_3 + CFL_LINE_2, dst), vec_avg),
+                 OFF_3 + CFL_LINE_2, dst);
+      vec_vsx_st(vec_sub(vec_vsx_ld(OFF_3 + CFL_LINE_3, dst), vec_avg),
+                 OFF_3 + CFL_LINE_3, dst);
     }
-  } while ((pred_buf += CFL_BUF_LINE * 4) < end);
+  } while ((dst += CFL_BUF_LINE * 4) < dst_end);
 }
 
 // Declare wrappers for VSX sizes
@@ -125,27 +124,27 @@ CFL_SUB_AVG_X(vsx, 32, 32, 512, 10)
 
 // Based on observation, for small blocks VSX does not outperform C (no 64bit
 // load and store intrinsics). So we call the C code for block widths 4.
-cfl_subtract_average_fn get_subtract_average_fn_vsx(TX_SIZE tx_size) {
+cfl_subtract_average_fn cfl_get_subtract_average_fn_vsx(TX_SIZE tx_size) {
   static const cfl_subtract_average_fn sub_avg[TX_SIZES_ALL] = {
-    subtract_average_4x4_c,     /* 4x4 */
-    subtract_average_8x8_vsx,   /* 8x8 */
-    subtract_average_16x16_vsx, /* 16x16 */
-    subtract_average_32x32_vsx, /* 32x32 */
-    cfl_subtract_average_null,  /* 64x64 (invalid CFL size) */
-    subtract_average_4x8_c,     /* 4x8 */
-    subtract_average_8x4_vsx,   /* 8x4 */
-    subtract_average_8x16_vsx,  /* 8x16 */
-    subtract_average_16x8_vsx,  /* 16x8 */
-    subtract_average_16x32_vsx, /* 16x32 */
-    subtract_average_32x16_vsx, /* 32x16 */
-    cfl_subtract_average_null,  /* 32x64 (invalid CFL size) */
-    cfl_subtract_average_null,  /* 64x32 (invalid CFL size) */
-    subtract_average_4x16_c,    /* 4x16 */
-    subtract_average_16x4_vsx,  /* 16x4 */
-    subtract_average_8x32_vsx,  /* 8x32 */
-    subtract_average_32x8_vsx,  /* 32x8 */
-    cfl_subtract_average_null,  /* 16x64 (invalid CFL size) */
-    cfl_subtract_average_null,  /* 64x16 (invalid CFL size) */
+    cfl_subtract_average_4x4_c,     /* 4x4 */
+    cfl_subtract_average_8x8_vsx,   /* 8x8 */
+    cfl_subtract_average_16x16_vsx, /* 16x16 */
+    cfl_subtract_average_32x32_vsx, /* 32x32 */
+    NULL,                           /* 64x64 (invalid CFL size) */
+    cfl_subtract_average_4x8_c,     /* 4x8 */
+    cfl_subtract_average_8x4_vsx,   /* 8x4 */
+    cfl_subtract_average_8x16_vsx,  /* 8x16 */
+    cfl_subtract_average_16x8_vsx,  /* 16x8 */
+    cfl_subtract_average_16x32_vsx, /* 16x32 */
+    cfl_subtract_average_32x16_vsx, /* 32x16 */
+    NULL,                           /* 32x64 (invalid CFL size) */
+    NULL,                           /* 64x32 (invalid CFL size) */
+    cfl_subtract_average_4x16_c,    /* 4x16 */
+    cfl_subtract_average_16x4_vsx,  /* 16x4 */
+    cfl_subtract_average_8x32_vsx,  /* 8x32 */
+    cfl_subtract_average_32x8_vsx,  /* 32x8 */
+    NULL,                           /* 16x64 (invalid CFL size) */
+    NULL,                           /* 64x16 (invalid CFL size) */
   };
   // Modulo TX_SIZES_ALL to ensure that an attacker won't be able to
   // index the function pointer array out of bounds.

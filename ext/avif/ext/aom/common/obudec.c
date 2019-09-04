@@ -19,7 +19,7 @@
 #include "aom_dsp/aom_dsp_common.h"
 #include "aom_ports/mem_ops.h"
 #include "av1/common/common.h"
-#include "av1/decoder/obu.h"
+#include "av1/common/obu_util.h"
 
 #define OBU_BUFFER_SIZE (500 * 1024)
 
@@ -438,13 +438,15 @@ int obudec_read_temporal_unit(struct ObuDecInputContext *obu_ctx,
     return -1;
   }
 #endif
-  uint8_t *new_buffer = (uint8_t *)realloc(*buffer, tu_size);
-  if (!new_buffer) {
-    free(*buffer);
-    fprintf(stderr, "obudec: Out of memory.\n");
-    return -1;
+  if (tu_size > 0) {
+    uint8_t *new_buffer = (uint8_t *)realloc(*buffer, tu_size);
+    if (!new_buffer) {
+      free(*buffer);
+      fprintf(stderr, "obudec: Out of memory.\n");
+      return -1;
+    }
+    *buffer = new_buffer;
   }
-  *buffer = new_buffer;
   *bytes_read = tu_size;
   *buffer_size = tu_size;
 

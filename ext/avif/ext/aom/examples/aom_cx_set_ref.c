@@ -54,11 +54,10 @@
 #include "aom/aom_decoder.h"
 #include "aom/aom_encoder.h"
 #include "aom/aomcx.h"
+#include "aom_scale/yv12config.h"
 #include "common/tools_common.h"
 #include "common/video_writer.h"
 #include "examples/encoder_util.h"
-
-#define AOM_BORDER_IN_PIXELS 288
 
 static const char *exec_name;
 
@@ -142,9 +141,7 @@ static int encode_frame(aom_codec_ctx_t *ecodec, aom_image_t *img,
     if (pkt->kind == AOM_CODEC_CX_FRAME_PKT) {
       const int keyframe = (pkt->data.frame.flags & AOM_FRAME_IS_KEY) != 0;
 
-      if (!(pkt->data.frame.flags & AOM_FRAME_IS_FRAGMENT)) {
-        *frame_out += 1;
-      }
+      ++*frame_out;
 
       if (!aom_video_writer_write_frame(writer, pkt->data.frame.buf,
                                         pkt->data.frame.sz,
@@ -163,7 +160,7 @@ static int encode_frame(aom_codec_ctx_t *ecodec, aom_image_t *img,
 
         // Copy out first decoded frame, and use it as reference later.
         if (*frame_out == 1 && ext_ref != NULL)
-          if (aom_codec_control(dcodec, AV1_GET_NEW_FRAME_IMAGE, ext_ref))
+          if (aom_codec_control(dcodec, AV1_COPY_NEW_FRAME_IMAGE, ext_ref))
             die_codec(dcodec, "Failed to get decoder new frame");
       }
     }

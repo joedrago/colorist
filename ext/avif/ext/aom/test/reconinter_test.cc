@@ -28,12 +28,30 @@
 namespace {
 using libaom_test::ACMRandom;
 
-class BuildCompDiffwtdMaskTest : public ::testing::TestWithParam<int> {
+typedef void (*buildcompdiffwtdmaskd_func)(uint8_t *mask,
+                                           DIFFWTD_MASK_TYPE mask_type,
+                                           const uint8_t *src0, int src0_stride,
+                                           const uint8_t *src1, int src1_stride,
+                                           int h, int w);
+
+typedef ::testing::tuple<BLOCK_SIZE, buildcompdiffwtdmaskd_func>
+    BuildCompDiffwtdMaskDParam;
+
+#if HAVE_SSE4_1
+::testing::internal::ParamGenerator<BuildCompDiffwtdMaskDParam> BuildParams(
+    buildcompdiffwtdmaskd_func filter) {
+  return ::testing::Combine(::testing::Range(BLOCK_4X4, BLOCK_SIZES_ALL),
+                            ::testing::Values(filter));
+}
+#endif
+
+class BuildCompDiffwtdMaskTest
+    : public ::testing::TestWithParam<BuildCompDiffwtdMaskDParam> {
  public:
   virtual ~BuildCompDiffwtdMaskTest() {}
 
   virtual void TearDown() { libaom_test::ClearSystemState(); }
-  void RunTest(const int sb_type, const int is_speed,
+  void RunTest(buildcompdiffwtdmaskd_func test_impl, const int is_speed,
                const DIFFWTD_MASK_TYPE type);
 
  private:
@@ -65,7 +83,8 @@ class BuildCompDiffwtdMaskD16Test
 
  protected:
   void RunCheckOutput(buildcompdiffwtdmaskd16_func test_impl);
-  void RunSpeedTest(buildcompdiffwtdmaskd16_func test_impl);
+  void RunSpeedTest(buildcompdiffwtdmaskd16_func test_impl,
+                    DIFFWTD_MASK_TYPE mask_type);
   libaom_test::ACMRandom rnd_;
 };  // class BuildCompDiffwtdMaskD16Test
 
@@ -80,8 +99,7 @@ void BuildCompDiffwtdMaskD16Test::RunCheckOutput(
   DECLARE_ALIGNED(32, uint16_t, src0[MAX_SB_SQUARE]);
   DECLARE_ALIGNED(32, uint16_t, src1[MAX_SB_SQUARE]);
 
-  ConvolveParams conv_params =
-      get_conv_params_no_round(0, 0, 0, NULL, 0, 1, bd);
+  ConvolveParams conv_params = get_conv_params_no_round(0, 0, NULL, 0, 1, bd);
 
   int in_precision =
       bd + 2 * FILTER_BITS - conv_params.round_0 - conv_params.round_1 + 2;
@@ -112,7 +130,7 @@ void BuildCompDiffwtdMaskD16Test::RunCheckOutput(
 }
 
 void BuildCompDiffwtdMaskD16Test::RunSpeedTest(
-    buildcompdiffwtdmaskd16_func test_impl) {
+    buildcompdiffwtdmaskd16_func test_impl, DIFFWTD_MASK_TYPE mask_type) {
   const int block_idx = GET_PARAM(2);
   const int bd = GET_PARAM(0);
   const int width = block_size_wide[block_idx];
@@ -121,8 +139,7 @@ void BuildCompDiffwtdMaskD16Test::RunSpeedTest(
   DECLARE_ALIGNED(32, uint16_t, src0[MAX_SB_SQUARE]);
   DECLARE_ALIGNED(32, uint16_t, src1[MAX_SB_SQUARE]);
 
-  ConvolveParams conv_params =
-      get_conv_params_no_round(0, 0, 0, NULL, 0, 1, bd);
+  ConvolveParams conv_params = get_conv_params_no_round(0, 0, NULL, 0, 1, bd);
 
   int in_precision =
       bd + 2 * FILTER_BITS - conv_params.round_0 - conv_params.round_1 + 2;
@@ -132,35 +149,35 @@ void BuildCompDiffwtdMaskD16Test::RunSpeedTest(
     src1[i] = rnd_.Rand16() & ((1 << in_precision) - 1);
   }
 
-  const int num_loops = 1000000000 / (width + height);
+  const int num_loops = 10000000 / (width + height);
   aom_usec_timer timer;
   aom_usec_timer_start(&timer);
 
   for (int i = 0; i < num_loops; ++i)
-    av1_build_compound_diffwtd_mask_d16_c(mask, DIFFWTD_38, src0, width, src1,
+    av1_build_compound_diffwtd_mask_d16_c(mask, mask_type, src0, width, src1,
                                           width, height, width, &conv_params,
                                           bd);
 
   aom_usec_timer_mark(&timer);
   const int elapsed_time = static_cast<int>(aom_usec_timer_elapsed(&timer));
-  printf("av1_build_compound_diffwtd_mask_d16 c_code %3dx%-3d: %7.2f us\n",
-         width, height, 1000.0 * elapsed_time / num_loops);
 
   aom_usec_timer timer1;
   aom_usec_timer_start(&timer1);
 
   for (int i = 0; i < num_loops; ++i)
-    test_impl(mask, DIFFWTD_38, src0, width, src1, width, height, width,
+    test_impl(mask, mask_type, src0, width, src1, width, height, width,
               &conv_params, bd);
 
   aom_usec_timer_mark(&timer1);
   const int elapsed_time1 = static_cast<int>(aom_usec_timer_elapsed(&timer1));
-  printf("av1_build_compound_diffwtd_mask_d16 test_code %3dx%-3d: %7.2f us\n",
-         width, height, 1000.0 * elapsed_time1 / num_loops);
+  printf("av1_build_compound_diffwtd_mask_d16  %3dx%-3d: %7.2f \n", width,
+         height, elapsed_time / double(elapsed_time1));
 }
 #if HAVE_SSE4_1
-void BuildCompDiffwtdMaskTest::RunTest(const int sb_type, const int is_speed,
+void BuildCompDiffwtdMaskTest::RunTest(buildcompdiffwtdmaskd_func test_impl,
+                                       const int is_speed,
                                        const DIFFWTD_MASK_TYPE type) {
+  const int sb_type = GET_PARAM(0);
   const int width = block_size_wide[sb_type];
   const int height = block_size_high[sb_type];
   DECLARE_ALIGNED(16, uint8_t, mask_ref[MAX_SB_SQUARE]);
@@ -182,8 +199,7 @@ void BuildCompDiffwtdMaskTest::RunTest(const int sb_type, const int is_speed,
   const double t1 = get_time_mark(&timer);
   aom_usec_timer_start(&timer);
   for (int i = 0; i < run_times; ++i) {
-    av1_build_compound_diffwtd_mask_sse4_1(mask_test, type, src0, width, src1,
-                                           width, height, width);
+    test_impl(mask_test, type, src0, width, src1, width, height, width);
   }
   const double t2 = get_time_mark(&timer);
   if (is_speed) {
@@ -200,12 +216,12 @@ void BuildCompDiffwtdMaskTest::RunTest(const int sb_type, const int is_speed,
 }
 
 TEST_P(BuildCompDiffwtdMaskTest, match) {
-  RunTest(GetParam(), 0, DIFFWTD_38);
-  RunTest(GetParam(), 0, DIFFWTD_38_INV);
+  RunTest(GET_PARAM(1), 0, DIFFWTD_38);
+  RunTest(GET_PARAM(1), 0, DIFFWTD_38_INV);
 }
 TEST_P(BuildCompDiffwtdMaskTest, DISABLED_Speed) {
-  RunTest(GetParam(), 1, DIFFWTD_38);
-  RunTest(GetParam(), 1, DIFFWTD_38_INV);
+  RunTest(GET_PARAM(1), 1, DIFFWTD_38);
+  RunTest(GET_PARAM(1), 1, DIFFWTD_38_INV);
 }
 #endif
 TEST_P(BuildCompDiffwtdMaskD16Test, CheckOutput) {
@@ -213,17 +229,25 @@ TEST_P(BuildCompDiffwtdMaskD16Test, CheckOutput) {
 }
 
 TEST_P(BuildCompDiffwtdMaskD16Test, DISABLED_Speed) {
-  RunSpeedTest(GET_PARAM(1));
+  RunSpeedTest(GET_PARAM(1), DIFFWTD_38);
+  RunSpeedTest(GET_PARAM(1), DIFFWTD_38_INV);
 }
 
 #if HAVE_SSE4_1
 INSTANTIATE_TEST_CASE_P(SSE4_1, BuildCompDiffwtdMaskTest,
-                        ::testing::Range(0, static_cast<int>(BLOCK_SIZES_ALL),
-                                         1));
+                        BuildParams(av1_build_compound_diffwtd_mask_sse4_1));
 
 INSTANTIATE_TEST_CASE_P(
     SSE4_1, BuildCompDiffwtdMaskD16Test,
     BuildParams(av1_build_compound_diffwtd_mask_d16_sse4_1));
+#endif
+
+#if HAVE_AVX2
+INSTANTIATE_TEST_CASE_P(AVX2, BuildCompDiffwtdMaskTest,
+                        BuildParams(av1_build_compound_diffwtd_mask_avx2));
+
+INSTANTIATE_TEST_CASE_P(AVX2, BuildCompDiffwtdMaskD16Test,
+                        BuildParams(av1_build_compound_diffwtd_mask_d16_avx2));
 #endif
 
 #if HAVE_NEON

@@ -32,9 +32,9 @@ const int kHPad = 32;
 const int kXStepQn = 16;
 const int kYStepQn = 20;
 
+using libaom_test::ACMRandom;
 using ::testing::make_tuple;
 using ::testing::tuple;
-using libaom_test::ACMRandom;
 
 enum NTaps { EIGHT_TAP, TEN_TAP, TWELVE_TAP };
 int NTapsToInt(NTaps ntaps) { return 8 + static_cast<int>(ntaps) * 2; }
@@ -279,20 +279,20 @@ class ConvolveScaleTestBase : public ::testing::Test {
     filter_x_.set(ntaps_x_, false);
     filter_y_.set(ntaps_y_, true);
     convolve_params_ =
-        get_conv_params_no_round(0, avg_ != false, 0, NULL, 0, 1, bd);
+        get_conv_params_no_round(avg_ != false, 0, NULL, 0, 1, bd);
 
     delete image_;
     image_ = new TestImage<SrcPixel>(width_, height_, bd_);
   }
 
   void SetConvParamOffset(int i, int j, int is_compound, int do_average,
-                          int use_jnt_comp_avg) {
+                          int use_dist_wtd_comp_avg) {
     if (i == -1 && j == -1) {
-      convolve_params_.use_jnt_comp_avg = use_jnt_comp_avg;
+      convolve_params_.use_dist_wtd_comp_avg = use_dist_wtd_comp_avg;
       convolve_params_.is_compound = is_compound;
       convolve_params_.do_average = do_average;
     } else {
-      convolve_params_.use_jnt_comp_avg = use_jnt_comp_avg;
+      convolve_params_.use_dist_wtd_comp_avg = use_dist_wtd_comp_avg;
       convolve_params_.fwd_offset = quant_dist_lookup_table[i][j][0];
       convolve_params_.bck_offset = quant_dist_lookup_table[i][j][1];
       convolve_params_.is_compound = is_compound;
@@ -312,12 +312,12 @@ class ConvolveScaleTestBase : public ::testing::Test {
 
       is_compound = 1;
       for (int do_average = 0; do_average < 2; do_average++) {
-        for (int use_jnt_comp_avg = 0; use_jnt_comp_avg < 2;
-             use_jnt_comp_avg++) {
+        for (int use_dist_wtd_comp_avg = 0; use_dist_wtd_comp_avg < 2;
+             use_dist_wtd_comp_avg++) {
           for (int j = 0; j < 2; ++j) {
             for (int k = 0; k < 4; ++k) {
               SetConvParamOffset(j, k, is_compound, do_average,
-                                 use_jnt_comp_avg);
+                                 use_dist_wtd_comp_avg);
               Prep(&rnd);
               RunOne(true);
               RunOne(false);
@@ -390,8 +390,8 @@ typedef tuple<int, int> BlockDimension;
 
 typedef void (*LowbdConvolveFunc)(const uint8_t *src, int src_stride,
                                   uint8_t *dst, int dst_stride, int w, int h,
-                                  InterpFilterParams *filter_params_x,
-                                  InterpFilterParams *filter_params_y,
+                                  const InterpFilterParams *filter_params_x,
+                                  const InterpFilterParams *filter_params_y,
                                   const int subpel_x_qn, const int x_step_qn,
                                   const int subpel_y_qn, const int y_step_qn,
                                   ConvolveParams *conv_params);
@@ -463,8 +463,8 @@ INSTANTIATE_TEST_CASE_P(
 
 typedef void (*HighbdConvolveFunc)(const uint16_t *src, int src_stride,
                                    uint16_t *dst, int dst_stride, int w, int h,
-                                   InterpFilterParams *filter_params_x,
-                                   InterpFilterParams *filter_params_y,
+                                   const InterpFilterParams *filter_params_x,
+                                   const InterpFilterParams *filter_params_y,
                                    const int subpel_x_qn, const int x_step_qn,
                                    const int subpel_y_qn, const int y_step_qn,
                                    ConvolveParams *conv_params, int bd);

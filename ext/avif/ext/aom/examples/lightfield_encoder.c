@@ -37,13 +37,10 @@
 
 #include "aom/aom_encoder.h"
 #include "aom/aomcx.h"
+#include "aom_scale/yv12config.h"
 #include "av1/common/enums.h"
-
 #include "common/tools_common.h"
 #include "common/video_writer.h"
-
-#define MAX_EXTERNAL_REFERENCES 128
-#define AOM_BORDER_IN_PIXELS 288
 
 static const char *exec_name;
 
@@ -55,7 +52,7 @@ void usage_exit(void) {
   exit(EXIT_FAILURE);
 }
 
-static int aom_img_size_bytes(aom_image_t *img) {
+static int img_size_bytes(aom_image_t *img) {
   int image_size_bytes = 0;
   int plane;
   for (plane = 0; plane < 3; ++plane) {
@@ -137,7 +134,7 @@ static aom_fixed_buf_t pass0(aom_image_t *raw, FILE *infile,
                              aom_image_t *raw_shift) {
   aom_codec_ctx_t codec;
   int frame_count = 0;
-  int image_size_bytes = aom_img_size_bytes(raw);
+  int image_size_bytes = img_size_bytes(raw);
   int u_blocks, v_blocks;
   int bu, bv;
   aom_fixed_buf_t stats = { NULL, 0 };
@@ -245,7 +242,7 @@ static void pass1(aom_image_t *raw, FILE *infile, const char *outfile_name,
   AvxVideoWriter *writer = NULL;
   aom_codec_ctx_t codec;
   int frame_count = 0;
-  int image_size_bytes = aom_img_size_bytes(raw);
+  int image_size_bytes = img_size_bytes(raw);
   int bu, bv;
   int u_blocks, v_blocks;
   aom_image_t *frame_to_encode;
@@ -275,12 +272,26 @@ static void pass1(aom_image_t *raw, FILE *infile, const char *outfile_name,
   v_blocks = (lf_height + lf_blocksize - 1) / lf_blocksize;
 
   reference_image_num = u_blocks * v_blocks;
+  // Set the max gf group length so the references are guaranteed to be in
+  // a different gf group than any of the regular frames. This avoids using
+  // both vbr and constant quality mode in a single group. The number of
+  // references now cannot surpass 17 because of the enforced MAX_GF_INTERVAL of
+  // 16. If it is necessary to exceed this reference frame limit, one will have
+  // to do some additional handling to ensure references are in separate gf
+  // groups from the regular frames.
+  if (aom_codec_control(&codec, AV1E_SET_MAX_GF_INTERVAL,
+                        reference_image_num - 1))
+    die_codec(&codec, "Failed to set max gf interval");
   aom_img_fmt_t ref_fmt = AOM_IMG_FMT_I420;
   if (!CONFIG_LOWBITDEPTH) ref_fmt |= AOM_IMG_FMT_HIGHBITDEPTH;
   // Allocate memory with the border so that it can be used as a reference.
+  int border_in_pixels =
+      (codec.config.enc->rc_resize_mode || codec.config.enc->rc_superres_mode)
+          ? AOM_BORDER_IN_PIXELS
+          : AOM_ENC_NO_SCALE_BORDER;
   for (i = 0; i < reference_image_num; i++) {
     if (!aom_img_alloc_with_border(&reference_images[i], ref_fmt, cfg->g_w,
-                                   cfg->g_h, 32, 8, AOM_BORDER_IN_PIXELS)) {
+                                   cfg->g_h, 32, 8, border_in_pixels)) {
       die("Failed to allocate image.");
     }
   }
@@ -396,6 +407,10 @@ static void pass1(aom_image_t *raw, FILE *infile, const char *outfile_name,
   for (i = 0; i < reference_image_num; i++) aom_img_free(&reference_images[i]);
 
   if (aom_codec_destroy(&codec)) die_codec(&codec, "Failed to destroy codec.");
+
+  // Modify large_scale_file fourcc.
+  if (cfg->large_scale_tile == 1)
+    aom_video_writer_set_fourcc(writer, LST_FOURCC);
   aom_video_writer_close(writer);
 
   printf("\nSecond pass complete. Processed %d frames.\n", frame_count);

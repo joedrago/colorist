@@ -9,6 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
+#include <memory>
+
 #include "third_party/googletest/src/googletest/include/gtest/gtest.h"
 
 #include "test/codec_factory.h"
@@ -50,6 +52,13 @@ typedef struct {
   aom_bit_depth_t bit_depth;
   unsigned int profile;
 } TestVideoParam;
+
+std::ostream &operator<<(std::ostream &os, const TestVideoParam &test_arg) {
+  return os << "TestVideoParam { filename:" << test_arg.filename
+            << " input_bit_depth:" << test_arg.input_bit_depth
+            << " fmt:" << test_arg.fmt << " bit_depth:" << test_arg.bit_depth
+            << " profile:" << test_arg.profile << "}";
+}
 
 const TestVideoParam kTestVectors[] = {
   { "park_joy_90p_8_420.y4m", 8, AOM_IMG_FMT_I420, AOM_BITS_8, 0 },
@@ -120,7 +129,7 @@ class EndToEndTest
 
   virtual void PreEncodeFrameHook(::libaom_test::VideoSource *video,
                                   ::libaom_test::Encoder *encoder) {
-    if (video->frame() == 1) {
+    if (video->frame() == 0) {
       encoder->Control(AV1E_SET_FRAME_PARALLEL_DECODING, 1);
       encoder->Control(AV1E_SET_TILE_COLUMNS, 4);
       encoder->Control(AOME_SET_CPUUSED, cpu_used_);
@@ -155,7 +164,7 @@ class EndToEndTest
     init_flags_ = AOM_CODEC_USE_PSNR;
     if (cfg_.g_bit_depth > 8) init_flags_ |= AOM_CODEC_USE_HIGHBITDEPTH;
 
-    testing::internal::scoped_ptr<libaom_test::VideoSource> video;
+    std::unique_ptr<libaom_test::VideoSource> video;
     if (is_extension_y4m(test_video_param_.filename)) {
       video.reset(new libaom_test::Y4mVideoSource(test_video_param_.filename, 0,
                                                   kFrames));

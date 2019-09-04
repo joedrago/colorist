@@ -18,8 +18,8 @@
  * \brief Provides definitions for using AOM or AV1 within the aom Decoder
  *        interface.
  */
-#ifndef AOM_AOMDX_H_
-#define AOM_AOMDX_H_
+#ifndef AOM_AOM_AOMDX_H_
+#define AOM_AOM_AOMDX_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,6 +45,7 @@ typedef struct Accounting Accounting;
 /** Callback that inspects decoder frame data.
  */
 typedef void (*aom_inspect_cb)(void *decoder, void *ctx);
+
 #endif
 
 /*!\brief Structure to hold inspection callback and context.
@@ -59,6 +60,21 @@ typedef struct aom_inspect_init {
   /*! Inspection context. */
   void *inspect_ctx;
 } aom_inspect_init;
+
+/*!\brief Structure to collect a buffer index when inspecting.
+ *
+ * Defines a structure to hold the buffer and return an index
+ * when calling decode from inspect. This enables us to decode
+ * non showable sub frames.
+ */
+typedef struct {
+  /*! Pointer for new position in compressed buffer after decoding 1 OBU. */
+  const unsigned char *buf;
+  /*! Index into reference buffer array to see result of decoding 1 OBU. */
+  int idx;
+  /*! Is a show existing frame. */
+  int show_existing;
+} Av1DecodeReturn;
 
 /*!\brief Structure to hold a tile's start address and size in the bitstream.
  *
@@ -196,6 +212,12 @@ enum aom_dec_control_id {
    */
   AV1D_EXT_TILE_DEBUG,
 
+  /** control function to enable the row based multi-threading of decoding. A
+   * value that is equal to 1 indicates that row based multi-threading is
+   * enabled.
+   */
+  AV1D_SET_ROW_MT,
+
   /** control function to indicate whether bitstream is in Annex-B format. */
   AV1D_SET_IS_ANNEXB,
 
@@ -279,6 +301,8 @@ AOM_CTRL_USE_TYPE(AV1D_SET_EXT_REF_PTR, av1_ext_ref_frame_t *)
 #define AOM_CTRL_AV1D_SET_EXT_REF_PTR
 AOM_CTRL_USE_TYPE(AV1D_EXT_TILE_DEBUG, unsigned int)
 #define AOM_CTRL_AV1D_EXT_TILE_DEBUG
+AOM_CTRL_USE_TYPE(AV1D_SET_ROW_MT, unsigned int)
+#define AOM_CTRL_AV1D_SET_ROW_MT
 AOM_CTRL_USE_TYPE(AV1D_SET_SKIP_FILM_GRAIN, int)
 #define AOM_CTRL_AV1D_SET_SKIP_FILM_GRAIN
 AOM_CTRL_USE_TYPE(AV1D_SET_IS_ANNEXB, unsigned int)
@@ -296,4 +320,4 @@ AOM_CTRL_USE_TYPE(AV1_SET_INSPECTION_CALLBACK, aom_inspect_init *)
 }  // extern "C"
 #endif
 
-#endif  // AOM_AOMDX_H_
+#endif  // AOM_AOM_AOMDX_H_

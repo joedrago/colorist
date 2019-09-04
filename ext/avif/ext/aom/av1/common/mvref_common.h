@@ -8,8 +8,8 @@
  * Media Patent License 1.0 was not distributed with this source code in the
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
-#ifndef AV1_COMMON_MVREF_COMMON_H_
-#define AV1_COMMON_MVREF_COMMON_H_
+#ifndef AOM_AV1_COMMON_MVREF_COMMON_H_
+#define AOM_AV1_COMMON_MVREF_COMMON_H_
 
 #include "av1/common/onyxc_int.h"
 #include "av1/common/blockd.h"
@@ -34,17 +34,17 @@ typedef struct position {
 // clamp_mv_ref
 #define MV_BORDER (16 << 3)  // Allow 16 pels in 1/8th pel units
 
-static INLINE int get_relative_dist(const AV1_COMMON *cm, int a, int b) {
-  if (!cm->seq_params.enable_order_hint) return 0;
+static INLINE int get_relative_dist(const OrderHintInfo *oh, int a, int b) {
+  if (!oh->enable_order_hint) return 0;
 
-  const int bits = cm->seq_params.order_hint_bits_minus_1 + 1;
+  const int bits = oh->order_hint_bits_minus_1 + 1;
 
   assert(bits >= 1);
   assert(a >= 0 && a < (1 << bits));
   assert(b >= 0 && b < (1 << bits));
 
   int diff = a - b;
-  int m = 1 << (bits - 1);
+  const int m = 1 << (bits - 1);
   diff = (diff & (m - 1)) - (diff & m);
   return diff;
 }
@@ -70,44 +70,20 @@ static INLINE int_mv get_sub_block_pred_mv(const MB_MODE_INFO *candidate,
   return candidate->mv[which_mv];
 }
 
-// Performs mv sign inversion if indicated by the reference frame combination.
-static INLINE int_mv scale_mv(const MB_MODE_INFO *mbmi, int ref,
-                              const MV_REFERENCE_FRAME this_ref_frame,
-                              const int *ref_sign_bias) {
-  int_mv mv = mbmi->mv[ref];
-  if (ref_sign_bias[mbmi->ref_frame[ref]] != ref_sign_bias[this_ref_frame]) {
-    mv.as_mv.row *= -1;
-    mv.as_mv.col *= -1;
-  }
-  return mv;
-}
-
 // Checks that the given mi_row, mi_col and search point
 // are inside the borders of the tile.
 static INLINE int is_inside(const TileInfo *const tile, int mi_col, int mi_row,
-                            int mi_rows, const POSITION *mi_pos) {
-  const int dependent_horz_tile_flag = 0;
-  if (dependent_horz_tile_flag && !tile->tg_horz_boundary) {
-    return !(mi_row + mi_pos->row < 0 ||
-             mi_col + mi_pos->col < tile->mi_col_start ||
-             mi_row + mi_pos->row >= mi_rows ||
-             mi_col + mi_pos->col >= tile->mi_col_end);
-  } else {
-    return !(mi_row + mi_pos->row < tile->mi_row_start ||
-             mi_col + mi_pos->col < tile->mi_col_start ||
-             mi_row + mi_pos->row >= tile->mi_row_end ||
-             mi_col + mi_pos->col >= tile->mi_col_end);
-  }
+                            const POSITION *mi_pos) {
+  return !(mi_row + mi_pos->row < tile->mi_row_start ||
+           mi_col + mi_pos->col < tile->mi_col_start ||
+           mi_row + mi_pos->row >= tile->mi_row_end ||
+           mi_col + mi_pos->col >= tile->mi_col_end);
 }
 
 static INLINE int find_valid_row_offset(const TileInfo *const tile, int mi_row,
-                                        int mi_rows, int row_offset) {
-  const int dependent_horz_tile_flag = 0;
-  if (dependent_horz_tile_flag && !tile->tg_horz_boundary)
-    return clamp(row_offset, -mi_row, mi_rows - mi_row - 1);
-  else
-    return clamp(row_offset, tile->mi_row_start - mi_row,
-                 tile->mi_row_end - mi_row - 1);
+                                        int row_offset) {
+  return clamp(row_offset, tile->mi_row_start - mi_row,
+               tile->mi_row_end - mi_row - 1);
 }
 
 static INLINE int find_valid_col_offset(const TileInfo *const tile, int mi_col,
@@ -181,14 +157,14 @@ static MV_REFERENCE_FRAME ref_frame_map[TOTAL_COMP_REFS][2] = {
 // clang-format on
 
 static INLINE void av1_set_ref_frame(MV_REFERENCE_FRAME *rf,
-                                     int8_t ref_frame_type) {
+                                     MV_REFERENCE_FRAME ref_frame_type) {
   if (ref_frame_type >= REF_FRAMES) {
     rf[0] = ref_frame_map[ref_frame_type - REF_FRAMES][0];
     rf[1] = ref_frame_map[ref_frame_type - REF_FRAMES][1];
   } else {
+    assert(ref_frame_type > NONE_FRAME);
     rf[0] = ref_frame_type;
     rf[1] = NONE_FRAME;
-    assert(ref_frame_type > NONE_FRAME);
   }
 }
 
@@ -213,18 +189,17 @@ static INLINE int16_t av1_mode_context_analyzer(
   return comp_ctx;
 }
 
-static INLINE uint8_t av1_drl_ctx(const CANDIDATE_MV *ref_mv_stack,
-                                  int ref_idx) {
-  if (ref_mv_stack[ref_idx].weight >= REF_CAT_LEVEL &&
-      ref_mv_stack[ref_idx + 1].weight >= REF_CAT_LEVEL)
+static INLINE uint8_t av1_drl_ctx(const uint16_t *ref_mv_weight, int ref_idx) {
+  if (ref_mv_weight[ref_idx] >= REF_CAT_LEVEL &&
+      ref_mv_weight[ref_idx + 1] >= REF_CAT_LEVEL)
     return 0;
 
-  if (ref_mv_stack[ref_idx].weight >= REF_CAT_LEVEL &&
-      ref_mv_stack[ref_idx + 1].weight < REF_CAT_LEVEL)
+  if (ref_mv_weight[ref_idx] >= REF_CAT_LEVEL &&
+      ref_mv_weight[ref_idx + 1] < REF_CAT_LEVEL)
     return 1;
 
-  if (ref_mv_stack[ref_idx].weight < REF_CAT_LEVEL &&
-      ref_mv_stack[ref_idx + 1].weight < REF_CAT_LEVEL)
+  if (ref_mv_weight[ref_idx] < REF_CAT_LEVEL &&
+      ref_mv_weight[ref_idx + 1] < REF_CAT_LEVEL)
     return 2;
 
   return 0;
@@ -234,7 +209,8 @@ void av1_setup_frame_buf_refs(AV1_COMMON *cm);
 void av1_setup_frame_sign_bias(AV1_COMMON *cm);
 void av1_setup_skip_mode_allowed(AV1_COMMON *cm);
 void av1_setup_motion_field(AV1_COMMON *cm);
-void av1_set_frame_refs(AV1_COMMON *const cm, int lst_map_idx, int gld_map_idx);
+void av1_set_frame_refs(AV1_COMMON *const cm, int *remapped_ref_idx,
+                        int lst_map_idx, int gld_map_idx);
 
 static INLINE void av1_collect_neighbors_ref_counts(MACROBLOCKD *const xd) {
   av1_zero(xd->neighbors_ref_counts);
@@ -263,13 +239,18 @@ static INLINE void av1_collect_neighbors_ref_counts(MACROBLOCKD *const xd) {
   }
 }
 
-void av1_copy_frame_mvs(const AV1_COMMON *const cm, MB_MODE_INFO *mi,
-                        int mi_row, int mi_col, int x_mis, int y_mis);
+void av1_copy_frame_mvs(const AV1_COMMON *const cm,
+                        const MB_MODE_INFO *const mi, int mi_row, int mi_col,
+                        int x_mis, int y_mis);
 
+// The global_mvs output parameter points to an array of REF_FRAMES elements.
+// The caller may pass a null global_mvs if it does not need the global_mvs
+// output.
 void av1_find_mv_refs(const AV1_COMMON *cm, const MACROBLOCKD *xd,
                       MB_MODE_INFO *mi, MV_REFERENCE_FRAME ref_frame,
                       uint8_t ref_mv_count[MODE_CTX_REF_FRAMES],
                       CANDIDATE_MV ref_mv_stack[][MAX_REF_MV_STACK_SIZE],
+                      uint16_t ref_mv_weight[][MAX_REF_MV_STACK_SIZE],
                       int_mv mv_ref_list[][MAX_MV_REF_CANDIDATES],
                       int_mv *global_mvs, int mi_row, int mi_col,
                       int16_t *mode_context);
@@ -280,13 +261,13 @@ void av1_find_mv_refs(const AV1_COMMON *cm, const MACROBLOCKD *xd,
 void av1_find_best_ref_mvs(int allow_hp, int_mv *mvlist, int_mv *nearest_mv,
                            int_mv *near_mv, int is_integer);
 
-int selectSamples(MV *mv, int *pts, int *pts_inref, int len, BLOCK_SIZE bsize);
-int findSamples(const AV1_COMMON *cm, MACROBLOCKD *xd, int mi_row, int mi_col,
-                int *pts, int *pts_inref);
+uint8_t av1_selectSamples(MV *mv, int *pts, int *pts_inref, int len,
+                          BLOCK_SIZE bsize);
+uint8_t av1_findSamples(const AV1_COMMON *cm, MACROBLOCKD *xd, int mi_row,
+                        int mi_col, int *pts, int *pts_inref);
 
 #define INTRABC_DELAY_PIXELS 256  //  Delay of 256 pixels
 #define INTRABC_DELAY_SB64 (INTRABC_DELAY_PIXELS / 64)
-#define USE_WAVE_FRONT 1  // Use only top left area of frame for reference.
 
 static INLINE void av1_find_ref_dv(int_mv *ref_dv, const TileInfo *const tile,
                                    int mib_size, int mi_row, int mi_col) {
@@ -356,13 +337,12 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
   const int src_sb64 = src_sb_row * total_sb64_per_row + src_sb64_col;
   if (src_sb64 >= active_sb64 - INTRABC_DELAY_SB64) return 0;
 
-#if USE_WAVE_FRONT
+  // Wavefront constraint: use only top left area of frame for reference.
   const int gradient = 1 + INTRABC_DELAY_SB64 + (sb_size > 64);
   const int wf_offset = gradient * (active_sb_row - src_sb_row);
   if (src_sb_row > active_sb_row ||
       src_sb64_col >= active_sb64_col - INTRABC_DELAY_SB64 + wf_offset)
     return 0;
-#endif
 
   return 1;
 }
@@ -371,4 +351,4 @@ static INLINE int av1_is_dv_valid(const MV dv, const AV1_COMMON *cm,
 }  // extern "C"
 #endif
 
-#endif  // AV1_COMMON_MVREF_COMMON_H_
+#endif  // AOM_AV1_COMMON_MVREF_COMMON_H_

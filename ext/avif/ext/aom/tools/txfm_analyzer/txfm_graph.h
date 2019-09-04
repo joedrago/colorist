@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef TOOLS_TXFM_ANALYZER_H_
-#define TOOLS_TXFM_ANALYZER_H_
+#ifndef AOM_TOOLS_TXFM_ANALYZER_TXFM_GRAPH_H_
+#define AOM_TOOLS_TXFM_ANALYZER_TXFM_GRAPH_H_
 
 struct Node {
   Node *inNode[2];
@@ -23,7 +23,6 @@ struct Node {
   int visited;
 };
 
-#define PI (3.141592653589793238462643383279502884)
 #define STAGENUM (10)
 #define NODENUM (32)
 #define COS_MOD (128)
@@ -158,4 +157,4 @@ void amplify_value(Node *node, int stage_num, int node_num, int stage_idx,
 void propagate_estimate_amlify(Node *node, int stage_num, int node_num,
                                int stage_idx, int amplify_bit,
                                int estimate_bit);
-#endif  // TOOLS_TXFM_ANALYZER_H_
+#endif  // AOM_TOOLS_TXFM_ANALYZER_TXFM_GRAPH_H_

@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef _AOM_DSP_X86_CONVOLVE_SSE4_1_INTRIN_H_
-#define _AOM_DSP_X86_CONVOLVE_SSE4_1_INTRIN_H_
+#ifndef AOM_AOM_DSP_X86_CONVOLVE_SSE4_1_H_
+#define AOM_AOM_DSP_X86_CONVOLVE_SSE4_1_H_
 
 // Note:
 //  This header file should be put below any x86 intrinsics head file
@@ -35,9 +35,9 @@ static INLINE __m128i highbd_comp_avg_sse4_1(const __m128i *const data_ref_0,
                                              const __m128i *const res_unsigned,
                                              const __m128i *const wt0,
                                              const __m128i *const wt1,
-                                             const int use_jnt_comp_avg) {
+                                             const int use_dist_wtd_avg) {
   __m128i res;
-  if (use_jnt_comp_avg) {
+  if (use_dist_wtd_avg) {
     const __m128i wt0_res = _mm_mullo_epi32(*data_ref_0, *wt0);
     const __m128i wt1_res = _mm_mullo_epi32(*res_unsigned, *wt1);
 
@@ -50,4 +50,4 @@ static INLINE __m128i highbd_comp_avg_sse4_1(const __m128i *const data_ref_0,
   return res;
 }
 
-#endif  // _AOM_DSP_X86_TXFM_COMMON_INTRIN_H_
+#endif  // AOM_AOM_DSP_X86_CONVOLVE_SSE4_1_H_

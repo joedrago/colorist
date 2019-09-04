@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AV1_ENCODER_LOOKAHEAD_H_
-#define AV1_ENCODER_LOOKAHEAD_H_
+#ifndef AOM_AV1_ENCODER_LOOKAHEAD_H_
+#define AOM_AV1_ENCODER_LOOKAHEAD_H_
 
 #include "aom_scale/yv12config.h"
 #include "aom/aom_integer.h"
@@ -46,7 +46,8 @@ struct lookahead_ctx {
  */
 struct lookahead_ctx *av1_lookahead_init(
     unsigned int width, unsigned int height, unsigned int subsampling_x,
-    unsigned int subsampling_y, int use_highbitdepth, unsigned int depth);
+    unsigned int subsampling_y, int use_highbitdepth, unsigned int depth,
+    const int border_in_pixels, int is_scale);
 
 /**\brief Destroys the lookahead stage
  */
@@ -103,4 +104,4 @@ unsigned int av1_lookahead_depth(struct lookahead_ctx *ctx);
 }  // extern "C"
 #endif
 
-#endif  // AV1_ENCODER_LOOKAHEAD_H_
+#endif  // AOM_AV1_ENCODER_LOOKAHEAD_H_

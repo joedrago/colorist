@@ -16,6 +16,7 @@
 #include "config/aom_dsp_rtcd.h"
 #include "config/av1_rtcd.h"
 
+#include "aom_dsp/blend.h"
 #include "aom_dsp/x86/synonyms.h"
 
 #include "aom_ports/mem.h"
@@ -143,6 +144,7 @@ static INLINE void variance8_sse2(const uint8_t *src, const int src_stride,
                                   __m128i *const sum) {
   assert(h <= 128);  // May overflow for larger height.
   *sum = _mm_setzero_si128();
+  *sse = _mm_setzero_si128();
   for (int i = 0; i < h; i++) {
     const __m128i s = load8_8to16_sse2(src);
     const __m128i r = load8_8to16_sse2(ref);
@@ -233,6 +235,14 @@ static INLINE void variance128_sse2(const uint8_t *src, const int src_stride,
     src += src_stride;
     ref += ref_stride;
   }
+}
+
+void aom_get8x8var_sse2(const uint8_t *src_ptr, int src_stride,
+                        const uint8_t *ref_ptr, int ref_stride,
+                        unsigned int *sse, int *sum) {
+  __m128i vsse, vsum;
+  variance8_sse2(src_ptr, src_stride, ref_ptr, ref_stride, 8, &vsse, &vsum);
+  variance_final_128_pel_sse2(vsse, vsum, sse, sum);
 }
 
 #define AOM_VAR_NO_LOOP_SSE2(bw, bh, bits, max_pixels)                        \
@@ -485,14 +495,15 @@ void aom_upsampled_pred_sse2(MACROBLOCKD *xd, const struct AV1Common *const cm,
                              int mi_row, int mi_col, const MV *const mv,
                              uint8_t *comp_pred, int width, int height,
                              int subpel_x_q3, int subpel_y_q3,
-                             const uint8_t *ref, int ref_stride) {
+                             const uint8_t *ref, int ref_stride,
+                             int subpel_search) {
   // expect xd == NULL only in tests
   if (xd != NULL) {
     const MB_MODE_INFO *mi = xd->mi[0];
     const int ref_num = 0;
     const int is_intrabc = is_intrabc_block(mi);
     const struct scale_factors *const sf =
-        is_intrabc ? &cm->sf_identity : &xd->block_refs[ref_num]->sf;
+        is_intrabc ? &cm->sf_identity : xd->block_ref_scale_factors[ref_num];
     const int is_scaled = av1_is_scaled(sf);
 
     if (is_scaled) {
@@ -553,7 +564,7 @@ void aom_upsampled_pred_sse2(MACROBLOCKD *xd, const struct AV1Common *const cm,
       warp_types.local_warp_allowed = mi->motion_mode == WARPED_CAUSAL;
 
       // Get convolve parameters.
-      ConvolveParams conv_params = get_conv_params(ref_num, 0, plane, xd->bd);
+      ConvolveParams conv_params = get_conv_params(0, plane, xd->bd);
       const InterpFilters filters =
           av1_broadcast_interp_filter(EIGHTTAP_REGULAR);
 
@@ -569,8 +580,10 @@ void aom_upsampled_pred_sse2(MACROBLOCKD *xd, const struct AV1Common *const cm,
     }
   }
 
-  const InterpFilterParams filter =
-      av1_get_interp_filter_params_with_block_size(EIGHTTAP_REGULAR, 8);
+  const InterpFilterParams *filter = av1_get_filter(subpel_search);
+  // (TODO:yunqing) 2-tap case uses 4-tap functions since there is no SIMD for
+  // 2-tap yet.
+  int filter_taps = (subpel_search <= USE_4_TAPS) ? 4 : SUBPEL_TAPS;
 
   if (!subpel_x_q3 && !subpel_y_q3) {
     if (width >= 16) {
@@ -632,15 +645,18 @@ void aom_upsampled_pred_sse2(MACROBLOCKD *xd, const struct AV1Common *const cm,
         av1_get_interp_filter_subpel_kernel(filter, subpel_x_q3 << 1);
     const int16_t *const kernel_y =
         av1_get_interp_filter_subpel_kernel(filter, subpel_y_q3 << 1);
-    const int intermediate_height =
-        (((height - 1) * 8 + subpel_y_q3) >> 3) + filter.taps;
+    const uint8_t *ref_start = ref - ref_stride * ((filter_taps >> 1) - 1);
+    uint8_t *temp_start_horiz = (subpel_search <= USE_4_TAPS)
+                                    ? temp + (filter_taps >> 1) * MAX_SB_SIZE
+                                    : temp;
+    uint8_t *temp_start_vert = temp + MAX_SB_SIZE * ((filter->taps >> 1) - 1);
+    int intermediate_height =
+        (((height - 1) * 8 + subpel_y_q3) >> 3) + filter_taps;
     assert(intermediate_height <= (MAX_SB_SIZE * 2 + 16) + 16);
-    aom_convolve8_horiz(ref - ref_stride * ((filter.taps >> 1) - 1), ref_stride,
-                        temp, MAX_SB_SIZE, kernel_x, 16, NULL, -1, width,
-                        intermediate_height);
-    aom_convolve8_vert(temp + MAX_SB_SIZE * ((filter.taps >> 1) - 1),
-                       MAX_SB_SIZE, comp_pred, width, NULL, -1, kernel_y, 16,
-                       width, height);
+    aom_convolve8_horiz(ref_start, ref_stride, temp_start_horiz, MAX_SB_SIZE,
+                        kernel_x, 16, NULL, -1, width, intermediate_height);
+    aom_convolve8_vert(temp_start_vert, MAX_SB_SIZE, comp_pred, width, NULL, -1,
+                       kernel_y, 16, width, height);
   }
 }
 
@@ -648,11 +664,11 @@ void aom_comp_avg_upsampled_pred_sse2(
     MACROBLOCKD *xd, const struct AV1Common *const cm, int mi_row, int mi_col,
     const MV *const mv, uint8_t *comp_pred, const uint8_t *pred, int width,
     int height, int subpel_x_q3, int subpel_y_q3, const uint8_t *ref,
-    int ref_stride) {
+    int ref_stride, int subpel_search) {
   int n;
   int i;
   aom_upsampled_pred(xd, cm, mi_row, mi_col, mv, comp_pred, width, height,
-                     subpel_x_q3, subpel_y_q3, ref, ref_stride);
+                     subpel_x_q3, subpel_y_q3, ref, ref_stride, subpel_search);
   /*The total number of pixels must be a multiple of 16 (e.g., 4x4).*/
   assert(!(width * height & 15));
   n = width * height >> 4;
@@ -662,5 +678,130 @@ void aom_comp_avg_upsampled_pred_sse2(
     xx_storeu_128(comp_pred, _mm_avg_epu8(s0, p0));
     comp_pred += 16;
     pred += 16;
+  }
+}
+
+void aom_comp_mask_upsampled_pred_sse2(
+    MACROBLOCKD *xd, const AV1_COMMON *const cm, int mi_row, int mi_col,
+    const MV *const mv, uint8_t *comp_pred, const uint8_t *pred, int width,
+    int height, int subpel_x_q3, int subpel_y_q3, const uint8_t *ref,
+    int ref_stride, const uint8_t *mask, int mask_stride, int invert_mask,
+    int subpel_search) {
+  if (subpel_x_q3 | subpel_y_q3) {
+    aom_upsampled_pred(xd, cm, mi_row, mi_col, mv, comp_pred, width, height,
+                       subpel_x_q3, subpel_y_q3, ref, ref_stride,
+                       subpel_search);
+    ref = comp_pred;
+    ref_stride = width;
+  }
+  aom_comp_mask_pred(comp_pred, pred, width, height, ref, ref_stride, mask,
+                     mask_stride, invert_mask);
+}
+
+static INLINE __m128i highbd_comp_mask_pred_line_sse2(const __m128i s0,
+                                                      const __m128i s1,
+                                                      const __m128i a) {
+  const __m128i alpha_max = _mm_set1_epi16((1 << AOM_BLEND_A64_ROUND_BITS));
+  const __m128i round_const =
+      _mm_set1_epi32((1 << AOM_BLEND_A64_ROUND_BITS) >> 1);
+  const __m128i a_inv = _mm_sub_epi16(alpha_max, a);
+
+  const __m128i s_lo = _mm_unpacklo_epi16(s0, s1);
+  const __m128i a_lo = _mm_unpacklo_epi16(a, a_inv);
+  const __m128i pred_lo = _mm_madd_epi16(s_lo, a_lo);
+  const __m128i pred_l = _mm_srai_epi32(_mm_add_epi32(pred_lo, round_const),
+                                        AOM_BLEND_A64_ROUND_BITS);
+
+  const __m128i s_hi = _mm_unpackhi_epi16(s0, s1);
+  const __m128i a_hi = _mm_unpackhi_epi16(a, a_inv);
+  const __m128i pred_hi = _mm_madd_epi16(s_hi, a_hi);
+  const __m128i pred_h = _mm_srai_epi32(_mm_add_epi32(pred_hi, round_const),
+                                        AOM_BLEND_A64_ROUND_BITS);
+
+  const __m128i comp = _mm_packs_epi32(pred_l, pred_h);
+
+  return comp;
+}
+
+void aom_highbd_comp_mask_pred_sse2(uint8_t *comp_pred8, const uint8_t *pred8,
+                                    int width, int height, const uint8_t *ref8,
+                                    int ref_stride, const uint8_t *mask,
+                                    int mask_stride, int invert_mask) {
+  int i = 0;
+  uint16_t *comp_pred = CONVERT_TO_SHORTPTR(comp_pred8);
+  uint16_t *pred = CONVERT_TO_SHORTPTR(pred8);
+  uint16_t *ref = CONVERT_TO_SHORTPTR(ref8);
+  const uint16_t *src0 = invert_mask ? pred : ref;
+  const uint16_t *src1 = invert_mask ? ref : pred;
+  const int stride0 = invert_mask ? width : ref_stride;
+  const int stride1 = invert_mask ? ref_stride : width;
+  const __m128i zero = _mm_setzero_si128();
+
+  if (width == 8) {
+    do {
+      const __m128i s0 = _mm_loadu_si128((const __m128i *)(src0));
+      const __m128i s1 = _mm_loadu_si128((const __m128i *)(src1));
+      const __m128i m_8 = _mm_loadl_epi64((const __m128i *)mask);
+      const __m128i m_16 = _mm_unpacklo_epi8(m_8, zero);
+
+      const __m128i comp = highbd_comp_mask_pred_line_sse2(s0, s1, m_16);
+
+      _mm_storeu_si128((__m128i *)comp_pred, comp);
+
+      src0 += stride0;
+      src1 += stride1;
+      mask += mask_stride;
+      comp_pred += width;
+      i += 1;
+    } while (i < height);
+  } else if (width == 16) {
+    do {
+      const __m128i s0 = _mm_loadu_si128((const __m128i *)(src0));
+      const __m128i s2 = _mm_loadu_si128((const __m128i *)(src0 + 8));
+      const __m128i s1 = _mm_loadu_si128((const __m128i *)(src1));
+      const __m128i s3 = _mm_loadu_si128((const __m128i *)(src1 + 8));
+
+      const __m128i m_8 = _mm_loadu_si128((const __m128i *)mask);
+      const __m128i m01_16 = _mm_unpacklo_epi8(m_8, zero);
+      const __m128i m23_16 = _mm_unpackhi_epi8(m_8, zero);
+
+      const __m128i comp = highbd_comp_mask_pred_line_sse2(s0, s1, m01_16);
+      const __m128i comp1 = highbd_comp_mask_pred_line_sse2(s2, s3, m23_16);
+
+      _mm_storeu_si128((__m128i *)comp_pred, comp);
+      _mm_storeu_si128((__m128i *)(comp_pred + 8), comp1);
+
+      src0 += stride0;
+      src1 += stride1;
+      mask += mask_stride;
+      comp_pred += width;
+      i += 1;
+    } while (i < height);
+  } else if (width == 32) {
+    do {
+      for (int j = 0; j < 2; j++) {
+        const __m128i s0 = _mm_loadu_si128((const __m128i *)(src0 + j * 16));
+        const __m128i s2 =
+            _mm_loadu_si128((const __m128i *)(src0 + 8 + j * 16));
+        const __m128i s1 = _mm_loadu_si128((const __m128i *)(src1 + j * 16));
+        const __m128i s3 =
+            _mm_loadu_si128((const __m128i *)(src1 + 8 + j * 16));
+
+        const __m128i m_8 = _mm_loadu_si128((const __m128i *)(mask + j * 16));
+        const __m128i m01_16 = _mm_unpacklo_epi8(m_8, zero);
+        const __m128i m23_16 = _mm_unpackhi_epi8(m_8, zero);
+
+        const __m128i comp = highbd_comp_mask_pred_line_sse2(s0, s1, m01_16);
+        const __m128i comp1 = highbd_comp_mask_pred_line_sse2(s2, s3, m23_16);
+
+        _mm_storeu_si128((__m128i *)(comp_pred + j * 16), comp);
+        _mm_storeu_si128((__m128i *)(comp_pred + 8 + j * 16), comp1);
+      }
+      src0 += stride0;
+      src1 += stride1;
+      mask += mask_stride;
+      comp_pred += width;
+      i += 1;
+    } while (i < height);
   }
 }
