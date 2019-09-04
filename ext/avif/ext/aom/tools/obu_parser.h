@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_TOOLS_OBU_PARSER_H_
-#define AOM_TOOLS_OBU_PARSER_H_
+#ifndef TOOLS_OBU_PARSER_H_
+#define TOOLS_OBU_PARSER_H_
 
 #include <cstdint>
 
@@ -24,4 +24,4 @@ bool DumpObu(const uint8_t *data, int length, int *obu_overhead_bytes);
 
 }  // namespace aom_tools
 
-#endif  // AOM_TOOLS_OBU_PARSER_H_
+#endif  // TOOLS_OBU_PARSER_H_

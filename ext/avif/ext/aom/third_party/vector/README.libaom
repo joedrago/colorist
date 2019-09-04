@@ -10,7 +10,5 @@ array implementation in pure C that supports almost
 the entire C++ std::vector API, including iterators.
 
 Local Modifications:
-1. Renamed some functions to fit in with the AOMedia
+Renamed some functions to fit in with the AOMedia
 naming convention.
-2. Removed non-global functions from vector.h.
-3. Made all non-global functions in vector.c static.

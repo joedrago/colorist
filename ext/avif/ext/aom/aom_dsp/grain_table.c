@@ -134,8 +134,7 @@ static void grain_table_entry_read(FILE *file,
   }
 }
 
-static void grain_table_entry_write(FILE *file,
-                                    aom_film_grain_table_entry_t *entry) {
+void grain_table_entry_write(FILE *file, aom_film_grain_table_entry_t *entry) {
   const aom_film_grain_t *pars = &entry->params;
   fprintf(file, "E %" PRId64 " %" PRId64 " %d %d %d\n", entry->start_time,
           entry->end_time, pars->apply_grain, pars->random_seed,

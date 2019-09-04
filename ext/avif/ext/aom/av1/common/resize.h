@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AV1_COMMON_RESIZE_H_
-#define AOM_AV1_COMMON_RESIZE_H_
+#ifndef AV1_ENCODER_RESIZE_H_
+#define AV1_ENCODER_RESIZE_H_
 
 #include <stdio.h>
 #include "aom/aom_integer.h"
@@ -23,9 +23,6 @@ extern "C" {
 void av1_resize_plane(const uint8_t *const input, int height, int width,
                       int in_stride, uint8_t *output, int height2, int width2,
                       int out_stride);
-void av1_upscale_plane_double_prec(const double *const input, int height,
-                                   int width, int in_stride, double *output,
-                                   int height2, int width2, int out_stride);
 void av1_resize_frame420(const uint8_t *const y, int y_stride,
                          const uint8_t *const u, const uint8_t *const v,
                          int uv_stride, int height, int width, uint8_t *oy,
@@ -112,4 +109,4 @@ int32_t av1_get_upscale_convolve_step(int in_length, int out_length);
 }  // extern "C"
 #endif
 
-#endif  // AOM_AV1_COMMON_RESIZE_H_
+#endif  // AV1_ENCODER_RESIZE_H_

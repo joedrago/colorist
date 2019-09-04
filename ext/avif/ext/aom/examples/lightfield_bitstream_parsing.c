@@ -92,7 +92,6 @@ static int get_image_bps(aom_img_fmt_t fmt) {
     case AOM_IMG_FMT_I44416: return 48;
     default: die("Invalid image format");
   }
-  return 0;
 }
 
 void process_tile_list(const TILE_LIST_INFO *tiles, int num_tiles,
@@ -211,8 +210,6 @@ int main(int argc, char **argv) {
   num_references = (int)strtol(argv[3], NULL, 0);
   info = aom_video_reader_get_info(reader);
 
-  aom_video_reader_set_fourcc(reader, AV1_FOURCC);
-
   // The writer to write out ivf file in tile list OBU, which can be decoded by
   // AV1 decoder.
   writer = aom_video_writer_open(argv[2], kContainerIVF, info);
@@ -325,7 +322,6 @@ int main(int argc, char **argv) {
     if (!aom_video_writer_write_frame(writer, frame_hdr_buf, bytes_to_copy,
                                       pts))
       die_codec(&codec, "Failed to copy compressed camera frame header.");
-    free(frame_hdr_buf);
   }
 
   // Read out the image format.
@@ -333,7 +329,6 @@ int main(int argc, char **argv) {
   if (aom_codec_control(&codec, AV1D_GET_IMG_FORMAT, &ref_fmt))
     die_codec(&codec, "Failed to get the image format");
   const int bps = get_image_bps(ref_fmt);
-  if (!bps) die_codec(&codec, "Invalid image format.");
   // read out the tile size.
   unsigned int tile_size = 0;
   if (aom_codec_control(&codec, AV1D_GET_TILE_SIZE, &tile_size))
@@ -356,7 +351,6 @@ int main(int argc, char **argv) {
   printf("Reading tile list from file.\n");
   char line[1024];
   FILE *tile_list_fptr = fopen(tile_list_file, "r");
-  if (!tile_list_fptr) die_codec(&codec, "Failed to open tile list file.");
   int num_tiles = 0;
   TILE_LIST_INFO tiles[MAX_TILES];
   while ((fgets(line, 1024, tile_list_fptr)) != NULL) {
@@ -396,7 +390,7 @@ int main(int argc, char **argv) {
     ++tl_pts;
   }
 
-  const int num_tile_lists = (int)(tl_pts - pts);
+  int num_tile_lists = tl_pts - pts;
   printf("Finished processing tile lists.  Num tile lists: %d.\n",
          num_tile_lists);
   free(tl_buf);

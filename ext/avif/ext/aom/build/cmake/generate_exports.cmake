@@ -10,8 +10,8 @@
 #
 cmake_minimum_required(VERSION 3.5)
 
-set(REQUIRED_ARGS "AOM_ROOT" "AOM_CONFIG_DIR" "AOM_TARGET_SYSTEM" "AOM_SYM_FILE"
-                  "CONFIG_AV1_DECODER" "CONFIG_AV1_ENCODER")
+set(REQUIRED_ARGS "AOM_ROOT" "AOM_CONFIG_DIR" "AOM_TARGET_SYSTEM"
+    "AOM_SYM_FILE" "CONFIG_AV1_DECODER" "CONFIG_AV1_ENCODER")
 
 foreach(arg ${REQUIRED_ARGS})
   if("${${arg}}" STREQUAL "")
@@ -24,7 +24,9 @@ include("${AOM_ROOT}/build/cmake/exports_sources.cmake")
 if("${AOM_TARGET_SYSTEM}" STREQUAL "Darwin")
   set(symbol_prefix "_")
 elseif("${AOM_TARGET_SYSTEM}" MATCHES "Windows\|MSYS" AND AOM_MSVC)
-  file(WRITE "${AOM_SYM_FILE}" "LIBRARY aom\n" "EXPORTS\n")
+  set(symbol_prefix "_")
+  file(WRITE "${AOM_SYM_FILE}" "LIBRARY libaom INITINSTANCE TERMINSTANCE\n"
+             "DATA MULTIPLE NONSHARED\n" "EXPORTS\n")
 else()
   set(symbol_suffix ";")
 endif()
@@ -33,10 +35,11 @@ set(aom_sym_file "${AOM_SYM_FILE}")
 
 if("${AOM_TARGET_SYSTEM}" STREQUAL "Darwin")
   file(REMOVE "${aom_sym_file}")
-elseif("${AOM_TARGET_SYSTEM}" MATCHES "Windows\|MSYS" AND AOM_MSVC)
-  file(WRITE "${aom_sym_file}" "LIBRARY aom\n" "EXPORTS\n")
+elseif("${AOM_TARGET_SYSTEM}" MATCHES "Windows\|MSYS")
+  file(WRITE "${aom_sym_file}" "LIBRARY libaom INITINSTANCE TERMINSTANCE\n"
+             "DATA MULTIPLE NONSHARED\n" "EXPORTS\n")
 else()
-  file(WRITE "${aom_sym_file}" "{\nglobal:\n")
+  file(WRITE "${aom_sym_file}" "{ global:\n")
 endif()
 
 foreach(export_file ${AOM_EXPORTS_SOURCES})
@@ -47,20 +50,11 @@ endforeach()
 
 foreach(exported_symbol ${exported_symbols})
   string(STRIP "${exported_symbol}" exported_symbol)
-  if("${AOM_TARGET_SYSTEM}" MATCHES "Windows\|MSYS" AND AOM_MSVC)
-    string(SUBSTRING ${exported_symbol} 0 4 export_type)
-    string(COMPARE EQUAL "${export_type}" "data" is_data)
-    if(is_data)
-      set(symbol_suffix " DATA")
-    else()
-      set(symbol_suffix "")
-    endif()
-  endif()
   string(REGEX REPLACE "text \|data " "" "exported_symbol" "${exported_symbol}")
-  set(exported_symbol "  ${symbol_prefix}${exported_symbol}${symbol_suffix}")
+  set(exported_symbol "${symbol_prefix}${exported_symbol}${symbol_suffix}")
   file(APPEND "${aom_sym_file}" "${exported_symbol}\n")
 endforeach()
 
 if("${aom_sym_file}" MATCHES "ver$")
-  file(APPEND "${aom_sym_file}" " \nlocal:\n  *;\n};")
+  file(APPEND "${aom_sym_file}" " };")
 endif()

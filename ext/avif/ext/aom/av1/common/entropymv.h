@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AV1_COMMON_ENTROPYMV_H_
-#define AOM_AV1_COMMON_ENTROPYMV_H_
+#ifndef AV1_COMMON_ENTROPYMV_H_
+#define AV1_COMMON_ENTROPYMV_H_
 
 #include "config/aom_config.h"
 
@@ -30,12 +30,12 @@ void av1_init_mv_probs(struct AV1Common *cm);
 
 /* Symbols for coding which components are zero jointly */
 #define MV_JOINTS 4
-enum {
+typedef enum {
   MV_JOINT_ZERO = 0,   /* Zero vector */
   MV_JOINT_HNZVZ = 1,  /* Vert zero, hor nonzero */
   MV_JOINT_HZVNZ = 2,  /* Hor zero, vert nonzero */
   MV_JOINT_HNZVNZ = 3, /* Both components nonzero */
-} UENUM1BYTE(MV_JOINT_TYPE);
+} MV_JOINT_TYPE;
 
 static INLINE int mv_joint_vertical(MV_JOINT_TYPE type) {
   return type == MV_JOINT_HZVNZ || type == MV_JOINT_HNZVNZ;
@@ -47,7 +47,7 @@ static INLINE int mv_joint_horizontal(MV_JOINT_TYPE type) {
 
 /* Symbols for coding magnitude class of nonzero components */
 #define MV_CLASSES 11
-enum {
+typedef enum {
   MV_CLASS_0 = 0,   /* (0, 2]     integer pel */
   MV_CLASS_1 = 1,   /* (2, 4]     integer pel */
   MV_CLASS_2 = 2,   /* (4, 8]     integer pel */
@@ -59,7 +59,7 @@ enum {
   MV_CLASS_8 = 8,   /* (256, 512] integer pel */
   MV_CLASS_9 = 9,   /* (512, 1024] integer pel */
   MV_CLASS_10 = 10, /* (1024,2048] integer pel */
-} UENUM1BYTE(MV_CLASS_TYPE);
+} MV_CLASS_TYPE;
 
 #define CLASS0_BITS 1 /* bits at integer precision for class 0 */
 #define CLASS0_SIZE (1 << CLASS0_BITS)
@@ -91,14 +91,24 @@ typedef struct {
   nmv_component comps[2];
 } nmv_context;
 
-enum {
+static INLINE MV_JOINT_TYPE av1_get_mv_joint(const MV *mv) {
+  if (mv->row == 0) {
+    return mv->col == 0 ? MV_JOINT_ZERO : MV_JOINT_HNZVZ;
+  } else {
+    return mv->col == 0 ? MV_JOINT_HZVNZ : MV_JOINT_HNZVNZ;
+  }
+}
+
+MV_CLASS_TYPE av1_get_mv_class(int z, int *offset);
+
+typedef enum {
   MV_SUBPEL_NONE = -1,
   MV_SUBPEL_LOW_PRECISION = 0,
   MV_SUBPEL_HIGH_PRECISION,
-} SENUM1BYTE(MvSubpelPrecision);
+} MvSubpelPrecision;
 
 #ifdef __cplusplus
 }  // extern "C"
 #endif
 
-#endif  // AOM_AV1_COMMON_ENTROPYMV_H_
+#endif  // AV1_COMMON_ENTROPYMV_H_

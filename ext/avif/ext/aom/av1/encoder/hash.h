@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AV1_ENCODER_HASH_H_
-#define AOM_AV1_ENCODER_HASH_H_
+#ifndef AV1_ENCODER_HASH_H_
+#define AV1_ENCODER_HASH_H_
 
 #include "config/aom_config.h"
 
@@ -43,10 +43,8 @@ typedef struct _CRC32C {
 // init table for software version crc32c
 void av1_crc32c_calculator_init(CRC32C *p_crc32c);
 
-#define AOM_BUFFER_SIZE_FOR_BLOCK_HASH (4096)
-
 #ifdef __cplusplus
 }  // extern "C"
 #endif
 
-#endif  // AOM_AV1_ENCODER_HASH_H_
+#endif  // AV1_ENCODER_HASH_H_

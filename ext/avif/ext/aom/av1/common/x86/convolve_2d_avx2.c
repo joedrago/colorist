@@ -11,8 +11,10 @@
 
 #include <immintrin.h>
 
+#include "config/aom_dsp_rtcd.h"
 #include "config/av1_rtcd.h"
 
+#include "aom_dsp/aom_convolve.h"
 #include "aom_dsp/x86/convolve_avx2.h"
 #include "aom_dsp/x86/convolve_common_intrin.h"
 #include "aom_dsp/aom_dsp_common.h"
@@ -22,19 +24,35 @@
 
 void av1_convolve_2d_sr_avx2(const uint8_t *src, int src_stride, uint8_t *dst,
                              int dst_stride, int w, int h,
-                             const InterpFilterParams *filter_params_x,
-                             const InterpFilterParams *filter_params_y,
-                             const int subpel_x_qn, const int subpel_y_qn,
+                             InterpFilterParams *filter_params_x,
+                             InterpFilterParams *filter_params_y,
+                             const int subpel_x_q4, const int subpel_y_q4,
                              ConvolveParams *conv_params) {
   const int bd = 8;
-  int im_stride = 8;
-  int i, is_horiz_4tap = 0, is_vert_4tap = 0;
+
   DECLARE_ALIGNED(32, int16_t, im_block[(MAX_SB_SIZE + MAX_FILTER_TAP) * 8]);
+  int im_h = h + filter_params_y->taps - 1;
+  int im_stride = 8;
+  int i, j;
+  const int fo_vert = filter_params_y->taps / 2 - 1;
+  const int fo_horiz = filter_params_x->taps / 2 - 1;
+  const uint8_t *const src_ptr = src - fo_vert * src_stride - fo_horiz;
+
   const int bits =
       FILTER_BITS * 2 - conv_params->round_0 - conv_params->round_1;
   const int offset_bits = bd + 2 * FILTER_BITS - conv_params->round_0;
 
+  __m256i filt[4], coeffs_h[4], coeffs_v[4];
+
   assert(conv_params->round_0 > 0);
+
+  filt[0] = _mm256_load_si256((__m256i const *)filt1_global_avx2);
+  filt[1] = _mm256_load_si256((__m256i const *)filt2_global_avx2);
+  filt[2] = _mm256_load_si256((__m256i const *)filt3_global_avx2);
+  filt[3] = _mm256_load_si256((__m256i const *)filt4_global_avx2);
+
+  prepare_coeffs_lowbd(filter_params_x, subpel_x_q4, coeffs_h);
+  prepare_coeffs(filter_params_y, subpel_y_q4, coeffs_v);
 
   const __m256i round_const_h = _mm256_set1_epi16(
       ((1 << (conv_params->round_0 - 1)) >> 1) + (1 << (bd + FILTER_BITS - 2)));
@@ -49,96 +67,58 @@ void av1_convolve_2d_sr_avx2(const uint8_t *src, int src_stride, uint8_t *dst,
       ((1 << (offset_bits - conv_params->round_1)) >> 1));
   const __m128i round_shift_v = _mm_cvtsi32_si128(bits);
 
-  __m256i filt[4], coeffs_h[4], coeffs_v[4];
+  for (j = 0; j < w; j += 8) {
+    for (i = 0; i < im_h; i += 2) {
+      __m256i data = _mm256_castsi128_si256(
+          _mm_loadu_si128((__m128i *)&src_ptr[(i * src_stride) + j]));
 
-  filt[0] = _mm256_load_si256((__m256i const *)(filt_global_avx2));
-  filt[1] = _mm256_load_si256((__m256i const *)(filt_global_avx2 + 32));
-
-  prepare_coeffs_lowbd(filter_params_x, subpel_x_qn, coeffs_h);
-  prepare_coeffs(filter_params_y, subpel_y_qn, coeffs_v);
-
-  // Condition for checking valid horz_filt taps
-  if (!(_mm256_extract_epi32(_mm256_or_si256(coeffs_h[0], coeffs_h[3]), 0)))
-    is_horiz_4tap = 1;
-
-  // Condition for checking valid vert_filt taps
-  if (!(_mm256_extract_epi32(_mm256_or_si256(coeffs_v[0], coeffs_v[3]), 0)))
-    is_vert_4tap = 1;
-
-  // horz_filt as 4 tap and vert_filt as 8 tap
-  if (is_horiz_4tap) {
-    int im_h = h + filter_params_y->taps - 1;
-    const int fo_vert = filter_params_y->taps / 2 - 1;
-    const int fo_horiz = 1;
-    const uint8_t *const src_ptr = src - fo_vert * src_stride - fo_horiz;
-
-    // horz-filter
-    for (int j = 0; j < w; j += 8) {
-      for (i = 0; i < (im_h - 2); i += 2) {
-        __m256i data = _mm256_castsi128_si256(
-            _mm_loadu_si128((__m128i *)&src_ptr[(i * src_stride) + j]));
-
-        // Load the next line
+      // Load the next line
+      if (i + 1 < im_h)
         data = _mm256_inserti128_si256(
             data,
             _mm_loadu_si128(
                 (__m128i *)&src_ptr[(i * src_stride) + j + src_stride]),
             1);
-        __m256i res = convolve_lowbd_x_4tap(data, coeffs_h + 1, filt);
 
-        res = _mm256_sra_epi16(_mm256_add_epi16(res, round_const_h),
-                               round_shift_h);
-        _mm256_store_si256((__m256i *)&im_block[i * im_stride], res);
-      }
+      __m256i res = convolve_lowbd_x(data, coeffs_h, filt);
 
-      __m256i data_1 = _mm256_castsi128_si256(
-          _mm_loadu_si128((__m128i *)&src_ptr[(i * src_stride) + j]));
-
-      __m256i res = convolve_lowbd_x_4tap(data_1, coeffs_h + 1, filt);
       res =
           _mm256_sra_epi16(_mm256_add_epi16(res, round_const_h), round_shift_h);
+
       _mm256_store_si256((__m256i *)&im_block[i * im_stride], res);
-
-      // vert filter
-      CONVOLVE_SR_VERTICAL_FILTER_8TAP;
     }
-  } else if (is_vert_4tap) {
-    int im_h = h + 3;
-    const int fo_vert = 1;
-    const int fo_horiz = filter_params_x->taps / 2 - 1;
-    const uint8_t *const src_ptr = src - fo_vert * src_stride - fo_horiz;
 
-    filt[2] = _mm256_load_si256((__m256i const *)(filt_global_avx2 + 32 * 2));
-    filt[3] = _mm256_load_si256((__m256i const *)(filt_global_avx2 + 32 * 3));
-
-    for (int j = 0; j < w; j += 8) {
-      // horz_filter
-      CONVOLVE_SR_HORIZONTAL_FILTER_8TAP;
-      // vert_filter
-      __m256i s[6];
+    /* Vertical filter */
+    {
       __m256i src_0 = _mm256_loadu_si256((__m256i *)(im_block + 0 * im_stride));
       __m256i src_1 = _mm256_loadu_si256((__m256i *)(im_block + 1 * im_stride));
       __m256i src_2 = _mm256_loadu_si256((__m256i *)(im_block + 2 * im_stride));
       __m256i src_3 = _mm256_loadu_si256((__m256i *)(im_block + 3 * im_stride));
+      __m256i src_4 = _mm256_loadu_si256((__m256i *)(im_block + 4 * im_stride));
+      __m256i src_5 = _mm256_loadu_si256((__m256i *)(im_block + 5 * im_stride));
 
+      __m256i s[8];
       s[0] = _mm256_unpacklo_epi16(src_0, src_1);
       s[1] = _mm256_unpacklo_epi16(src_2, src_3);
-      s[3] = _mm256_unpackhi_epi16(src_0, src_1);
-      s[4] = _mm256_unpackhi_epi16(src_2, src_3);
+      s[2] = _mm256_unpacklo_epi16(src_4, src_5);
+
+      s[4] = _mm256_unpackhi_epi16(src_0, src_1);
+      s[5] = _mm256_unpackhi_epi16(src_2, src_3);
+      s[6] = _mm256_unpackhi_epi16(src_4, src_5);
 
       for (i = 0; i < h; i += 2) {
         const int16_t *data = &im_block[i * im_stride];
 
-        const __m256i s4 =
-            _mm256_loadu_si256((__m256i *)(data + 4 * im_stride));
-        const __m256i s5 =
-            _mm256_loadu_si256((__m256i *)(data + 5 * im_stride));
+        const __m256i s6 =
+            _mm256_loadu_si256((__m256i *)(data + 6 * im_stride));
+        const __m256i s7 =
+            _mm256_loadu_si256((__m256i *)(data + 7 * im_stride));
 
-        s[2] = _mm256_unpacklo_epi16(s4, s5);
-        s[5] = _mm256_unpackhi_epi16(s4, s5);
+        s[3] = _mm256_unpacklo_epi16(s6, s7);
+        s[7] = _mm256_unpackhi_epi16(s6, s7);
 
-        __m256i res_a = convolve_4tap(s, coeffs_v + 1);
-        __m256i res_b = convolve_4tap(s + 3, coeffs_v + 1);
+        __m256i res_a = convolve(s, coeffs_v);
+        __m256i res_b = convolve(s + 4, coeffs_v);
 
         // Combine V round and 2F-H-V round into a single rounding
         res_a =
@@ -176,24 +156,12 @@ void av1_convolve_2d_sr_avx2(const uint8_t *src, int src_stride, uint8_t *dst,
 
         s[0] = s[1];
         s[1] = s[2];
-        s[3] = s[4];
+        s[2] = s[3];
+
         s[4] = s[5];
+        s[5] = s[6];
+        s[6] = s[7];
       }
-    }
-  } else {
-    int j;
-    int im_h = h + filter_params_y->taps - 1;
-    const int fo_vert = filter_params_y->taps / 2 - 1;
-    const int fo_horiz = filter_params_x->taps / 2 - 1;
-    const uint8_t *const src_ptr = src - fo_vert * src_stride - fo_horiz;
-
-    filt[2] = _mm256_load_si256((__m256i const *)(filt_global_avx2 + 32 * 2));
-    filt[3] = _mm256_load_si256((__m256i const *)(filt_global_avx2 + 32 * 3));
-
-    for (j = 0; j < w; j += 8) {
-      CONVOLVE_SR_HORIZONTAL_FILTER_8TAP;
-
-      CONVOLVE_SR_VERTICAL_FILTER_8TAP;
     }
   }
 }
@@ -212,14 +180,14 @@ static INLINE void copy_128(const uint8_t *src, uint8_t *dst) {
 
 void av1_convolve_2d_copy_sr_avx2(const uint8_t *src, int src_stride,
                                   uint8_t *dst, int dst_stride, int w, int h,
-                                  const InterpFilterParams *filter_params_x,
-                                  const InterpFilterParams *filter_params_y,
-                                  const int subpel_x_qn, const int subpel_y_qn,
+                                  InterpFilterParams *filter_params_x,
+                                  InterpFilterParams *filter_params_y,
+                                  const int subpel_x_q4, const int subpel_y_q4,
                                   ConvolveParams *conv_params) {
   (void)filter_params_x;
   (void)filter_params_y;
-  (void)subpel_x_qn;
-  (void)subpel_y_qn;
+  (void)subpel_x_q4;
+  (void)subpel_y_q4;
   (void)conv_params;
 
   if (w >= 16) {
@@ -229,20 +197,20 @@ void av1_convolve_2d_copy_sr_avx2(const uint8_t *src, int src_stride,
 
   if (w == 2) {
     do {
-      memmove(dst, src, 2 * sizeof(*src));
+      memcpy(dst, src, 2 * sizeof(*src));
       src += src_stride;
       dst += dst_stride;
-      memmove(dst, src, 2 * sizeof(*src));
+      memcpy(dst, src, 2 * sizeof(*src));
       src += src_stride;
       dst += dst_stride;
       h -= 2;
     } while (h);
   } else if (w == 4) {
     do {
-      memmove(dst, src, 4 * sizeof(*src));
+      memcpy(dst, src, 4 * sizeof(*src));
       src += src_stride;
       dst += dst_stride;
-      memmove(dst, src, 4 * sizeof(*src));
+      memcpy(dst, src, 4 * sizeof(*src));
       src += src_stride;
       dst += dst_stride;
       h -= 2;

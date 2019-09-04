@@ -8,8 +8,8 @@
  * Media Patent License 1.0 was not distributed with this source code in the
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
-#ifndef AOM_AV1_COMMON_X86_AV1_INV_TXFM_SSSE3_H_
-#define AOM_AV1_COMMON_X86_AV1_INV_TXFM_SSSE3_H_
+#ifndef AV1_COMMON_X86_AV1_INV_TXFM_SSSE3_H_
+#define AV1_COMMON_X86_AV1_INV_TXFM_SSSE3_H_
 
 #include <emmintrin.h>  // SSE2
 #include <tmmintrin.h>  // SSSE3
@@ -72,13 +72,13 @@ static INLINE void round_shift_16bit_ssse3(__m128i *in, int size, int bit) {
 }
 
 // 1D itx types
-enum {
+typedef enum ATTRIBUTE_PACKED {
   IDCT_1D,
   IADST_1D,
   IFLIPADST_1D = IADST_1D,
   IIDENTITY_1D,
   ITX_TYPES_1D,
-} UENUM1BYTE(ITX_TYPE_1D);
+} ITX_TYPE_1D;
 
 static const ITX_TYPE_1D vitx_1d_tab[TX_TYPES] = {
   IDCT_1D,      IADST_1D,     IDCT_1D,      IADST_1D,
@@ -93,6 +93,10 @@ static const ITX_TYPE_1D hitx_1d_tab[TX_TYPES] = {
   IADST_1D,     IIDENTITY_1D, IIDENTITY_1D, IDCT_1D,
   IIDENTITY_1D, IADST_1D,     IIDENTITY_1D, IFLIPADST_1D,
 };
+
+// Sqrt2, Sqrt2^2, Sqrt2^3, Sqrt2^4, Sqrt2^5
+static int32_t NewSqrt2list[TX_SIZES] = { 5793, 2 * 4096, 2 * 5793, 4 * 4096,
+                                          4 * 5793 };
 
 DECLARE_ALIGNED(16, static const int16_t, av1_eob_to_eobxy_8x8_default[8]) = {
   0x0707, 0x0707, 0x0707, 0x0707, 0x0707, 0x0707, 0x0707, 0x0707,
@@ -229,4 +233,4 @@ void av1_lowbd_inv_txfm2d_add_ssse3(const int32_t *input, uint8_t *output,
 }  // extern "C"
 #endif
 
-#endif  // AOM_AV1_COMMON_X86_AV1_INV_TXFM_SSSE3_H_
+#endif  // AV1_COMMON_X86_AV1_INV_TXFM_SSSE3_H_

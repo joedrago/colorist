@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AV1_COMMON_QUANT_COMMON_H_
-#define AOM_AV1_COMMON_QUANT_COMMON_H_
+#ifndef AV1_COMMON_QUANT_COMMON_H_
+#define AV1_COMMON_QUANT_COMMON_H_
 
 #include "aom/aom_codec.h"
 #include "av1/common/seg_common.h"
@@ -38,8 +38,11 @@ extern "C" {
 
 struct AV1Common;
 
+int16_t av1_dc_quant_Q3(int qindex, int delta, aom_bit_depth_t bit_depth);
+int16_t av1_ac_quant_Q3(int qindex, int delta, aom_bit_depth_t bit_depth);
 int16_t av1_dc_quant_QTX(int qindex, int delta, aom_bit_depth_t bit_depth);
 int16_t av1_ac_quant_QTX(int qindex, int delta, aom_bit_depth_t bit_depth);
+int16_t av1_qindex_from_ac_Q3(int ac_Q3, aom_bit_depth_t bit_depth);
 
 int av1_get_qindex(const struct segmentation *seg, int segment_id,
                    int base_qindex);
@@ -49,13 +52,13 @@ static INLINE int aom_get_qmlevel(int qindex, int first, int last) {
   return first + (qindex * (last + 1 - first)) / QINDEX_RANGE;
 }
 void av1_qm_init(struct AV1Common *cm);
-const qm_val_t *av1_iqmatrix(struct AV1Common *cm, int qmlevel, int plane,
+const qm_val_t *av1_iqmatrix(struct AV1Common *cm, int qindex, int comp,
                              TX_SIZE tx_size);
-const qm_val_t *av1_qmatrix(struct AV1Common *cm, int qmlevel, int plane,
+const qm_val_t *av1_qmatrix(struct AV1Common *cm, int qindex, int comp,
                             TX_SIZE tx_size);
 
 #ifdef __cplusplus
 }  // extern "C"
 #endif
 
-#endif  // AOM_AV1_COMMON_QUANT_COMMON_H_
+#endif  // AV1_COMMON_QUANT_COMMON_H_

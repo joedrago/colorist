@@ -8,11 +8,10 @@
  * Media Patent License 1.0 was not distributed with this source code in the
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
-#ifndef AOM_AV1_AV1_IFACE_COMMON_H_
-#define AOM_AV1_AV1_IFACE_COMMON_H_
+#ifndef AV1_AV1_IFACE_COMMON_H_
+#define AV1_AV1_IFACE_COMMON_H_
 
 #include "aom_ports/mem.h"
-#include "aom_scale/yv12config.h"
 
 static void yuvconfig2image(aom_image_t *img, const YV12_BUFFER_CONFIG *yv12,
                             void *user_priv) {
@@ -52,9 +51,11 @@ static void yuvconfig2image(aom_image_t *img, const YV12_BUFFER_CONFIG *yv12,
   img->planes[AOM_PLANE_Y] = yv12->y_buffer;
   img->planes[AOM_PLANE_U] = yv12->u_buffer;
   img->planes[AOM_PLANE_V] = yv12->v_buffer;
+  img->planes[AOM_PLANE_ALPHA] = NULL;
   img->stride[AOM_PLANE_Y] = yv12->y_stride;
   img->stride[AOM_PLANE_U] = yv12->uv_stride;
   img->stride[AOM_PLANE_V] = yv12->uv_stride;
+  img->stride[AOM_PLANE_ALPHA] = yv12->y_stride;
   if (yv12->flags & YV12_FLAG_HIGHBITDEPTH) {
     // aom_image_t uses byte strides and a pointer to the first byte
     // of the image.
@@ -63,9 +64,11 @@ static void yuvconfig2image(aom_image_t *img, const YV12_BUFFER_CONFIG *yv12,
     img->planes[AOM_PLANE_Y] = (uint8_t *)CONVERT_TO_SHORTPTR(yv12->y_buffer);
     img->planes[AOM_PLANE_U] = (uint8_t *)CONVERT_TO_SHORTPTR(yv12->u_buffer);
     img->planes[AOM_PLANE_V] = (uint8_t *)CONVERT_TO_SHORTPTR(yv12->v_buffer);
+    img->planes[AOM_PLANE_ALPHA] = NULL;
     img->stride[AOM_PLANE_Y] = 2 * yv12->y_stride;
     img->stride[AOM_PLANE_U] = 2 * yv12->uv_stride;
     img->stride[AOM_PLANE_V] = 2 * yv12->uv_stride;
+    img->stride[AOM_PLANE_ALPHA] = 2 * yv12->y_stride;
   }
   img->bps = bps;
   img->user_priv = user_priv;
@@ -124,15 +127,10 @@ static aom_codec_err_t image2yuvconfig(const aom_image_t *img,
   } else {
     yv12->flags = 0;
   }
-
-  // Note(yunqing): if img is allocated the same as the frame buffer, y_stride
-  // is 32-byte aligned. Also, handle the cases while allocating img without a
-  // border or stride_align is less than 32.
-  int border = (yv12->y_stride - (int)((img->w + 31) & ~31)) / 2;
-  yv12->border = (border < 0) ? 0 : border;
+  yv12->border = (yv12->y_stride - img->w) / 2;
   yv12->subsampling_x = img->x_chroma_shift;
   yv12->subsampling_y = img->y_chroma_shift;
   return AOM_CODEC_OK;
 }
 
-#endif  // AOM_AV1_AV1_IFACE_COMMON_H_
+#endif  // AV1_AV1_IFACE_COMMON_H_

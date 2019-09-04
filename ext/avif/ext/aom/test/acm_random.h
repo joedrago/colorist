@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_TEST_ACM_RANDOM_H_
-#define AOM_TEST_ACM_RANDOM_H_
+#ifndef TEST_ACM_RANDOM_H_
+#define TEST_ACM_RANDOM_H_
 
 #include "third_party/googletest/src/googletest/include/gtest/gtest.h"
 
@@ -26,7 +26,6 @@ class ACMRandom {
 
   void Reset(int seed) { random_.Reseed(seed); }
 
-  // Generates a random 31-bit unsigned integer from [0, 2^31).
   uint32_t Rand31(void) {
     return random_.Generate(testing::internal::Random::kMaxRange);
   }
@@ -82,4 +81,4 @@ class ACMRandom {
 
 }  // namespace libaom_test
 
-#endif  // AOM_TEST_ACM_RANDOM_H_
+#endif  // TEST_ACM_RANDOM_H_

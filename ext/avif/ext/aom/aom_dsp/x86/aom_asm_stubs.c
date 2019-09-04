@@ -21,13 +21,6 @@ filter8_1dfunction aom_filter_block1d8_v8_sse2;
 filter8_1dfunction aom_filter_block1d8_h8_sse2;
 filter8_1dfunction aom_filter_block1d4_v8_sse2;
 filter8_1dfunction aom_filter_block1d4_h8_sse2;
-filter8_1dfunction aom_filter_block1d16_v4_sse2;
-filter8_1dfunction aom_filter_block1d16_h4_sse2;
-
-filter8_1dfunction aom_filter_block1d8_h4_sse2;
-filter8_1dfunction aom_filter_block1d8_v4_sse2;
-filter8_1dfunction aom_filter_block1d4_h4_sse2;
-filter8_1dfunction aom_filter_block1d4_v4_sse2;
 
 filter8_1dfunction aom_filter_block1d16_v2_sse2;
 filter8_1dfunction aom_filter_block1d16_h2_sse2;
@@ -49,19 +42,13 @@ filter8_1dfunction aom_filter_block1d4_h2_sse2;
 FUN_CONV_1D(horiz, x_step_q4, filter_x, h, src, , sse2);
 FUN_CONV_1D(vert, y_step_q4, filter_y, v, src - src_stride * 3, , sse2);
 
+#if ARCH_X86_64
 highbd_filter8_1dfunction aom_highbd_filter_block1d16_v8_sse2;
 highbd_filter8_1dfunction aom_highbd_filter_block1d16_h8_sse2;
 highbd_filter8_1dfunction aom_highbd_filter_block1d8_v8_sse2;
 highbd_filter8_1dfunction aom_highbd_filter_block1d8_h8_sse2;
 highbd_filter8_1dfunction aom_highbd_filter_block1d4_v8_sse2;
 highbd_filter8_1dfunction aom_highbd_filter_block1d4_h8_sse2;
-
-highbd_filter8_1dfunction aom_highbd_filter_block1d16_v4_sse2;
-highbd_filter8_1dfunction aom_highbd_filter_block1d16_h4_sse2;
-highbd_filter8_1dfunction aom_highbd_filter_block1d8_v4_sse2;
-highbd_filter8_1dfunction aom_highbd_filter_block1d8_h4_sse2;
-highbd_filter8_1dfunction aom_highbd_filter_block1d4_v4_sse2;
-highbd_filter8_1dfunction aom_highbd_filter_block1d4_h4_sse2;
 
 highbd_filter8_1dfunction aom_highbd_filter_block1d16_v2_sse2;
 highbd_filter8_1dfunction aom_highbd_filter_block1d16_h2_sse2;
@@ -91,4 +78,5 @@ highbd_filter8_1dfunction aom_highbd_filter_block1d4_h2_sse2;
 HIGH_FUN_CONV_1D(horiz, x_step_q4, filter_x, h, src, , sse2);
 HIGH_FUN_CONV_1D(vert, y_step_q4, filter_y, v, src - src_stride * 3, , sse2);
 
+#endif  // ARCH_X86_64
 #endif  // HAVE_SSE2

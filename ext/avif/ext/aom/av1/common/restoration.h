@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AV1_COMMON_RESTORATION_H_
-#define AOM_AV1_COMMON_RESTORATION_H_
+#ifndef AV1_COMMON_RESTORATION_H_
+#define AV1_COMMON_RESTORATION_H_
 
 #include "aom_ports/mem.h"
 #include "config/aom_config.h"
@@ -22,8 +22,6 @@
 extern "C" {
 #endif
 
-// Border for Loop restoration buffer
-#define AOM_RESTORATION_FRAME_BORDER 32
 #define CLIP(x, lo, hi) ((x) < (lo) ? (lo) : (x) > (hi) ? (hi) : (x))
 #define RINT(x) ((x) < 0 ? (int)((x)-0.5) : (int)((x) + 0.5))
 
@@ -122,8 +120,6 @@ extern "C" {
 // If WIENER_WIN_CHROMA == WIENER_WIN - 2, that implies 5x5 filters are used for
 // chroma. To use 7x7 for chroma set WIENER_WIN_CHROMA to WIENER_WIN.
 #define WIENER_WIN_CHROMA (WIENER_WIN - 2)
-#define WIENER_WIN_REDUCED (WIENER_WIN - 2)
-#define WIENER_WIN2_CHROMA ((WIENER_WIN_CHROMA) * (WIENER_WIN_CHROMA))
 
 #define WIENER_FILT_PREC_BITS 7
 #define WIENER_FILT_STEP (1 << WIENER_FILT_PREC_BITS)
@@ -278,18 +274,18 @@ typedef struct AV1LrStruct {
   YV12_BUFFER_CONFIG *dst;
 } AV1LrStruct;
 
-extern const sgr_params_type av1_sgr_params[SGRPROJ_PARAMS];
+extern const sgr_params_type sgr_params[SGRPROJ_PARAMS];
 extern int sgrproj_mtable[SGRPROJ_PARAMS][2];
-extern const int32_t av1_x_by_xplus1[256];
-extern const int32_t av1_one_by_x[MAX_NELEM];
+extern const int32_t x_by_xplus1[256];
+extern const int32_t one_by_x[MAX_NELEM];
 
 void av1_alloc_restoration_struct(struct AV1Common *cm, RestorationInfo *rsi,
                                   int is_uv);
 void av1_free_restoration_struct(RestorationInfo *rst_info);
 
-void av1_extend_frame(uint8_t *data, int width, int height, int stride,
-                      int border_horz, int border_vert, int highbd);
-void av1_decode_xq(const int *xqd, int *xq, const sgr_params_type *params);
+void extend_frame(uint8_t *data, int width, int height, int stride,
+                  int border_horz, int border_vert, int highbd);
+void decode_xq(const int *xqd, int *xq, const sgr_params_type *params);
 
 // Filter a single loop restoration unit.
 //
@@ -350,7 +346,7 @@ void av1_foreach_rest_unit_in_plane(const struct AV1Common *cm, int plane,
 int av1_loop_restoration_corners_in_sb(const struct AV1Common *cm, int plane,
                                        int mi_row, int mi_col, BLOCK_SIZE bsize,
                                        int *rcol0, int *rcol1, int *rrow0,
-                                       int *rrow1);
+                                       int *rrow1, int *tile_tl_idx);
 
 void av1_loop_restoration_save_boundary_lines(const YV12_BUFFER_CONFIG *frame,
                                               struct AV1Common *cm,
@@ -377,4 +373,4 @@ void av1_lr_sync_write_dummy(void *const lr_sync, int r, int c,
 }  // extern "C"
 #endif
 
-#endif  // AOM_AV1_COMMON_RESTORATION_H_
+#endif  // AV1_COMMON_RESTORATION_H_

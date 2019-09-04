@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_COMMON_Y4MENC_H_
-#define AOM_COMMON_Y4MENC_H_
+#ifndef Y4MENC_H_
+#define Y4MENC_H_
 
 #include "aom/aom_decoder.h"
 #include "common/md5_utils.h"
@@ -24,8 +24,7 @@ extern "C" {
 
 int y4m_write_file_header(char *buf, size_t len, int width, int height,
                           const struct AvxRational *framerate, int monochrome,
-                          aom_chroma_sample_position_t csp, aom_img_fmt_t fmt,
-                          unsigned int bit_depth);
+                          aom_img_fmt_t fmt, unsigned int bit_depth);
 int y4m_write_frame_header(char *buf, size_t len);
 void y4m_write_image_file(const aom_image_t *img, const int *planes,
                           FILE *file);
@@ -36,4 +35,4 @@ void y4m_update_image_md5(const aom_image_t *img, const int *planes,
 }  // extern "C"
 #endif
 
-#endif  // AOM_COMMON_Y4MENC_H_
+#endif  // Y4MENC_H_

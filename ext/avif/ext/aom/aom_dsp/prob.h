@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AOM_DSP_PROB_H_
-#define AOM_AOM_DSP_PROB_H_
+#ifndef AOM_DSP_PROB_H_
+#define AOM_DSP_PROB_H_
 
 #include <assert.h>
 #include <stdio.h>
@@ -641,7 +641,7 @@ static INLINE uint8_t get_prob(unsigned int num, unsigned int den) {
   }
 }
 
-static INLINE void update_cdf(aom_cdf_prob *cdf, int8_t val, int nsymbs) {
+static INLINE void update_cdf(aom_cdf_prob *cdf, int val, int nsymbs) {
   int rate;
   int i, tmp;
 
@@ -668,4 +668,4 @@ static INLINE void update_cdf(aom_cdf_prob *cdf, int8_t val, int nsymbs) {
 }  // extern "C"
 #endif
 
-#endif  // AOM_AOM_DSP_PROB_H_
+#endif  // AOM_DSP_PROB_H_

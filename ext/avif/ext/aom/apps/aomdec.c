@@ -98,6 +98,15 @@ static const arg_def_t framestatsarg =
     ARG_DEF(NULL, "framestats", 1, "Output per-frame stats (.csv format)");
 static const arg_def_t outbitdeptharg =
     ARG_DEF(NULL, "output-bit-depth", 1, "Output bit-depth for decoded frames");
+static const arg_def_t tilem = ARG_DEF(NULL, "tile-mode", 1,
+                                       "Tile coding mode "
+                                       "(0 for normal tile coding mode)");
+static const arg_def_t tiler = ARG_DEF(NULL, "tile-row", 1,
+                                       "Row index of tile to decode "
+                                       "(-1 for all rows)");
+static const arg_def_t tilec = ARG_DEF(NULL, "tile-column", 1,
+                                       "Column index of tile to decode "
+                                       "(-1 for all columns)");
 static const arg_def_t isannexb =
     ARG_DEF(NULL, "annexb", 0, "Bitstream is in Annex-B format");
 static const arg_def_t oppointarg = ARG_DEF(
@@ -143,7 +152,7 @@ static INLINE int libyuv_scale(aom_image_t *src, aom_image_t *dst,
 }
 #endif
 
-static void show_help(FILE *fout, int shorthelp) {
+void show_help(FILE *fout, int shorthelp) {
   fprintf(fout, "Usage: %s <options> filename\n\n", exec_name);
 
   if (shorthelp) {
@@ -453,7 +462,10 @@ static int main_loop(int argc, const char **argv_) {
   int opt_raw = 0;
   aom_codec_dec_cfg_t cfg = { 0, 0, 0, CONFIG_LOWBITDEPTH, { 1 } };
   unsigned int fixed_output_bit_depth = 0;
+  unsigned int tile_mode = 0;
   unsigned int is_annexb = 0;
+  int tile_row = -1;
+  int tile_col = -1;
   int frames_corrupted = 0;
   int dec_flags = 0;
   int do_scale = 0;
@@ -484,7 +496,6 @@ static int main_loop(int argc, const char **argv_) {
   input.webm_ctx = &webm_ctx;
 #endif
   struct ObuDecInputContext obu_ctx = { NULL, NULL, 0, 0, 0 };
-  int is_ivf = 0;
 
   obu_ctx.avx_ctx = &aom_input_ctx;
   input.obu_ctx = &obu_ctx;
@@ -550,13 +561,6 @@ static int main_loop(int argc, const char **argv_) {
       summary = 1;
     } else if (arg_match(&arg, &threadsarg, argi)) {
       cfg.threads = arg_parse_uint(&arg);
-#if !CONFIG_MULTITHREAD
-      if (cfg.threads > 1) {
-        die("Error: --threads=%d is not supported when CONFIG_MULTITHREAD = "
-            "0.\n",
-            cfg.threads);
-      }
-#endif
     } else if (arg_match(&arg, &verbosearg, argi)) {
       quiet = 0;
     } else if (arg_match(&arg, &scalearg, argi)) {
@@ -567,9 +571,15 @@ static int main_loop(int argc, const char **argv_) {
       keep_going = 1;
     } else if (arg_match(&arg, &outbitdeptharg, argi)) {
       fixed_output_bit_depth = arg_parse_uint(&arg);
+    } else if (arg_match(&arg, &tilem, argi)) {
+      tile_mode = arg_parse_int(&arg);
     } else if (arg_match(&arg, &isannexb, argi)) {
       is_annexb = 1;
       input.obu_ctx->is_annexb = 1;
+    } else if (arg_match(&arg, &tiler, argi)) {
+      tile_row = arg_parse_int(&arg);
+    } else if (arg_match(&arg, &tilec, argi)) {
+      tile_col = arg_parse_int(&arg);
     } else if (arg_match(&arg, &oppointarg, argi)) {
       operating_point = arg_parse_int(&arg);
     } else if (arg_match(&arg, &outallarg, argi)) {
@@ -611,10 +621,8 @@ static int main_loop(int argc, const char **argv_) {
 #endif
   input.aom_input_ctx->filename = fn;
   input.aom_input_ctx->file = infile;
-  if (file_is_ivf(input.aom_input_ctx)) {
+  if (file_is_ivf(input.aom_input_ctx))
     input.aom_input_ctx->file_type = FILE_TYPE_IVF;
-    is_ivf = 1;
-  }
 #if CONFIG_WEBM_IO
   else if (file_is_webm(input.webm_ctx, input.aom_input_ctx))
     input.aom_input_ctx->file_type = FILE_TYPE_WEBM;
@@ -664,10 +672,6 @@ static int main_loop(int argc, const char **argv_) {
   }
 
   fourcc_interface = get_aom_decoder_by_fourcc(aom_input_ctx.fourcc);
-
-  if (is_ivf && !fourcc_interface)
-    fatal("Unsupported fourcc: %x\n", aom_input_ctx.fourcc);
-
   if (interface && fourcc_interface && interface != fourcc_interface)
     warn("Header indicates codec: %s\n", fourcc_interface->name);
   else
@@ -685,8 +689,27 @@ static int main_loop(int argc, const char **argv_) {
 
   if (!quiet) fprintf(stderr, "%s\n", decoder.name);
 
+#if CONFIG_AV1_DECODER
+  if (aom_codec_control(&decoder, AV1_SET_TILE_MODE, tile_mode)) {
+    fprintf(stderr, "Failed to set decode_tile_mode: %s\n",
+            aom_codec_error(&decoder));
+    goto fail;
+  }
+
   if (aom_codec_control(&decoder, AV1D_SET_IS_ANNEXB, is_annexb)) {
     fprintf(stderr, "Failed to set is_annexb: %s\n", aom_codec_error(&decoder));
+    goto fail;
+  }
+
+  if (aom_codec_control(&decoder, AV1_SET_DECODE_TILE_ROW, tile_row)) {
+    fprintf(stderr, "Failed to set decode_tile_row: %s\n",
+            aom_codec_error(&decoder));
+    goto fail;
+  }
+
+  if (aom_codec_control(&decoder, AV1_SET_DECODE_TILE_COL, tile_col)) {
+    fprintf(stderr, "Failed to set decode_tile_col: %s\n",
+            aom_codec_error(&decoder));
     goto fail;
   }
 
@@ -702,6 +725,7 @@ static int main_loop(int argc, const char **argv_) {
             aom_codec_error(&decoder));
     goto fail;
   }
+#endif
 
   if (aom_codec_control(&decoder, AV1D_SET_SKIP_FILM_GRAIN, skip_film_grain)) {
     fprintf(stderr, "Failed to set skip_film_grain: %s\n",
@@ -779,7 +803,7 @@ static int main_loop(int argc, const char **argv_) {
     aom_usec_timer_start(&timer);
 
     if (flush_decoder) {
-      // Flush the decoder.
+      // Flush the decoder in frame parallel decode.
       if (aom_codec_decode(&decoder, NULL, 0, NULL)) {
         warn("Failed to flush decoder: %s", aom_codec_error(&decoder));
       }
@@ -831,7 +855,6 @@ static int main_loop(int argc, const char **argv_) {
                 aom_img_alloc(NULL, img->fmt, render_width, render_height, 16);
             scaled_img->bit_depth = img->bit_depth;
             scaled_img->monochrome = img->monochrome;
-            scaled_img->csp = img->csp;
           }
 
           if (img->d_w != scaled_img->d_w || img->d_h != scaled_img->d_h) {
@@ -851,7 +874,7 @@ static int main_loop(int argc, const char **argv_) {
         }
         // Default to codec bit depth if output bit depth not set
         unsigned int output_bit_depth;
-        if (!fixed_output_bit_depth && single_file) {
+        if (!fixed_output_bit_depth && single_file && !do_md5) {
           output_bit_depth = img->bit_depth;
         } else {
           output_bit_depth = fixed_output_bit_depth;
@@ -873,12 +896,7 @@ static int main_loop(int argc, const char **argv_) {
               len = y4m_write_file_header(
                   y4m_buf, sizeof(y4m_buf), aom_input_ctx.width,
                   aom_input_ctx.height, &aom_input_ctx.framerate,
-                  img->monochrome, img->csp, img->fmt, img->bit_depth);
-              if (img->csp == AOM_CSP_COLOCATED) {
-                fprintf(stderr,
-                        "Warning: Y4M lacks a colorspace for colocated "
-                        "chroma. Using a placeholder.\n");
-              }
+                  img->monochrome, img->fmt, img->bit_depth);
               if (do_md5) {
                 MD5Update(&md5_ctx, (md5byte *)y4m_buf, (unsigned int)len);
               } else {

@@ -9,7 +9,6 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#include <memory>
 #include <string>
 
 #include "third_party/googletest/src/googletest/include/gtest/gtest.h"
@@ -193,7 +192,7 @@ void EncoderTest::RunLoop(VideoSource *video) {
       cfg_.g_pass = AOM_RC_LAST_PASS;
 
     BeginPassHook(pass);
-    std::unique_ptr<Encoder> encoder(
+    testing::internal::scoped_ptr<Encoder> encoder(
         codec_->CreateEncoder(cfg_, init_flags_, &stats_));
     ASSERT_TRUE(encoder.get() != NULL);
 
@@ -206,14 +205,18 @@ void EncoderTest::RunLoop(VideoSource *video) {
 
     ASSERT_FALSE(::testing::Test::HasFatalFailure());
 
-    std::unique_ptr<Decoder> decoder(
-        codec_->CreateDecoder(dec_cfg, 0 /* flags */));
+    unsigned long dec_init_flags = 0;  // NOLINT
+    // Use fragment decoder if encoder outputs partitions.
+    // NOTE: fragment decoder and partition encoder are only supported by VP8.
+    if (init_flags_ & AOM_CODEC_USE_OUTPUT_PARTITION)
+      dec_init_flags |= AOM_CODEC_USE_INPUT_FRAGMENTS;
+    testing::internal::scoped_ptr<Decoder> decoder(
+        codec_->CreateDecoder(dec_cfg, dec_init_flags));
 #if CONFIG_AV1_DECODER
     if (decoder->IsAV1()) {
       // Set dec_cfg.tile_row = -1 and dec_cfg.tile_col = -1 so that the whole
       // frame is decoded.
       decoder->Control(AV1_SET_TILE_MODE, cfg_.large_scale_tile);
-      decoder->Control(AV1D_EXT_TILE_DEBUG, 1);
       decoder->Control(AV1_SET_DECODE_TILE_ROW, -1);
       decoder->Control(AV1_SET_DECODE_TILE_COL, -1);
     }
@@ -262,6 +265,12 @@ void EncoderTest::RunLoop(VideoSource *video) {
 
           default: break;
         }
+      }
+
+      // Flush the decoder when there are no more fragments.
+      if ((init_flags_ & AOM_CODEC_USE_OUTPUT_PARTITION) && has_dxdata) {
+        const aom_codec_err_t res_dec = decoder->DecodeFrame(NULL, 0);
+        if (!HandleDecodeResult(res_dec, decoder.get())) break;
       }
 
       if (has_dxdata && has_cxdata) {

@@ -9,11 +9,34 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AV1_DECODER_OBU_H_
-#define AOM_AV1_DECODER_OBU_H_
+#ifndef AV1_DECODER_OBU_H
+#define AV1_DECODER_OBU_H
 
 #include "aom/aom_codec.h"
 #include "av1/decoder/decoder.h"
+
+typedef struct {
+  size_t size;  // Size (1 or 2 bytes) of the OBU header (including the
+                // optional OBU extension header) in the bitstream.
+  OBU_TYPE type;
+  int has_size_field;
+  int has_extension;
+  // The following fields come from the OBU extension header and therefore are
+  // only used if has_extension is true.
+  int temporal_layer_id;
+  int spatial_layer_id;
+} ObuHeader;
+
+aom_codec_err_t aom_read_obu_header(uint8_t *buffer, size_t buffer_length,
+                                    size_t *consumed, ObuHeader *header,
+                                    int is_annexb);
+
+aom_codec_err_t aom_read_obu_header_and_size(const uint8_t *data,
+                                             size_t bytes_available,
+                                             int is_annexb,
+                                             ObuHeader *obu_header,
+                                             size_t *const payload_size,
+                                             size_t *const bytes_read);
 
 // Try to decode one frame from a buffer.
 // Returns 1 if we decoded a frame,
@@ -25,7 +48,7 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
                                const uint8_t **p_data_end);
 
 aom_codec_err_t aom_get_num_layers_from_operating_point_idc(
-    int operating_point_idc, unsigned int *number_spatial_layers,
-    unsigned int *number_temporal_layers);
+    int operating_point_idc, unsigned int *num_spatial_layers,
+    unsigned int *num_temporal_layers);
 
-#endif  // AOM_AV1_DECODER_OBU_H_
+#endif

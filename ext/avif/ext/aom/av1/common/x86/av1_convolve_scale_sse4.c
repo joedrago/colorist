@@ -14,6 +14,7 @@
 
 #include "config/aom_dsp_rtcd.h"
 
+#include "aom_dsp/aom_convolve.h"
 #include "aom_dsp/aom_dsp_common.h"
 #include "aom_dsp/aom_filter.h"
 #include "av1/common/convolve.h"
@@ -38,7 +39,7 @@ static void hfilter8(const uint8_t *src, int src_stride, int16_t *dst, int w,
     const int filter_idx = (x_qn & SCALE_SUBPEL_MASK) >> SCALE_EXTRA_BITS;
     assert(filter_idx < SUBPEL_SHIFTS);
     const int16_t *filter =
-        av1_get_interp_filter_subpel_kernel(filter_params, filter_idx);
+        av1_get_interp_filter_subpel_kernel(*filter_params, filter_idx);
 
     // Load the filter coefficients
     const __m128i coefflo = _mm_loadu_si128((__m128i *)filter);
@@ -139,7 +140,7 @@ static void vfilter8(const int16_t *src, int src_stride, uint8_t *dst,
     const int filter_idx = (y_qn & SCALE_SUBPEL_MASK) >> SCALE_EXTRA_BITS;
     assert(filter_idx < SUBPEL_SHIFTS);
     const int16_t *filter =
-        av1_get_interp_filter_subpel_kernel(filter_params, filter_idx);
+        av1_get_interp_filter_subpel_kernel(*filter_params, filter_idx);
 
     const __m128i coeff0716 = _mm_loadu_si128((__m128i *)filter);
     int x;
@@ -175,7 +176,7 @@ static void vfilter8(const int16_t *src, int src_stride, uint8_t *dst,
       if (conv_params->is_compound) {
         if (conv_params->do_average) {
           const __m128i p_16 = _mm_loadl_epi64((__m128i *)dst_16_x);
-          if (conv_params->use_dist_wtd_comp_avg) {
+          if (conv_params->use_jnt_comp_avg) {
             const __m128i p_16_lo = _mm_unpacklo_epi16(p_16, shifted_16);
             const __m128i wt_res_lo = _mm_madd_epi16(p_16_lo, wt);
             const __m128i shifted_32 =
@@ -207,7 +208,7 @@ static void vfilter8(const int16_t *src, int src_stride, uint8_t *dst,
       if (conv_params->is_compound) {
         if (conv_params->do_average) {
           int32_t tmp = dst16[y * dst16_stride + x];
-          if (conv_params->use_dist_wtd_comp_avg) {
+          if (conv_params->use_jnt_comp_avg) {
             tmp = tmp * conv_params->fwd_offset + res * conv_params->bck_offset;
             tmp = tmp >> DIST_PRECISION_BITS;
           } else {
@@ -231,8 +232,8 @@ static void vfilter8(const int16_t *src, int src_stride, uint8_t *dst,
 }
 void av1_convolve_2d_scale_sse4_1(const uint8_t *src, int src_stride,
                                   uint8_t *dst8, int dst8_stride, int w, int h,
-                                  const InterpFilterParams *filter_params_x,
-                                  const InterpFilterParams *filter_params_y,
+                                  InterpFilterParams *filter_params_x,
+                                  InterpFilterParams *filter_params_y,
                                   const int subpel_x_qn, const int x_step_qn,
                                   const int subpel_y_qn, const int y_step_qn,
                                   ConvolveParams *conv_params) {
@@ -277,7 +278,7 @@ static void highbd_hfilter8(const uint16_t *src, int src_stride, int16_t *dst,
     const int filter_idx = (x_qn & SCALE_SUBPEL_MASK) >> SCALE_EXTRA_BITS;
     assert(filter_idx < SUBPEL_SHIFTS);
     const int16_t *filter =
-        av1_get_interp_filter_subpel_kernel(filter_params, filter_idx);
+        av1_get_interp_filter_subpel_kernel(*filter_params, filter_idx);
 
     // Load the filter coefficients
     const __m128i coefflo = _mm_loadu_si128((__m128i *)filter);
@@ -371,7 +372,7 @@ static void highbd_vfilter8(const int16_t *src, int src_stride, uint16_t *dst,
     const int filter_idx = (y_qn & SCALE_SUBPEL_MASK) >> SCALE_EXTRA_BITS;
     assert(filter_idx < SUBPEL_SHIFTS);
     const int16_t *filter =
-        av1_get_interp_filter_subpel_kernel(filter_params, filter_idx);
+        av1_get_interp_filter_subpel_kernel(*filter_params, filter_idx);
 
     const __m128i coeff0716 = _mm_loadu_si128((__m128i *)filter);
     int x;
@@ -408,7 +409,7 @@ static void highbd_vfilter8(const int16_t *src, int src_stride, uint16_t *dst,
           __m128i p_32 =
               _mm_cvtepu16_epi32(_mm_loadl_epi64((__m128i *)dst_16_x));
 
-          if (conv_params->use_dist_wtd_comp_avg) {
+          if (conv_params->use_jnt_comp_avg) {
             shifted = _mm_add_epi32(_mm_mullo_epi32(p_32, wt0),
                                     _mm_mullo_epi32(shifted, wt1));
             shifted = _mm_srai_epi32(shifted, DIST_PRECISION_BITS);
@@ -443,7 +444,7 @@ static void highbd_vfilter8(const int16_t *src, int src_stride, uint16_t *dst,
       if (conv_params->is_compound) {
         if (conv_params->do_average) {
           int32_t tmp = dst16[y * dst16_stride + x];
-          if (conv_params->use_dist_wtd_comp_avg) {
+          if (conv_params->use_jnt_comp_avg) {
             tmp = tmp * conv_params->fwd_offset + res * conv_params->bck_offset;
             tmp = tmp >> DIST_PRECISION_BITS;
           } else {
@@ -471,8 +472,8 @@ static void highbd_vfilter8(const int16_t *src, int src_stride, uint16_t *dst,
 
 void av1_highbd_convolve_2d_scale_sse4_1(
     const uint16_t *src, int src_stride, uint16_t *dst, int dst_stride, int w,
-    int h, const InterpFilterParams *filter_params_x,
-    const InterpFilterParams *filter_params_y, const int subpel_x_qn,
+    int h, InterpFilterParams *filter_params_x,
+    InterpFilterParams *filter_params_y, const int subpel_x_qn,
     const int x_step_qn, const int subpel_y_qn, const int y_step_qn,
     ConvolveParams *conv_params, int bd) {
   // TODO(yaowu): Move this out of stack

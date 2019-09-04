@@ -63,17 +63,17 @@ void AV1Convolve2DSrTest::RunCheckOutput(convolve_2d_func test_impl) {
     for (hfilter = EIGHTTAP_REGULAR; hfilter < INTERP_FILTERS_ALL; ++hfilter) {
       for (vfilter = EIGHTTAP_REGULAR; vfilter < INTERP_FILTERS_ALL;
            ++vfilter) {
-        const InterpFilterParams *filter_params_x =
+        InterpFilterParams filter_params_x =
             av1_get_interp_filter_params_with_block_size((InterpFilter)hfilter,
                                                          out_w);
-        const InterpFilterParams *filter_params_y =
+        InterpFilterParams filter_params_y =
             av1_get_interp_filter_params_with_block_size((InterpFilter)vfilter,
                                                          out_h);
         for (int do_average = 0; do_average < 1; ++do_average) {
           ConvolveParams conv_params1 =
-              get_conv_params_no_round(do_average, 0, NULL, 0, 0, 8);
+              get_conv_params_no_round(0, do_average, 0, NULL, 0, 0, 8);
           ConvolveParams conv_params2 =
-              get_conv_params_no_round(do_average, 0, NULL, 0, 0, 8);
+              get_conv_params_no_round(0, do_average, 0, NULL, 0, 0, 8);
 
           const int subx_range = has_subx ? 16 : 1;
           const int suby_range = has_suby ? 16 : 1;
@@ -83,11 +83,11 @@ void AV1Convolve2DSrTest::RunCheckOutput(convolve_2d_func test_impl) {
               const int offset_r = 3 + rnd_.PseudoUniform(h - out_h - 7);
               const int offset_c = 3 + rnd_.PseudoUniform(w - out_w - 7);
               av1_convolve_2d_sr_c(input + offset_r * w + offset_c, w, output,
-                                   MAX_SB_SIZE, out_w, out_h, filter_params_x,
-                                   filter_params_y, subx, suby, &conv_params1);
+                                   MAX_SB_SIZE, out_w, out_h, &filter_params_x,
+                                   &filter_params_y, subx, suby, &conv_params1);
               test_impl(input + offset_r * w + offset_c, w, output2,
-                        MAX_SB_SIZE, out_w, out_h, filter_params_x,
-                        filter_params_y, subx, suby, &conv_params2);
+                        MAX_SB_SIZE, out_w, out_h, &filter_params_x,
+                        &filter_params_y, subx, suby, &conv_params2);
 
               if (memcmp(output, output2, sizeof(output))) {
                 for (int i = 0; i < MAX_SB_SIZE; ++i) {
@@ -126,7 +126,7 @@ void AV1Convolve2DSrTest::RunSpeedTest(convolve_2d_func test_impl) {
 
   const int do_average = 0;
   ConvolveParams conv_params2 =
-      get_conv_params_no_round(do_average, 0, NULL, 0, 0, 8);
+      get_conv_params_no_round(0, do_average, 0, NULL, 0, 0, 8);
 
   // Make sure that sizes 2xN and Nx2 are also tested for chroma.
   const int num_sizes =
@@ -137,10 +137,10 @@ void AV1Convolve2DSrTest::RunSpeedTest(convolve_2d_func test_impl) {
     const int out_h = block_size_high[block_idx] >> shift;
     const int num_loops = 1000000000 / (out_w + out_h);
 
-    const InterpFilterParams *filter_params_x =
+    InterpFilterParams filter_params_x =
         av1_get_interp_filter_params_with_block_size((InterpFilter)hfilter,
                                                      out_w);
-    const InterpFilterParams *filter_params_y =
+    InterpFilterParams filter_params_y =
         av1_get_interp_filter_params_with_block_size((InterpFilter)vfilter,
                                                      out_h);
 
@@ -148,8 +148,8 @@ void AV1Convolve2DSrTest::RunSpeedTest(convolve_2d_func test_impl) {
     aom_usec_timer_start(&timer);
 
     for (int i = 0; i < num_loops; ++i)
-      test_impl(input, w, output, MAX_SB_SIZE, out_w, out_h, filter_params_x,
-                filter_params_y, subx, suby, &conv_params2);
+      test_impl(input, w, output, MAX_SB_SIZE, out_w, out_h, &filter_params_x,
+                &filter_params_y, subx, suby, &conv_params2);
 
     aom_usec_timer_mark(&timer);
     const int elapsed_time = static_cast<int>(aom_usec_timer_elapsed(&timer));
@@ -188,21 +188,21 @@ void AV1JntConvolve2DTest::RunCheckOutput(convolve_2d_func test_impl) {
   const int out_h = block_size_high[block_idx];
   for (hfilter = EIGHTTAP_REGULAR; hfilter < INTERP_FILTERS_ALL; ++hfilter) {
     for (vfilter = EIGHTTAP_REGULAR; vfilter < INTERP_FILTERS_ALL; ++vfilter) {
-      const InterpFilterParams *filter_params_x =
+      InterpFilterParams filter_params_x =
           av1_get_interp_filter_params_with_block_size((InterpFilter)hfilter,
                                                        out_w);
-      const InterpFilterParams *filter_params_y =
+      InterpFilterParams filter_params_y =
           av1_get_interp_filter_params_with_block_size((InterpFilter)vfilter,
                                                        out_h);
       for (int do_average = 0; do_average <= 1; ++do_average) {
-        ConvolveParams conv_params1 =
-            get_conv_params_no_round(do_average, 0, output1, MAX_SB_SIZE, 1, 8);
-        ConvolveParams conv_params2 =
-            get_conv_params_no_round(do_average, 0, output2, MAX_SB_SIZE, 1, 8);
+        ConvolveParams conv_params1 = get_conv_params_no_round(
+            0, do_average, 0, output1, MAX_SB_SIZE, 1, 8);
+        ConvolveParams conv_params2 = get_conv_params_no_round(
+            0, do_average, 0, output2, MAX_SB_SIZE, 1, 8);
 
-        // Test special case where dist_wtd_comp_avg is not used
-        conv_params1.use_dist_wtd_comp_avg = 0;
-        conv_params2.use_dist_wtd_comp_avg = 0;
+        // Test special case where jnt_comp_avg is not used
+        conv_params1.use_jnt_comp_avg = 0;
+        conv_params2.use_jnt_comp_avg = 0;
 
         const int subx_range = has_subx ? 16 : 1;
         const int suby_range = has_suby ? 16 : 1;
@@ -211,19 +211,18 @@ void AV1JntConvolve2DTest::RunCheckOutput(convolve_2d_func test_impl) {
             // Choose random locations within the source block
             const int offset_r = 3 + rnd_.PseudoUniform(h - out_h - 7);
             const int offset_c = 3 + rnd_.PseudoUniform(w - out_w - 7);
-            av1_dist_wtd_convolve_2d_c(input + offset_r * w + offset_c, w,
-                                       output8_1, MAX_SB_SIZE, out_w, out_h,
-                                       filter_params_x, filter_params_y, subx,
-                                       suby, &conv_params1);
+            av1_jnt_convolve_2d_c(input + offset_r * w + offset_c, w, output8_1,
+                                  MAX_SB_SIZE, out_w, out_h, &filter_params_x,
+                                  &filter_params_y, subx, suby, &conv_params1);
             test_impl(input + offset_r * w + offset_c, w, output8_2,
-                      MAX_SB_SIZE, out_w, out_h, filter_params_x,
-                      filter_params_y, subx, suby, &conv_params2);
+                      MAX_SB_SIZE, out_w, out_h, &filter_params_x,
+                      &filter_params_y, subx, suby, &conv_params2);
 
             for (int i = 0; i < out_h; ++i) {
               for (int j = 0; j < out_w; ++j) {
                 int idx = i * MAX_SB_SIZE + j;
                 ASSERT_EQ(output1[idx], output2[idx])
-                    << "Mismatch at unit tests for av1_dist_wtd_convolve_2d\n"
+                    << "Mismatch at unit tests for av1_jnt_convolve_2d\n"
                     << out_w << "x" << out_h << " Pixel mismatch at index "
                     << idx << " = (" << i << ", " << j
                     << "), sub pixel offset = (" << suby << ", " << subx << ")";
@@ -248,8 +247,8 @@ void AV1JntConvolve2DTest::RunCheckOutput(convolve_2d_func test_impl) {
         // Test different combination of fwd and bck offset weights
         for (int k = 0; k < 2; ++k) {
           for (int l = 0; l < 4; ++l) {
-            conv_params1.use_dist_wtd_comp_avg = 1;
-            conv_params2.use_dist_wtd_comp_avg = 1;
+            conv_params1.use_jnt_comp_avg = 1;
+            conv_params2.use_jnt_comp_avg = 1;
             conv_params1.fwd_offset = quant_dist_lookup_table[k][l][0];
             conv_params1.bck_offset = quant_dist_lookup_table[k][l][1];
             conv_params2.fwd_offset = quant_dist_lookup_table[k][l][0];
@@ -260,20 +259,20 @@ void AV1JntConvolve2DTest::RunCheckOutput(convolve_2d_func test_impl) {
                 // Choose random locations within the source block
                 const int offset_r = 3 + rnd_.PseudoUniform(h - out_h - 7);
                 const int offset_c = 3 + rnd_.PseudoUniform(w - out_w - 7);
-                av1_dist_wtd_convolve_2d_c(input + offset_r * w + offset_c, w,
-                                           output8_1, MAX_SB_SIZE, out_w, out_h,
-                                           filter_params_x, filter_params_y,
-                                           subx, suby, &conv_params1);
+                av1_jnt_convolve_2d_c(input + offset_r * w + offset_c, w,
+                                      output8_1, MAX_SB_SIZE, out_w, out_h,
+                                      &filter_params_x, &filter_params_y, subx,
+                                      suby, &conv_params1);
                 test_impl(input + offset_r * w + offset_c, w, output8_2,
-                          MAX_SB_SIZE, out_w, out_h, filter_params_x,
-                          filter_params_y, subx, suby, &conv_params2);
+                          MAX_SB_SIZE, out_w, out_h, &filter_params_x,
+                          &filter_params_y, subx, suby, &conv_params2);
 
                 for (int i = 0; i < out_h; ++i) {
                   for (int j = 0; j < out_w; ++j) {
                     int idx = i * MAX_SB_SIZE + j;
                     ASSERT_EQ(output1[idx], output2[idx])
                         << "Mismatch at unit tests for "
-                           "av1_dist_wtd_convolve_2d\n"
+                           "av1_jnt_convolve_2d\n"
                         << out_w << "x" << out_h << " Pixel mismatch at index "
                         << idx << " = (" << i << ", " << j
                         << "), sub pixel offset = (" << suby << ", " << subx
@@ -324,17 +323,17 @@ void AV1JntConvolve2DTest::RunSpeedTest(convolve_2d_func test_impl) {
   const int num_loops = 1000000000 / (out_w + out_h);
   const int do_average = 0;
 
-  const InterpFilterParams *filter_params_x =
+  InterpFilterParams filter_params_x =
       av1_get_interp_filter_params_with_block_size((InterpFilter)hfilter,
                                                    out_w);
-  const InterpFilterParams *filter_params_y =
+  InterpFilterParams filter_params_y =
       av1_get_interp_filter_params_with_block_size((InterpFilter)vfilter,
                                                    out_h);
 
   ConvolveParams conv_params =
-      get_conv_params_no_round(do_average, 0, output, MAX_SB_SIZE, 1, 8);
+      get_conv_params_no_round(0, do_average, 0, output, MAX_SB_SIZE, 1, 8);
 
-  conv_params.use_dist_wtd_comp_avg = 0;
+  conv_params.use_jnt_comp_avg = 0;
 
   // Choose random locations within the source block
   const int offset_r = 3 + rnd_.PseudoUniform(h - out_h - 7);
@@ -345,7 +344,7 @@ void AV1JntConvolve2DTest::RunSpeedTest(convolve_2d_func test_impl) {
 
   for (int i = 0; i < num_loops; ++i)
     test_impl(input + offset_r * w + offset_c, w, output8, MAX_SB_SIZE, out_w,
-              out_h, filter_params_x, filter_params_y, subx, suby,
+              out_h, &filter_params_x, &filter_params_y, subx, suby,
               &conv_params);
 
   aom_usec_timer_mark(&timer);
@@ -396,7 +395,7 @@ void AV1HighbdConvolve2DSrTest::RunSpeedTest(
   suby = 0;
 
   ConvolveParams conv_params =
-      get_conv_params_no_round(do_average, 0, NULL, 0, 0, bd);
+      get_conv_params_no_round(0, do_average, 0, NULL, 0, 0, bd);
 
   // Make sure that sizes 2xN and Nx2 are also tested for chroma.
   const int num_sizes =
@@ -408,10 +407,10 @@ void AV1HighbdConvolve2DSrTest::RunSpeedTest(
     const int out_h = block_size_high[block_idx] >> shift;
     const int num_loops = 1000000000 / (out_w + out_h);
 
-    const InterpFilterParams *filter_params_x =
+    InterpFilterParams filter_params_x =
         av1_get_interp_filter_params_with_block_size((InterpFilter)hfilter,
                                                      out_w);
-    const InterpFilterParams *filter_params_y =
+    InterpFilterParams filter_params_y =
         av1_get_interp_filter_params_with_block_size((InterpFilter)vfilter,
                                                      out_h);
 
@@ -419,7 +418,7 @@ void AV1HighbdConvolve2DSrTest::RunSpeedTest(
     aom_usec_timer_start(&timer);
     for (int i = 0; i < num_loops; ++i)
       test_impl(input + offset_r * w + offset_c, w, output, MAX_SB_SIZE, out_w,
-                out_h, filter_params_x, filter_params_y, subx, suby,
+                out_h, &filter_params_x, &filter_params_y, subx, suby,
                 &conv_params, bd);
 
     aom_usec_timer_mark(&timer);
@@ -457,17 +456,17 @@ void AV1HighbdConvolve2DSrTest::RunCheckOutput(
     for (hfilter = EIGHTTAP_REGULAR; hfilter < INTERP_FILTERS_ALL; ++hfilter) {
       for (vfilter = EIGHTTAP_REGULAR; vfilter < INTERP_FILTERS_ALL;
            ++vfilter) {
-        const InterpFilterParams *filter_params_x =
+        InterpFilterParams filter_params_x =
             av1_get_interp_filter_params_with_block_size((InterpFilter)hfilter,
                                                          out_w);
-        const InterpFilterParams *filter_params_y =
+        InterpFilterParams filter_params_y =
             av1_get_interp_filter_params_with_block_size((InterpFilter)vfilter,
                                                          out_h);
         for (int do_average = 0; do_average < 1; ++do_average) {
           ConvolveParams conv_params1 =
-              get_conv_params_no_round(do_average, 0, NULL, 0, 0, bd);
+              get_conv_params_no_round(0, do_average, 0, NULL, 0, 0, bd);
           ConvolveParams conv_params2 =
-              get_conv_params_no_round(do_average, 0, NULL, 0, 0, bd);
+              get_conv_params_no_round(0, do_average, 0, NULL, 0, 0, bd);
 
           const int subx_range = has_subx ? 16 : 1;
           const int suby_range = has_suby ? 16 : 1;
@@ -478,11 +477,11 @@ void AV1HighbdConvolve2DSrTest::RunCheckOutput(
               const int offset_c = 3 + rnd_.PseudoUniform(w - out_w - 7);
               av1_highbd_convolve_2d_sr_c(input + offset_r * w + offset_c, w,
                                           output, MAX_SB_SIZE, out_w, out_h,
-                                          filter_params_x, filter_params_y,
+                                          &filter_params_x, &filter_params_y,
                                           subx, suby, &conv_params1, bd);
               test_impl(input + offset_r * w + offset_c, w, output2,
-                        MAX_SB_SIZE, out_w, out_h, filter_params_x,
-                        filter_params_y, subx, suby, &conv_params2, bd);
+                        MAX_SB_SIZE, out_w, out_h, &filter_params_x,
+                        &filter_params_y, subx, suby, &conv_params2, bd);
 
               if (memcmp(output, output2, sizeof(output))) {
                 for (int i = 0; i < MAX_SB_SIZE; ++i) {
@@ -531,18 +530,18 @@ void AV1HighbdJntConvolve2DTest::RunSpeedTest(
   const int out_w = block_size_wide[block_idx];
   const int out_h = block_size_high[block_idx];
 
-  const InterpFilterParams *filter_params_x =
+  InterpFilterParams filter_params_x =
       av1_get_interp_filter_params_with_block_size((InterpFilter)hfilter,
                                                    out_w);
-  const InterpFilterParams *filter_params_y =
+  InterpFilterParams filter_params_y =
       av1_get_interp_filter_params_with_block_size((InterpFilter)vfilter,
                                                    out_h);
 
   ConvolveParams conv_params =
-      get_conv_params_no_round(do_average, 0, output, MAX_SB_SIZE, 1, bd);
+      get_conv_params_no_round(0, do_average, 0, output, MAX_SB_SIZE, 1, bd);
 
-  // Test special case where dist_wtd_comp_avg is not used
-  conv_params.use_dist_wtd_comp_avg = 0;
+  // Test special case where jnt_comp_avg is not used
+  conv_params.use_jnt_comp_avg = 0;
 
   subx = 0;
   suby = 0;
@@ -555,8 +554,8 @@ void AV1HighbdJntConvolve2DTest::RunSpeedTest(
   aom_usec_timer_start(&timer);
   for (int i = 0; i < num_loops; ++i)
     test_impl(input + offset_r * w + offset_c, w, output16, MAX_SB_SIZE, out_w,
-              out_h, filter_params_x, filter_params_y, subx, suby, &conv_params,
-              bd);
+              out_h, &filter_params_x, &filter_params_y, subx, suby,
+              &conv_params, bd);
 
   aom_usec_timer_mark(&timer);
   const int elapsed_time = static_cast<int>(aom_usec_timer_elapsed(&timer));
@@ -590,21 +589,21 @@ void AV1HighbdJntConvolve2DTest::RunCheckOutput(
   const int out_h = block_size_high[block_idx];
   for (hfilter = EIGHTTAP_REGULAR; hfilter < INTERP_FILTERS_ALL; ++hfilter) {
     for (vfilter = EIGHTTAP_REGULAR; vfilter < INTERP_FILTERS_ALL; ++vfilter) {
-      const InterpFilterParams *filter_params_x =
+      InterpFilterParams filter_params_x =
           av1_get_interp_filter_params_with_block_size((InterpFilter)hfilter,
                                                        out_w);
-      const InterpFilterParams *filter_params_y =
+      InterpFilterParams filter_params_y =
           av1_get_interp_filter_params_with_block_size((InterpFilter)vfilter,
                                                        out_h);
       for (int do_average = 0; do_average <= 1; ++do_average) {
         ConvolveParams conv_params1 = get_conv_params_no_round(
-            do_average, 0, output1, MAX_SB_SIZE, 1, bd);
+            0, do_average, 0, output1, MAX_SB_SIZE, 1, bd);
         ConvolveParams conv_params2 = get_conv_params_no_round(
-            do_average, 0, output2, MAX_SB_SIZE, 1, bd);
+            0, do_average, 0, output2, MAX_SB_SIZE, 1, bd);
 
-        // Test special case where dist_wtd_comp_avg is not used
-        conv_params1.use_dist_wtd_comp_avg = 0;
-        conv_params2.use_dist_wtd_comp_avg = 0;
+        // Test special case where jnt_comp_avg is not used
+        conv_params1.use_jnt_comp_avg = 0;
+        conv_params2.use_jnt_comp_avg = 0;
 
         const int subx_range = has_subx ? 16 : 1;
         const int suby_range = has_suby ? 16 : 1;
@@ -613,13 +612,13 @@ void AV1HighbdJntConvolve2DTest::RunCheckOutput(
             // Choose random locations within the source block
             const int offset_r = 3 + rnd_.PseudoUniform(h - out_h - 7);
             const int offset_c = 3 + rnd_.PseudoUniform(w - out_w - 7);
-            av1_highbd_dist_wtd_convolve_2d_c(
-                input + offset_r * w + offset_c, w, output16_1, MAX_SB_SIZE,
-                out_w, out_h, filter_params_x, filter_params_y, subx, suby,
-                &conv_params1, bd);
+            av1_highbd_jnt_convolve_2d_c(input + offset_r * w + offset_c, w,
+                                         output16_1, MAX_SB_SIZE, out_w, out_h,
+                                         &filter_params_x, &filter_params_y,
+                                         subx, suby, &conv_params1, bd);
             test_impl(input + offset_r * w + offset_c, w, output16_2,
-                      MAX_SB_SIZE, out_w, out_h, filter_params_x,
-                      filter_params_y, subx, suby, &conv_params2, bd);
+                      MAX_SB_SIZE, out_w, out_h, &filter_params_x,
+                      &filter_params_y, subx, suby, &conv_params2, bd);
 
             for (int i = 0; i < out_h; ++i) {
               for (int j = 0; j < out_w; ++j) {
@@ -649,8 +648,8 @@ void AV1HighbdJntConvolve2DTest::RunCheckOutput(
         // Test different combination of fwd and bck offset weights
         for (int k = 0; k < 2; ++k) {
           for (int l = 0; l < 4; ++l) {
-            conv_params1.use_dist_wtd_comp_avg = 1;
-            conv_params2.use_dist_wtd_comp_avg = 1;
+            conv_params1.use_jnt_comp_avg = 1;
+            conv_params2.use_jnt_comp_avg = 1;
             conv_params1.fwd_offset = quant_dist_lookup_table[k][l][0];
             conv_params1.bck_offset = quant_dist_lookup_table[k][l][1];
             conv_params2.fwd_offset = quant_dist_lookup_table[k][l][0];
@@ -663,13 +662,13 @@ void AV1HighbdJntConvolve2DTest::RunCheckOutput(
                 // Choose random locations within the source block
                 const int offset_r = 3 + rnd_.PseudoUniform(h - out_h - 7);
                 const int offset_c = 3 + rnd_.PseudoUniform(w - out_w - 7);
-                av1_highbd_dist_wtd_convolve_2d_c(
+                av1_highbd_jnt_convolve_2d_c(
                     input + offset_r * w + offset_c, w, output16_1, MAX_SB_SIZE,
-                    out_w, out_h, filter_params_x, filter_params_y, subx, suby,
-                    &conv_params1, bd);
+                    out_w, out_h, &filter_params_x, &filter_params_y, subx,
+                    suby, &conv_params1, bd);
                 test_impl(input + offset_r * w + offset_c, w, output16_2,
-                          MAX_SB_SIZE, out_w, out_h, filter_params_x,
-                          filter_params_y, subx, suby, &conv_params2, bd);
+                          MAX_SB_SIZE, out_w, out_h, &filter_params_x,
+                          &filter_params_y, subx, suby, &conv_params2, bd);
 
                 for (int i = 0; i < out_h; ++i) {
                   for (int j = 0; j < out_w; ++j) {

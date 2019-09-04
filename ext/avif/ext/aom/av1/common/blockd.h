@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AV1_COMMON_BLOCKD_H_
-#define AOM_AV1_COMMON_BLOCKD_H_
+#ifndef AV1_COMMON_BLOCKD_H_
+#define AV1_COMMON_BLOCKD_H_
 
 #include "config/aom_config.h"
 
@@ -38,26 +38,26 @@ extern "C" {
 #define MAX_DIFFWTD_MASK_BITS 1
 
 // DIFFWTD_MASK_TYPES should not surpass 1 << MAX_DIFFWTD_MASK_BITS
-enum {
+typedef enum {
   DIFFWTD_38 = 0,
   DIFFWTD_38_INV,
   DIFFWTD_MASK_TYPES,
-} UENUM1BYTE(DIFFWTD_MASK_TYPE);
+} DIFFWTD_MASK_TYPE;
 
-enum {
+typedef enum {
   KEY_FRAME = 0,
   INTER_FRAME = 1,
   INTRA_ONLY_FRAME = 2,  // replaces intra-only
   S_FRAME = 3,
   FRAME_TYPES,
-} UENUM1BYTE(FRAME_TYPE);
+} FRAME_TYPE;
 
 static INLINE int is_comp_ref_allowed(BLOCK_SIZE bsize) {
   return AOMMIN(block_size_wide[bsize], block_size_high[bsize]) >= 8;
 }
 
 static INLINE int is_inter_mode(PREDICTION_MODE mode) {
-  return mode >= INTER_MODE_START && mode < INTER_MODE_END;
+  return mode >= NEARESTMV && mode <= NEW_NEWMV;
 }
 
 typedef struct {
@@ -66,10 +66,10 @@ typedef struct {
 } BUFFER_SET;
 
 static INLINE int is_inter_singleref_mode(PREDICTION_MODE mode) {
-  return mode >= SINGLE_INTER_MODE_START && mode < SINGLE_INTER_MODE_END;
+  return mode >= NEARESTMV && mode <= NEWMV;
 }
 static INLINE int is_inter_compound_mode(PREDICTION_MODE mode) {
-  return mode >= COMP_INTER_MODE_START && mode < COMP_INTER_MODE_END;
+  return mode >= NEAREST_NEARESTMV && mode <= NEW_NEWMV;
 }
 
 static INLINE PREDICTION_MODE compound_ref0_mode(PREDICTION_MODE mode) {
@@ -148,6 +148,10 @@ static INLINE int have_newmv_in_inter_mode(PREDICTION_MODE mode) {
           mode == NEW_NEARESTMV || mode == NEAR_NEWMV || mode == NEW_NEARMV);
 }
 
+static INLINE int use_masked_motion_search(COMPOUND_TYPE type) {
+  return (type == COMPOUND_WEDGE);
+}
+
 static INLINE int is_masked_compound_type(COMPOUND_TYPE type) {
   return (type == COMPOUND_WEDGE || type == COMPOUND_DIFFWTD);
 }
@@ -156,16 +160,18 @@ static INLINE int is_masked_compound_type(COMPOUND_TYPE type) {
    modes for the Y blocks to the left and above us; for interframes, there
    is a single probability table. */
 
+typedef int8_t MV_REFERENCE_FRAME;
+
 typedef struct {
-  // Value of base colors for Y, U, and V
-  uint16_t palette_colors[3 * PALETTE_MAX_SIZE];
   // Number of base colors for Y (0) and UV (1)
   uint8_t palette_size[2];
+  // Value of base colors for Y, U, and V
+  uint16_t palette_colors[3 * PALETTE_MAX_SIZE];
 } PALETTE_MODE_INFO;
 
 typedef struct {
-  FILTER_INTRA_MODE filter_intra_mode;
   uint8_t use_filter_intra;
+  FILTER_INTRA_MODE filter_intra_mode;
 } FILTER_INTRA_MODE_INFO;
 
 static const PREDICTION_MODE fimode_to_intradir[FILTER_INTRA_MODES] = {
@@ -187,7 +193,9 @@ typedef struct RD_STATS {
   int64_t rdcost;
   int64_t sse;
   int skip;  // sse should equal to dist when skip == 1
+  int64_t ref_rdcost;
   int zero_rate;
+  uint8_t invalid_rate;
 #if CONFIG_RD_DEBUG
   int txb_coeff_cost[MAX_MB_PLANE];
   int txb_coeff_cost_map[MAX_MB_PLANE][TXB_COEFF_COST_MAP_SIZE]
@@ -198,10 +206,10 @@ typedef struct RD_STATS {
 // This struct is used to group function args that are commonly
 // sent together in functions related to interinter compound modes
 typedef struct {
-  uint8_t *seg_mask;
   int wedge_index;
   int wedge_sign;
   DIFFWTD_MASK_TYPE mask_type;
+  uint8_t *seg_mask;
   COMPOUND_TYPE type;
 } INTERINTER_COMPOUND_DATA;
 
@@ -209,17 +217,48 @@ typedef struct {
 #define TXK_TYPE_BUF_LEN 64
 // This structure now relates to 4x4 block regions.
 typedef struct MB_MODE_INFO {
+  // Common for both INTER and INTRA blocks
+  BLOCK_SIZE sb_type;
+  PREDICTION_MODE mode;
+  TX_SIZE tx_size;
+  uint8_t inter_tx_size[INTER_TX_SIZE_BUF_LEN];
+  int8_t skip;
+  int8_t skip_mode;
+  int8_t segment_id;
+  int8_t seg_id_predicted;  // valid only when temporal_update is enabled
+
+  // Only for INTRA blocks
+  UV_PREDICTION_MODE uv_mode;
+
   PALETTE_MODE_INFO palette_mode_info;
-  WarpedMotionParams wm_params;
-  // interinter members
-  INTERINTER_COMPOUND_DATA interinter_comp;
-  FILTER_INTRA_MODE_INFO filter_intra_mode_info;
-  int_mv mv[2];
+  uint8_t use_intrabc;
+
   // Only for INTER blocks
   InterpFilters interp_filters;
+  MV_REFERENCE_FRAME ref_frame[2];
+
+  TX_TYPE txk_type[TXK_TYPE_BUF_LEN];
+
+  FILTER_INTRA_MODE_INFO filter_intra_mode_info;
+
+  // The actual prediction angle is the base angle + (angle_delta * step).
+  int8_t angle_delta[PLANE_TYPES];
+
+  // interintra members
+  INTERINTRA_MODE interintra_mode;
   // TODO(debargha): Consolidate these flags
+  int use_wedge_interintra;
   int interintra_wedge_index;
   int interintra_wedge_sign;
+  // interinter members
+  INTERINTER_COMPOUND_DATA interinter_comp;
+  MOTION_MODE motion_mode;
+  int overlappable_neighbors[2];
+  int_mv mv[2];
+  uint8_t ref_mv_idx;
+  PARTITION_TYPE partition;
+  /* deringing gain *per-superblock* */
+  int8_t cdef_strength;
   int current_qindex;
   int delta_lf_from_base;
   int delta_lf[FRAME_LF_COUNT];
@@ -228,44 +267,16 @@ typedef struct MB_MODE_INFO {
   int mi_row;
   int mi_col;
 #endif
+  int num_proj_ref[2];
+  WarpedMotionParams wm_params[2];
+
   // Index of the alpha Cb and alpha Cr combination
   int cfl_alpha_idx;
   // Joint sign of alpha Cb and alpha Cr
   int cfl_alpha_signs;
 
-#if CONFIG_INSPECTION
-  int16_t tx_skip[TXK_TYPE_BUF_LEN];
-#endif
-  // Common for both INTER and INTRA blocks
-  BLOCK_SIZE sb_type;
-  PREDICTION_MODE mode;
-  // Only for INTRA blocks
-  UV_PREDICTION_MODE uv_mode;
-  // interintra members
-  INTERINTRA_MODE interintra_mode;
-  MOTION_MODE motion_mode;
-  PARTITION_TYPE partition;
-  TX_TYPE txk_type[TXK_TYPE_BUF_LEN];
-  MV_REFERENCE_FRAME ref_frame[2];
-  int8_t use_wedge_interintra;
-  int8_t skip;
-  int8_t skip_mode;
-  uint8_t inter_tx_size[INTER_TX_SIZE_BUF_LEN];
-  TX_SIZE tx_size;
-  int8_t segment_id;
-  int8_t seg_id_predicted;  // valid only when temporal_update is enabled
-  uint8_t use_intrabc;
-  // The actual prediction angle is the base angle + (angle_delta * step).
-  int8_t angle_delta[PLANE_TYPES];
-  /* deringing gain *per-superblock* */
-  int8_t cdef_strength;
-  uint8_t ref_mv_idx;
-  // Indicate if masked compound is used(1) or not(0).
-  uint8_t comp_group_idx;
-  // If comp_group_idx=0, indicate if dist_wtd_comp(0) or avg_comp(1) is used.
-  uint8_t compound_idx;
-  uint8_t num_proj_ref;
-  uint8_t overlappable_neighbors[2];
+  int compound_idx;
+  int comp_group_idx;
 } MB_MODE_INFO;
 
 static INLINE int is_intrabc_block(const MB_MODE_INFO *mbmi) {
@@ -365,7 +376,7 @@ static INLINE void mi_to_pixel_loc(int *pixel_c, int *pixel_r, int mi_col,
 }
 #endif
 
-enum { MV_PRECISION_Q3, MV_PRECISION_Q4 } UENUM1BYTE(mv_precision);
+enum mv_precision { MV_PRECISION_Q3, MV_PRECISION_Q4 };
 
 struct buf_2d {
   uint8_t *buf;
@@ -399,7 +410,7 @@ typedef struct macroblockd_plane {
   ENTROPY_CONTEXT *above_context;
   ENTROPY_CONTEXT *left_context;
 
-  // The dequantizers below are true dequantizers used only in the
+  // The dequantizers below are true dequntizers used only in the
   // dequantization process.  They have the same coefficient
   // shift/scale as TX.
   int16_t seg_dequant_QTX[MAX_SEGMENTS][2];
@@ -410,10 +421,23 @@ typedef struct macroblockd_plane {
 
   qm_val_t *seg_iqmatrix[MAX_SEGMENTS][TX_SIZES_ALL];
   qm_val_t *seg_qmatrix[MAX_SEGMENTS][TX_SIZES_ALL];
+
+  // the 'dequantizers' below are not literal dequantizer values.
+  // They're used by encoder RDO to generate ad-hoc lambda values.
+  // They use a hardwired Q3 coeff shift and do not necessarily match
+  // the TX scale in use.
+  const int16_t *dequant_Q3;
 } MACROBLOCKD_PLANE;
 
 #define BLOCK_OFFSET(x, i) \
   ((x) + (i) * (1 << (tx_size_wide_log2[0] + tx_size_high_log2[0])))
+
+typedef struct RefBuffer {
+  int idx;      // frame buf idx
+  int map_idx;  // frame map idx
+  YV12_BUFFER_CONFIG *buf;
+  struct scale_factors sf;
+} RefBuffer;
 
 typedef struct {
   DECLARE_ALIGNED(16, InterpKernel, vfilter);
@@ -470,16 +494,12 @@ typedef struct cfl_ctx {
   int is_chroma_reference;
 } CFL_CTX;
 
-typedef struct dist_wtd_comp_params {
-  int use_dist_wtd_comp_avg;
+typedef struct jnt_comp_params {
+  int use_jnt_comp_avg;
   int fwd_offset;
   int bck_offset;
-} DIST_WTD_COMP_PARAMS;
+} JNT_COMP_PARAMS;
 
-struct scale_factors;
-
-// Most/all of the pointers are mere pointers to actual arrays are allocated
-// elsewhere. This is mostly for coding convenience.
 typedef struct macroblockd {
   struct macroblockd_plane plane[MAX_MB_PLANE];
 
@@ -504,8 +524,8 @@ typedef struct macroblockd {
   int mb_to_top_edge;
   int mb_to_bottom_edge;
 
-  /* pointers to reference frame scale factors */
-  const struct scale_factors *block_ref_scale_factors[2];
+  /* pointers to reference frames */
+  const RefBuffer *block_refs[2];
 
   /* pointer to current frame */
   const YV12_BUFFER_CONFIG *cur_buf;
@@ -524,11 +544,10 @@ typedef struct macroblockd {
   SgrprojInfo sgrproj_info[MAX_MB_PLANE];
 
   // block dimension in the unit of mode_info.
-  uint8_t n4_w, n4_h;
+  uint8_t n8_w, n8_h;
 
   uint8_t ref_mv_count[MODE_CTX_REF_FRAMES];
   CANDIDATE_MV ref_mv_stack[MODE_CTX_REF_FRAMES][MAX_REF_MV_STACK_SIZE];
-  uint16_t weight[MODE_CTX_REF_FRAMES][MAX_REF_MV_STACK_SIZE];
   uint8_t is_sec_rect;
 
   // Counts of each reference frame in the above and left neighboring blocks.
@@ -575,24 +594,15 @@ typedef struct macroblockd {
   uint8_t *mc_buf[2];
   CFL_CTX cfl;
 
-  DIST_WTD_COMP_PARAMS jcp_param;
+  JNT_COMP_PARAMS jcp_param;
 
   uint16_t cb_offset[MAX_MB_PLANE];
   uint16_t txb_offset[MAX_MB_PLANE];
   uint16_t color_index_map_offset[2];
-
-  CONV_BUF_TYPE *tmp_conv_dst;
-  uint8_t *tmp_obmc_bufs[2];
 } MACROBLOCKD;
 
-static INLINE int is_cur_buf_hbd(const MACROBLOCKD *xd) {
+static INLINE int get_bitdepth_data_path_index(const MACROBLOCKD *xd) {
   return xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH ? 1 : 0;
-}
-
-static INLINE uint8_t *get_buf_by_bd(const MACROBLOCKD *xd, uint8_t *buf16) {
-  return (xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH)
-             ? CONVERT_TO_BYTEPTR(buf16)
-             : buf16;
 }
 
 static INLINE int get_sqr_bsize_idx(BLOCK_SIZE bsize) {
@@ -607,11 +617,6 @@ static INLINE int get_sqr_bsize_idx(BLOCK_SIZE bsize) {
   }
 }
 
-// For a square block size 'bsize', returns the size of the sub-blocks used by
-// the given partition type. If the partition produces sub-blocks of different
-// sizes, then the function returns the largest sub-block size.
-// Implements the Partition_Subsize lookup table in the spec (Section 9.3.
-// Conversion tables).
 // Note: the input block size should be square.
 // Otherwise it's considered invalid.
 static INLINE BLOCK_SIZE get_partition_subsize(BLOCK_SIZE bsize,
@@ -629,19 +634,19 @@ static INLINE BLOCK_SIZE get_partition_subsize(BLOCK_SIZE bsize,
 static TX_TYPE intra_mode_to_tx_type(const MB_MODE_INFO *mbmi,
                                      PLANE_TYPE plane_type) {
   static const TX_TYPE _intra_mode_to_tx_type[INTRA_MODES] = {
-    DCT_DCT,    // DC_PRED
-    ADST_DCT,   // V_PRED
-    DCT_ADST,   // H_PRED
-    DCT_DCT,    // D45_PRED
-    ADST_ADST,  // D135_PRED
-    ADST_DCT,   // D113_PRED
-    DCT_ADST,   // D157_PRED
-    DCT_ADST,   // D203_PRED
-    ADST_DCT,   // D67_PRED
-    ADST_ADST,  // SMOOTH_PRED
-    ADST_DCT,   // SMOOTH_V_PRED
-    DCT_ADST,   // SMOOTH_H_PRED
-    ADST_ADST,  // PAETH_PRED
+    DCT_DCT,    // DC
+    ADST_DCT,   // V
+    DCT_ADST,   // H
+    DCT_DCT,    // D45
+    ADST_ADST,  // D135
+    ADST_DCT,   // D117
+    DCT_ADST,   // D153
+    DCT_ADST,   // D207
+    ADST_DCT,   // D63
+    ADST_ADST,  // SMOOTH
+    ADST_DCT,   // SMOOTH_V
+    DCT_ADST,   // SMOOTH_H
+    ADST_ADST,  // PAETH
   };
   const PREDICTION_MODE mode =
       (plane_type == PLANE_TYPE_Y) ? mbmi->mode : get_uv_mode(mbmi->uv_mode);
@@ -667,15 +672,6 @@ static const int av1_ext_tx_used[EXT_TX_SET_TYPES][TX_TYPES] = {
   { 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0 },
   { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0 },
   { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
-};
-
-static const uint16_t av1_ext_tx_used_flag[EXT_TX_SET_TYPES] = {
-  0x0001,  // 0000 0000 0000 0001
-  0x0201,  // 0000 0010 0000 0001
-  0x020F,  // 0000 0010 0000 1111
-  0x0E0F,  // 0000 1110 0000 1111
-  0x0FFF,  // 0000 1111 1111 1111
-  0xFFFF,  // 1111 1111 1111 1111
 };
 
 static INLINE TxSetType av1_get_ext_tx_set_type(TX_SIZE tx_size, int is_inter,
@@ -732,6 +728,7 @@ static INLINE TX_SIZE tx_size_from_tx_mode(BLOCK_SIZE bsize, TX_MODE tx_mode) {
     return largest_tx_size;
 }
 
+extern const int16_t dr_intra_derivative[90];
 static const uint8_t mode_to_angle_map[] = {
   0, 90, 180, 45, 135, 113, 157, 203, 67, 0, 0, 0, 0,
 };
@@ -759,26 +756,20 @@ static INLINE int av1_raster_order_to_block_index(TX_SIZE tx_size,
 
 static INLINE TX_TYPE get_default_tx_type(PLANE_TYPE plane_type,
                                           const MACROBLOCKD *xd,
-                                          TX_SIZE tx_size,
-                                          int is_screen_content_type) {
+                                          TX_SIZE tx_size) {
   const MB_MODE_INFO *const mbmi = xd->mi[0];
 
   if (is_inter_block(mbmi) || plane_type != PLANE_TYPE_Y ||
-      xd->lossless[mbmi->segment_id] || tx_size >= TX_32X32 ||
-      is_screen_content_type)
+      xd->lossless[mbmi->segment_id] || tx_size >= TX_32X32)
     return DCT_DCT;
 
   return intra_mode_to_tx_type(mbmi, plane_type);
 }
 
-// Implements the get_plane_residual_size() function in the spec (Section
-// 5.11.38. Get plane residual size function).
 static INLINE BLOCK_SIZE get_plane_block_size(BLOCK_SIZE bsize,
                                               int subsampling_x,
                                               int subsampling_y) {
   if (bsize == BLOCK_INVALID) return BLOCK_INVALID;
-  assert(subsampling_x >= 0 && subsampling_x < 2);
-  assert(subsampling_y >= 0 && subsampling_y < 2);
   return ss_size_lookup[bsize][subsampling_x][subsampling_y];
 }
 
@@ -946,6 +937,15 @@ typedef void (*foreach_transformed_block_visitor)(int plane, int block,
                                                   BLOCK_SIZE plane_bsize,
                                                   TX_SIZE tx_size, void *arg);
 
+void av1_foreach_transformed_block_in_plane(
+    const MACROBLOCKD *const xd, BLOCK_SIZE bsize, int plane,
+    foreach_transformed_block_visitor visit, void *arg);
+
+void av1_foreach_transformed_block(const MACROBLOCKD *const xd,
+                                   BLOCK_SIZE bsize, int mi_row, int mi_col,
+                                   foreach_transformed_block_visitor visit,
+                                   void *arg, const int num_planes);
+
 void av1_set_contexts(const MACROBLOCKD *xd, struct macroblockd_plane *pd,
                       int plane, BLOCK_SIZE plane_bsize, TX_SIZE tx_size,
                       int has_eob, int aoff, int loff);
@@ -961,7 +961,7 @@ static INLINE int is_interintra_allowed_bsize(const BLOCK_SIZE bsize) {
 }
 
 static INLINE int is_interintra_allowed_mode(const PREDICTION_MODE mode) {
-  return (mode >= SINGLE_INTER_MODE_START) && (mode < SINGLE_INTER_MODE_END);
+  return (mode >= NEARESTMV) && (mode <= NEWMV);
 }
 
 static INLINE int is_interintra_allowed_ref(const MV_REFERENCE_FRAME rf[2]) {
@@ -999,7 +999,6 @@ static INLINE int get_vartx_max_txsize(const MACROBLOCKD *xd, BLOCK_SIZE bsize,
 }
 
 static INLINE int is_motion_variation_allowed_bsize(BLOCK_SIZE bsize) {
-  assert(bsize < BLOCK_SIZES_ALL);
   return AOMMIN(block_size_wide[bsize], block_size_high[bsize]) >= 8;
 }
 
@@ -1031,9 +1030,8 @@ motion_mode_allowed(const WarpedMotionParams *gm_params, const MACROBLOCKD *xd,
       is_motion_variation_allowed_compound(mbmi)) {
     if (!check_num_overlappable_neighbors(mbmi)) return SIMPLE_TRANSLATION;
     assert(!has_second_ref(mbmi));
-    if (mbmi->num_proj_ref >= 1 &&
-        (allow_warped_motion &&
-         !av1_is_scaled(xd->block_ref_scale_factors[0]))) {
+    if (mbmi->num_proj_ref[0] >= 1 &&
+        (allow_warped_motion && !av1_is_scaled(&(xd->block_refs[0]->sf)))) {
       if (xd->cur_frame_force_integer_mv) {
         return OBMC_CAUSAL;
       }
@@ -1147,6 +1145,38 @@ static INLINE PLANE_TYPE get_plane_type(int plane) {
   return (plane == 0) ? PLANE_TYPE_Y : PLANE_TYPE_UV;
 }
 
+static INLINE void transpose_uint8(uint8_t *dst, int dst_stride,
+                                   const uint8_t *src, int src_stride, int w,
+                                   int h) {
+  int r, c;
+  for (r = 0; r < h; ++r)
+    for (c = 0; c < w; ++c) dst[c * dst_stride + r] = src[r * src_stride + c];
+}
+
+static INLINE void transpose_uint16(uint16_t *dst, int dst_stride,
+                                    const uint16_t *src, int src_stride, int w,
+                                    int h) {
+  int r, c;
+  for (r = 0; r < h; ++r)
+    for (c = 0; c < w; ++c) dst[c * dst_stride + r] = src[r * src_stride + c];
+}
+
+static INLINE void transpose_int16(int16_t *dst, int dst_stride,
+                                   const int16_t *src, int src_stride, int w,
+                                   int h) {
+  int r, c;
+  for (r = 0; r < h; ++r)
+    for (c = 0; c < w; ++c) dst[c * dst_stride + r] = src[r * src_stride + c];
+}
+
+static INLINE void transpose_int32(int32_t *dst, int dst_stride,
+                                   const int32_t *src, int src_stride, int w,
+                                   int h) {
+  int r, c;
+  for (r = 0; r < h; ++r)
+    for (c = 0; c < w; ++c) dst[c * dst_stride + r] = src[r * src_stride + c];
+}
+
 static INLINE int av1_get_max_eob(TX_SIZE tx_size) {
   if (tx_size == TX_64X64 || tx_size == TX_64X32 || tx_size == TX_32X64) {
     return 1024;
@@ -1161,4 +1191,4 @@ static INLINE int av1_get_max_eob(TX_SIZE tx_size) {
 }  // extern "C"
 #endif
 
-#endif  // AOM_AV1_COMMON_BLOCKD_H_
+#endif  // AV1_COMMON_BLOCKD_H_

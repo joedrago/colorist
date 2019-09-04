@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_TEST_AV1_TXFM_TEST_H_
-#define AOM_TEST_AV1_TXFM_TEST_H_
+#ifndef AV1_TXFM_TEST_H_
+#define AV1_TXFM_TEST_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,14 +29,14 @@
 #include "av1/common/enums.h"
 
 namespace libaom_test {
-enum {
+typedef enum {
   TYPE_DCT = 0,
   TYPE_ADST,
   TYPE_IDTX,
   TYPE_IDCT,
   TYPE_IADST,
   TYPE_LAST
-} UENUM1BYTE(TYPE_TXFM);
+} TYPE_TXFM;
 
 int get_txfm1d_size(TX_SIZE tx_size);
 
@@ -132,4 +132,4 @@ void txfm_stage_range_check(const int8_t *stage_range, int stage_num,
                             const int8_t cos_bit, int low_range,
                             int high_range);
 }  // namespace libaom_test
-#endif  // AOM_TEST_AV1_TXFM_TEST_H_
+#endif  // AV1_TXFM_TEST_H_

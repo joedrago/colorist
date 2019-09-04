@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AOM_DSP_INTRAPRED_COMMON_H_
-#define AOM_AOM_DSP_INTRAPRED_COMMON_H_
+#ifndef _AOM_DSP_INTRAPRED_COMMON_H
+#define _AOM_DSP_INTRAPRED_COMMON_H
 
 #include "config/aom_config.h"
 
@@ -44,4 +44,4 @@ static const uint8_t sm_weight_arrays[2 * MAX_BLOCK_DIM] = {
 };
 /* clang-format on */
 
-#endif  // AOM_AOM_DSP_INTRAPRED_COMMON_H_
+#endif  // _AOM_DSP_INTRAPRED_COMMON_H

@@ -149,11 +149,6 @@ const AvxInterface *get_aom_encoder_by_name(const char *name) {
 
   return NULL;
 }
-
-// large scale tile encoding
-static const AvxInterface aom_lst_encoder = { "av1", LST_FOURCC,
-                                              &aom_codec_av1_cx };
-const AvxInterface *get_aom_lst_encoder(void) { return &aom_lst_encoder; }
 #endif  // CONFIG_AV1_ENCODER
 
 #if CONFIG_AV1_DECODER
@@ -241,7 +236,7 @@ double sse_to_psnr(double samples, double peak, double sse) {
 }
 
 // TODO(debargha): Consolidate the functions below into a separate file.
-static void highbd_img_upshift(aom_image_t *dst, const aom_image_t *src,
+static void highbd_img_upshift(aom_image_t *dst, aom_image_t *src,
                                int input_shift) {
   // Note the offset is 1 less than half.
   const int offset = input_shift > 0 ? (1 << (input_shift - 1)) - 1 : 0;
@@ -267,8 +262,8 @@ static void highbd_img_upshift(aom_image_t *dst, const aom_image_t *src,
       h = (h + src->y_chroma_shift) >> src->y_chroma_shift;
     }
     for (y = 0; y < h; y++) {
-      const uint16_t *p_src =
-          (const uint16_t *)(src->planes[plane] + y * src->stride[plane]);
+      uint16_t *p_src =
+          (uint16_t *)(src->planes[plane] + y * src->stride[plane]);
       uint16_t *p_dst =
           (uint16_t *)(dst->planes[plane] + y * dst->stride[plane]);
       for (x = 0; x < w; x++) *p_dst++ = (*p_src++ << input_shift) + offset;
@@ -276,7 +271,7 @@ static void highbd_img_upshift(aom_image_t *dst, const aom_image_t *src,
   }
 }
 
-static void lowbd_img_upshift(aom_image_t *dst, const aom_image_t *src,
+static void lowbd_img_upshift(aom_image_t *dst, aom_image_t *src,
                               int input_shift) {
   // Note the offset is 1 less than half.
   const int offset = input_shift > 0 ? (1 << (input_shift - 1)) - 1 : 0;
@@ -288,7 +283,6 @@ static void lowbd_img_upshift(aom_image_t *dst, const aom_image_t *src,
     fatal("Unsupported image conversion");
   }
   switch (src->fmt) {
-    case AOM_IMG_FMT_YV12:
     case AOM_IMG_FMT_I420:
     case AOM_IMG_FMT_I422:
     case AOM_IMG_FMT_I444: break;
@@ -303,7 +297,7 @@ static void lowbd_img_upshift(aom_image_t *dst, const aom_image_t *src,
       h = (h + src->y_chroma_shift) >> src->y_chroma_shift;
     }
     for (y = 0; y < h; y++) {
-      const uint8_t *p_src = src->planes[plane] + y * src->stride[plane];
+      uint8_t *p_src = src->planes[plane] + y * src->stride[plane];
       uint16_t *p_dst =
           (uint16_t *)(dst->planes[plane] + y * dst->stride[plane]);
       for (x = 0; x < w; x++) {
@@ -313,8 +307,7 @@ static void lowbd_img_upshift(aom_image_t *dst, const aom_image_t *src,
   }
 }
 
-void aom_img_upshift(aom_image_t *dst, const aom_image_t *src,
-                     int input_shift) {
+void aom_img_upshift(aom_image_t *dst, aom_image_t *src, int input_shift) {
   if (src->fmt & AOM_IMG_FMT_HIGHBITDEPTH) {
     highbd_img_upshift(dst, src, input_shift);
   } else {
@@ -322,7 +315,7 @@ void aom_img_upshift(aom_image_t *dst, const aom_image_t *src,
   }
 }
 
-void aom_img_truncate_16_to_8(aom_image_t *dst, const aom_image_t *src) {
+void aom_img_truncate_16_to_8(aom_image_t *dst, aom_image_t *src) {
   int plane;
   if (dst->fmt + AOM_IMG_FMT_HIGHBITDEPTH != src->fmt || dst->d_w != src->d_w ||
       dst->d_h != src->d_h || dst->x_chroma_shift != src->x_chroma_shift ||
@@ -344,8 +337,8 @@ void aom_img_truncate_16_to_8(aom_image_t *dst, const aom_image_t *src) {
       h = (h + src->y_chroma_shift) >> src->y_chroma_shift;
     }
     for (y = 0; y < h; y++) {
-      const uint16_t *p_src =
-          (const uint16_t *)(src->planes[plane] + y * src->stride[plane]);
+      uint16_t *p_src =
+          (uint16_t *)(src->planes[plane] + y * src->stride[plane]);
       uint8_t *p_dst = dst->planes[plane] + y * dst->stride[plane];
       for (x = 0; x < w; x++) {
         *p_dst++ = (uint8_t)(*p_src++);
@@ -354,7 +347,7 @@ void aom_img_truncate_16_to_8(aom_image_t *dst, const aom_image_t *src) {
   }
 }
 
-static void highbd_img_downshift(aom_image_t *dst, const aom_image_t *src,
+static void highbd_img_downshift(aom_image_t *dst, aom_image_t *src,
                                  int down_shift) {
   int plane;
   if (dst->d_w != src->d_w || dst->d_h != src->d_h ||
@@ -378,8 +371,8 @@ static void highbd_img_downshift(aom_image_t *dst, const aom_image_t *src,
       h = (h + src->y_chroma_shift) >> src->y_chroma_shift;
     }
     for (y = 0; y < h; y++) {
-      const uint16_t *p_src =
-          (const uint16_t *)(src->planes[plane] + y * src->stride[plane]);
+      uint16_t *p_src =
+          (uint16_t *)(src->planes[plane] + y * src->stride[plane]);
       uint16_t *p_dst =
           (uint16_t *)(dst->planes[plane] + y * dst->stride[plane]);
       for (x = 0; x < w; x++) *p_dst++ = *p_src++ >> down_shift;
@@ -387,7 +380,7 @@ static void highbd_img_downshift(aom_image_t *dst, const aom_image_t *src,
   }
 }
 
-static void lowbd_img_downshift(aom_image_t *dst, const aom_image_t *src,
+static void lowbd_img_downshift(aom_image_t *dst, aom_image_t *src,
                                 int down_shift) {
   int plane;
   if (dst->d_w != src->d_w || dst->d_h != src->d_h ||
@@ -411,8 +404,8 @@ static void lowbd_img_downshift(aom_image_t *dst, const aom_image_t *src,
       h = (h + src->y_chroma_shift) >> src->y_chroma_shift;
     }
     for (y = 0; y < h; y++) {
-      const uint16_t *p_src =
-          (const uint16_t *)(src->planes[plane] + y * src->stride[plane]);
+      uint16_t *p_src =
+          (uint16_t *)(src->planes[plane] + y * src->stride[plane]);
       uint8_t *p_dst = dst->planes[plane] + y * dst->stride[plane];
       for (x = 0; x < w; x++) {
         *p_dst++ = *p_src++ >> down_shift;
@@ -421,8 +414,7 @@ static void lowbd_img_downshift(aom_image_t *dst, const aom_image_t *src,
   }
 }
 
-void aom_img_downshift(aom_image_t *dst, const aom_image_t *src,
-                       int down_shift) {
+void aom_img_downshift(aom_image_t *dst, aom_image_t *src, int down_shift) {
   if (dst->fmt & AOM_IMG_FMT_HIGHBITDEPTH) {
     highbd_img_downshift(dst, src, down_shift);
   } else {

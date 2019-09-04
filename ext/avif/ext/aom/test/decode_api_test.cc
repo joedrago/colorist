@@ -22,7 +22,7 @@ namespace {
 TEST(DecodeAPI, InvalidParams) {
   static const aom_codec_iface_t *kCodecs[] = {
 #if CONFIG_AV1_DECODER
-    aom_codec_av1_dx(),
+    &aom_codec_av1_dx_algo,
 #endif
   };
   uint8_t buf[1] = { 0 };

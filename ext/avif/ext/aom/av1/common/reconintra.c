@@ -556,37 +556,33 @@ void av1_dr_prediction_z2_c(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
                             const uint8_t *above, const uint8_t *left,
                             int upsample_above, int upsample_left, int dx,
                             int dy) {
+  int r, c, x, y, shift1, shift2, val, base1, base2;
+
   assert(dx > 0);
   assert(dy > 0);
 
   const int min_base_x = -(1 << upsample_above);
-  const int min_base_y = -(1 << upsample_left);
-  (void)min_base_y;
   const int frac_bits_x = 6 - upsample_above;
   const int frac_bits_y = 6 - upsample_left;
-
-  for (int r = 0; r < bh; ++r) {
-    for (int c = 0; c < bw; ++c) {
-      int val;
-      int y = r + 1;
-      int x = (c << 6) - y * dx;
-      const int base_x = x >> frac_bits_x;
-      if (base_x >= min_base_x) {
-        const int shift = ((x * (1 << upsample_above)) & 0x3F) >> 1;
-        val = above[base_x] * (32 - shift) + above[base_x + 1] * shift;
+  const int base_inc_x = 1 << upsample_above;
+  x = -dx;
+  for (r = 0; r < bh; ++r, x -= dx, dst += stride) {
+    base1 = x >> frac_bits_x;
+    y = (r << 6) - dy;
+    for (c = 0; c < bw; ++c, base1 += base_inc_x, y -= dy) {
+      if (base1 >= min_base_x) {
+        shift1 = ((x * (1 << upsample_above)) & 0x3F) >> 1;
+        val = above[base1] * (32 - shift1) + above[base1 + 1] * shift1;
         val = ROUND_POWER_OF_TWO(val, 5);
       } else {
-        x = c + 1;
-        y = (r << 6) - x * dy;
-        const int base_y = y >> frac_bits_y;
-        assert(base_y >= min_base_y);
-        const int shift = ((y * (1 << upsample_left)) & 0x3F) >> 1;
-        val = left[base_y] * (32 - shift) + left[base_y + 1] * shift;
+        base2 = y >> frac_bits_y;
+        assert(base2 >= -(1 << upsample_left));
+        shift2 = ((y * (1 << upsample_left)) & 0x3F) >> 1;
+        val = left[base2] * (32 - shift2) + left[base2 + 1] * shift2;
         val = ROUND_POWER_OF_TWO(val, 5);
       }
       dst[c] = val;
     }
-    dst += stride;
   }
 }
 
@@ -692,33 +688,30 @@ void av1_highbd_dr_prediction_z2_c(uint16_t *dst, ptrdiff_t stride, int bw,
                                    int bh, const uint16_t *above,
                                    const uint16_t *left, int upsample_above,
                                    int upsample_left, int dx, int dy, int bd) {
+  int r, c, x, y, shift, val, base;
+
   (void)bd;
   assert(dx > 0);
   assert(dy > 0);
 
   const int min_base_x = -(1 << upsample_above);
-  const int min_base_y = -(1 << upsample_left);
-  (void)min_base_y;
   const int frac_bits_x = 6 - upsample_above;
   const int frac_bits_y = 6 - upsample_left;
-
-  for (int r = 0; r < bh; ++r) {
-    for (int c = 0; c < bw; ++c) {
-      int val;
-      int y = r + 1;
-      int x = (c << 6) - y * dx;
-      const int base_x = x >> frac_bits_x;
-      if (base_x >= min_base_x) {
-        const int shift = ((x * (1 << upsample_above)) & 0x3F) >> 1;
-        val = above[base_x] * (32 - shift) + above[base_x + 1] * shift;
+  for (r = 0; r < bh; ++r) {
+    for (c = 0; c < bw; ++c) {
+      y = r + 1;
+      x = (c << 6) - y * dx;
+      base = x >> frac_bits_x;
+      if (base >= min_base_x) {
+        shift = ((x * (1 << upsample_above)) & 0x3F) >> 1;
+        val = above[base] * (32 - shift) + above[base + 1] * shift;
         val = ROUND_POWER_OF_TWO(val, 5);
       } else {
         x = c + 1;
         y = (r << 6) - x * dy;
-        const int base_y = y >> frac_bits_y;
-        assert(base_y >= min_base_y);
-        const int shift = ((y * (1 << upsample_left)) & 0x3F) >> 1;
-        val = left[base_y] * (32 - shift) + left[base_y + 1] * shift;
+        base = y >> frac_bits_y;
+        shift = ((y * (1 << upsample_left)) & 0x3F) >> 1;
+        val = left[base] * (32 - shift) + left[base + 1] * shift;
         val = ROUND_POWER_OF_TWO(val, 5);
       }
       dst[c] = val;
@@ -1015,9 +1008,9 @@ static int intra_edge_filter_strength(int bs0, int bs1, int delta, int type) {
 void av1_filter_intra_edge_c(uint8_t *p, int sz, int strength) {
   if (!strength) return;
 
-  const int kernel[INTRA_EDGE_FILT][INTRA_EDGE_TAPS] = { { 0, 4, 8, 4, 0 },
-                                                         { 0, 5, 6, 5, 0 },
-                                                         { 2, 4, 4, 4, 2 } };
+  const int kernel[INTRA_EDGE_FILT][INTRA_EDGE_TAPS] = {
+    { 0, 4, 8, 4, 0 }, { 0, 5, 6, 5, 0 }, { 2, 4, 4, 4, 2 }
+  };
   const int filt = strength - 1;
   uint8_t edge[129];
 
@@ -1048,9 +1041,9 @@ static void filter_intra_edge_corner(uint8_t *p_above, uint8_t *p_left) {
 void av1_filter_intra_edge_high_c(uint16_t *p, int sz, int strength) {
   if (!strength) return;
 
-  const int kernel[INTRA_EDGE_FILT][INTRA_EDGE_TAPS] = { { 0, 4, 8, 4, 0 },
-                                                         { 0, 5, 6, 5, 0 },
-                                                         { 2, 4, 4, 4, 2 } };
+  const int kernel[INTRA_EDGE_FILT][INTRA_EDGE_TAPS] = {
+    { 0, 4, 8, 4, 0 }, { 0, 5, 6, 5, 0 }, { 2, 4, 4, 4, 2 }
+  };
   const int filt = strength - 1;
   uint16_t edge[129];
 
@@ -1076,6 +1069,13 @@ static void filter_intra_edge_corner_high(uint16_t *p_above, uint16_t *p_left) {
   s = (s + 8) >> 4;
   p_above[-1] = s;
   p_left[-1] = s;
+}
+
+static int use_intra_edge_upsample(int bs0, int bs1, int delta, int type) {
+  const int d = abs(delta);
+  const int blk_wh = bs0 + bs1;
+  if (d <= 0 || d >= 40) return 0;
+  return type ? (blk_wh <= 8) : (blk_wh <= 16);
 }
 
 void av1_upsample_intra_edge_c(uint8_t *p, int sz) {
@@ -1284,13 +1284,13 @@ static void build_intra_predictors_high(
         }
       }
       upsample_above =
-          av1_use_intra_edge_upsample(txwpx, txhpx, p_angle - 90, filt_type);
+          use_intra_edge_upsample(txwpx, txhpx, p_angle - 90, filt_type);
       if (need_above && upsample_above) {
         const int n_px = txwpx + (need_right ? txhpx : 0);
         av1_upsample_intra_edge_high(above_row, n_px, xd->bd);
       }
       upsample_left =
-          av1_use_intra_edge_upsample(txhpx, txwpx, p_angle - 180, filt_type);
+          use_intra_edge_upsample(txhpx, txwpx, p_angle - 180, filt_type);
       if (need_left && upsample_left) {
         const int n_px = txhpx + (need_bottom ? txwpx : 0);
         av1_upsample_intra_edge_high(left_col, n_px, xd->bd);
@@ -1467,13 +1467,13 @@ static void build_intra_predictors(const MACROBLOCKD *xd, const uint8_t *ref,
         }
       }
       upsample_above =
-          av1_use_intra_edge_upsample(txwpx, txhpx, p_angle - 90, filt_type);
+          use_intra_edge_upsample(txwpx, txhpx, p_angle - 90, filt_type);
       if (need_above && upsample_above) {
         const int n_px = txwpx + (need_right ? txhpx : 0);
         av1_upsample_intra_edge(above_row, n_px);
       }
       upsample_left =
-          av1_use_intra_edge_upsample(txhpx, txwpx, p_angle - 180, filt_type);
+          use_intra_edge_upsample(txhpx, txwpx, p_angle - 180, filt_type);
       if (need_left && upsample_left) {
         const int n_px = txhpx + (need_bottom ? txwpx : 0);
         av1_upsample_intra_edge(left_col, n_px);
@@ -1510,7 +1510,7 @@ void av1_predict_intra_block(
                                xd->color_index_map_offset[plane != 0];
     const uint16_t *const palette =
         mbmi->palette_mode_info.palette_colors + plane * PALETTE_MAX_SIZE;
-    if (is_cur_buf_hbd(xd)) {
+    if (xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH) {
       uint16_t *dst16 = CONVERT_TO_SHORTPTR(dst);
       for (r = 0; r < txhpx; ++r) {
         for (c = 0; c < txwpx; ++c) {
@@ -1569,7 +1569,7 @@ void av1_predict_intra_block(
       tx_size, row_off, col_off, pd->subsampling_x, pd->subsampling_y);
 
   const int disable_edge_filter = !cm->seq_params.enable_intra_edge_filter;
-  if (is_cur_buf_hbd(xd)) {
+  if (xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH) {
     build_intra_predictors_high(
         xd, ref, ref_stride, dst, dst_stride, mode, angle_delta,
         filter_intra_mode, tx_size, disable_edge_filter,
@@ -1642,6 +1642,4 @@ void av1_predict_intra_block_facade(const AV1_COMMON *cm, MACROBLOCKD *xd,
                           dst_stride, dst, dst_stride, blk_col, blk_row, plane);
 }
 
-void av1_init_intra_predictors(void) {
-  aom_once(init_intra_predictors_internal);
-}
+void av1_init_intra_predictors(void) { once(init_intra_predictors_internal); }

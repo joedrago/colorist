@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AV1_COMMON_AV1_INV_TXFM1D_CFG_H_
-#define AOM_AV1_COMMON_AV1_INV_TXFM1D_CFG_H_
+#ifndef AV1_INV_TXFM2D_CFG_H_
+#define AV1_INV_TXFM2D_CFG_H_
 #include "av1/common/av1_inv_txfm1d.h"
 
 // sum of fwd_shift_##
@@ -36,12 +36,12 @@ static const int8_t inv_start_range[TX_SIZES_ALL] = {
   7,  // 64x16 transform
 };
 
-extern const int8_t *av1_inv_txfm_shift_ls[TX_SIZES_ALL];
+extern const int8_t *inv_txfm_shift_ls[TX_SIZES_ALL];
 
-// Values in both av1_inv_cos_bit_col and av1_inv_cos_bit_row are always 12
+// Values in both inv_cos_bit_col and inv_cos_bit_row are always 12
 // for each valid row and col combination
 #define INV_COS_BIT 12
-extern const int8_t av1_inv_cos_bit_col[5 /*row*/][5 /*col*/];
-extern const int8_t av1_inv_cos_bit_row[5 /*row*/][5 /*col*/];
+extern const int8_t inv_cos_bit_col[5 /*row*/][5 /*col*/];
+extern const int8_t inv_cos_bit_row[5 /*row*/][5 /*col*/];
 
-#endif  // AOM_AV1_COMMON_AV1_INV_TXFM1D_CFG_H_
+#endif  // AV1_INV_TXFM2D_CFG_H_

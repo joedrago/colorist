@@ -13,8 +13,12 @@
 
 #include "aom_ports/mem.h"
 #include "aom_dsp/mips/macros_msa.h"
-#include "aom_dsp/aom_filter.h"
 #include "aom_dsp/variance.h"
+
+static const uint8_t bilinear_filters_msa[8][2] = {
+  { 128, 0 }, { 112, 16 }, { 96, 32 }, { 80, 48 },
+  { 64, 64 }, { 48, 80 },  { 32, 96 }, { 16, 112 },
+};
 
 #define CALC_MSE_AVG_B(src, ref, var, sub)                          \
   {                                                                 \
@@ -1622,8 +1626,8 @@ static uint32_t sub_pixel_avg_sse_diff_64width_hv_msa(
       uint32_t *sse) {                                                        \
     int32_t diff;                                                             \
     uint32_t var;                                                             \
-    const uint8_t *h_filter = bilinear_filters_2t[xoffset];                   \
-    const uint8_t *v_filter = bilinear_filters_2t[yoffset];                   \
+    const uint8_t *h_filter = bilinear_filters_msa[xoffset];                  \
+    const uint8_t *v_filter = bilinear_filters_msa[yoffset];                  \
                                                                               \
     if (yoffset) {                                                            \
       if (xoffset) {                                                          \
@@ -1676,8 +1680,8 @@ AOM_SUB_PIXEL_VARIANCE_WDXHT_MSA(64, 64)
       int32_t yoffset, const uint8_t *ref_ptr, int32_t ref_stride,            \
       uint32_t *sse, const uint8_t *sec_pred) {                               \
     int32_t diff;                                                             \
-    const uint8_t *h_filter = bilinear_filters_2t[xoffset];                   \
-    const uint8_t *v_filter = bilinear_filters_2t[yoffset];                   \
+    const uint8_t *h_filter = bilinear_filters_msa[xoffset];                  \
+    const uint8_t *v_filter = bilinear_filters_msa[yoffset];                  \
                                                                               \
     if (yoffset) {                                                            \
       if (xoffset) {                                                          \
@@ -1726,8 +1730,8 @@ uint32_t aom_sub_pixel_avg_variance32x64_msa(const uint8_t *src_ptr,
                                              int32_t ref_stride, uint32_t *sse,
                                              const uint8_t *sec_pred) {
   int32_t diff;
-  const uint8_t *h_filter = bilinear_filters_2t[xoffset];
-  const uint8_t *v_filter = bilinear_filters_2t[yoffset];
+  const uint8_t *h_filter = bilinear_filters_msa[xoffset];
+  const uint8_t *v_filter = bilinear_filters_msa[yoffset];
 
   if (yoffset) {
     if (xoffset) {
@@ -1759,8 +1763,8 @@ uint32_t aom_sub_pixel_avg_variance32x64_msa(const uint8_t *src_ptr,
       int32_t yoffset, const uint8_t *ref_ptr, int32_t ref_stride,            \
       uint32_t *sse, const uint8_t *sec_pred) {                               \
     int32_t diff;                                                             \
-    const uint8_t *h_filter = bilinear_filters_2t[xoffset];                   \
-    const uint8_t *v_filter = bilinear_filters_2t[yoffset];                   \
+    const uint8_t *h_filter = bilinear_filters_msa[xoffset];                  \
+    const uint8_t *v_filter = bilinear_filters_msa[yoffset];                  \
                                                                               \
     if (yoffset) {                                                            \
       if (xoffset) {                                                          \

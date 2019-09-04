@@ -14,7 +14,6 @@
 #include "aom_mem/aom_mem.h"
 #include "aom_ports/mem.h"
 #include "aom_scale/yv12config.h"
-#include "av1/common/enums.h"
 
 /****************************************************************************
  *  Exports
@@ -27,6 +26,7 @@
   (void *)(((size_t)(addr) + ((align)-1)) & (size_t) - (align))
 
 // TODO(jkoleszar): Maybe replace this with struct aom_image
+
 int aom_free_frame_buffer(YV12_BUFFER_CONFIG *ybf) {
   if (ybf) {
     if (ybf->buffer_alloc_sz > 0) {
@@ -38,37 +38,37 @@ int aom_free_frame_buffer(YV12_BUFFER_CONFIG *ybf) {
       u_buffer and v_buffer point to buffer_alloc and are used.  Clear out
       all of this so that a freed pointer isn't inadvertently used */
     memset(ybf, 0, sizeof(YV12_BUFFER_CONFIG));
+  } else {
+    return -1;
   }
 
-  return AOM_CODEC_MEM_ERROR;
+  return 0;
 }
 
-static int realloc_frame_buffer_aligned(
-    YV12_BUFFER_CONFIG *ybf, int width, int height, int ss_x, int ss_y,
-    int use_highbitdepth, int border, int byte_alignment,
-    aom_codec_frame_buffer_t *fb, aom_get_frame_buffer_cb_fn_t cb,
-    void *cb_priv, const int y_stride, const uint64_t yplane_size,
-    const uint64_t uvplane_size, const int aligned_width,
-    const int aligned_height, const int uv_width, const int uv_height,
-    const int uv_stride, const int uv_border_w, const int uv_border_h) {
+int aom_realloc_frame_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height,
+                             int ss_x, int ss_y, int use_highbitdepth,
+                             int border, int byte_alignment,
+                             aom_codec_frame_buffer_t *fb,
+                             aom_get_frame_buffer_cb_fn_t cb, void *cb_priv) {
   if (ybf) {
     const int aom_byte_align = (byte_alignment == 0) ? 1 : byte_alignment;
+    const int aligned_width = (width + 7) & ~7;
+    const int aligned_height = (height + 7) & ~7;
+    const int y_stride = ((aligned_width + 2 * border) + 31) & ~31;
+    const uint64_t yplane_size =
+        (aligned_height + 2 * border) * (uint64_t)y_stride + byte_alignment;
+    const int uv_width = aligned_width >> ss_x;
+    const int uv_height = aligned_height >> ss_y;
+    const int uv_stride = y_stride >> ss_x;
+    const int uv_border_w = border >> ss_x;
+    const int uv_border_h = border >> ss_y;
+    const uint64_t uvplane_size =
+        (uv_height + 2 * uv_border_h) * (uint64_t)uv_stride + byte_alignment;
+
     const uint64_t frame_size =
         (1 + use_highbitdepth) * (yplane_size + 2 * uvplane_size);
 
     uint8_t *buf = NULL;
-
-#if defined AOM_MAX_ALLOCABLE_MEMORY
-    // The size of ybf->buffer_alloc.
-    uint64_t alloc_size = frame_size;
-    // The size of ybf->y_buffer_8bit.
-    if (use_highbitdepth) alloc_size += yplane_size;
-    // The decoder may allocate REF_FRAMES frame buffers in the frame buffer
-    // pool. Bound the total amount of allocated memory as if these REF_FRAMES
-    // frame buffers were allocated in a single allocation.
-    if (alloc_size > AOM_MAX_ALLOCABLE_MEMORY / REF_FRAMES)
-      return AOM_CODEC_MEM_ERROR;
-#endif
 
     if (cb != NULL) {
       const int align_addr_extra_size = 31;
@@ -76,15 +76,12 @@ static int realloc_frame_buffer_aligned(
 
       assert(fb != NULL);
 
-      if (external_frame_size != (size_t)external_frame_size)
-        return AOM_CODEC_MEM_ERROR;
+      if (external_frame_size != (size_t)external_frame_size) return -1;
 
       // Allocation to hold larger frame, or first allocation.
-      if (cb(cb_priv, (size_t)external_frame_size, fb) < 0)
-        return AOM_CODEC_MEM_ERROR;
+      if (cb(cb_priv, (size_t)external_frame_size, fb) < 0) return -1;
 
-      if (fb->data == NULL || fb->size < external_frame_size)
-        return AOM_CODEC_MEM_ERROR;
+      if (fb->data == NULL || fb->size < external_frame_size) return -1;
 
       ybf->buffer_alloc = (uint8_t *)yv12_align_addr(fb->data, 32);
 
@@ -93,19 +90,18 @@ static int realloc_frame_buffer_aligned(
       // This memset is needed for fixing the issue of using uninitialized
       // value in msan test. It will cause a perf loss, so only do this for
       // msan test.
-      memset(ybf->buffer_alloc, 0, (size_t)frame_size);
+      memset(ybf->buffer_alloc, 0, (int)frame_size);
 #endif
 #endif
-    } else if (frame_size > ybf->buffer_alloc_sz) {
+    } else if (frame_size > (size_t)ybf->buffer_alloc_sz) {
       // Allocation to hold larger frame, or first allocation.
       aom_free(ybf->buffer_alloc);
       ybf->buffer_alloc = NULL;
-      ybf->buffer_alloc_sz = 0;
 
-      if (frame_size != (size_t)frame_size) return AOM_CODEC_MEM_ERROR;
+      if (frame_size != (size_t)frame_size) return -1;
 
       ybf->buffer_alloc = (uint8_t *)aom_memalign(32, (size_t)frame_size);
-      if (!ybf->buffer_alloc) return AOM_CODEC_MEM_ERROR;
+      if (!ybf->buffer_alloc) return -1;
 
       ybf->buffer_alloc_sz = (size_t)frame_size;
 
@@ -114,6 +110,13 @@ static int realloc_frame_buffer_aligned(
       // removed if border is totally removed.
       memset(ybf->buffer_alloc, 0, ybf->buffer_alloc_sz);
     }
+
+    /* Only support allocating buffers that have a border that's a multiple
+     * of 32. The border restriction is required to get 16-byte alignment of
+     * the start of the chroma rows without introducing an arbitrary gap
+     * between planes, which would break the semantics of things like
+     * aom_img_set_rect(). */
+    if (border & 0x1f) return -3;
 
     ybf->y_crop_width = width;
     ybf->y_crop_height = height;
@@ -151,130 +154,20 @@ static int realloc_frame_buffer_aligned(
                                        (uv_border_h * uv_stride) + uv_border_w,
                                    aom_byte_align);
 
-    ybf->use_external_reference_buffers = 0;
+    ybf->use_external_refernce_buffers = 0;
 
     if (use_highbitdepth) {
       if (ybf->y_buffer_8bit) aom_free(ybf->y_buffer_8bit);
       ybf->y_buffer_8bit = (uint8_t *)aom_memalign(32, (size_t)yplane_size);
-      if (!ybf->y_buffer_8bit) return AOM_CODEC_MEM_ERROR;
+      if (!ybf->y_buffer_8bit) return -1;
     } else {
-      if (ybf->y_buffer_8bit) {
-        aom_free(ybf->y_buffer_8bit);
-        ybf->y_buffer_8bit = NULL;
-        ybf->buf_8bit_valid = 0;
-      }
+      assert(!ybf->y_buffer_8bit);
     }
 
     ybf->corrupted = 0; /* assume not corrupted by errors */
     return 0;
   }
-  return AOM_CODEC_MEM_ERROR;
-}
-
-static int calc_stride_and_planesize(const int ss_x, const int ss_y,
-                                     const int aligned_width,
-                                     const int aligned_height, const int border,
-                                     const int byte_alignment, int *y_stride,
-                                     int *uv_stride, uint64_t *yplane_size,
-                                     uint64_t *uvplane_size,
-                                     const int uv_height) {
-  /* Only support allocating buffers that have a border that's a multiple
-   * of 32. The border restriction is required to get 16-byte alignment of
-   * the start of the chroma rows without introducing an arbitrary gap
-   * between planes, which would break the semantics of things like
-   * aom_img_set_rect(). */
-  if (border & 0x1f) return AOM_CODEC_MEM_ERROR;
-  *y_stride = ((aligned_width + 2 * border) + 31) & ~31;
-  *yplane_size =
-      (aligned_height + 2 * border) * (uint64_t)(*y_stride) + byte_alignment;
-
-  *uv_stride = *y_stride >> ss_x;
-  *uvplane_size = (uv_height + 2 * (border >> ss_y)) * (uint64_t)(*uv_stride) +
-                  byte_alignment;
-  return 0;
-}
-
-int aom_realloc_frame_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height,
-                             int ss_x, int ss_y, int use_highbitdepth,
-                             int border, int byte_alignment,
-                             aom_codec_frame_buffer_t *fb,
-                             aom_get_frame_buffer_cb_fn_t cb, void *cb_priv) {
-#if CONFIG_SIZE_LIMIT
-  if (width > DECODE_WIDTH_LIMIT || height > DECODE_HEIGHT_LIMIT)
-    return AOM_CODEC_MEM_ERROR;
-#endif
-
-  if (ybf) {
-    int y_stride = 0;
-    int uv_stride = 0;
-    uint64_t yplane_size = 0;
-    uint64_t uvplane_size = 0;
-    const int aligned_width = (width + 7) & ~7;
-    const int aligned_height = (height + 7) & ~7;
-    const int uv_width = aligned_width >> ss_x;
-    const int uv_height = aligned_height >> ss_y;
-    const int uv_border_w = border >> ss_x;
-    const int uv_border_h = border >> ss_y;
-
-    int error = calc_stride_and_planesize(
-        ss_x, ss_y, aligned_width, aligned_height, border, byte_alignment,
-        &y_stride, &uv_stride, &yplane_size, &uvplane_size, uv_height);
-    if (error) return error;
-    return realloc_frame_buffer_aligned(
-        ybf, width, height, ss_x, ss_y, use_highbitdepth, border,
-        byte_alignment, fb, cb, cb_priv, y_stride, yplane_size, uvplane_size,
-        aligned_width, aligned_height, uv_width, uv_height, uv_stride,
-        uv_border_w, uv_border_h);
-  }
-  return AOM_CODEC_MEM_ERROR;
-}
-
-// TODO(anyone): This function allocates memory for
-// lookahead buffer considering height and width is
-// aligned to 128. Currently variance calculation of
-// simple_motion_search_get_best_ref() function is done
-// for full sb size (i.e integral multiple of max sb
-// size = 128 or 64). Hence partial sbs need up to 127
-// pixels beyond frame boundary. 128 aligned limitation of
-// lookahead buffer can be removed if variance calculation
-// is adjusted for partial sbs
-
-// NOTE: Chroma width and height need not be aligned to
-// 128 since variance calculation happens only for luma plane
-int aom_realloc_lookahead_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height,
-                                 int ss_x, int ss_y, int use_highbitdepth,
-                                 int border, int byte_alignment,
-                                 aom_codec_frame_buffer_t *fb,
-                                 aom_get_frame_buffer_cb_fn_t cb,
-                                 void *cb_priv) {
-  if (ybf) {
-    int y_stride = 0;
-    int uv_stride = 0;
-    uint64_t yplane_size = 0;
-    uint64_t uvplane_size = 0;
-    const int aligned_128_width = (width + 127) & ~127;
-    const int aligned_128_height = (height + 127) & ~127;
-    const int aligned_width = (width + 7) & ~7;
-    const int aligned_height = (height + 7) & ~7;
-    const int uv_64_height = aligned_128_height >> ss_y;
-    const int uv_width = aligned_width >> ss_x;
-    const int uv_height = aligned_height >> ss_y;
-    const int uv_border_w = border >> ss_x;
-    const int uv_border_h = border >> ss_y;
-
-    int error = calc_stride_and_planesize(
-        ss_x, ss_y, aligned_128_width, aligned_128_height, border,
-        byte_alignment, &y_stride, &uv_stride, &yplane_size, &uvplane_size,
-        uv_64_height);
-    if (error) return error;
-
-    return realloc_frame_buffer_aligned(
-        ybf, width, height, ss_x, ss_y, use_highbitdepth, border,
-        byte_alignment, fb, cb, cb_priv, y_stride, yplane_size, uvplane_size,
-        aligned_width, aligned_height, uv_width, uv_height, uv_stride,
-        uv_border_w, uv_border_h);
-  }
-  return AOM_CODEC_MEM_ERROR;
+  return -2;
 }
 
 int aom_alloc_frame_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height,
@@ -286,5 +179,5 @@ int aom_alloc_frame_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height,
                                     use_highbitdepth, border, byte_alignment,
                                     NULL, NULL, NULL);
   }
-  return AOM_CODEC_MEM_ERROR;
+  return -2;
 }

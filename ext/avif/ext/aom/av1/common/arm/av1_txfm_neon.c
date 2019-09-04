@@ -12,8 +12,6 @@
 #include <arm_neon.h>
 #include <assert.h>
 
-#include "config/av1_rtcd.h"
-
 #include "aom_ports/mem.h"
 #include "av1/common/arm/mem_neon.h"
 

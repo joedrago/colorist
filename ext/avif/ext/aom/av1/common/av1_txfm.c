@@ -10,11 +10,10 @@
  */
 
 #include "config/aom_dsp_rtcd.h"
-#include "config/av1_rtcd.h"
 
 #include "av1/common/av1_txfm.h"
 
-// av1_cospi_arr[i][j] = (int)round(cos(PI*j/128) * (1<<(cos_bit_min+i)));
+// av1_cospi_arr[i][j] = (int)round(cos(M_PI*j/128) * (1<<(cos_bit_min+i)));
 const int32_t av1_cospi_arr_data[7][64] = {
   { 1024, 1024, 1023, 1021, 1019, 1016, 1013, 1009, 1004, 999, 993, 987, 980,
     972,  964,  955,  946,  936,  926,  915,  903,  891,  878, 865, 851, 837,
@@ -109,53 +108,3 @@ const int8_t av1_txfm_stage_num_list[TXFM_TYPES] = {
   1,   // TXFM_TYPE_IDENTITY16
   1,   // TXFM_TYPE_IDENTITY32
 };
-
-void av1_range_check_buf(int32_t stage, const int32_t *input,
-                         const int32_t *buf, int32_t size, int8_t bit) {
-#if CONFIG_COEFFICIENT_RANGE_CHECKING
-  const int64_t max_value = (1LL << (bit - 1)) - 1;
-  const int64_t min_value = -(1LL << (bit - 1));
-
-  int in_range = 1;
-
-  for (int i = 0; i < size; ++i) {
-    if (buf[i] < min_value || buf[i] > max_value) {
-      in_range = 0;
-    }
-  }
-
-  if (!in_range) {
-    fprintf(stderr, "Error: coeffs contain out-of-range values\n");
-    fprintf(stderr, "size: %d\n", size);
-    fprintf(stderr, "stage: %d\n", stage);
-    fprintf(stderr, "allowed range: [%" PRId64 ";%" PRId64 "]\n", min_value,
-            max_value);
-
-    fprintf(stderr, "coeffs: ");
-
-    fprintf(stderr, "[");
-    for (int j = 0; j < size; j++) {
-      if (j > 0) fprintf(stderr, ", ");
-      fprintf(stderr, "%d", input[j]);
-    }
-    fprintf(stderr, "]\n");
-
-    fprintf(stderr, "   buf: ");
-
-    fprintf(stderr, "[");
-    for (int j = 0; j < size; j++) {
-      if (j > 0) fprintf(stderr, ", ");
-      fprintf(stderr, "%d", buf[j]);
-    }
-    fprintf(stderr, "]\n\n");
-  }
-
-  assert(in_range);
-#else
-  (void)stage;
-  (void)input;
-  (void)buf;
-  (void)size;
-  (void)bit;
-#endif
-}

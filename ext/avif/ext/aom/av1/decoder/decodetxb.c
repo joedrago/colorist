@@ -43,7 +43,7 @@ static int read_golomb(MACROBLOCKD *xd, aom_reader *r) {
 }
 
 static INLINE int rec_eob_pos(const int eob_token, const int extra) {
-  int eob = av1_eob_group_start[eob_token];
+  int eob = k_eob_group_start[eob_token];
   if (eob > 2) {
     eob += extra;
   }
@@ -136,15 +136,6 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
   uint16_t *const max_scan_line = &(eob_data->max_scan_line);
   *max_scan_line = 0;
   *eob = 0;
-
-#if CONFIG_INSPECTION
-  if (plane == 0) {
-    const int txk_type_idx =
-        av1_get_txk_type_index(mbmi->sb_type, blk_row, blk_col);
-    mbmi->tx_skip[txk_type_idx] = all_zero;
-  }
-#endif
-
   if (all_zero) {
     *max_scan_line = 0;
     if (plane == 0) {
@@ -155,6 +146,9 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
     return 0;
   }
 
+  memset(levels_buf, 0,
+         sizeof(*levels_buf) *
+             ((width + TX_PAD_HOR) * (height + TX_PAD_VER) + TX_PAD_END));
   if (plane == AOM_PLANE_Y) {
     // only y plane's tx_type is transmitted
     av1_read_tx_type(cm, xd, blk_row, blk_col, tx_size, r);
@@ -220,29 +214,22 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
       break;
   }
 
-  const int eob_offset_bits = av1_eob_offset_bits[eob_pt];
-  if (eob_offset_bits > 0) {
+  if (k_eob_offset_bits[eob_pt] > 0) {
     const int eob_ctx = eob_pt - 3;
     int bit = aom_read_symbol(
         r, ec_ctx->eob_extra_cdf[txs_ctx][plane_type][eob_ctx], 2, ACCT_STR);
     if (bit) {
-      eob_extra += (1 << (eob_offset_bits - 1));
+      eob_extra += (1 << (k_eob_offset_bits[eob_pt] - 1));
     }
 
-    for (int i = 1; i < eob_offset_bits; i++) {
+    for (int i = 1; i < k_eob_offset_bits[eob_pt]; i++) {
       bit = aom_read_bit(r, ACCT_STR);
       if (bit) {
-        eob_extra += (1 << (eob_offset_bits - 1 - i));
+        eob_extra += (1 << (k_eob_offset_bits[eob_pt] - 1 - i));
       }
     }
   }
   *eob = rec_eob_pos(eob_pt, eob_extra);
-
-  if (*eob > 1) {
-    memset(levels_buf, 0,
-           sizeof(*levels_buf) *
-               ((width + TX_PAD_HOR) * (height + TX_PAD_VER) + TX_PAD_END));
-  }
 
   {
     // Read the non-zero coefficient with scan index eob-1
@@ -255,10 +242,12 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
         ec_ctx->coeff_base_eob_cdf[txs_ctx][plane_type][coeff_ctx];
     int level = aom_read_symbol(r, cdf, nsymbs, ACCT_STR) + 1;
     if (level > NUM_BASE_LEVELS) {
-      const int br_ctx = get_br_ctx_eob(pos, bwl, tx_class);
-      cdf = ec_ctx->coeff_br_cdf[AOMMIN(txs_ctx, TX_32X32)][plane_type][br_ctx];
+      const int br_ctx = get_br_ctx(levels, pos, bwl, tx_class);
       for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
-        const int k = aom_read_symbol(r, cdf, BR_CDF_SIZE, ACCT_STR);
+        const int k = aom_read_symbol(
+            r,
+            ec_ctx->coeff_br_cdf[AOMMIN(txs_ctx, TX_32X32)][plane_type][br_ctx],
+            BR_CDF_SIZE, ACCT_STR);
         level += k;
         if (k < BR_CDF_SIZE - 1) break;
       }
@@ -279,6 +268,13 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
                           levels, base_cdf, br_cdf);
     }
   }
+
+  int16_t num_zero_coeffs = 0;
+  for (int c = 0; c < *eob; ++c) {
+    const int pos = scan[c];
+    num_zero_coeffs = AOMMAX(num_zero_coeffs, pos);
+  }
+  memset(tcoeffs, 0, (num_zero_coeffs + 1) * sizeof(tcoeffs[0]));
 
   for (int c = 0; c < *eob; ++c) {
     const int pos = scan[c];
@@ -324,19 +320,14 @@ uint8_t av1_read_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCKD *const xd,
   return cul_level;
 }
 
-void av1_read_coeffs_txb_facade(const AV1_COMMON *const cm,
-                                MACROBLOCKD *const xd, aom_reader *const r,
-                                const int plane, const int row, const int col,
-                                const TX_SIZE tx_size) {
-#if TXCOEFF_TIMER
-  struct aom_usec_timer timer;
-  aom_usec_timer_start(&timer);
-#endif
+uint8_t av1_read_coeffs_txb_facade(const AV1_COMMON *const cm,
+                                   MACROBLOCKD *const xd, aom_reader *const r,
+                                   const int row, const int col,
+                                   const int plane, const TX_SIZE tx_size) {
   MB_MODE_INFO *const mbmi = xd->mi[0];
   struct macroblockd_plane *const pd = &xd->plane[plane];
 
   const BLOCK_SIZE bsize = mbmi->sb_type;
-  assert(bsize < BLOCK_SIZES_ALL);
   const BLOCK_SIZE plane_bsize =
       get_plane_block_size(bsize, pd->subsampling_x, pd->subsampling_y);
 
@@ -346,22 +337,5 @@ void av1_read_coeffs_txb_facade(const AV1_COMMON *const cm,
   const uint8_t cul_level =
       av1_read_coeffs_txb(cm, xd, r, row, col, plane, &txb_ctx, tx_size);
   av1_set_contexts(xd, pd, plane, plane_bsize, tx_size, cul_level, col, row);
-
-  if (is_inter_block(mbmi)) {
-    PLANE_TYPE plane_type = get_plane_type(plane);
-    // tx_type will be read out in av1_read_coeffs_txb_facade
-    const TX_TYPE tx_type = av1_get_tx_type(plane_type, xd, row, col, tx_size,
-                                            cm->reduced_tx_set_used);
-
-    if (plane == 0)
-      update_txk_array(mbmi->txk_type, mbmi->sb_type, row, col, tx_size,
-                       tx_type);
-  }
-
-#if TXCOEFF_TIMER
-  aom_usec_timer_mark(&timer);
-  const int64_t elapsed_time = aom_usec_timer_elapsed(&timer);
-  cm->txcoeff_timer += elapsed_time;
-  ++cm->txb_count;
-#endif
+  return cul_level;
 }

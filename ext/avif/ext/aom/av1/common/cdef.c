@@ -21,6 +21,25 @@
 #include "av1/common/onyxc_int.h"
 #include "av1/common/reconinter.h"
 
+int sb_all_skip(const AV1_COMMON *const cm, int mi_row, int mi_col) {
+  int maxc, maxr;
+  int skip = 1;
+  maxc = cm->mi_cols - mi_col;
+  maxr = cm->mi_rows - mi_row;
+
+  maxr = AOMMIN(maxr, MI_SIZE_64X64);
+  maxc = AOMMIN(maxc, MI_SIZE_64X64);
+
+  for (int r = 0; r < maxr; r++) {
+    for (int c = 0; c < maxc; c++) {
+      skip =
+          skip &&
+          cm->mi_grid_visible[(mi_row + r) * cm->mi_stride + mi_col + c]->skip;
+    }
+  }
+  return skip;
+}
+
 static int is_8x8_block_skip(MB_MODE_INFO **grid, int mi_row, int mi_col,
                              int mi_stride) {
   int is_skip = 1;
@@ -31,7 +50,7 @@ static int is_8x8_block_skip(MB_MODE_INFO **grid, int mi_row, int mi_col,
   return is_skip;
 }
 
-int cdef_compute_sb_list(const AV1_COMMON *const cm, int mi_row, int mi_col,
+int sb_compute_cdef_list(const AV1_COMMON *const cm, int mi_row, int mi_col,
                          cdef_list *dlist, BLOCK_SIZE bs) {
   MB_MODE_INFO **grid = cm->mi_grid_visible;
   int maxc = cm->mi_cols - mi_col;
@@ -61,6 +80,7 @@ int cdef_compute_sb_list(const AV1_COMMON *const cm, int mi_row, int mi_col,
       if (!is_8x8_block_skip(grid, mi_row + r, mi_col + c, cm->mi_stride)) {
         dlist[count].by = r >> r_shift;
         dlist[count].bx = c >> c_shift;
+        dlist[count].skip = 0;
         count++;
       }
     }
@@ -68,9 +88,8 @@ int cdef_compute_sb_list(const AV1_COMMON *const cm, int mi_row, int mi_col,
   return count;
 }
 
-void cdef_copy_rect8_8bit_to_16bit_c(uint16_t *dst, int dstride,
-                                     const uint8_t *src, int sstride, int v,
-                                     int h) {
+void copy_rect8_8bit_to_16bit_c(uint16_t *dst, int dstride, const uint8_t *src,
+                                int sstride, int v, int h) {
   for (int i = 0; i < v; i++) {
     for (int j = 0; j < h; j++) {
       dst[i * dstride + j] = src[i * sstride + j];
@@ -78,9 +97,9 @@ void cdef_copy_rect8_8bit_to_16bit_c(uint16_t *dst, int dstride,
   }
 }
 
-void cdef_copy_rect8_16bit_to_16bit_c(uint16_t *dst, int dstride,
-                                      const uint16_t *src, int sstride, int v,
-                                      int h) {
+void copy_rect8_16bit_to_16bit_c(uint16_t *dst, int dstride,
+                                 const uint16_t *src, int sstride, int v,
+                                 int h) {
   for (int i = 0; i < v; i++) {
     for (int j = 0; j < h; j++) {
       dst[i * dstride + j] = src[i * sstride + j];
@@ -88,16 +107,16 @@ void cdef_copy_rect8_16bit_to_16bit_c(uint16_t *dst, int dstride,
   }
 }
 
-static void copy_sb8_16(AV1_COMMON *cm, uint16_t *dst, int dstride,
+static void copy_sb8_16(AOM_UNUSED AV1_COMMON *cm, uint16_t *dst, int dstride,
                         const uint8_t *src, int src_voffset, int src_hoffset,
                         int sstride, int vsize, int hsize) {
-  if (cm->seq_params.use_highbitdepth) {
+  if (cm->use_highbitdepth) {
     const uint16_t *base =
         &CONVERT_TO_SHORTPTR(src)[src_voffset * sstride + src_hoffset];
-    cdef_copy_rect8_16bit_to_16bit(dst, dstride, base, sstride, vsize, hsize);
+    copy_rect8_16bit_to_16bit(dst, dstride, base, sstride, vsize, hsize);
   } else {
     const uint8_t *base = &src[src_voffset * sstride + src_hoffset];
-    cdef_copy_rect8_8bit_to_16bit(dst, dstride, base, sstride, vsize, hsize);
+    copy_rect8_8bit_to_16bit(dst, dstride, base, sstride, vsize, hsize);
   }
 }
 
@@ -121,7 +140,6 @@ static INLINE void copy_rect(uint16_t *dst, int dstride, const uint16_t *src,
 
 void av1_cdef_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm,
                     MACROBLOCKD *xd) {
-  const CdefInfo *const cdef_info = &cm->cdef_info;
   const int num_planes = av1_num_planes(cm);
   DECLARE_ALIGNED(16, uint16_t, src[CDEF_INBUF_SIZE]);
   uint16_t *linebuf[3];
@@ -135,7 +153,7 @@ void av1_cdef_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm,
   int mi_high_l2[3];
   int xdec[3];
   int ydec[3];
-  int coeff_shift = AOMMAX(cm->seq_params.bit_depth - 8, 0);
+  int coeff_shift = AOMMAX(cm->bit_depth - 8, 0);
   const int nvfb = (cm->mi_rows + MI_SIZE_64X64 - 1) / MI_SIZE_64X64;
   const int nhfb = (cm->mi_cols + MI_SIZE_64X64 - 1) / MI_SIZE_64X64;
   av1_setup_dst_planes(xd->plane, cm->seq_params.sb_size, frame, 0, 0, 0,
@@ -213,19 +231,17 @@ void av1_cdef_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm,
           cm->mi_grid_visible[MI_SIZE_64X64 * fbr * cm->mi_stride +
                               MI_SIZE_64X64 * fbc]
               ->cdef_strength;
-      level =
-          cdef_info->cdef_strengths[mbmi_cdef_strength] / CDEF_SEC_STRENGTHS;
+      level = cm->cdef_strengths[mbmi_cdef_strength] / CDEF_SEC_STRENGTHS;
       sec_strength =
-          cdef_info->cdef_strengths[mbmi_cdef_strength] % CDEF_SEC_STRENGTHS;
+          cm->cdef_strengths[mbmi_cdef_strength] % CDEF_SEC_STRENGTHS;
       sec_strength += sec_strength == 3;
-      uv_level =
-          cdef_info->cdef_uv_strengths[mbmi_cdef_strength] / CDEF_SEC_STRENGTHS;
+      uv_level = cm->cdef_uv_strengths[mbmi_cdef_strength] / CDEF_SEC_STRENGTHS;
       uv_sec_strength =
-          cdef_info->cdef_uv_strengths[mbmi_cdef_strength] % CDEF_SEC_STRENGTHS;
+          cm->cdef_uv_strengths[mbmi_cdef_strength] % CDEF_SEC_STRENGTHS;
       uv_sec_strength += uv_sec_strength == 3;
       if ((level == 0 && sec_strength == 0 && uv_level == 0 &&
            uv_sec_strength == 0) ||
-          (cdef_count = cdef_compute_sb_list(cm, fbr * MI_SIZE_64X64,
+          (cdef_count = sb_compute_cdef_list(cm, fbr * MI_SIZE_64X64,
                                              fbc * MI_SIZE_64X64, dlist,
                                              BLOCK_64X64)) == 0) {
         cdef_left = 0;
@@ -236,8 +252,8 @@ void av1_cdef_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm,
       for (int pli = 0; pli < num_planes; pli++) {
         int coffset;
         int rend, cend;
-        int pri_damping = cdef_info->cdef_pri_damping;
-        int sec_damping = cdef_info->cdef_sec_damping;
+        int pri_damping = cm->cdef_pri_damping;
+        int sec_damping = cm->cdef_sec_damping;
         int hsize = nhb << mi_wide_l2[pli];
         int vsize = nvb << mi_high_l2[pli];
 
@@ -347,7 +363,7 @@ void av1_cdef_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm,
                     vsize + 2 * CDEF_VBORDER, CDEF_HBORDER, CDEF_VERY_LARGE);
         }
 
-        if (cm->seq_params.use_highbitdepth) {
+        if (cm->use_highbitdepth) {
           cdef_filter_fb(
               NULL,
               &CONVERT_TO_SHORTPTR(

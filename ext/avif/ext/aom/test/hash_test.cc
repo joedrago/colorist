@@ -24,7 +24,7 @@
 namespace {
 
 typedef uint32_t (*get_crc32c_value_func)(void *calculator, uint8_t *p,
-                                          size_t length);
+                                          int length);
 
 typedef ::testing::tuple<get_crc32c_value_func, int> HashParam;
 
@@ -45,7 +45,7 @@ class AV1Crc32cHashTest : public ::testing::TestWithParam<HashParam> {
   CRC32C calc_;
   uint8_t *buffer_;
   int bsize_;
-  size_t length_;
+  int length_;
 };
 
 AV1Crc32cHashTest::~AV1Crc32cHashTest() { ; }
@@ -58,7 +58,7 @@ void AV1Crc32cHashTest::SetUp() {
   length_ = bsize_ * bsize_ * sizeof(uint16_t);
   buffer_ = new uint8_t[length_];
   ASSERT_TRUE(buffer_ != NULL);
-  for (size_t i = 0; i < length_; ++i) {
+  for (int i = 0; i < length_; ++i) {
     buffer_[i] = rnd_.Rand8();
   }
 }

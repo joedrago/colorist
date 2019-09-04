@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_TEST_WARP_FILTER_TEST_UTIL_H_
-#define AOM_TEST_WARP_FILTER_TEST_UTIL_H_
+#ifndef TEST_WARP_FILTER_TEST_UTIL_H_
+#define TEST_WARP_FILTER_TEST_UTIL_H_
 
 #include "config/av1_rtcd.h"
 #include "config/aom_dsp_rtcd.h"
@@ -28,8 +28,7 @@ namespace libaom_test {
 
 void generate_warped_model(libaom_test::ACMRandom *rnd, int32_t *mat,
                            int16_t *alpha, int16_t *beta, int16_t *gamma,
-                           int16_t *delta, int is_alpha_zero, int is_beta_zero,
-                           int is_gamma_zero, int is_delta_zero);
+                           int16_t *delta);
 
 namespace AV1WarpFilter {
 
@@ -42,12 +41,11 @@ typedef void (*warp_affine_func)(const int32_t *mat, const uint8_t *ref,
                                  int16_t beta, int16_t gamma, int16_t delta);
 
 typedef ::testing::tuple<int, int, int, warp_affine_func> WarpTestParam;
-typedef ::testing::tuple<WarpTestParam, int, int, int, int> WarpTestParams;
 
-::testing::internal::ParamGenerator<WarpTestParams> BuildParams(
+::testing::internal::ParamGenerator<WarpTestParam> BuildParams(
     warp_affine_func filter);
 
-class AV1WarpFilterTest : public ::testing::TestWithParam<WarpTestParams> {
+class AV1WarpFilterTest : public ::testing::TestWithParam<WarpTestParam> {
  public:
   virtual ~AV1WarpFilterTest();
   virtual void SetUp();
@@ -75,14 +73,12 @@ typedef void (*highbd_warp_affine_func)(const int32_t *mat, const uint16_t *ref,
 
 typedef ::testing::tuple<int, int, int, int, highbd_warp_affine_func>
     HighbdWarpTestParam;
-typedef ::testing::tuple<HighbdWarpTestParam, int, int, int, int>
-    HighbdWarpTestParams;
 
-::testing::internal::ParamGenerator<HighbdWarpTestParams> BuildParams(
+::testing::internal::ParamGenerator<HighbdWarpTestParam> BuildParams(
     highbd_warp_affine_func filter);
 
 class AV1HighbdWarpFilterTest
-    : public ::testing::TestWithParam<HighbdWarpTestParams> {
+    : public ::testing::TestWithParam<HighbdWarpTestParam> {
  public:
   virtual ~AV1HighbdWarpFilterTest();
   virtual void SetUp();
@@ -100,4 +96,4 @@ class AV1HighbdWarpFilterTest
 
 }  // namespace libaom_test
 
-#endif  // AOM_TEST_WARP_FILTER_TEST_UTIL_H_
+#endif  // TEST_WARP_FILTER_TEST_UTIL_H_

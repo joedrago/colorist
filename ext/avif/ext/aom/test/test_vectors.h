@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_TEST_TEST_VECTORS_H_
-#define AOM_TEST_TEST_VECTORS_H_
+#ifndef TEST_TEST_VECTORS_H_
+#define TEST_TEST_VECTORS_H_
 
 #include "config/aom_config.h"
 
@@ -23,4 +23,4 @@ extern const char *const kAV1TestVectors[];
 
 }  // namespace libaom_test
 
-#endif  // AOM_TEST_TEST_VECTORS_H_
+#endif  // TEST_TEST_VECTORS_H_

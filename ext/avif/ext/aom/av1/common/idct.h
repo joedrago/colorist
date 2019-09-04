@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AV1_COMMON_IDCT_H_
-#define AOM_AV1_COMMON_IDCT_H_
+#ifndef AV1_COMMON_IDCT_H_
+#define AV1_COMMON_IDCT_H_
 
 #include "config/aom_config.h"
 
@@ -36,16 +36,11 @@ void av1_inverse_transform_block(const MACROBLOCKD *xd,
                                  const tran_low_t *dqcoeff, int plane,
                                  TX_TYPE tx_type, TX_SIZE tx_size, uint8_t *dst,
                                  int stride, int eob, int reduced_tx_set);
-void av1_highbd_iwht4x4_add(const tran_low_t *input, uint8_t *dest, int stride,
-                            int eob, int bd);
 
-static INLINE const int32_t *cast_to_int32(const tran_low_t *input) {
-  assert(sizeof(int32_t) == sizeof(tran_low_t));
-  return (const int32_t *)input;
-}
-
+void av1_highbd_inv_txfm_add_4x4(const tran_low_t *input, uint8_t *dest,
+                                 int stride, const TxfmParam *param);
 #ifdef __cplusplus
 }  // extern "C"
 #endif
 
-#endif  // AOM_AV1_COMMON_IDCT_H_
+#endif  // AV1_COMMON_IDCT_H_

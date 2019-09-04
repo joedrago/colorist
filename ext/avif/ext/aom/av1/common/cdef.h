@@ -8,8 +8,8 @@
  * Media Patent License 1.0 was not distributed with this source code in the
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
-#ifndef AOM_AV1_COMMON_CDEF_H_
-#define AOM_AV1_COMMON_CDEF_H_
+#ifndef AV1_COMMON_CDEF_H_
+#define AV1_COMMON_CDEF_H_
 
 #define CDEF_STRENGTH_BITS 6
 
@@ -37,14 +37,15 @@ static INLINE int constrain(int diff, int threshold, int damping) {
 extern "C" {
 #endif
 
-int cdef_compute_sb_list(const AV1_COMMON *const cm, int mi_row, int mi_col,
+int sb_all_skip(const AV1_COMMON *const cm, int mi_row, int mi_col);
+int sb_compute_cdef_list(const AV1_COMMON *const cm, int mi_row, int mi_col,
                          cdef_list *dlist, BLOCK_SIZE bsize);
 void av1_cdef_frame(YV12_BUFFER_CONFIG *frame, AV1_COMMON *cm, MACROBLOCKD *xd);
 
 void av1_cdef_search(YV12_BUFFER_CONFIG *frame, const YV12_BUFFER_CONFIG *ref,
-                     AV1_COMMON *cm, MACROBLOCKD *xd, int pick_method);
+                     AV1_COMMON *cm, MACROBLOCKD *xd, int fast);
 
 #ifdef __cplusplus
 }  // extern "C"
 #endif
-#endif  // AOM_AV1_COMMON_CDEF_H_
+#endif  // AV1_COMMON_CDEF_H_

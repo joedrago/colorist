@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AV1_ENCODER_RD_H_
-#define AOM_AV1_ENCODER_RD_H_
+#ifndef AV1_ENCODER_RD_H_
+#define AV1_ENCODER_RD_H_
 
 #include <limits.h>
 
@@ -43,12 +43,9 @@ extern "C" {
 #define RD_THRESH_MAX_FACT 64
 #define RD_THRESH_INC 1
 
-// Factor to weigh the rate for switchable interp filters.
-#define SWITCHABLE_INTERP_RATE_FACTOR 1
-
 // This enumerator type needs to be kept aligned with the mode order in
 // const MODE_DEFINITION av1_mode_order[MAX_MODES] used in the rd code.
-enum {
+typedef enum {
   THR_NEARESTMV,
   THR_NEARESTL2,
   THR_NEARESTL3,
@@ -56,6 +53,8 @@ enum {
   THR_NEARESTA2,
   THR_NEARESTA,
   THR_NEARESTG,
+
+  THR_DC,
 
   THR_NEWMV,
   THR_NEWL2,
@@ -78,8 +77,8 @@ enum {
   THR_GLOBALL3,
   THR_GLOBALB,
   THR_GLOBALA2,
-  THR_GLOBALG,
   THR_GLOBALA,
+  THR_GLOBALG,
 
   THR_COMP_NEAREST_NEARESTLA,
   THR_COMP_NEAREST_NEARESTL2A,
@@ -97,6 +96,12 @@ enum {
   THR_COMP_NEAREST_NEARESTLL3,
   THR_COMP_NEAREST_NEARESTLG,
   THR_COMP_NEAREST_NEARESTBA,
+
+  THR_PAETH,
+
+  THR_SMOOTH,
+  THR_SMOOTH_V,
+  THR_SMOOTH_H,
 
   THR_COMP_NEAR_NEARLA,
   THR_COMP_NEW_NEARESTLA,
@@ -194,6 +199,15 @@ enum {
   THR_COMP_NEW_NEWGA2,
   THR_COMP_GLOBAL_GLOBALGA2,
 
+  THR_H_PRED,
+  THR_V_PRED,
+  THR_D135_PRED,
+  THR_D203_PRED,
+  THR_D157_PRED,
+  THR_D67_PRED,
+  THR_D113_PRED,
+  THR_D45_PRED,
+
   THR_COMP_NEAR_NEARLL2,
   THR_COMP_NEW_NEARESTLL2,
   THR_COMP_NEAREST_NEWLL2,
@@ -226,29 +240,10 @@ enum {
   THR_COMP_NEW_NEWBA,
   THR_COMP_GLOBAL_GLOBALBA,
 
-  THR_DC,
-  THR_PAETH,
-  THR_SMOOTH,
-  THR_SMOOTH_V,
-  THR_SMOOTH_H,
-  THR_H_PRED,
-  THR_V_PRED,
-  THR_D135_PRED,
-  THR_D203_PRED,
-  THR_D157_PRED,
-  THR_D67_PRED,
-  THR_D113_PRED,
-  THR_D45_PRED,
+  MAX_MODES
+} THR_MODES;
 
-  MAX_MODES,
-
-  LAST_SINGLE_REF_MODES = THR_GLOBALG,
-  MAX_SINGLE_REF_MODES = LAST_SINGLE_REF_MODES + 1,
-  LAST_COMP_REF_MODES = THR_COMP_GLOBAL_GLOBALBA,
-  MAX_COMP_REF_MODES = LAST_COMP_REF_MODES + 1
-} UENUM1BYTE(THR_MODES);
-
-enum {
+typedef enum {
   THR_LAST,
   THR_LAST2,
   THR_LAST3,
@@ -275,7 +270,7 @@ enum {
   THR_INTRA,
 
   MAX_REFS
-} UENUM1BYTE(THR_MODES_SUB8X8);
+} THR_MODES_SUB8X8;
 
 typedef struct RD_OPT {
   // Thresh_mult is used to set a threshold for the rd score. A higher value
@@ -283,15 +278,13 @@ typedef struct RD_OPT {
   // is used in combination with the current block size, and thresh_freq_fact
   // to pick a threshold.
   int thresh_mult[MAX_MODES];
+  int thresh_mult_sub8x8[MAX_REFS];
 
   int threshes[MAX_SEGMENTS][BLOCK_SIZES_ALL][MAX_MODES];
 
   int64_t prediction_type_threshes[REF_FRAMES][REFERENCE_MODES];
 
   int RDMULT;
-
-  double r0, arf_r0;
-  double mc_saved_base, mc_count_base;
 } RD_OPT;
 
 static INLINE void av1_init_rd_stats(RD_STATS *rd_stats) {
@@ -304,6 +297,8 @@ static INLINE void av1_init_rd_stats(RD_STATS *rd_stats) {
   rd_stats->sse = 0;
   rd_stats->skip = 1;
   rd_stats->zero_rate = 0;
+  rd_stats->invalid_rate = 0;
+  rd_stats->ref_rdcost = INT64_MAX;
 #if CONFIG_RD_DEBUG
   // This may run into problems when monochrome video is
   // encoded, as there will only be 1 plane
@@ -329,6 +324,8 @@ static INLINE void av1_invalid_rd_stats(RD_STATS *rd_stats) {
   rd_stats->sse = INT64_MAX;
   rd_stats->skip = 0;
   rd_stats->zero_rate = 0;
+  rd_stats->invalid_rate = 1;
+  rd_stats->ref_rdcost = INT64_MAX;
 #if CONFIG_RD_DEBUG
   // This may run into problems when monochrome video is
   // encoded, as there will only be 1 plane
@@ -346,17 +343,20 @@ static INLINE void av1_invalid_rd_stats(RD_STATS *rd_stats) {
 
 static INLINE void av1_merge_rd_stats(RD_STATS *rd_stats_dst,
                                       const RD_STATS *rd_stats_src) {
-  assert(rd_stats_dst->rate != INT_MAX && rd_stats_src->rate != INT_MAX);
+#if CONFIG_RD_DEBUG
+  int plane;
+#endif
   rd_stats_dst->rate += rd_stats_src->rate;
   if (!rd_stats_dst->zero_rate)
     rd_stats_dst->zero_rate = rd_stats_src->zero_rate;
   rd_stats_dst->dist += rd_stats_src->dist;
   rd_stats_dst->sse += rd_stats_src->sse;
   rd_stats_dst->skip &= rd_stats_src->skip;
+  rd_stats_dst->invalid_rate &= rd_stats_src->invalid_rate;
 #if CONFIG_RD_DEBUG
   // This may run into problems when monochrome video is
   // encoded, as there will only be 1 plane
-  for (int plane = 0; plane < MAX_MB_PLANE; ++plane) {
+  for (plane = 0; plane < MAX_MB_PLANE; ++plane) {
     rd_stats_dst->txb_coeff_cost[plane] += rd_stats_src->txb_coeff_cost[plane];
     {
       // TODO(angiebird): optimize this part
@@ -379,24 +379,15 @@ struct TileDataEnc;
 struct AV1_COMP;
 struct macroblock;
 
-int av1_compute_rd_mult_based_on_qindex(const struct AV1_COMP *cpi, int qindex);
-
 int av1_compute_rd_mult(const struct AV1_COMP *cpi, int qindex);
 
 void av1_initialize_rd_consts(struct AV1_COMP *cpi);
-
-void av1_initialize_cost_tables(const AV1_COMMON *const cm, MACROBLOCK *x);
 
 void av1_initialize_me_consts(const struct AV1_COMP *cpi, MACROBLOCK *x,
                               int qindex);
 
 void av1_model_rd_from_var_lapndz(int64_t var, unsigned int n,
                                   unsigned int qstep, int *rate, int64_t *dist);
-
-void av1_model_rd_curvfit(BLOCK_SIZE bsize, double sse_norm, double xqr,
-                          double *rate_f, double *distbysse_f);
-void av1_model_rd_surffit(BLOCK_SIZE bsize, double sse_norm, double xm,
-                          double yl, double *rate_f, double *distbysse_f);
 
 int av1_get_switchable_rate(const AV1_COMMON *const cm, MACROBLOCK *x,
                             const MACROBLOCKD *xd);
@@ -420,6 +411,8 @@ void av1_get_entropy_contexts(BLOCK_SIZE bsize,
                               ENTROPY_CONTEXT t_left[MAX_MIB_SIZE]);
 
 void av1_set_rd_speed_thresholds(struct AV1_COMP *cpi);
+
+void av1_set_rd_speed_thresholds_sub8x8(struct AV1_COMP *cpi);
 
 void av1_update_rd_thresh_fact(const AV1_COMMON *const cm,
                                int (*fact)[MAX_MODES], int rd_thresh, int bsize,
@@ -455,12 +448,8 @@ void av1_fill_mode_rates(AV1_COMMON *const cm, MACROBLOCK *x,
 void av1_fill_coeff_costs(MACROBLOCK *x, FRAME_CONTEXT *fc,
                           const int num_planes);
 
-int av1_get_adaptive_rdmult(const struct AV1_COMP *cpi, double beta);
-
-int av1_get_deltaq_offset(const struct AV1_COMP *cpi, int qindex, double beta);
-
 #ifdef __cplusplus
 }  // extern "C"
 #endif
 
-#endif  // AOM_AV1_ENCODER_RD_H_
+#endif  // AV1_ENCODER_RD_H_

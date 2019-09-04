@@ -17,7 +17,7 @@
 
 static void log_frame_info(AV1_COMMON *cm, const char *str, FILE *f) {
   fprintf(f, "%s", str);
-  fprintf(f, "(Frame %d, Show:%d, Q:%d): \n", cm->current_frame.frame_number,
+  fprintf(f, "(Frame %d, Show:%d, Q:%d): \n", cm->current_video_frame,
           cm->show_frame, cm->base_qindex);
 }
 /* This function dereferences a pointer to the mbmi structure
@@ -40,7 +40,7 @@ static void print_mi_data(AV1_COMMON *cm, FILE *file, const char *descriptor,
       mi++;
     }
     fprintf(file, "\n");
-    mi += cm->mi_stride - cols;
+    mi += MAX_MIB_SIZE;
   }
   fprintf(file, "\n");
 }
@@ -68,7 +68,7 @@ void av1_print_modes_and_motion_vectors(AV1_COMMON *cm, const char *file) {
       mi++;
     }
     fprintf(mvs, "\n");
-    mi += cm->mi_stride - cols;
+    mi += MAX_MIB_SIZE;
   }
   fprintf(mvs, "\n");
 
@@ -82,7 +82,7 @@ void av1_print_modes_and_motion_vectors(AV1_COMMON *cm, const char *file) {
       mi++;
     }
     fprintf(mvs, "\n");
-    mi += cm->mi_stride - cols;
+    mi += MAX_MIB_SIZE;
   }
   fprintf(mvs, "\n");
 

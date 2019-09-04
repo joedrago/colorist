@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AV1_ENCODER_MBGRAPH_H_
-#define AOM_AV1_ENCODER_MBGRAPH_H_
+#ifndef AV1_ENCODER_MBGRAPH_H_
+#define AV1_ENCODER_MBGRAPH_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,4 +38,4 @@ void av1_update_mbgraph_stats(struct AV1_COMP *cpi);
 }  // extern "C"
 #endif
 
-#endif  // AOM_AV1_ENCODER_MBGRAPH_H_
+#endif  // AV1_ENCODER_MBGRAPH_H_

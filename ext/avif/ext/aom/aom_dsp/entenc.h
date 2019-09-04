@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AOM_DSP_ENTENC_H_
-#define AOM_AOM_DSP_ENTENC_H_
+#if !defined(_entenc_H)
+#define _entenc_H (1)
 #include <stddef.h>
 #include "aom_dsp/entcode.h"
 
@@ -82,4 +82,4 @@ void od_ec_enc_rollback(od_ec_enc *dst, const od_ec_enc *src);
 }  // extern "C"
 #endif
 
-#endif  // AOM_AOM_DSP_ENTENC_H_
+#endif

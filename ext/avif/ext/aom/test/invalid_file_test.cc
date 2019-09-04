@@ -23,20 +23,10 @@ namespace {
 struct DecodeParam {
   int threads;
   const char *filename;
-  const char *res_filename;  // If NULL, the result filename is
-                             // filename + ".res".
 };
 
-// Constructs result file name.
-std::string GetResFilename(const DecodeParam &param) {
-  if (param.res_filename != NULL) return param.res_filename;
-  const std::string filename = param.filename;
-  return filename + ".res";
-}
-
 std::ostream &operator<<(std::ostream &os, const DecodeParam &dp) {
-  return os << "threads: " << dp.threads << " file: " << dp.filename
-            << " result file: " << GetResFilename(dp);
+  return os << "threads: " << dp.threads << " file: " << dp.filename;
 }
 
 class InvalidFileTest : public ::libaom_test::DecoderTest,
@@ -54,41 +44,34 @@ class InvalidFileTest : public ::libaom_test::DecoderTest,
         << "Result file open failed. Filename: " << res_file_name;
   }
 
-  virtual void DecompressedFrameHook(const aom_image_t &img,
-                                     const unsigned int /*frame_number*/) {
-    EXPECT_NE(img.fb_priv, nullptr);
-  }
-
   virtual bool HandleDecodeResult(
       const aom_codec_err_t res_dec,
       const libaom_test::CompressedVideoSource &video,
       libaom_test::Decoder *decoder) {
     EXPECT_TRUE(res_file_ != NULL);
-    int expected_res_dec = -1;
+    int expected_res_dec;
 
     // Read integer result.
     const int res = fscanf(res_file_, "%d", &expected_res_dec);
     EXPECT_NE(res, EOF) << "Read result data failed";
 
-    if (expected_res_dec != -1) {
-      // Check results match.
-      const DecodeParam input = GET_PARAM(1);
-      if (input.threads > 1) {
-        // The serial decode check is too strict for tile-threaded decoding as
-        // there is no guarantee on the decode order nor which specific error
-        // will take precedence. Currently a tile-level error is not forwarded
-        // so the frame will simply be marked corrupt.
-        EXPECT_TRUE(res_dec == expected_res_dec ||
-                    res_dec == AOM_CODEC_CORRUPT_FRAME)
-            << "Results don't match: frame number = " << video.frame_number()
-            << ". (" << decoder->DecodeError()
-            << "). Expected: " << expected_res_dec << " or "
-            << AOM_CODEC_CORRUPT_FRAME;
-      } else {
-        EXPECT_EQ(expected_res_dec, res_dec)
-            << "Results don't match: frame number = " << video.frame_number()
-            << ". (" << decoder->DecodeError() << ")";
-      }
+    // Check results match.
+    const DecodeParam input = GET_PARAM(1);
+    if (input.threads > 1) {
+      // The serial decode check is too strict for tile-threaded decoding as
+      // there is no guarantee on the decode order nor which specific error
+      // will take precedence. Currently a tile-level error is not forwarded so
+      // the frame will simply be marked corrupt.
+      EXPECT_TRUE(res_dec == expected_res_dec ||
+                  res_dec == AOM_CODEC_CORRUPT_FRAME)
+          << "Results don't match: frame number = " << video.frame_number()
+          << ". (" << decoder->DecodeError()
+          << "). Expected: " << expected_res_dec << " or "
+          << AOM_CODEC_CORRUPT_FRAME;
+    } else {
+      EXPECT_EQ(expected_res_dec, res_dec)
+          << "Results don't match: frame number = " << video.frame_number()
+          << ". (" << decoder->DecodeError() << ")";
     }
 
     return !HasFailure();
@@ -106,10 +89,10 @@ class InvalidFileTest : public ::libaom_test::DecoderTest,
     libaom_test::IVFVideoSource decode_video(filename);
     decode_video.Init();
 
-    // The result file holds a list of expected integer results, one for each
-    // decoded frame.  Any result that doesn't match the file's list will
-    // cause a test failure.
-    const std::string res_filename = GetResFilename(input);
+    // Construct result file name. The file holds a list of expected integer
+    // results, one for each decoded frame.  Any result that doesn't match
+    // the files list will cause a test failure.
+    const std::string res_filename = filename + ".res";
     OpenResFile(res_filename);
 
     ASSERT_NO_FATAL_FAILURE(RunLoop(&decode_video, cfg));
@@ -121,28 +104,8 @@ class InvalidFileTest : public ::libaom_test::DecoderTest,
 
 TEST_P(InvalidFileTest, ReturnCode) { RunTest(); }
 
-// If res_filename (the third field) is NULL, then the result filename is
-// filename + ".res" by default. Set res_filename to a string if the result
-// filename differs from the default.
 const DecodeParam kAV1InvalidFileTests[] = {
-  // { threads, filename, res_filename }
-  { 1, "invalid-bug-1814.ivf", NULL },
-  { 1, "invalid-chromium-906381.ivf", NULL },
-  { 1, "invalid-oss-fuzz-9288.ivf", NULL },
-  { 4, "invalid-oss-fuzz-9463.ivf", NULL },
-  { 1, "invalid-oss-fuzz-9482.ivf", NULL },
-  { 1, "invalid-oss-fuzz-9720.ivf", NULL },
-  { 1, "invalid-oss-fuzz-10061.ivf", NULL },
-  { 1, "invalid-oss-fuzz-10117-mc-buf-use-highbd.ivf", NULL },
-  { 1, "invalid-oss-fuzz-10227.ivf", NULL },
-  { 1, "invalid-oss-fuzz-10389.ivf", NULL },
-  { 4, "invalid-oss-fuzz-10555.ivf", NULL },
-  { 1, "invalid-oss-fuzz-10705.ivf", NULL },
-  { 1, "invalid-oss-fuzz-10723.ivf", NULL },
-  { 1, "invalid-oss-fuzz-10779.ivf", NULL },
-  { 1, "invalid-oss-fuzz-11477.ivf", NULL },
-  { 1, "invalid-oss-fuzz-11479.ivf", "invalid-oss-fuzz-11479.ivf.res.2" },
-  { 1, "invalid-oss-fuzz-11523.ivf", "invalid-oss-fuzz-11523.ivf.res.2" },
+  { 1, "invalid-bug-1814.ivf" },
 };
 
 AV1_INSTANTIATE_TEST_CASE(InvalidFileTest,

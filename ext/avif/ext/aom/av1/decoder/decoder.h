@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AV1_DECODER_DECODER_H_
-#define AOM_AV1_DECODER_DECODER_H_
+#ifndef AV1_DECODER_DECODER_H_
+#define AV1_DECODER_DECODER_H_
 
 #include "config/aom_config.h"
 
@@ -33,96 +33,20 @@
 extern "C" {
 #endif
 
-typedef void (*decode_block_visitor_fn_t)(const AV1_COMMON *const cm,
-                                          MACROBLOCKD *const xd,
-                                          aom_reader *const r, const int plane,
-                                          const int row, const int col,
-                                          const TX_SIZE tx_size);
-
-typedef void (*predict_inter_block_visitor_fn_t)(AV1_COMMON *const cm,
-                                                 MACROBLOCKD *const xd,
-                                                 int mi_row, int mi_col,
-                                                 BLOCK_SIZE bsize);
-
-typedef void (*cfl_store_inter_block_visitor_fn_t)(AV1_COMMON *const cm,
-                                                   MACROBLOCKD *const xd);
-
 typedef struct ThreadData {
-  DECLARE_ALIGNED(32, MACROBLOCKD, xd);
-  CB_BUFFER cb_buffer_base;
   aom_reader *bit_reader;
+  DECLARE_ALIGNED(32, MACROBLOCKD, xd);
+  /* dqcoeff are shared by all the planes. So planes must be decoded serially */
+  DECLARE_ALIGNED(32, tran_low_t, dqcoeff[MAX_TX_SQUARE]);
+  CB_BUFFER cb_buffer_base;
   uint8_t *mc_buf[2];
   int32_t mc_buf_size;
-  int mc_buf_use_highbd;  // Boolean: whether the byte pointers stored in
-                          // mc_buf were converted from highbd pointers.
-
-  CONV_BUF_TYPE *tmp_conv_dst;
-  uint8_t *tmp_obmc_bufs[2];
-
-  decode_block_visitor_fn_t read_coeffs_tx_intra_block_visit;
-  decode_block_visitor_fn_t predict_and_recon_intra_block_visit;
-  decode_block_visitor_fn_t read_coeffs_tx_inter_block_visit;
-  decode_block_visitor_fn_t inverse_tx_inter_block_visit;
-  predict_inter_block_visitor_fn_t predict_inter_block_visit;
-  cfl_store_inter_block_visitor_fn_t cfl_store_inter_block_visit;
 } ThreadData;
-
-typedef struct AV1DecRowMTJobInfo {
-  int tile_row;
-  int tile_col;
-  int mi_row;
-} AV1DecRowMTJobInfo;
-
-typedef struct AV1DecRowMTSyncData {
-#if CONFIG_MULTITHREAD
-  pthread_mutex_t *mutex_;
-  pthread_cond_t *cond_;
-#endif
-  int allocated_sb_rows;
-  int *cur_sb_col;
-  int sync_range;
-  int mi_rows;
-  int mi_cols;
-  int mi_rows_parse_done;
-  int mi_rows_decode_started;
-  int num_threads_working;
-} AV1DecRowMTSync;
-
-typedef struct AV1DecRowMTInfo {
-  int tile_rows_start;
-  int tile_rows_end;
-  int tile_cols_start;
-  int tile_cols_end;
-  int start_tile;
-  int end_tile;
-  int mi_rows_to_decode;
-
-  // Invariant:
-  //   mi_rows_parse_done >= mi_rows_decode_started.
-  // mi_rows_parse_done and mi_rows_decode_started are both initialized to 0.
-  // mi_rows_parse_done is incremented freely. mi_rows_decode_started may only
-  // be incremented to catch up with mi_rows_parse_done but is not allowed to
-  // surpass mi_rows_parse_done.
-  //
-  // When mi_rows_decode_started reaches mi_rows_to_decode, there are no more
-  // decode jobs.
-
-  // Indicates the progress of the bit-stream parsing of superblocks.
-  // Initialized to 0. Incremented by sb_mi_size when parse sb row is done.
-  int mi_rows_parse_done;
-  // Indicates the progress of the decoding of superblocks.
-  // Initialized to 0. Incremented by sb_mi_size when decode sb row is started.
-  int mi_rows_decode_started;
-  // Boolean: Initialized to 0 (false). Set to 1 (true) on error to abort
-  // decoding.
-  int row_mt_exit;
-} AV1DecRowMTInfo;
 
 typedef struct TileDataDec {
   TileInfo tile_info;
   aom_reader bit_reader;
   DECLARE_ALIGNED(16, FRAME_CONTEXT, tctx);
-  AV1DecRowMTSync dec_row_mt_sync;
 } TileDataDec;
 
 typedef struct TileBufferDec {
@@ -161,6 +85,13 @@ typedef struct AV1Decoder {
 
   DECLARE_ALIGNED(32, AV1_COMMON, common);
 
+  int refresh_frame_flags;
+
+  // TODO(hkuang): Combine this with cur_buf in macroblockd as they are
+  // the same.
+  RefCntBuffer *cur_buf;  //  Current decoding frame buffer.
+
+  AVxWorker *frame_worker_owner;  // frame_worker that owns this pbi.
   AVxWorker lf_worker;
   AV1LfSync lf_row_sync;
   AV1LrSync lr_row_sync;
@@ -186,7 +117,8 @@ typedef struct AV1Decoder {
   // Note: The saved buffers are released at the start of the next time the
   // application calls aom_codec_decode().
   int output_all_layers;
-  RefCntBuffer *output_frames[MAX_NUM_SPATIAL_LAYERS];
+  YV12_BUFFER_CONFIG *output_frames[MAX_NUM_SPATIAL_LAYERS];
+  size_t output_frame_index[MAX_NUM_SPATIAL_LAYERS];  // Buffer pool indices
   size_t num_output_frames;  // How many frames are queued up so far?
 
   // In order to properly support random-access decoding, we need
@@ -198,9 +130,7 @@ typedef struct AV1Decoder {
   int max_threads;
   int inv_tile_order;
   int need_resync;   // wait for key/intra-only frame.
-  int hold_ref_buf;  // Boolean: whether we are holding reference buffers in
-                     // common.next_ref_frame_map.
-  int reset_decoder_state;
+  int hold_ref_buf;  // hold the reference buffer.
 
   int tile_size_bytes;
   int tile_col_size_bytes;
@@ -209,8 +139,9 @@ typedef struct AV1Decoder {
   int acct_enabled;
   Accounting accounting;
 #endif
-  int tg_size;   // Number of tiles in the current tilegroup
-  int tg_start;  // First tile in the current tilegroup
+  size_t uncomp_hdr_size;  // Size of the uncompressed header
+  int tg_size;             // Number of tiles in the current tilegroup
+  int tg_start;            // First tile in the current tilegroup
   int tg_size_bit_offset;
   int sequence_header_ready;
   int sequence_header_changed;
@@ -232,27 +163,12 @@ typedef struct AV1Decoder {
   int tile_count_minus_1;
   uint32_t coded_tile_data_size;
   unsigned int ext_tile_debug;  // for ext-tile software debug & testing
-  unsigned int row_mt;
   EXTERNAL_REFERENCES ext_refs;
   YV12_BUFFER_CONFIG tile_list_outbuf;
-
-  CB_BUFFER *cb_buffer_base;
-  int cb_buffer_alloc_size;
-
-  int allocated_row_mt_sync_rows;
-
-#if CONFIG_MULTITHREAD
-  pthread_mutex_t *row_mt_mutex_;
-  pthread_cond_t *row_mt_cond_;
-#endif
-
-  AV1DecRowMTInfo frame_row_mt_info;
 } AV1Decoder;
 
-// Returns 0 on success. Sets pbi->common.error.error_code to a nonzero error
-// code and returns a nonzero value on failure.
 int av1_receive_compressed_data(struct AV1Decoder *pbi, size_t size,
-                                const uint8_t **psource);
+                                const uint8_t **dest);
 
 // Get the frame at a particular index in the output queue
 int av1_get_raw_frame(AV1Decoder *pbi, size_t index, YV12_BUFFER_CONFIG **sd,
@@ -273,30 +189,33 @@ aom_codec_err_t av1_copy_new_frame_dec(AV1_COMMON *cm,
 struct AV1Decoder *av1_decoder_create(BufferPool *const pool);
 
 void av1_decoder_remove(struct AV1Decoder *pbi);
-void av1_dealloc_dec_jobs(struct AV1DecTileMTData *tile_mt_info);
+void av1_dealloc_dec_jobs(struct AV1DecTileMTData *tile_jobs_sync);
 
-void av1_dec_row_mt_dealloc(AV1DecRowMTSync *dec_row_mt_sync);
-
-void av1_dec_free_cb_buf(AV1Decoder *pbi);
-
-static INLINE void decrease_ref_count(RefCntBuffer *const buf,
+static INLINE void decrease_ref_count(int idx, RefCntBuffer *const frame_bufs,
                                       BufferPool *const pool) {
-  if (buf != NULL) {
-    --buf->ref_count;
-    // Reference counts should never become negative. If this assertion fails,
-    // there is a bug in our reference count management.
-    assert(buf->ref_count >= 0);
+  if (idx >= 0) {
+    --frame_bufs[idx].ref_count;
     // A worker may only get a free framebuffer index when calling get_free_fb.
-    // But the raw frame buffer is not set up until we finish decoding header.
-    // So if any error happens during decoding header, frame_bufs[idx] will not
-    // have a valid raw frame buffer.
-    if (buf->ref_count == 0 && buf->raw_frame_buffer.data) {
-      pool->release_fb_cb(pool->cb_priv, &buf->raw_frame_buffer);
-      buf->raw_frame_buffer.data = NULL;
-      buf->raw_frame_buffer.size = 0;
-      buf->raw_frame_buffer.priv = NULL;
+    // But the private buffer is not set up until finish decoding header.
+    // So any error happens during decoding header, the frame_bufs will not
+    // have valid priv buffer.
+    if (frame_bufs[idx].ref_count == 0 &&
+        frame_bufs[idx].raw_frame_buffer.priv) {
+      pool->release_fb_cb(pool->cb_priv, &frame_bufs[idx].raw_frame_buffer);
     }
   }
+}
+
+static INLINE int dec_is_ref_frame_buf(AV1Decoder *const pbi,
+                                       RefCntBuffer *frame_buf) {
+  AV1_COMMON *const cm = &pbi->common;
+  int i;
+  for (i = 0; i < INTER_REFS_PER_FRAME; ++i) {
+    RefBuffer *const ref_frame = &cm->frame_refs[i];
+    if (ref_frame->idx == INVALID_IDX) continue;
+    if (frame_buf == &cm->buffer_pool->frame_bufs[ref_frame->idx]) break;
+  }
+  return (i < INTER_REFS_PER_FRAME);
 }
 
 #define ACCT_STR __func__
@@ -318,12 +237,8 @@ void av1_visit_palette(AV1Decoder *const pbi, MACROBLOCKD *const xd, int mi_row,
                        int mi_col, aom_reader *r, BLOCK_SIZE bsize,
                        palette_visitor_fn_t visit);
 
-typedef void (*block_visitor_fn_t)(AV1Decoder *const pbi, ThreadData *const td,
-                                   int mi_row, int mi_col, aom_reader *r,
-                                   PARTITION_TYPE partition, BLOCK_SIZE bsize);
-
 #ifdef __cplusplus
 }  // extern "C"
 #endif
 
-#endif  // AOM_AV1_DECODER_DECODER_H_
+#endif  // AV1_DECODER_DECODER_H_

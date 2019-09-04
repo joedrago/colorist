@@ -9,12 +9,12 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_COMMON_VIDEO_WRITER_H_
-#define AOM_COMMON_VIDEO_WRITER_H_
+#ifndef VIDEO_WRITER_H_
+#define VIDEO_WRITER_H_
 
 #include "common/video_common.h"
 
-enum { kContainerIVF } UENUM1BYTE(AvxContainer);
+typedef enum { kContainerIVF } AvxContainer;
 
 struct AvxVideoWriterStruct;
 typedef struct AvxVideoWriterStruct AvxVideoWriter;
@@ -37,11 +37,9 @@ void aom_video_writer_close(AvxVideoWriter *writer);
 // Writes frame bytes to the file.
 int aom_video_writer_write_frame(AvxVideoWriter *writer, const uint8_t *buffer,
                                  size_t size, int64_t pts);
-// Set fourcc.
-void aom_video_writer_set_fourcc(AvxVideoWriter *writer, uint32_t fourcc);
 
 #ifdef __cplusplus
 }  // extern "C"
 #endif
 
-#endif  // AOM_COMMON_VIDEO_WRITER_H_
+#endif  // VIDEO_WRITER_H_

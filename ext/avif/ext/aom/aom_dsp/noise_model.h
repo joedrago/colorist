@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AOM_DSP_NOISE_MODEL_H_
-#define AOM_AOM_DSP_NOISE_MODEL_H_
+#ifndef AOM_DSP_NOISE_MODEL_H_
+#define AOM_DSP_NOISE_MODEL_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,7 +18,6 @@ extern "C" {
 
 #include <stdint.h>
 #include "aom_dsp/grain_synthesis.h"
-#include "aom_scale/yv12config.h"
 
 /*!\brief Wrapper of data required to represent linear system of eqns and soln.
  */
@@ -158,10 +157,10 @@ int aom_flat_block_finder_run(const aom_flat_block_finder_t *block_finder,
                               int stride, uint8_t *flat_blocks);
 
 // The noise shape indicates the allowed coefficients in the AR model.
-enum {
+typedef enum {
   AOM_NOISE_SHAPE_DIAMOND = 0,
   AOM_NOISE_SHAPE_SQUARE = 1
-} UENUM1BYTE(aom_noise_shape);
+} aom_noise_shape;
 
 // The parameters of the noise model include the shape type, lag, the
 // bit depth of the input images provided, and whether the input images
@@ -202,13 +201,13 @@ typedef struct {
 } aom_noise_model_t;
 
 /*!\brief Result of a noise model update. */
-enum {
+typedef enum {
   AOM_NOISE_STATUS_OK = 0,
   AOM_NOISE_STATUS_INVALID_ARGUMENT,
   AOM_NOISE_STATUS_INSUFFICIENT_FLAT_BLOCKS,
   AOM_NOISE_STATUS_DIFFERENT_NOISE_TYPE,
   AOM_NOISE_STATUS_INTERNAL_ERROR,
-} UENUM1BYTE(aom_noise_status_t);
+} aom_noise_status_t;
 
 /*!\brief Initializes a noise model with the given parameters.
  *
@@ -281,43 +280,7 @@ int aom_wiener_denoise_2d(const uint8_t *const data[3], uint8_t *denoised[3],
                           int w, int h, int stride[3], int chroma_sub_log2[2],
                           float *noise_psd[3], int block_size, int bit_depth,
                           int use_highbd);
-
-struct aom_denoise_and_model_t;
-
-/*!\brief Denoise the buffer and model the residual noise.
- *
- * This is meant to be called sequentially on input frames. The input buffer
- * is denoised and the residual noise is modelled. The current noise estimate
- * is populated in film_grain. Returns true on success. The grain.apply_grain
- * parameter will be true when the input buffer was successfully denoised and
- * grain was modelled. Returns false on error.
- *
- * \param[in]      ctx   Struct allocated with aom_denoise_and_model_alloc
- *                       that holds some buffers for denoising and the current
- *                       noise estimate.
- * \param[in/out]   buf  The raw input buffer to be denoised.
- * \param[out]    grain  Output film grain parameters
- */
-int aom_denoise_and_model_run(struct aom_denoise_and_model_t *ctx,
-                              YV12_BUFFER_CONFIG *buf, aom_film_grain_t *grain);
-
-/*!\brief Allocates a context that can be used for denoising and noise modeling.
- *
- * \param[in]  bit_depth   Bit depth of buffers this will be run on.
- * \param[in]  block_size  Block size for noise modeling and flat block
- *                         estimation
- * \param[in]  noise_level The noise_level (2.5 for moderate noise, and 5 for
- *                         higher levels of noise)
- */
-struct aom_denoise_and_model_t *aom_denoise_and_model_alloc(int bit_depth,
-                                                            int block_size,
-                                                            float noise_level);
-
-/*!\brief Frees the denoise context allocated with aom_denoise_and_model_alloc
- */
-void aom_denoise_and_model_free(struct aom_denoise_and_model_t *denoise_model);
-
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus
-#endif  // AOM_AOM_DSP_NOISE_MODEL_H_
+#endif  // AOM_DSP_NOISE_MODEL_H_

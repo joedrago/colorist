@@ -11,7 +11,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 set(REQUIRED_ARGS "AOM_ROOT" "AOM_CONFIG_DIR" "GIT_EXECUTABLE"
-                  "PERL_EXECUTABLE")
+    "PERL_EXECUTABLE")
 
 foreach(arg ${REQUIRED_ARGS})
   if("${${arg}}" STREQUAL "")
@@ -25,8 +25,7 @@ include("${AOM_ROOT}/build/cmake/util.cmake")
 unset(aom_version)
 if(EXISTS "${GIT_EXECUTABLE}")
   execute_process(COMMAND ${GIT_EXECUTABLE} --git-dir=${AOM_ROOT}/.git describe
-                  OUTPUT_VARIABLE aom_version
-                  ERROR_QUIET)
+                  OUTPUT_VARIABLE aom_version ERROR_QUIET)
   string(STRIP "${aom_version}" aom_version)
 
   # Remove the leading 'v' from the version string.
@@ -36,25 +35,23 @@ if(EXISTS "${GIT_EXECUTABLE}")
   endif()
 endif()
 
+if("${aom_version}" STREQUAL "")
+  set(aom_version "${AOM_ROOT}/CHANGELOG")
+endif()
+
 unset(last_aom_version)
 if(EXISTS "${AOM_CONFIG_DIR}/config/aom_version.h")
   extract_version_string("${AOM_CONFIG_DIR}/config/aom_version.h"
                          last_aom_version)
-  if("${aom_version}" STREQUAL "")
-    set(aom_version ${last_aom_version})
-  endif()
-else()
-  if("${aom_version}" STREQUAL "")
-    set(aom_version "${AOM_ROOT}/CHANGELOG")
-  endif()
 endif()
 
 if(NOT "${aom_version}" STREQUAL "${last_aom_version}")
 
   # TODO(tomfinegan): Perl dependency is unnecessary. CMake can do everything
   # that is done by version.pl on its own (if a bit more verbose...).
-  execute_process(
-    COMMAND ${PERL_EXECUTABLE} "${AOM_ROOT}/build/cmake/version.pl"
-            --version_data=${aom_version}
-            --version_filename=${AOM_CONFIG_DIR}/config/aom_version.h VERBATIM)
+  execute_process(COMMAND
+                    ${PERL_EXECUTABLE} "${AOM_ROOT}/build/cmake/version.pl"
+                    --version_data=${aom_version}
+                    --version_filename=${AOM_CONFIG_DIR}/config/aom_version.h
+                    VERBATIM)
 endif()

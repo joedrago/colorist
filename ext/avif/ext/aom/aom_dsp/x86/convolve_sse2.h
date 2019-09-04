@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AOM_DSP_X86_CONVOLVE_SSE2_H_
-#define AOM_AOM_DSP_X86_CONVOLVE_SSE2_H_
+#ifndef AOM_DSP_X86_CONVOLVE_SSE2_H_
+#define AOM_DSP_X86_CONVOLVE_SSE2_H_
 
 // Note:
 //  This header file should be put below any x86 intrinsics head file
@@ -19,7 +19,7 @@ static INLINE void prepare_coeffs(const InterpFilterParams *const filter_params,
                                   const int subpel_q4,
                                   __m128i *const coeffs /* [4] */) {
   const int16_t *filter = av1_get_interp_filter_subpel_kernel(
-      filter_params, subpel_q4 & SUBPEL_MASK);
+      *filter_params, subpel_q4 & SUBPEL_MASK);
   const __m128i coeff = _mm_loadu_si128((__m128i *)filter);
 
   // coeffs 0 1 0 1 0 1 0 1
@@ -78,9 +78,9 @@ static INLINE __m128i convolve_hi_y(const __m128i *const s,
 static INLINE __m128i comp_avg(const __m128i *const data_ref_0,
                                const __m128i *const res_unsigned,
                                const __m128i *const wt,
-                               const int use_dist_wtd_avg) {
+                               const int use_jnt_comp_avg) {
   __m128i res;
-  if (use_dist_wtd_avg) {
+  if (use_jnt_comp_avg) {
     const __m128i data_lo = _mm_unpacklo_epi16(*data_ref_0, *res_unsigned);
     const __m128i data_hi = _mm_unpackhi_epi16(*data_ref_0, *res_unsigned);
 
@@ -118,4 +118,4 @@ static INLINE __m128i highbd_convolve_rounding_sse2(
   return res_round;
 }
 
-#endif  // AOM_AOM_DSP_X86_CONVOLVE_SSE2_H_
+#endif

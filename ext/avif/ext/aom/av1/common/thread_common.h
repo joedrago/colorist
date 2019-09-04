@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AV1_COMMON_THREAD_COMMON_H_
-#define AOM_AV1_COMMON_THREAD_COMMON_H_
+#ifndef AV1_COMMON_LOOPFILTER_THREAD_H_
+#define AV1_COMMON_LOOPFILTER_THREAD_H_
 
 #include "config/aom_config.h"
 
@@ -101,11 +101,8 @@ typedef struct AV1LrSyncData {
 void av1_loop_filter_dealloc(AV1LfSync *lf_sync);
 
 void av1_loop_filter_frame_mt(YV12_BUFFER_CONFIG *frame, struct AV1Common *cm,
-                              struct macroblockd *xd, int plane_start,
+                              struct macroblockd *mbd, int plane_start,
                               int plane_end, int partial_frame,
-#if CONFIG_LPF_MASK
-                              int is_decoding,
-#endif
                               AVxWorker *workers, int num_workers,
                               AV1LfSync *lf_sync);
 void av1_loop_restoration_filter_frame_mt(YV12_BUFFER_CONFIG *frame,
@@ -119,4 +116,4 @@ void av1_loop_restoration_dealloc(AV1LrSync *lr_sync, int num_workers);
 }  // extern "C"
 #endif
 
-#endif  // AOM_AV1_COMMON_THREAD_COMMON_H_
+#endif  // AV1_COMMON_LOOPFILTER_THREAD_H_

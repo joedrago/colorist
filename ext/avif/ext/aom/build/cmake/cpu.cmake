@@ -9,7 +9,18 @@
 # can obtain it at www.aomedia.org/license/patent.
 #
 
-if("${AOM_TARGET_CPU}" MATCHES "^arm")
+if("${AOM_TARGET_CPU}" STREQUAL "arm64")
+  set(ARCH_ARM 1)
+  set(RTCD_ARCH_ARM "yes")
+
+  if(ENABLE_NEON)
+    set(HAVE_NEON 1)
+    set(RTCD_HAVE_NEON "yes")
+  else()
+    set(HAVE_NEON 0)
+    set(AOM_RTCD_FLAGS ${AOM_RTCD_FLAGS} --disable-neon)
+  endif()
+elseif("${AOM_TARGET_CPU}" MATCHES "^armv7")
   set(ARCH_ARM 1)
   set(RTCD_ARCH_ARM "yes")
 
@@ -80,3 +91,9 @@ elseif("${AOM_TARGET_CPU}" MATCHES "^x86")
     endif()
   endforeach()
 endif()
+
+foreach(config_var ${AOM_CONFIG_VARS})
+  if(${${config_var}})
+    set(RTCD_${config_var} yes)
+  endif()
+endforeach()

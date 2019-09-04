@@ -9,8 +9,8 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#ifndef AOM_AV1_ENCODER_ENCODETXB_H_
-#define AOM_AV1_ENCODER_ENCODETXB_H_
+#ifndef ENCODETXB_H_
+#define ENCODETXB_H_
 
 #include "config/aom_config.h"
 
@@ -42,6 +42,7 @@ typedef struct TxbInfo {
   const SCAN_ORDER *scan_order;
   TXB_CTX *txb_ctx;
   int64_t rdmult;
+  const LV_MAP_CTX_TABLE *coeff_ctx_table;
   const qm_val_t *iqmatrix;
   int tx_type_cost;
 } TxbInfo;
@@ -49,8 +50,9 @@ typedef struct TxbInfo {
 void av1_alloc_txb_buf(AV1_COMP *cpi);
 void av1_free_txb_buf(AV1_COMP *cpi);
 int av1_cost_coeffs_txb(const AV1_COMMON *const cm, const MACROBLOCK *x,
-                        const int plane, const int block, const TX_SIZE tx_size,
-                        const TX_TYPE tx_type, const TXB_CTX *const txb_ctx);
+                        const int plane, const int blk_row, const int blk_col,
+                        const int block, const TX_SIZE tx_size,
+                        const TXB_CTX *const txb_ctx);
 void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCKD *xd,
                           aom_writer *w, int blk_row, int blk_col, int plane,
                           TX_SIZE tx_size, const tran_low_t *tcoeff,
@@ -70,25 +72,16 @@ void av1_update_txb_context_b(int plane, int block, int blk_row, int blk_col,
 void av1_update_and_record_txb_context(int plane, int block, int blk_row,
                                        int blk_col, BLOCK_SIZE plane_bsize,
                                        TX_SIZE tx_size, void *arg);
-#if CONFIG_HTB_TRELLIS
+
+void av1_set_coeff_buffer(const AV1_COMP *const cpi, MACROBLOCK *const x,
+                          int mi_row, int mi_col);
+
 void hbt_destroy();
-#endif  // CONFIG_HTB_TRELLIS
-int av1_optimize_txb_new(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
+int av1_optimize_txb_new(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
                          int block, TX_SIZE tx_size, TX_TYPE tx_type,
-                         const TXB_CTX *const txb_ctx, int *rate_cost,
-                         int sharpness, int fast_mode);
-
-CB_COEFF_BUFFER *av1_get_cb_coeff_buffer(const struct AV1_COMP *cpi, int mi_row,
-                                         int mi_col);
-
-// These numbers are empirically obtained.
-static const int plane_rd_mult[REF_TYPES][PLANE_TYPES] = {
-  { 17, 13 },
-  { 16, 10 },
-};
-
+                         const TXB_CTX *txb_ctx, int *rate_cost, int sharpness);
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // AOM_AV1_ENCODER_ENCODETXB_H_
+#endif  // COEFFS_CODING_H_

@@ -210,17 +210,14 @@ compiler documentation to determine which, if any, are available.
 
 ### Microsoft Visual Studio builds
 
-Building the AV1 codec library in Microsoft Visual Studio is supported. Visual
-Studio 2015 (14.0) or later is required. The following example demonstrates
-generating projects and a solution for the Microsoft IDE:
+Building the AV1 codec library in Microsoft Visual Studio is supported. The
+following example demonstrates generating projects and a solution for the
+Microsoft IDE:
 
 ~~~
     # This does not require a bash shell; command.exe is fine.
     $ cmake path/to/aom -G "Visual Studio 15 2017"
 ~~~
-
-NOTE: The build system targets Windows 7 or later by compiling files with
-`-D_WIN32_WINNT=0x0601`.
 
 ### Xcode builds
 
@@ -416,16 +413,6 @@ The above make command will only download and verify the test data.
 First, add the new test data file to the `aom-test-data` bucket of the
 `aomedia-testing` project on Google Cloud Platform. You may need to ask someone
 with the necessary access permissions to do this for you.
-
-NOTE: When a new test data file is added to the `aom-test-data` bucket, its
-"Public access" is initially "Not public". We need to change its
-"Public access" to "Public" by using the following
-[`gsutil`](https://cloud.google.com/storage/docs/gsutil_install) command:
-~~~
-    $ gsutil acl ch -g all:R gs://aom-test-data/test-data-file-name
-~~~
-This command grants the `AllUsers` group READ access to the file named
-"test-data-file-name" in the `aom-test-data` bucket.
 
 Once the new test data file has been added to `aom-test-data`, create a CL to
 add the name of the new test data file to `test/test_data_util.cmake` and add

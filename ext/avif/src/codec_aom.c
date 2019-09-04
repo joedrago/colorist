@@ -130,7 +130,6 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
                 break;
             case AOM_IMG_FMT_YV12:
             case AOM_IMG_FMT_AOMYV12:
-            case AOM_IMG_FMT_YV1216:
                 yuvFormat = AVIF_PIXEL_FORMAT_YV12;
                 break;
             case AOM_IMG_FMT_NONE:
@@ -158,7 +157,7 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
             nclx.colourPrimaries = (uint16_t)codec->internal->image->cp;
             nclx.transferCharacteristics = (uint16_t)codec->internal->image->tc;
             nclx.matrixCoefficients = (uint16_t)codec->internal->image->mc;
-            nclx.fullRangeFlag = image->yuvRange;
+            nclx.fullRangeFlag = (uint8_t)image->yuvRange;
             avifImageSetProfileNCLX(image, &nclx);
         }
 
@@ -337,9 +336,6 @@ static avifBool encodeOBU(avifImage * image, avifBool alphaOnly, avifEncoder * e
 
     if (lossless) {
         aom_codec_control(&aomEncoder, AV1E_SET_LOSSLESS, 1);
-    }
-    if (encoder->maxThreads > 1) {
-        aom_codec_control(&aomEncoder, AV1E_SET_ROW_MT, 1);
     }
     if (encoder->tileRowsLog2 != 0) {
         int tileRowsLog2 = AVIF_CLAMP(encoder->tileRowsLog2, 0, 6);
