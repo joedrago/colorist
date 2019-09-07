@@ -245,7 +245,7 @@ configure_pkg_config("src/libwebp.pc")
 
 # Build the webp demux library.
 add_library(webpdemux ${WEBP_DEMUX_SRCS})
-target_link_libraries(webpdemux webp)
+# target_link_libraries(webpdemux webp)
 target_include_directories(webpdemux
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
                                    ${CMAKE_CURRENT_BINARY_DIR}
@@ -396,7 +396,7 @@ endif()
 if(WEBP_BUILD_GIF2WEBP OR WEBP_BUILD_IMG2WEBP)
   parse_makefile_am(${CMAKE_CURRENT_SOURCE_DIR}/src/mux "WEBP_MUX_SRCS" "")
   add_library(libwebpmux ${WEBP_MUX_SRCS})
-  target_link_libraries(libwebpmux webp)
+  # target_link_libraries(libwebpmux webp)
   target_include_directories(libwebpmux
                              PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                                      ${CMAKE_CURRENT_SOURCE_DIR})
@@ -492,7 +492,7 @@ if(WEBP_BUILD_WEBPMUX)
   parse_makefile_am(${CMAKE_CURRENT_SOURCE_DIR}/examples "WEBPMUX_SRCS"
                     "webpmux")
   add_executable(webpmux ${WEBPMUX_SRCS})
-  target_link_libraries(webpmux exampleutil imageioutil libwebpmux webp)
+  target_link_libraries(webpmux exampleutil imageioutil libwebpmux) # webp)
   target_include_directories(webpmux PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/src)
   install(TARGETS webpmux RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()

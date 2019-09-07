@@ -187,7 +187,13 @@ set(COLORIST_EXT_LIBS
     gb
     tiff
     z
-    webp
+    # webp
+
+    webpdecode
+    webpdsp
+    webpencode
+    webputils
+
     libwebpmux
     webpdemux
 )
