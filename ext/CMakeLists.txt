@@ -187,10 +187,18 @@ set(COLORIST_EXT_LIBS
     gb
     tiff
     z
-    webp
     libwebpmux
     webpdemux
 )
+
+# Xcode doesn't play nice with webp (an object library)
+if(CMAKE_GENERATOR STREQUAL Xcode)
+    set(COLORIST_EXT_LIBS ${COLORIST_EXT_LIBS} webpdecode webpdsp webpencode webputils)
+else()
+    set(COLORIST_EXT_LIBS ${COLORIST_EXT_LIBS} webp)
+endif()
+
+
 set(COLORIST_EXT_LIBS ${COLORIST_EXT_LIBS} PARENT_SCOPE)
 
 # For VS users
