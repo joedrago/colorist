@@ -21,9 +21,6 @@
 #include "decode.h"
 #include "encode.h"
 
-// AOM
-const char * aom_codec_version_str(void);
-
 #include <stdio.h>
 
 #if !defined(GIT_COMMIT)
@@ -35,7 +32,6 @@ void clContextPrintVersions(clContext * C)
     int version;
     clContextLog(C, NULL, 0, "Versions:");
     clContextLog(C, NULL, 1, "colorist   : %s", COLORIST_VERSION_STRING);
-    clContextLog(C, NULL, 1, "AOM        : %s", aom_codec_version_str());
     clContextLog(C, NULL, 1, "avif       : %s", avifVersion());
     clContextLog(C, NULL, 1, "jpeglib    : %d", JPEG_LIB_VERSION);
     clContextLog(C, NULL, 1, "lcms2      : %d.%d", LCMS_VERSION / 1000, (LCMS_VERSION % 1000) / 10);

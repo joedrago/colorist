@@ -145,15 +145,7 @@ add_library(jpeg
 set(AVIF_BUILD_AOM ON CACHE BOOL "" FORCE)
 add_subdirectory(avif)
 
-set(APG_EXTERNAL_AOM TRUE)
-include_directories(
-    "${CMAKE_CURRENT_SOURCE_DIR}/avif/ext/aom"
-    "${AOM_BINARY_DIR}"
-)
-add_subdirectory(apg)
-
 set(COLORIST_EXT_INCLUDES
-    "${CMAKE_CURRENT_SOURCE_DIR}/apg/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/avif/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/cJSON"
     "${CMAKE_CURRENT_SOURCE_DIR}/stb"
@@ -175,7 +167,6 @@ set(COLORIST_EXT_INCLUDES
 set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} PARENT_SCOPE)
 
 set(COLORIST_EXT_LIBS
-    apg
     avif
     cjson
     png
