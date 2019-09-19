@@ -142,7 +142,12 @@ add_library(jpeg
     jpeg/wrtarga.c
 )
 
-set(AVIF_BUILD_AOM ON CACHE BOOL "" FORCE)
+if(COLORIST_AVIF_ONLY_DAV1D)
+    set(AVIF_CODEC_AOM OFF CACHE BOOL "" FORCE)
+    set(AVIF_CODEC_DAV1D ON CACHE BOOL "" FORCE)
+else()
+    set(AVIF_BUILD_AOM ON CACHE BOOL "" FORCE)
+endif()
 add_subdirectory(avif)
 
 set(COLORIST_EXT_INCLUDES

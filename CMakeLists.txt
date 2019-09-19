@@ -50,6 +50,8 @@ if(HOMEBREW_BUILD)
   add_definitions(-DHOMEBREW_BUILD=1)
 endif()
 
+option(COLORIST_AVIF_ONLY_DAV1D "When building avif, avoid using aom and just use dav1d" OFF)
+
 add_subdirectory(ext)
 include_directories(${COLORIST_EXT_INCLUDES})
 
