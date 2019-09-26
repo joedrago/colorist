@@ -38,12 +38,12 @@ static avifBool dav1dFeedData(avifCodec * codec)
         dav1d_data_unref(&codec->internal->dav1dData);
 
         if (codec->internal->inputSampleIndex < codec->decodeInput->samples.count) {
-            avifRawData * sample = &codec->decodeInput->samples.raw[codec->internal->inputSampleIndex];
+            avifSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
             ++codec->internal->inputSampleIndex;
 
             // OPTIMIZE: Carefully switch this to use dav1d_data_wrap or dav1d_data_wrap_user_data
-            uint8_t * dav1dDataPtr = dav1d_data_create(&codec->internal->dav1dData, sample->size);
-            memcpy(dav1dDataPtr, sample->data, sample->size);
+            uint8_t * dav1dDataPtr = dav1d_data_create(&codec->internal->dav1dData, sample->data.size);
+            memcpy(dav1dDataPtr, sample->data.data, sample->data.size);
         } else {
             // No more data
             return AVIF_FALSE;
@@ -57,7 +57,7 @@ static avifBool dav1dFeedData(avifCodec * codec)
     return AVIF_TRUE;
 }
 
-static avifBool dav1dCodecDecode(avifCodec * codec)
+static avifBool dav1dCodecOpen(avifCodec * codec)
 {
     if (codec->internal->dav1dContext == NULL) {
         if (dav1d_open(&codec->internal->dav1dContext, &codec->internal->dav1dSettings) != 0) {
@@ -66,7 +66,7 @@ static avifBool dav1dCodecDecode(avifCodec * codec)
     }
 
     codec->internal->inputSampleIndex = 0;
-    return dav1dFeedData(codec);
+    return AVIF_TRUE;
 }
 
 static avifBool dav1dCodecAlphaLimitedRange(avifCodec * codec)
@@ -151,7 +151,7 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
             nclx.colourPrimaries = (uint16_t)dav1dImage->seq_hdr->pri;
             nclx.transferCharacteristics = (uint16_t)dav1dImage->seq_hdr->trc;
             nclx.matrixCoefficients = (uint16_t)dav1dImage->seq_hdr->mtrx;
-            nclx.fullRangeFlag = image->yuvRange;
+            nclx.fullRangeFlag = (uint8_t)image->yuvRange;
             avifImageSetProfileNCLX(image, &nclx);
         }
 
@@ -184,7 +184,7 @@ avifCodec * avifCodecCreateDav1d(void)
 {
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
     memset(codec, 0, sizeof(struct avifCodec));
-    codec->decode = dav1dCodecDecode;
+    codec->open = dav1dCodecOpen;
     codec->alphaLimitedRange = dav1dCodecAlphaLimitedRange;
     codec->getNextImage = dav1dCodecGetNextImage;
     codec->destroyInternal = dav1dCodecDestroyInternal;

@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-avifBool y4mColorSpaceToFormatAndDepth(const char * formatString, avifPixelFormat * format, int * depth)
+static avifBool y4mColorSpaceToFormatAndDepth(const char * formatString, avifPixelFormat * format, int * depth)
 {
     if (!strcmp(formatString, "C420jpeg")) {
         *format = AVIF_PIXEL_FORMAT_YUV420;
@@ -74,7 +74,7 @@ avifBool y4mColorSpaceToFormatAndDepth(const char * formatString, avifPixelForma
     return AVIF_FALSE;
 }
 
-avifBool getHeaderString(uint8_t * p, uint8_t * end, char * out, size_t maxChars)
+static avifBool getHeaderString(uint8_t * p, uint8_t * end, char * out, size_t maxChars)
 {
     uint8_t * headerEnd = p;
     while ((*headerEnd != ' ') && (*headerEnd != '\n')) {
@@ -117,12 +117,12 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
         return AVIF_FALSE;
     }
 
-    avifRawData raw = AVIF_RAW_DATA_EMPTY;
-    avifRawDataRealloc(&raw, inputFileSize);
+    avifRWData raw = AVIF_DATA_EMPTY;
+    avifRWDataRealloc(&raw, inputFileSize);
     if (fread(raw.data, 1, inputFileSize, inputFile) != inputFileSize) {
         fprintf(stderr, "Failed to read %zu bytes: %s\n", inputFileSize, inputFilename);
         fclose(inputFile);
-        avifRawDataFree(&raw);
+        avifRWDataFree(&raw);
         return AVIF_FALSE;
     }
 
@@ -136,7 +136,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
 
     if (memcmp(p, "YUV4MPEG2 ", 10) != 0) {
         fprintf(stderr, "Not a y4m file: %s\n", inputFilename);
-        avifRawDataFree(&raw);
+        avifRWDataFree(&raw);
         return AVIF_FALSE;
     }
     ADVANCE(10); // skip past header
@@ -227,7 +227,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
     avif->height = height;
     avif->depth = depth;
     avif->yuvFormat = format;
-    avif->yuvRange = rangeFlag;
+    avif->yuvRange = (uint8_t)rangeFlag;
     avifImageAllocatePlanes(avif, AVIF_PLANES_YUV);
 
     avifPixelFormatInfo info;
@@ -252,7 +252,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
 
     result = AVIF_TRUE;
 cleanup:
-    avifRawDataFree(&raw);
+    avifRWDataFree(&raw);
     return result;
 }
 

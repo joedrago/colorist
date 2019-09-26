@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.10] - 2019-09-26
+### Added
+- stss box parsing for keyframe information
+- avifBool avifDecoderIsKeyframe(avifDecoder * decoder, uint32_t frameIndex);
+- uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex);
+- avifResult avifDecoderNthImage(avifDecoder * decoder, uint32_t frameIndex);
+- aviffuzz prints keyframe information as it repeatedly decodes
+
+### Changed
+- internally renamed codec function "decode" to "open", as that's all it does
+- dav1d codec's open function no longer does an initial unnecessary feed
+- avifCodecDecodeInput now stores an array of avifSample which know if they're keyframes
+- moved codec flushing code into avifDecoderFlush() so it is available to avifDecoderNthImage
+- ptsInTimescales is now calculated independently of frame decode order
+
+## [0.3.9] - 2019-09-25
+### Changed
+- Split avifRawData and avifStream into read-only (const) and read/write versions, updated code accordingly
+- Fix a few clang/macOS warnings
+
 ## [0.3.8] - 2019-09-04
 ### Changed
 - Reverted codec_aom and libaom to use previous SHA (v1.0.0-errata1 is ancient)
@@ -146,7 +166,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.3.8...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.3.10...HEAD
+[0.3.10]: https://github.com/AOMediaCodec/libavif/compare/v0.3.9...v0.3.10
+[0.3.9]: https://github.com/AOMediaCodec/libavif/compare/v0.3.8...v0.3.9
 [0.3.8]: https://github.com/AOMediaCodec/libavif/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/AOMediaCodec/libavif/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/AOMediaCodec/libavif/compare/v0.3.5...v0.3.6

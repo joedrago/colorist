@@ -35,7 +35,7 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
     clImage * image = NULL;
     clProfile * profile = NULL;
 
-    avifRawData raw;
+    avifROData raw;
     raw.data = input->ptr;
     raw.size = input->size;
 
@@ -165,7 +165,7 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
     }
 
     avifImageAllocatePlanes(avif, AVIF_PLANES_RGB | AVIF_PLANES_A);
-    avifRawData avifOutput = AVIF_RAW_DATA_EMPTY;
+    avifRWData avifOutput = AVIF_DATA_EMPTY;
 
     avifBool usesU16 = avifImageUsesU16(avif);
     for (int j = 0; j < image->height; ++j) {
@@ -248,7 +248,7 @@ writeCleanup:
     if (avif) {
         avifImageDestroy(avif);
     }
-    avifRawDataFree(&avifOutput);
+    avifRWDataFree(&avifOutput);
     clRawFree(C, &rawProfile);
     return writeResult;
 }

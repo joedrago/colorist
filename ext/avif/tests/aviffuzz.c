@@ -6,12 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 
-int syntax(void)
-{
-    printf("Syntax: aviffuzz input.avif\n");
-    return 0;
-}
-
 int main(int argc, char * argv[])
 {
     const char * inputFilename = NULL;
@@ -35,12 +29,12 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    avifRawData raw = AVIF_RAW_DATA_EMPTY;
-    avifRawDataRealloc(&raw, inputFileSize);
+    avifRWData raw = AVIF_DATA_EMPTY;
+    avifRWDataRealloc(&raw, inputFileSize);
     if (fread(raw.data, 1, inputFileSize, inputFile) != inputFileSize) {
         fprintf(stderr, "Failed to read %zu bytes: %s\n", inputFileSize, inputFilename);
         fclose(inputFile);
-        avifRawDataFree(&raw);
+        avifRWDataFree(&raw);
         return 1;
     }
 
@@ -49,17 +43,19 @@ int main(int argc, char * argv[])
 
     avifDecoder * decoder = avifDecoderCreate();
     // avifDecoderSetSource(decoder, AVIF_DECODER_SOURCE_PRIMARY_ITEM);
-    avifResult result = avifDecoderParse(decoder, &raw);
+    avifResult result = avifDecoderParse(decoder, (avifROData *)&raw);
     if (result == AVIF_RESULT_OK) {
         for (int loop = 0; loop < 2; ++loop) {
             printf("Image decoded: %s\n", inputFilename);
             printf(" * %2.2f seconds, %d images\n", decoder->duration, decoder->imageCount);
             int frameIndex = 0;
             while (avifDecoderNextImage(decoder) == AVIF_RESULT_OK) {
-                printf("  * Decoded frame [%d] [pts %2.2f] [duration %2.2f]: %dx%d\n",
+                printf("  * Decoded frame [%d] [pts %2.2f] [duration %2.2f] [keyframe:%s nearest:%u]: %dx%d\n",
                        frameIndex,
                        decoder->imageTiming.pts,
                        decoder->imageTiming.duration,
+                       avifDecoderIsKeyframe(decoder, frameIndex) ? "true" : "false",
+                       avifDecoderNearestKeyframe(decoder, frameIndex),
                        decoder->image->width,
                        decoder->image->height);
                 ++frameIndex;
@@ -79,7 +75,21 @@ int main(int argc, char * argv[])
         printf("ERROR: Failed to decode image: %s\n", avifResultToString(result));
     }
 
-    avifRawDataFree(&raw);
+#if 0
+    int frameIndex = 25;
+    if (avifDecoderNthImage(decoder, frameIndex) == AVIF_RESULT_OK) {
+        printf("  * Decoded frame [%d] [pts %2.2f] [duration %2.2f] [keyframe:%s nearest:%u]: %dx%d\n",
+               frameIndex,
+               decoder->imageTiming.pts,
+               decoder->imageTiming.duration,
+               avifDecoderIsKeyframe(decoder, frameIndex) ? "true" : "false",
+               avifDecoderNearestKeyframe(decoder, frameIndex),
+               decoder->image->width,
+               decoder->image->height);
+    }
+#endif
+
+    avifRWDataFree(&raw);
     avifDecoderDestroy(decoder);
     return 0;
 }
