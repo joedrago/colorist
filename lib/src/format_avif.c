@@ -39,13 +39,29 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
     raw.data = input->ptr;
     raw.size = input->size;
 
-    avifImage * avif = avifImageCreateEmpty();
     avifDecoder * decoder = avifDecoderCreate();
-    avifResult decodeResult = avifDecoderRead(decoder, avif, &raw);
-    if ((decodeResult != AVIF_RESULT_OK) || !avif->width || !avif->height) {
-        clContextLogError(C, "Failed to decode AVIF (%s)", avifResultToString(decodeResult));
+    avifResult decodeResult = avifDecoderParse(decoder, &raw);
+    if (decodeResult != AVIF_RESULT_OK) {
+        clContextLogError(C, "Failed to parse AVIF (%s)", avifResultToString(decodeResult));
         goto readCleanup;
     }
+
+    uint32_t frameIndex = 0;
+    if (decoder->imageCount > 1) {
+        frameIndex = C->params.frameIndex;
+        clContextLog(C, "avif", 1, "AVIF contains %d frames, decoding frame %d.", decoder->imageCount, frameIndex);
+        uint32_t nearestKeyframe = avifDecoderNearestKeyframe(decoder, frameIndex);
+        if (nearestKeyframe != frameIndex) {
+            clContextLog(C, "avif", 1, "Nearest keyframe is frame %d, so %d total frames must be decoded.", nearestKeyframe, 1 + frameIndex - nearestKeyframe);
+        }
+    }
+    avifResult frameResult = avifDecoderNthImage(decoder, frameIndex);
+    if (frameResult != AVIF_RESULT_OK) {
+        clContextLogError(C, "Failed to get AVIF frame %d (%s)", frameIndex, avifResultToString(frameResult));
+        goto readCleanup;
+    }
+
+    avifImage * avif = decoder->image;
     avifImageYUVToRGB(avif);
 
     if (overrideProfile) {
@@ -99,7 +115,6 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
 
 readCleanup:
     avifDecoderDestroy(decoder);
-    avifImageDestroy(avif);
     if (profile) {
         clProfileDestroy(C, profile);
     }

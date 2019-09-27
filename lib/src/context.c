@@ -381,6 +381,7 @@ static void clConversionParamsSetOutputProfileDefaults(clContext * C, clConversi
     params->copyright = NULL;
     params->description = NULL;
     params->curveType = CL_PCT_GAMMA;
+    params->frameIndex = 0;
     params->gamma = 0;
     params->luminance = CL_LUMINANCE_SOURCE;
     memset(params->primaries, 0, sizeof(float) * 8);
@@ -829,6 +830,9 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                     clContextLogError(C, "Invalid default luminance: %s", arg);
                     return clFalse;
                 }
+            } else if (!strcmp(arg, "--frameindex")) {
+                NEXTARG();
+                C->params.frameIndex = (uint32_t)atoi(arg);
             } else if (!strcmp(arg, "--hlglum")) {
                 NEXTARG();
                 int hlgLum = atoi(arg);
@@ -837,8 +841,7 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                     return clFalse;
                 }
                 C->defaultLuminance = clTransformCalcDefaultLuminanceFromHLG(hlgLum);
-                clContextLog(
-                    C, "hlg", 0, "Choosing %d nits as default luminance based on max HLG luminance of %d nits", C->defaultLuminance, hlgLum);
+                clContextLog(C, "hlg", 0, "Choosing %d nits as default luminance based on max HLG luminance of %d nits", C->defaultLuminance, hlgLum);
                 if (hlgLum <= 1) {
                     clContextLogError(C, "Invalid HLG luminance: %s", arg);
                     return clFalse;
@@ -1033,6 +1036,7 @@ void clContextPrintArgs(clContext * C)
     } else {
         clContextLog(C, "syntax", 1, "gamma       : auto");
     }
+    clContextLog(C, "syntax", 1, "frame index : %s", C->params.frameIndex);
     clContextLog(C, "syntax", 1, "hald clut   : %s", C->params.hald ? C->params.hald : "--");
     clContextLog(C, "syntax", 1, "help        : %s", C->help ? "enabled" : "disabled");
     clContextLog(C, "syntax", 1, "ICC in      : %s", C->iccOverrideIn ? C->iccOverrideIn : "--");
@@ -1063,8 +1067,7 @@ void clContextPrintArgs(clContext * C)
     clContextLog(C, "syntax", 1, "resizeW     : %d", C->params.resizeW);
     clContextLog(C, "syntax", 1, "resizeH     : %d", C->params.resizeH);
     clContextLog(C, "syntax", 1, "resizeFilter: %s", clFilterToString(C, C->params.resizeFilter));
-    clContextLog(
-        C, "syntax", 1, "rect        : (%d,%d) %dx%d", C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3]);
+    clContextLog(C, "syntax", 1, "rect        : (%d,%d) %dx%d", C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3]);
     clContextLog(C, "syntax", 1, "stripTags   : %s", C->params.stripTags ? C->params.stripTags : "--");
     clContextLog(C, "syntax", 1, "stats       : %s", C->params.stats ? "true" : "false");
     clContextLog(C, "syntax", 1, "tonemap     : %s", clTonemapToString(C, C->params.tonemap));
@@ -1109,6 +1112,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Input Options:");
     clContextLog(C, NULL, 0, "    -i,--iccin file.icc      : Override source ICC profile. default is to use embedded profile (if any), or sRGB@deflum");
+    clContextLog(C, NULL, 0, "    --frameindex INDEX       : Choose the source frame from an image sequence (AVIF only, defaults to frame 0)");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Output Profile Options:");
     clContextLog(C, NULL, 0, "    -o,--iccout file.icc     : Override destination ICC profile. Disables all other output profile options");

@@ -174,6 +174,7 @@ typedef struct clConversionParams
     const char * description;       // -d
     const char * formatName;        // -f
     uint32_t curveType;             // -g
+    uint32_t frameIndex;            // --frameindex
     float gamma;                    // -g
     const char * hald;              // --hald
     int jobs;                       // -j
