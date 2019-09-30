@@ -217,12 +217,15 @@ clBool clRawReadFileHeader(struct clContext * C, clRaw * raw, const char * filen
     }
 
     clRawRealloc(C, raw, bytes);
-    if (fread(raw->ptr, raw->size, 1, f) != 1) {
+    size_t bytesRead = fread(raw->ptr, 1, raw->size, f);
+    if (bytesRead == 0) {
         clContextLogError(C, "Failed to read file [%d bytes]: %s", (int)raw->size, filename);
         fclose(f);
         clRawFree(C, raw);
         return clFalse;
     }
+
+    raw->size = bytesRead;
     fclose(f);
     return clTrue;
 }

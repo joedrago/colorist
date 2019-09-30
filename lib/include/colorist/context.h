@@ -39,7 +39,9 @@ typedef enum clAction
 clAction clActionFromString(struct clContext * C, const char * str);
 const char * clActionToString(struct clContext * C, clAction action);
 
+struct clFormat;
 struct clWriteParams;
+typedef clBool (*clFormatDetectFunc)(struct clContext * C, struct clFormat * format, struct clRaw * input);
 typedef struct clImage * (*clFormatReadFunc)(struct clContext * C,
                                              const char * formatName,
                                              struct clProfile * overrideProfile,
@@ -73,6 +75,7 @@ typedef struct clFormat
     clBool usesQuality;
     clBool usesRate;
     clBool usesYUVFormat;
+    clFormatDetectFunc detectFunc;
     clFormatReadFunc readFunc;
     clFormatWriteFunc writeFunc;
 } clFormat;

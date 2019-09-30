@@ -19,12 +19,27 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
 static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, avifNclxColorProfile * nclx);
 static void logAvifImage(struct clContext * C, avifImage * avif, avifIOStats * ioStats);
 
+clBool clFormatDetectAVIF(struct clContext * C, struct clFormat * format, struct clRaw * input);
 struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteAVIF(struct clContext * C,
                          struct clImage * image,
                          const char * formatName,
                          struct clRaw * output,
                          struct clWriteParams * writeParams);
+
+clBool clFormatDetectAVIF(struct clContext * C, struct clFormat * format, struct clRaw * input)
+{
+    COLORIST_UNUSED(C);
+    COLORIST_UNUSED(format);
+
+    avifROData header;
+    header.data = input->ptr;
+    header.size = input->size;
+    if (avifPeekCompatibleFileType(&header)) {
+        return clTrue;
+    }
+    return clFalse;
+}
 
 struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
 {

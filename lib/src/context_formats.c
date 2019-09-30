@@ -7,8 +7,11 @@
 
 #include "colorist/context.h"
 
+#include "colorist/raw.h"
+
 #include <string.h>
 
+clBool clFormatDetectAVIF(struct clContext * C, struct clFormat * format, struct clRaw * input);
 struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteAVIF(struct clContext * C,
                          struct clImage * image,
@@ -42,6 +45,27 @@ clBool clFormatWriteWebP(struct clContext * C,
                          struct clRaw * output,
                          struct clWriteParams * writeParams);
 
+static clBool detectFormatSignature(struct clContext * C, struct clFormat * format, struct clRaw * input)
+{
+    COLORIST_UNUSED(C);
+
+    int signatureIndex;
+    for (signatureIndex = 0; signatureIndex < CL_FORMAT_MAX_SIGNATURES; ++signatureIndex) {
+        const unsigned char * signature = format->signatures[signatureIndex];
+        size_t signatureLength = format->signatureLengths[signatureIndex];
+        if (signatureLength == 0) {
+            continue;
+        }
+        if (signatureLength > input->size) {
+            continue;
+        }
+        if (signature && !memcmp(signature, input->ptr, signatureLength)) {
+            return clTrue;
+        }
+    }
+    return clFalse;
+}
+
 void clContextRegisterBuiltinFormats(struct clContext * C)
 {
     // AVIF
@@ -56,6 +80,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.usesQuality = clTrue;
         format.usesRate = clFalse;
         format.usesYUVFormat = clTrue;
+        format.detectFunc = clFormatDetectAVIF;
         format.readFunc = clFormatReadAVIF;
         format.writeFunc = clFormatWriteAVIF;
         clContextRegisterFormat(C, &format);
@@ -77,6 +102,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.usesQuality = clFalse;
         format.usesRate = clFalse;
         format.usesYUVFormat = clFalse;
+        format.detectFunc = detectFormatSignature;
         format.readFunc = clFormatReadBMP;
         format.writeFunc = clFormatWriteBMP;
         clContextRegisterFormat(C, &format);
@@ -99,6 +125,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.usesQuality = clTrue;
         format.usesRate = clFalse;
         format.usesYUVFormat = clFalse;
+        format.detectFunc = detectFormatSignature;
         format.readFunc = clFormatReadJPG;
         format.writeFunc = clFormatWriteJPG;
         clContextRegisterFormat(C, &format);
@@ -120,6 +147,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.usesQuality = clTrue;
         format.usesRate = clTrue;
         format.usesYUVFormat = clFalse;
+        format.detectFunc = detectFormatSignature;
         format.readFunc = clFormatReadJP2;
         format.writeFunc = clFormatWriteJP2;
         clContextRegisterFormat(C, &format);
@@ -141,6 +169,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.usesQuality = clTrue;
         format.usesRate = clTrue;
         format.usesYUVFormat = clFalse;
+        format.detectFunc = detectFormatSignature;
         format.readFunc = clFormatReadJP2;
         format.writeFunc = clFormatWriteJP2;
         clContextRegisterFormat(C, &format);
@@ -157,10 +186,12 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.mimeType = "image/png";
         format.extensions[0] = "png";
         format.signatures[0] = pngSig;
+        format.signatureLengths[0] = sizeof(pngSig);
         format.depth = CL_FORMAT_DEPTH_8_OR_16;
         format.usesQuality = clFalse;
         format.usesRate = clFalse;
         format.usesYUVFormat = clFalse;
+        format.detectFunc = detectFormatSignature;
         format.readFunc = clFormatReadPNG;
         format.writeFunc = clFormatWritePNG;
         clContextRegisterFormat(C, &format);
@@ -180,12 +211,13 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.extensions[1] = "tif";
         format.signatures[0] = tiffSig0;
         format.signatureLengths[0] = sizeof(tiffSig0);
-        format.signatures[0] = tiffSig1;
+        format.signatures[1] = tiffSig1;
         format.signatureLengths[1] = sizeof(tiffSig1);
         format.depth = CL_FORMAT_DEPTH_8_OR_16;
         format.usesQuality = clFalse;
         format.usesRate = clFalse;
         format.usesYUVFormat = clFalse;
+        format.detectFunc = detectFormatSignature;
         format.readFunc = clFormatReadTIFF;
         format.writeFunc = clFormatWriteTIFF;
         clContextRegisterFormat(C, &format);
@@ -207,6 +239,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.usesQuality = clTrue;
         format.usesRate = clFalse;
         format.usesYUVFormat = clFalse;
+        format.detectFunc = detectFormatSignature;
         format.readFunc = clFormatReadWebP;
         format.writeFunc = clFormatWriteWebP;
         clContextRegisterFormat(C, &format);

@@ -98,16 +98,11 @@ const char * clActionToString(struct clContext * C, clAction action)
 static char const * clFormatDetectHeader(struct clContext * C, const char * filename)
 {
     clRaw raw = CL_RAW_EMPTY;
-    if (clRawReadFileHeader(C, &raw, filename, 12)) {
+    if (clRawReadFileHeader(C, &raw, filename, 1024)) {
         for (clFormatRecord * record = C->formats; record != NULL; record = record->next) {
-            int signatureIndex;
-            for (signatureIndex = 0; signatureIndex < CL_FORMAT_MAX_SIGNATURES; ++signatureIndex) {
-                const unsigned char * signature = record->format.signatures[signatureIndex];
-                size_t signatureLength = record->format.signatureLengths[signatureIndex];
-                if (signature && !memcmp(signature, raw.ptr, signatureLength)) {
-                    clRawFree(C, &raw);
-                    return record->format.name;
-                }
+            if (record->format.detectFunc(C, &record->format, &raw)) {
+                clRawFree(C, &raw);
+                return record->format.name;
             }
         }
     }
