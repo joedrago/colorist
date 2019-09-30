@@ -113,6 +113,10 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
         }
     }
 
+    if (decoder->imageCount > 1) {
+        C->readExtraInfo.frameIndex = (int)frameIndex;
+        C->readExtraInfo.frameCount = decoder->imageCount;
+    }
 readCleanup:
     avifDecoderDestroy(decoder);
     if (profile) {

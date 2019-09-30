@@ -166,6 +166,12 @@ typedef struct clBlendParams
 } clBlendParams;
 void clBlendParamsSetDefaults(struct clContext * C, clBlendParams * blendParams);
 
+typedef struct clReadExtraInfo
+{
+    int frameIndex;
+    int frameCount;
+} clReadExtraInfo;
+
 typedef struct clConversionParams
 {
     clBool autoGrade;               // -a
@@ -213,13 +219,14 @@ typedef struct clContext
     clFormatRecord * formats;
 
     clAction action;
-    clConversionParams params;   // see above
-    clBool help;                 // -h
-    const char * iccOverrideIn;  // -i
-    clBool verbose;              // -v
-    clBool ccmmAllowed;          // --ccmm
-    const char * inputFilename;  // index 0
-    const char * outputFilename; // index 1
+    clConversionParams params;     // see above
+    clReadExtraInfo readExtraInfo; // populated by some formats' readers
+    clBool help;                   // -h
+    const char * iccOverrideIn;    // -i
+    clBool verbose;                // -v
+    clBool ccmmAllowed;            // --ccmm
+    const char * inputFilename;    // index 0
+    const char * outputFilename;   // index 1
     int defaultLuminance;
 } clContext;
 

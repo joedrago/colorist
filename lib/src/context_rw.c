@@ -40,6 +40,9 @@ struct clImage * clContextRead(clContext * C, const char * filename, const char 
         return clFalse;
     }
 
+    // Clear this out, only some of the format readers actually populate anything in here
+    memset(&C->readExtraInfo, 0, sizeof(C->readExtraInfo));
+
     format = clContextFindFormat(C, formatName);
     COLORIST_ASSERT(format);
     if (format->readFunc) {
