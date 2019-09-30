@@ -76,6 +76,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.description = "AVIF";
         format.mimeType = "image/avif";
         format.extensions[0] = "avif";
+        format.extensions[1] = "avifs";
         format.depth = CL_FORMAT_DEPTH_8_OR_10_OR_12;
         format.usesQuality = clTrue;
         format.usesRate = clFalse;
