@@ -64,6 +64,10 @@ main = ->
 
   srcFiles = fs.readdirSync(inputDir)
   for srcFile, srcIndex in srcFiles
+    if srcFile.match(/^\./)
+      # skip "hidden" files
+      continue
+
     srcFilename = "#{inputDir}/#{srcFile}"
     srcParsed = path.parse(srcFilename)
     srcInfo = benchmark(srcFilename)
