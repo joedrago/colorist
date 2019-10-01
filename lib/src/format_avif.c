@@ -54,6 +54,9 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
     raw.data = input->ptr;
     raw.size = input->size;
 
+    Timer t;
+    timerStart(&t);
+
     avifDecoder * decoder = avifDecoderCreate();
     avifResult decodeResult = avifDecoderParse(decoder, &raw);
     if (decodeResult != AVIF_RESULT_OK) {
@@ -76,8 +79,12 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
         goto readCleanup;
     }
 
+    C->readExtraInfo.decodeCodecSeconds = timerElapsedSeconds(&t);
+
     avifImage * avif = decoder->image;
+    timerStart(&t);
     avifImageYUVToRGB(avif);
+    C->readExtraInfo.decodeYUVtoRGBSeconds = timerElapsedSeconds(&t);
 
     if (overrideProfile) {
         profile = clProfileClone(C, overrideProfile);
@@ -95,6 +102,8 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
 
     clImageLogCreate(C, avif->width, avif->height, avif->depth, profile);
     image = clImageCreate(C, avif->width, avif->height, avif->depth, profile);
+
+    timerStart(&t);
 
     avifBool usesU16 = avifImageUsesU16(avif);
     int maxChannel = (1 << image->depth) - 1;
@@ -127,6 +136,8 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
             }
         }
     }
+
+    C->readExtraInfo.decodeFillSeconds = timerElapsedSeconds(&t);
 
     if (decoder->imageCount > 1) {
         C->readExtraInfo.frameIndex = (int)frameIndex;

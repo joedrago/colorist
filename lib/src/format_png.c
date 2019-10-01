@@ -46,6 +46,9 @@ struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, 
         return NULL;
     }
 
+    Timer t;
+    timerStart(&t);
+
     png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     png_infop info = png_create_info_struct(png);
     COLORIST_ASSERT(png && info);
@@ -134,8 +137,12 @@ struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, 
         }
     }
     png_read_image(png, rowPointers);
+    C->readExtraInfo.decodeCodecSeconds = timerElapsedSeconds(&t);
+
     if (rgba8) {
+        timerStart(&t);
         clImageFromRGBA8(C, image, rgba8);
+        C->readExtraInfo.decodeFillSeconds = timerElapsedSeconds(&t);
         clFree(rgba8);
     }
     png_destroy_read_struct(&png, &info, NULL);

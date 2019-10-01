@@ -126,6 +126,9 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
     uint32_t * packedPixels;
     int pixelCount;
 
+    Timer t;
+    timerStart(&t);
+
     if (input->size < (sizeof(magic) + sizeof(fileHeader))) {
         clContextLogError(C, "Truncated BMP");
         goto readCleanup;
@@ -216,8 +219,12 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
     }
     memcpy(packedPixels, input->ptr + fileHeader.bfOffBits, packedPixelBytes);
 
+    C->readExtraInfo.decodeCodecSeconds = timerElapsedSeconds(&t);
+
     clImageLogCreate(C, info.bV5Width, info.bV5Height, depth, profile);
     image = clImageCreate(C, info.bV5Width, info.bV5Height, depth, profile);
+
+    timerStart(&t);
 
     for (int i = 0; i < pixelCount; ++i) {
         uint16_t * pixels = (uint16_t *)image->pixels;
@@ -230,6 +237,8 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
         else
             dstPixel[3] = (uint16_t)((1 << depth) - 1);
     }
+
+    C->readExtraInfo.decodeFillSeconds = timerElapsedSeconds(&t);
 
 readCleanup:
     if (profile) {

@@ -171,8 +171,14 @@ void clBlendParamsSetDefaults(struct clContext * C, clBlendParams * blendParams)
 
 typedef struct clReadExtraInfo
 {
+    // image sequence info
     int frameIndex;
     int frameCount;
+
+    // perf stats
+    double decodeCodecSeconds;    // Time spent actually in the decoder
+    double decodeYUVtoRGBSeconds; // Time spent converting from YUV (0 if the format isn't YUV or the codec automatically does)
+    double decodeFillSeconds;     // Time spent filling final clImage RGBA16 buffers
 } clReadExtraInfo;
 
 typedef struct clConversionParams

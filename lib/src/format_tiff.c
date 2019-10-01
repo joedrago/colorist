@@ -118,6 +118,9 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
     ci.raw = input;
     ci.offset = 0;
 
+    Timer t;
+    timerStart(&t);
+
     tiff = TIFFClientOpen("tiff",
                           "rb",
                           (thandle_t)&ci,
@@ -227,8 +230,12 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
         }
     }
 
+    C->readExtraInfo.decodeCodecSeconds = timerElapsedSeconds(&t);
+
     if (rgba8) {
+        timerStart(&t);
         clImageFromRGBA8(C, image, rgba8);
+        C->readExtraInfo.decodeFillSeconds = timerElapsedSeconds(&t);
     }
 
 readCleanup:

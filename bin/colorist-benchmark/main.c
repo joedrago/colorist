@@ -52,14 +52,26 @@ int main(int argc, char * argv[])
     Timer t;
     timerStart(&t);
     image = clContextRead(C, inputFilename, NULL, NULL);
-    double elapsed = timerElapsedSeconds(&t);
+    double elapsedTotal = timerElapsedSeconds(&t);
+    double elapsedCodec = C->readExtraInfo.decodeCodecSeconds;
+    double elapsedYUV = C->readExtraInfo.decodeYUVtoRGBSeconds;
+    double elapsedFill = C->readExtraInfo.decodeFillSeconds;
     if (image) {
         width = image->width;
         height = image->height;
         depth = image->depth;
         error = "false";
     }
-    printf("{ \"elapsed\": %f, \"size\": %d, \"width\": %d, \"height\": %d, \"depth\": %d, \"error\": %s }\n", elapsed, size, width, height, depth, error);
+    printf("{ \"elapsedTotal\": %f, \"elapsedCodec\": %f, \"elapsedYUV\": %f, \"elapsedFill\": %f, \"size\": %d, \"width\": %d, \"height\": %d, \"depth\": %d, \"error\": %s }\n",
+           elapsedTotal,
+           elapsedCodec,
+           elapsedYUV,
+           elapsedFill,
+           size,
+           width,
+           height,
+           depth,
+           error);
 
     if (image) {
         clImageDestroy(C, image);

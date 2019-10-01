@@ -148,6 +148,9 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
         errorExtName = "J2K";
     }
 
+    Timer t;
+    timerStart(&t);
+
     ci.C = C;
     ci.raw = input;
     ci.offset = 0;
@@ -187,6 +190,8 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
         opj_image_destroy(opjImage);
         return NULL;
     }
+
+    C->readExtraInfo.decodeCodecSeconds = timerElapsedSeconds(&t);
 
     if ((opjImage->numcomps != 3) && (opjImage->numcomps != 4)) {
         clContextLogError(C, "Unsupported %s component count: %d", errorExtName, opjImage->numcomps);
@@ -246,6 +251,8 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
 
     pixelCount = image->width * image->height;
 
+    timerStart(&t);
+
     if (isYUV) {
         int yuvUNorm[3];
         for (int y = 0; y < image->height; ++y) {
@@ -287,6 +294,7 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
                 }
             }
         }
+        C->readExtraInfo.decodeYUVtoRGBSeconds = timerElapsedSeconds(&t);
     } else {
         uint16_t * pixel = image->pixels;
         if (opjImage->numcomps == 3) {
@@ -309,6 +317,7 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
                 pixel += 4;
             }
         }
+        C->readExtraInfo.decodeFillSeconds = timerElapsedSeconds(&t);
     }
 
     opj_stream_destroy(opjStream);

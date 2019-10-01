@@ -120,24 +120,34 @@ main = ->
         depth: tmpInfo.depth
         size: tmpInfo.size
         dssim: dssim
-        elapsed: 0
+        elapsedTotal: 0
+        elapsedCodec: 0
+        elapsedYUV: 0
+        elapsedFill: 0
 
       console.log "   * Decoding #{ATTEMPTS}x, please wait..."
-      totalElapsed = 0.0
       for attempt in [0...ATTEMPTS]
         info = benchmark(tmpFilename)
-        totalElapsed += info.elapsed
-      avgElapsed = totalElapsed / ATTEMPTS
-      console.log "     -> Avg elapsed: #{(avgElapsed * 1000).toFixed(2)} ms\n"
-      output.elapsed = avgElapsed
+        output.elapsedTotal += info.elapsedTotal
+        output.elapsedCodec += info.elapsedCodec
+        output.elapsedYUV += info.elapsedYUV
+        output.elapsedFill += info.elapsedFill
+      output.elapsedTotal /= ATTEMPTS
+      output.elapsedCodec /= ATTEMPTS
+      output.elapsedYUV /= ATTEMPTS
+      output.elapsedFill /= ATTEMPTS
+      console.log "     -> Avg elapsedCodec: #{(output.elapsedCodec * 1000).toFixed(2)} ms\n"
+      console.log "     -> Avg elapsedYUV  : #{(output.elapsedYUV   * 1000).toFixed(2)} ms\n"
+      console.log "     -> Avg elapsedFill : #{(output.elapsedFill  * 1000).toFixed(2)} ms\n"
+      console.log "     -> Avg elapsedTotal: #{(output.elapsedTotal * 1000).toFixed(2)} ms\n"
       outputs.push output
 
   csv = ""
 
   # CSV header
-  csv += "\"Name\",\"Config\",\"Elapsed\",\"DSSIM\",\"Size\",\"Width\",\"Height\",\"Depth\"\n"
+  csv += "\"Name\",\"Config\",\"Elapsed Codec\",\"Elapsed YUV\",\"Elapsed Fill\",\"Elapsed Total\",\"DSSIM\",\"Size\",\"Width\",\"Height\",\"Depth\"\n"
   for output in outputs
-    csv += "\"#{output.name}\",\"#{output.config}\",\"#{(output.elapsed * 1000).toFixed(2)}\",\"#{output.dssim}\",\"#{output.size}\",\"#{output.width}\",\"#{output.height}\",\"#{output.depth}\"\n"
+    csv += "\"#{output.name}\",\"#{output.config}\",\"#{(output.elapsedCodec * 1000).toFixed(2)}\",\"#{(output.elapsedYUV * 1000).toFixed(2)}\",\"#{(output.elapsedFill * 1000).toFixed(2)}\",\"#{(output.elapsedTotal * 1000).toFixed(2)}\",\"#{output.dssim}\",\"#{output.size}\",\"#{output.width}\",\"#{output.height}\",\"#{output.depth}\"\n"
   fs.writeFileSync(outputCSV, csv)
   console.log "Wrote: #{outputCSV}"
 

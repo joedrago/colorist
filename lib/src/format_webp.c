@@ -31,6 +31,9 @@ struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName,
     clProfile * profile = NULL;
     uint8_t * readPixels = NULL;
 
+    Timer t;
+    timerStart(&t);
+
     WebPData webpFileContents;
     webpFileContents.bytes = input->ptr;
     webpFileContents.size = input->size;
@@ -68,9 +71,14 @@ struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName,
         goto readCleanup;
     }
 
+    C->readExtraInfo.decodeCodecSeconds = timerElapsedSeconds(&t);
+
     clImageLogCreate(C, width, height, 8, profile);
     image = clImageCreate(C, width, height, 8, profile);
+
+    timerStart(&t);
     clImageFromRGBA8(C, image, readPixels);
+    C->readExtraInfo.decodeFillSeconds = timerElapsedSeconds(&t);
 
 readCleanup:
     WebPDataClear(&frameInfo.bitstream);
