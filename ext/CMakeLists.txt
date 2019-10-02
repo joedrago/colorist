@@ -77,70 +77,81 @@ add_library(unity
     unity/src/unity.h
 )
 
-include_directories(jpeg)
-add_library(jpeg
-    jpeg/cdjpeg.c
-    jpeg/jaricom.c
-    jpeg/jcapimin.c
-    jpeg/jcapistd.c
-    jpeg/jcarith.c
-    jpeg/jccoefct.c
-    jpeg/jccolor.c
-    jpeg/jcdctmgr.c
-    jpeg/jchuff.c
-    jpeg/jcinit.c
-    jpeg/jcmainct.c
-    jpeg/jcmarker.c
-    jpeg/jcmaster.c
-    jpeg/jcomapi.c
-    jpeg/jcparam.c
-    jpeg/jcprepct.c
-    jpeg/jcsample.c
-    jpeg/jctrans.c
-    jpeg/jdapimin.c
-    jpeg/jdapistd.c
-    jpeg/jdarith.c
-    jpeg/jdatadst.c
-    jpeg/jdatasrc.c
-    jpeg/jdcoefct.c
-    jpeg/jdcolor.c
-    jpeg/jddctmgr.c
-    jpeg/jdhuff.c
-    jpeg/jdinput.c
-    jpeg/jdmainct.c
-    jpeg/jdmarker.c
-    jpeg/jdmaster.c
-    jpeg/jdmerge.c
-    jpeg/jdpostct.c
-    jpeg/jdsample.c
-    jpeg/jdtrans.c
-    jpeg/jerror.c
-    jpeg/jfdctflt.c
-    jpeg/jfdctfst.c
-    jpeg/jfdctint.c
-    jpeg/jidctflt.c
-    jpeg/jidctfst.c
-    jpeg/jidctint.c
-    jpeg/jmemmgr.c
-    jpeg/jmemnobs.c
-    jpeg/jquant1.c
-    jpeg/jquant2.c
-    jpeg/jutils.c
-    jpeg/rdbmp.c
-    jpeg/rdcolmap.c
-    jpeg/rdgif.c
-    jpeg/rdppm.c
-    jpeg/rdrle.c
-    jpeg/rdswitch.c
-    jpeg/rdtarga.c
-    jpeg/transupp.c
-    jpeg/wrbmp.c
-    jpeg/wrgif.c
-    jpeg/wrjpgcom.c
-    jpeg/wrppm.c
-    jpeg/wrrle.c
-    jpeg/wrtarga.c
-)
+set(COLORIST_EXT_INCLUDES)
+set(COLORIST_EXT_LIBS)
+
+if(COLORIST_USE_LIBJPEG_TURBO)
+    add_subdirectory(libjpeg-turbo)
+    set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/libjpeg-turbo" "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo")
+    set(COLORIST_EXT_LIBS ${COLORIST_EXT_LIBS} turbojpeg-static)
+else()
+    set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/jpeg")
+    set(COLORIST_EXT_LIBS ${COLORIST_EXT_LIBS} jpeg)
+    include_directories(jpeg)
+    add_library(jpeg
+        jpeg/cdjpeg.c
+        jpeg/jaricom.c
+        jpeg/jcapimin.c
+        jpeg/jcapistd.c
+        jpeg/jcarith.c
+        jpeg/jccoefct.c
+        jpeg/jccolor.c
+        jpeg/jcdctmgr.c
+        jpeg/jchuff.c
+        jpeg/jcinit.c
+        jpeg/jcmainct.c
+        jpeg/jcmarker.c
+        jpeg/jcmaster.c
+        jpeg/jcomapi.c
+        jpeg/jcparam.c
+        jpeg/jcprepct.c
+        jpeg/jcsample.c
+        jpeg/jctrans.c
+        jpeg/jdapimin.c
+        jpeg/jdapistd.c
+        jpeg/jdarith.c
+        jpeg/jdatadst.c
+        jpeg/jdatasrc.c
+        jpeg/jdcoefct.c
+        jpeg/jdcolor.c
+        jpeg/jddctmgr.c
+        jpeg/jdhuff.c
+        jpeg/jdinput.c
+        jpeg/jdmainct.c
+        jpeg/jdmarker.c
+        jpeg/jdmaster.c
+        jpeg/jdmerge.c
+        jpeg/jdpostct.c
+        jpeg/jdsample.c
+        jpeg/jdtrans.c
+        jpeg/jerror.c
+        jpeg/jfdctflt.c
+        jpeg/jfdctfst.c
+        jpeg/jfdctint.c
+        jpeg/jidctflt.c
+        jpeg/jidctfst.c
+        jpeg/jidctint.c
+        jpeg/jmemmgr.c
+        jpeg/jmemnobs.c
+        jpeg/jquant1.c
+        jpeg/jquant2.c
+        jpeg/jutils.c
+        jpeg/rdbmp.c
+        jpeg/rdcolmap.c
+        jpeg/rdgif.c
+        jpeg/rdppm.c
+        jpeg/rdrle.c
+        jpeg/rdswitch.c
+        jpeg/rdtarga.c
+        jpeg/transupp.c
+        jpeg/wrbmp.c
+        jpeg/wrgif.c
+        jpeg/wrjpgcom.c
+        jpeg/wrppm.c
+        jpeg/wrrle.c
+        jpeg/wrtarga.c
+    )
+endif()
 
 if(COLORIST_AVIF_ONLY_DAV1D)
     set(AVIF_CODEC_AOM OFF CACHE BOOL "" FORCE)
@@ -151,6 +162,7 @@ endif()
 add_subdirectory(avif)
 
 set(COLORIST_EXT_INCLUDES
+    ${COLORIST_EXT_INCLUDES}
     "${CMAKE_CURRENT_SOURCE_DIR}/avif/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/cJSON"
     "${CMAKE_CURRENT_SOURCE_DIR}/stb"
@@ -163,7 +175,6 @@ set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/src/lib/openjp2"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/include"
     "${OPENJPEG_BINARY_DIR}/src/lib/openjp2"
-    "${CMAKE_CURRENT_SOURCE_DIR}/jpeg"
     "${CMAKE_CURRENT_SOURCE_DIR}/md5"
     "${CMAKE_CURRENT_SOURCE_DIR}/unity/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/imageio"
@@ -172,12 +183,12 @@ set(COLORIST_EXT_INCLUDES
 set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} PARENT_SCOPE)
 
 set(COLORIST_EXT_LIBS
+    ${COLORIST_EXT_LIBS}
     avif
     cjson
     png
     lcms2
     openjp2
-    jpeg
     md5
     stb
     gb

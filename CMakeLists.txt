@@ -51,6 +51,7 @@ if(HOMEBREW_BUILD)
 endif()
 
 option(COLORIST_AVIF_ONLY_DAV1D "When building avif, avoid using aom and just use dav1d" OFF)
+option(COLORIST_USE_LIBJPEG_TURBO "Use libjpeg-turbo instead of regular libjpeg" OFF)
 
 add_subdirectory(ext)
 include_directories(${COLORIST_EXT_INCLUDES})
