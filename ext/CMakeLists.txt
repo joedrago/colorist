@@ -81,7 +81,7 @@ set(COLORIST_EXT_INCLUDES)
 set(COLORIST_EXT_LIBS)
 
 if(COLORIST_USE_LIBJPEG_TURBO)
-    add_subdirectory(libjpeg-turbo)
+    add_subdirectory(libjpeg-turbo EXCLUDE_FROM_ALL)
     set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/libjpeg-turbo" "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo")
     set(COLORIST_EXT_LIBS ${COLORIST_EXT_LIBS} turbojpeg-static)
 else()

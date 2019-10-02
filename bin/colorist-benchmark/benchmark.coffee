@@ -6,7 +6,8 @@ ATTEMPTS = 40
 TMPDIR = './benchmark.tmp'
 
 CONFIGS = [
-  { name: 'PNG', ext: 'png', args: [] }
+  { name: 'PNG-8bpc', ext: 'png', args: ['-b', '8'] }
+  { name: 'PNG-16bpc', ext: 'png', args: ['-b', '16'] }
 
   { name: 'JPEG-Q10',  ext: 'jpg', args: ['-q',  '10'] }
   { name: 'JPEG-Q50',  ext: 'jpg', args: ['-q',  '50'] }
@@ -16,25 +17,27 @@ CONFIGS = [
   { name: 'AVIF-8bpc-Q10',  ext: 'avif', args: ['-b', '8', '-q',  '10'] }
   { name: 'AVIF-8bpc-Q50',  ext: 'avif', args: ['-b', '8', '-q',  '50'] }
   { name: 'AVIF-8bpc-Q90',  ext: 'avif', args: ['-b', '8', '-q',  '90'] }
-  { name: 'AVIF-8bpc-Q100', ext: 'avif', args: ['-b', '8', '-q', '100'] }
+  { name: 'AVIF-8bpc-Lossless', ext: 'avif', args: ['-b', '8', '-q', '100'] }
 
   { name: 'AVIF-10bpc-Q10',  ext: 'avif', args: ['-b', '10', '-q',  '10'] }
   { name: 'AVIF-10bpc-Q50',  ext: 'avif', args: ['-b', '10', '-q',  '50'] }
   { name: 'AVIF-10bpc-Q90',  ext: 'avif', args: ['-b', '10', '-q',  '90'] }
-  { name: 'AVIF-10bpc-Q100', ext: 'avif', args: ['-b', '10', '-q', '100'] }
+  { name: 'AVIF-10bpc-Lossless', ext: 'avif', args: ['-b', '10', '-q', '100'] }
 
   { name: 'JP2-8bpc-R50',  ext: 'jp2', args: ['-b', '8', '-r',  '50'] }
   { name: 'JP2-8bpc-R100', ext: 'jp2', args: ['-b', '8', '-r', '100'] }
   { name: 'JP2-8bpc-R200', ext: 'jp2', args: ['-b', '8', '-r', '200'] }
+  { name: 'JP2-8bpc-Lossless', ext: 'jp2', args: ['-b', '8', '-q', '100'] }
 
   { name: 'JP2-10bpc-R50',  ext: 'jp2', args: ['-b', '10', '-r',  '50'] }
   { name: 'JP2-10bpc-R100', ext: 'jp2', args: ['-b', '10', '-r', '100'] }
   { name: 'JP2-10bpc-R200', ext: 'jp2', args: ['-b', '10', '-r', '200'] }
+  { name: 'JP2-10bpc-Lossless', ext: 'jp2', args: ['-b', '10', '-q', '100'] }
 
   { name: 'WebP-Q10',  ext: 'webp', args: ['-q',  '10'] }
   { name: 'WebP-Q50',  ext: 'webp', args: ['-q',  '50'] }
   { name: 'WebP-Q90',  ext: 'webp', args: ['-q',  '90'] }
-  { name: 'WebP-Q100', ext: 'webp', args: ['-q', '100'] }
+  { name: 'WebP-Lossless', ext: 'webp', args: ['-q', '100'] }
 ]
 
 benchmark = (filename) ->
@@ -136,9 +139,9 @@ main = ->
       output.elapsedCodec /= ATTEMPTS
       output.elapsedYUV /= ATTEMPTS
       output.elapsedFill /= ATTEMPTS
-      console.log "     -> Avg elapsedCodec: #{(output.elapsedCodec * 1000).toFixed(2)} ms\n"
-      console.log "     -> Avg elapsedYUV  : #{(output.elapsedYUV   * 1000).toFixed(2)} ms\n"
-      console.log "     -> Avg elapsedFill : #{(output.elapsedFill  * 1000).toFixed(2)} ms\n"
+      console.log "     -> Avg elapsedCodec: #{(output.elapsedCodec * 1000).toFixed(2)} ms"
+      console.log "     -> Avg elapsedYUV  : #{(output.elapsedYUV   * 1000).toFixed(2)} ms"
+      console.log "     -> Avg elapsedFill : #{(output.elapsedFill  * 1000).toFixed(2)} ms"
       console.log "     -> Avg elapsedTotal: #{(output.elapsedTotal * 1000).toFixed(2)} ms\n"
       outputs.push output
 

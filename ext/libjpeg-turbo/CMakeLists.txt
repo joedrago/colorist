@@ -126,7 +126,6 @@ foreach(dir ${DIRLIST})
   report_directory(${dir})
 endforeach()
 
-
 ###############################################################################
 # CONFIGURATION OPTIONS
 ###############################################################################
@@ -161,7 +160,7 @@ option(WITH_MEM_SRCDST "Include in-memory source/destination manager functions w
 boolean_number(WITH_MEM_SRCDST)
 option(WITH_SIMD "Include SIMD extensions, if available for this platform" TRUE)
 boolean_number(WITH_SIMD)
-option(WITH_TURBOJPEG "Include the TurboJPEG API library and associated test programs" FALSE)
+option(WITH_TURBOJPEG "Include the TurboJPEG API library and associated test programs" TRUE)
 boolean_number(WITH_TURBOJPEG)
 
 macro(report_option var desc)

@@ -8,6 +8,9 @@
 cmake_minimum_required(VERSION 3.5) # This is so high because of libwebp
 project(colorist)
 
+# Ignore this awful (temporary) line! This awful hack lets people dodge all kinds of awful linker errors with symlinks
+link_directories(${CMAKE_BINARY_DIR})
+
 option(COLORIST_SUPPRESS_REGENERATION "Disable autodetection of CMake changes." OFF)
 if(COLORIST_SUPPRESS_REGENERATION)
   set(CMAKE_SUPPRESS_REGENERATION TRUE)
@@ -52,6 +55,9 @@ endif()
 
 option(COLORIST_AVIF_ONLY_DAV1D "When building avif, avoid using aom and just use dav1d" OFF)
 option(COLORIST_USE_LIBJPEG_TURBO "Use libjpeg-turbo instead of regular libjpeg" OFF)
+if(COLORIST_USE_LIBJPEG_TURBO)
+    enable_language(ASM_NASM)
+endif()
 
 add_subdirectory(ext)
 include_directories(${COLORIST_EXT_INCLUDES})
