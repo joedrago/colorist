@@ -15,8 +15,8 @@ extern "C" {
 // Constants
 
 #define AVIF_VERSION_MAJOR 0
-#define AVIF_VERSION_MINOR 3
-#define AVIF_VERSION_PATCH 11
+#define AVIF_VERSION_MINOR 4
+#define AVIF_VERSION_PATCH 0
 #define AVIF_VERSION (AVIF_VERSION_MAJOR * 10000) + (AVIF_VERSION_MINOR * 100) + AVIF_VERSION_PATCH
 
 typedef int avifBool;
@@ -313,6 +313,29 @@ void avifImageFreePlanes(avifImage * image, uint32_t planes);     // Ignores alr
 avifResult avifImageRGBToYUV(avifImage * image);
 avifResult avifImageYUVToRGB(avifImage * image);
 
+// ---------------------------------------------------------------------------
+// YUV Utils
+
+int avifFullToLimitedY(int depth, int v);
+int avifFullToLimitedUV(int depth, int v);
+int avifLimitedToFullY(int depth, int v);
+int avifLimitedToFullUV(int depth, int v);
+
+typedef struct avifReformatState
+{
+    // YUV coefficients
+    float kr;
+    float kg;
+    float kb;
+
+    avifPixelFormatInfo formatInfo;
+    avifBool usesU16;
+} avifReformatState;
+avifBool avifPrepareReformatState(avifImage * image, avifReformatState * state);
+
+// ---------------------------------------------------------------------------
+// avifDecoder
+
 // Useful stats related to a read/write
 typedef struct avifIOStats
 {
@@ -370,10 +393,15 @@ typedef struct avifDecoder
     double duration;               // in seconds (durationInTimescales / timescale)
     uint64_t durationInTimescales; // duration in "timescales"
 
-    // If decoding an "item" (instead of tracks) and the item is associated with an ImageSpatialExtentsBox,
-    // its values will be reflected here after a call to avifDecoderParse(), otherwise they will be set to 0.
-    uint32_t ispeWidth;
-    uint32_t ispeHeight;
+    // The width and height as reported by the AVIF container, if any. There is no guarantee
+    // these match the decoded images; they are merely reporting what is independently offered
+    // from the container's boxes.
+    // * If decoding an "item" and the item is associated with an ImageSpatialExtentsBox,
+    //   it will use the box's width/height
+    // * Else if decoding tracks, these will be the integer portions of the TrackHeaderBox width/height
+    // * Else both will be set to 0.
+    uint32_t containerWidth;
+    uint32_t containerHeight;
 
     // stats from the most recent read, possibly 0s if reading an image sequence
     avifIOStats ioStats;
@@ -413,7 +441,10 @@ avifResult avifDecoderReset(avifDecoder * decoder);
 avifBool avifDecoderIsKeyframe(avifDecoder * decoder, uint32_t frameIndex);
 uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex);
 
-// avifEncoder notes:
+// ---------------------------------------------------------------------------
+// avifEncoder
+
+// Notes:
 // * if avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
 // * if (maxThreads < 2), multithreading is disabled
 // * quality range: [AVIF_BEST_QUALITY - AVIF_WORST_QUALITY]
