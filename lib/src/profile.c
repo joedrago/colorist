@@ -770,6 +770,55 @@ clBool clProfilePrimariesMatch(struct clContext * C, clProfilePrimaries * p1, cl
            matchesTo3RoundedPlaces(p1->white[0], p2->white[0]) && matchesTo3RoundedPlaces(p1->white[1], p2->white[1]);
 }
 
+// TODO: share code with clGenerateDescription instead of this gross copypasta
+void clProfileDescribe(struct clContext * C, clProfile * profile, char * outDescription, size_t outDescriptionSize)
+{
+    char tmp[512];
+    tmp[0] = 0;
+
+    clProfilePrimaries primaries;
+    clProfileCurve curve;
+    int luminance = 0;
+    if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
+        char primariesString[64];
+        const char * prettyName = clContextFindStockPrimariesPrettyName(C, &primaries);
+        if (prettyName) {
+            strcpy(primariesString, prettyName);
+        } else {
+            sprintf(primariesString, "P%3.3f", primaries.red[0]);
+        }
+
+        char curveString[32];
+        if (curve.type == CL_PCT_HLG) {
+            strcpy(curveString, "HLG");
+        } else if (curve.type == CL_PCT_PQ) {
+            strcpy(curveString, "PQ");
+        } else if (curve.type == CL_PCT_GAMMA) {
+            sprintf(curveString, "%gg", curve.gamma);
+        } else {
+            sprintf(curveString, "Complex");
+        }
+
+        char nitsString[32];
+        if (luminance > 0) {
+            sprintf(nitsString, " %dnits", luminance);
+        } else {
+            sprintf(nitsString, " Unspec");
+        }
+
+        sprintf(tmp, "%s %s%s", primariesString, curveString, nitsString);
+    } else {
+        strcpy(tmp, "Unknown");
+    }
+
+    size_t charsToCopy = sizeof(tmp) - 1;
+    if (charsToCopy > (outDescriptionSize - 1)) {
+        charsToCopy = outDescriptionSize - 1;
+    }
+    strncpy(outDescription, tmp, charsToCopy);
+    outDescription[charsToCopy] = 0;
+}
+
 char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primaries, clProfileCurve * curve, int maxLuminance)
 {
     char * tmp = clAllocate(1024);

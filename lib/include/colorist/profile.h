@@ -78,6 +78,7 @@ clProfile * clProfileRead(struct clContext * C, const char * filename);
 clBool clProfileReload(struct clContext * C, clProfile * profile);
 clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * filename);
 clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries, clProfileCurve * curve, int * luminance);
+void clProfileDescribe(struct clContext * C, clProfile * profile, char * outDescription, size_t outDescriptionSize);
 void clProfileQueryYUVCoefficients(struct clContext * C, clProfile * profile, clProfileYUVCoefficients * yuv);
 clBool clProfileHasPQSignature(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries);
 clProfileCurveType clProfileCurveSignature(struct clContext * C, clProfile * profile);
