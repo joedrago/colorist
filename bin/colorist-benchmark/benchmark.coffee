@@ -16,23 +16,25 @@ CONFIGS = [
 
   { name: 'AVIF-8bpc-Q10',  ext: 'avif', args: ['-b', '8', '-q',  '10'] }
   { name: 'AVIF-8bpc-Q50',  ext: 'avif', args: ['-b', '8', '-q',  '50'] }
+  { name: 'AVIF-8bpc-Q60',  ext: 'avif', args: ['-b', '8', '-q',  '60'] }
   { name: 'AVIF-8bpc-Q90',  ext: 'avif', args: ['-b', '8', '-q',  '90'] }
   { name: 'AVIF-8bpc-Lossless', ext: 'avif', args: ['-b', '8', '-q', '100'] }
 
-  { name: 'AVIF-10bpc-Q10',  ext: 'avif', args: ['-b', '10', '-q',  '10'] }
-  { name: 'AVIF-10bpc-Q50',  ext: 'avif', args: ['-b', '10', '-q',  '50'] }
-  { name: 'AVIF-10bpc-Q90',  ext: 'avif', args: ['-b', '10', '-q',  '90'] }
-  { name: 'AVIF-10bpc-Lossless', ext: 'avif', args: ['-b', '10', '-q', '100'] }
+  { name: 'AVIF-10bpc-Q10',  ext: 'avif', args: ['-b', '10', '-g', 'pq', '-q',  '10'] }
+  { name: 'AVIF-10bpc-Q50',  ext: 'avif', args: ['-b', '10', '-g', 'pq', '-q',  '50'] }
+  { name: 'AVIF-10bpc-Q60',  ext: 'avif', args: ['-b', '10', '-g', 'pq', '-q',  '60'] }
+  { name: 'AVIF-10bpc-Q90',  ext: 'avif', args: ['-b', '10', '-g', 'pq', '-q',  '90'] }
+  { name: 'AVIF-10bpc-Lossless', ext: 'avif', args: ['-b', '10', '-g', 'pq', '-q', '100'] }
 
-  { name: 'JP2-8bpc-R50',  ext: 'jp2', args: ['-b', '8', '-r',  '50'] }
-  { name: 'JP2-8bpc-R100', ext: 'jp2', args: ['-b', '8', '-r', '100'] }
-  { name: 'JP2-8bpc-R200', ext: 'jp2', args: ['-b', '8', '-r', '200'] }
-  { name: 'JP2-8bpc-Lossless', ext: 'jp2', args: ['-b', '8', '-q', '100'] }
+  { name: 'JP2-8bpc-R50',  ext: 'jp2', args: ['-b', '8', '-g', 'pq', '-r',  '50'] }
+  { name: 'JP2-8bpc-R100', ext: 'jp2', args: ['-b', '8', '-g', 'pq', '-r', '100'] }
+  { name: 'JP2-8bpc-R200', ext: 'jp2', args: ['-b', '8', '-g', 'pq', '-r', '200'] }
+  { name: 'JP2-8bpc-Lossless', ext: 'jp2', args: ['-b', '8', '-g', 'pq', '-q', '100'] }
 
-  { name: 'JP2-10bpc-R50',  ext: 'jp2', args: ['-b', '10', '-r',  '50'] }
-  { name: 'JP2-10bpc-R100', ext: 'jp2', args: ['-b', '10', '-r', '100'] }
-  { name: 'JP2-10bpc-R200', ext: 'jp2', args: ['-b', '10', '-r', '200'] }
-  { name: 'JP2-10bpc-Lossless', ext: 'jp2', args: ['-b', '10', '-q', '100'] }
+  { name: 'JP2-10bpc-R50',  ext: 'jp2', args: ['-b', '10', '-g', 'pq', '-r',  '50'] }
+  { name: 'JP2-10bpc-R100', ext: 'jp2', args: ['-b', '10', '-g', 'pq', '-r', '100'] }
+  { name: 'JP2-10bpc-R200', ext: 'jp2', args: ['-b', '10', '-g', 'pq', '-r', '200'] }
+  { name: 'JP2-10bpc-Lossless', ext: 'jp2', args: ['-b', '10', '-g', 'pq', '-q', '100'] }
 
   { name: 'WebP-Q10',  ext: 'webp', args: ['-q',  '10'] }
   { name: 'WebP-Q50',  ext: 'webp', args: ['-q',  '50'] }
@@ -76,12 +78,24 @@ main = ->
     srcInfo = benchmark(srcFilename)
     console.log "\n[#{srcIndex+1}/#{srcFiles.length}] Benchmarking #{srcFilename} (#{srcInfo.width}x#{srcInfo.height} #{srcInfo.depth}bpc)"
 
+    g22Filename = "#{TMPDIR}/#{srcParsed.name}.BT2020-G22-10k.png"
+    console.log "Expanding to BT.2020 G2.2 10k: #{g22Filename}"
+    coloristArgs = [ "convert", srcFilename, g22Filename, '-b', '16', '-g', '2.2', '-p', 'bt2020', '-l', '10000']
+    try
+      fs.unlinkSync(g22Filename)
+    catch
+      # probably doesnt exist
+    spawnSync("colorist", coloristArgs) # , { stdio: 'inherit' })
+    if not fs.existsSync(g22Filename)
+      console.error "Failed to generate: #{g22Filename}"
+      process.exit(-1)
+
     for config, configIndex in CONFIGS
       console.log " * [#{configIndex+1}/#{CONFIGS.length}] Config: #{config.name}"
 
       tmpFilename = "#{TMPDIR}/#{srcParsed.name}.#{config.name}.#{config.ext}"
       console.log "   * Generating       : #{tmpFilename}"
-      coloristArgs = [ "convert", srcFilename, tmpFilename]
+      coloristArgs = [ "convert", g22Filename, tmpFilename]
       for extraArg in config.args
         coloristArgs.push extraArg
       # console.log coloristArgs
@@ -102,13 +116,13 @@ main = ->
         fs.unlinkSync(dssimFilename)
       catch
         # probably doesnt exist
-      spawnSync("colorist", ['convert', tmpFilename, dssimFilename])
+      spawnSync("colorist", ['convert', tmpFilename, dssimFilename, '-g', '2.2'])
       if not fs.existsSync(dssimFilename)
         console.error "Failed to generate: #{dssimFilename}"
         process.exit(-1)
 
       # Calc DSSIM using: https://github.com/kornelski/dssim
-      dssimProcess = spawnSync("dssim", [ srcFilename, dssimFilename ])
+      dssimProcess = spawnSync("dssim", [ g22Filename, dssimFilename ])
       dssim = -1
       if matches = String(dssimProcess.stdout).match(/^([^ \t]+)/)
         dssim = matches[1]
