@@ -95,6 +95,19 @@ static void unmapCallback(tiffCallbackInfo * ci, void * base, toff_t size)
     COLORIST_UNUSED(size);
 }
 
+static void errorHandler(thandle_t handle, const char * module, const char * fmt, va_list ap)
+{
+    (void)module;
+
+    tiffCallbackInfo * ci = (tiffCallbackInfo *)handle;
+
+    char tmp[256];
+    vsnprintf(tmp, 255, fmt, ap);
+    tmp[255] = 0;
+
+    clContextLogError(ci->C, "TIFF Error: %s", tmp);
+}
+
 struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);
@@ -120,6 +133,9 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
 
     Timer t;
     timerStart(&t);
+
+    TIFFSetErrorHandler(NULL);
+    TIFFSetErrorHandlerExt(errorHandler);
 
     tiff = TIFFClientOpen("tiff",
                           "rb",
@@ -272,6 +288,9 @@ clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const cha
     ci.C = C;
     ci.raw = output;
     ci.offset = 0;
+
+    TIFFSetErrorHandler(NULL);
+    TIFFSetErrorHandlerExt(errorHandler);
 
     tiff = TIFFClientOpen("tiff",
                           "wb",
