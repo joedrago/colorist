@@ -108,6 +108,19 @@ static void errorHandler(thandle_t handle, const char * module, const char * fmt
     clContextLogError(ci->C, "TIFF Error: %s", tmp);
 }
 
+static void warningHandler(thandle_t handle, const char * module, const char * fmt, va_list ap)
+{
+    (void)module;
+
+    tiffCallbackInfo * ci = (tiffCallbackInfo *)handle;
+
+    char tmp[256];
+    vsnprintf(tmp, 255, fmt, ap);
+    tmp[255] = 0;
+
+    clContextLogError(ci->C, "TIFF Warning: %s", tmp);
+}
+
 struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);
@@ -136,6 +149,8 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
 
     TIFFSetErrorHandler(NULL);
     TIFFSetErrorHandlerExt(errorHandler);
+    TIFFSetWarningHandler(NULL);
+    TIFFSetWarningHandlerExt(warningHandler);
 
     tiff = TIFFClientOpen("tiff",
                           "rb",
@@ -291,6 +306,8 @@ clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const cha
 
     TIFFSetErrorHandler(NULL);
     TIFFSetErrorHandlerExt(errorHandler);
+    TIFFSetWarningHandler(NULL);
+    TIFFSetWarningHandlerExt(warningHandler);
 
     tiff = TIFFClientOpen("tiff",
                           "wb",
