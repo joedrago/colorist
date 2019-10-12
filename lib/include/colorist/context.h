@@ -31,7 +31,6 @@ typedef enum clAction
     CL_ACTION_GENERATE,
     CL_ACTION_IDENTIFY,
     CL_ACTION_MODIFY,
-    CL_ACTION_REPORT,
 
     CL_ACTION_ERROR
 } clAction;
@@ -273,7 +272,6 @@ int clContextConvert(clContext * C);
 int clContextGenerate(clContext * C, struct cJSON * output); // output here only used in ACTION_CALC
 int clContextIdentify(clContext * C, struct cJSON * output);
 int clContextModify(clContext * C);
-int clContextReport(clContext * C);
 
 #define TIMING_FORMAT "--> %.3f sec"
 #define OVERALL_TIMING_FORMAT "==> %.3f sec"

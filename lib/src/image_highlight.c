@@ -128,8 +128,7 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
                                      clImage * srcImage,
                                      int srgbLuminance,
                                      clImageSRGBHighlightStats * stats,
-                                     clImageSRGBHighlightPixelInfo * outPixelInfo,
-                                     struct cJSON ** highlightInfoJSON)
+                                     clImageSRGBHighlightPixelInfo * outPixelInfo)
 {
     const float minHighlight = 0.4f;
 
@@ -248,23 +247,6 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
         dstPixel[3] = 255;
     }
     stats->hdrPixelCount = stats->bothPixelCount + stats->overbrightPixelCount + stats->outOfGamutPixelCount;
-
-    if (highlightInfoJSON) {
-        clRaw rawInfo;
-        clStructArraySchema infoSchema[HII_COUNT];
-        for (int i = 0; i < HII_COUNT; ++i) {
-            infoSchema[i].format = "f32";
-            infoSchema[i].name = highlightInfoPropertyNames[i];
-        }
-        rawInfo.ptr = (uint8_t *)pixelInfo->pixels;
-        rawInfo.size = HII_COUNT * sizeof(float) * pixelCount;
-
-        Timer t;
-        clContextLog(C, "highlight", 1, "Packing highlight info...");
-        timerStart(&t);
-        *highlightInfoJSON = clRawToStructArray(C, &rawInfo, srcImage->width, srcImage->height, infoSchema, HII_COUNT);
-        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
-    }
 
     if (!outPixelInfo) {
         clImageSRGBHighlightPixelInfoDestroy(C, pixelInfo);

@@ -61,8 +61,6 @@ clAction clActionFromString(struct clContext * C, const char * str)
         return CL_ACTION_CONVERT;
     if (!strcmp(str, "modify"))
         return CL_ACTION_MODIFY;
-    if (!strcmp(str, "report"))
-        return CL_ACTION_REPORT;
     return CL_ACTION_ERROR;
 }
 
@@ -83,8 +81,6 @@ const char * clActionToString(struct clContext * C, clAction action)
             return "convert";
         case CL_ACTION_MODIFY:
             return "modify";
-        case CL_ACTION_REPORT:
-            return "report";
         case CL_ACTION_ERROR:
         default:
             break;
@@ -892,7 +888,7 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
             if (C->action == CL_ACTION_NONE) {
                 C->action = clActionFromString(C, arg);
                 if (C->action == CL_ACTION_ERROR) {
-                    clContextLogError(C, "unknown action '%s', expecting convert, identify, generate, or report", arg);
+                    clContextLogError(C, "unknown action '%s', expecting convert, identify, or generate", arg);
                 }
             } else if (filenames[0] == NULL) {
                 filenames[0] = arg;
@@ -963,19 +959,6 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
             C->outputFilename = filenames[1];
             if (!C->outputFilename) {
                 clContextLogError(C, "modify requires an output filename.");
-                return clFalse;
-            }
-            break;
-
-        case CL_ACTION_REPORT:
-            C->inputFilename = filenames[0];
-            if (!C->inputFilename) {
-                clContextLogError(C, "report requires an input filename.");
-                return clFalse;
-            }
-            C->outputFilename = filenames[1];
-            if (!C->outputFilename) {
-                clContextLogError(C, "report requires an output filename.");
                 return clFalse;
             }
             break;
@@ -1089,7 +1072,6 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "        colorist generate                [output.icc]   [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist generate [image string] [output image] [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist modify   [input.icc]    [output.icc]   [OPTIONS]");
-    clContextLog(C, NULL, 0, "        colorist report   [input]        [output.html]  [OPTIONS]");
     clContextLog(C, NULL, 0, "        colorist calc     [image string]                [OPTIONS]");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Basic Options:");

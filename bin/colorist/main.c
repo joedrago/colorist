@@ -103,9 +103,6 @@ int main(int argc, char * argv[])
         case CL_ACTION_MODIFY:
             ret = clContextModify(C);
             break;
-        case CL_ACTION_REPORT:
-            ret = clContextReport(C);
-            break;
         case CL_ACTION_ERROR:
         case CL_ACTION_NONE:
         default:

@@ -9,7 +9,6 @@
 
 #include "colorist/context.h"
 
-#include "cJSON.h"
 #include "zlib.h"
 
 #include <stdarg.h>
@@ -152,33 +151,6 @@ void clRawFree(struct clContext * C, clRaw * raw)
     clFree(raw->ptr);
     raw->ptr = NULL;
     raw->size = 0;
-}
-
-struct cJSON * clRawToStructArray(struct clContext * C, clRaw * raw, int width, int height, clStructArraySchema * schema, int schemaCount)
-{
-    cJSON * json = cJSON_CreateObject();
-    cJSON * jsonSchema = cJSON_CreateArray();
-    char * b64;
-    int i;
-
-    cJSON_AddItemToObject(json, "width", cJSON_CreateNumber(width));
-    cJSON_AddItemToObject(json, "height", cJSON_CreateNumber(height));
-
-    clRaw compressed = CL_RAW_EMPTY;
-    clRawDeflate(C, &compressed, raw);
-    b64 = clRawToBase64(C, &compressed);
-    cJSON_AddItemToObject(json, "data", cJSON_CreateString(b64));
-    clFree(b64);
-    clRawFree(C, &compressed);
-
-    cJSON_AddItemToObject(json, "schema", jsonSchema);
-    for (i = 0; i < schemaCount; ++i) {
-        cJSON * jsonEntry = cJSON_CreateObject();
-        cJSON_AddItemToObject(jsonEntry, "format", cJSON_CreateString(schema[i].format));
-        cJSON_AddItemToObject(jsonEntry, "name", cJSON_CreateString(schema[i].name));
-        cJSON_AddItemToArray(jsonSchema, jsonEntry);
-    }
-    return json;
 }
 
 clBool clRawReadFile(struct clContext * C, clRaw * raw, const char * filename)

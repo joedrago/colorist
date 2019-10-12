@@ -118,8 +118,7 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
                                      clImage * srcImage,
                                      int srgbLuminance,
                                      clImageSRGBHighlightStats * stats,
-                                     clImageSRGBHighlightPixelInfo * outPixelInfo,
-                                     struct cJSON ** highlightInfoJSON);
+                                     clImageSRGBHighlightPixelInfo * outPixelInfo);
 clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y, int * w, int * h);
 void clImageColorGrade(struct clContext * C, clImage * image, int taskCount, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose);
 void clImageSetPixel(struct clContext * C, clImage * image, int x, int y, int r, int g, int b, int a);

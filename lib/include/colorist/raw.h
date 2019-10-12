@@ -21,12 +21,6 @@ typedef struct clRaw
         NULL, 0      \
     }
 
-typedef struct clStructArraySchema
-{
-    const char * format; // i8,i16,i32,u8,u16,u32,f32
-    const char * name;
-} clStructArraySchema;
-
 struct clContext;
 
 void clRawRealloc(struct clContext * C, clRaw * raw, size_t newSize);
@@ -38,6 +32,5 @@ void clRawFree(struct clContext * C, clRaw * raw);
 clBool clRawReadFile(struct clContext * C, clRaw * raw, const char * filename);
 clBool clRawReadFileHeader(struct clContext * C, clRaw * raw, const char * filename, size_t bytes);
 clBool clRawWriteFile(struct clContext * C, clRaw * raw, const char * filename);
-struct cJSON * clRawToStructArray(struct clContext * C, clRaw * raw, int width, int height, clStructArraySchema * schema, int schemaCount);
 
 #endif

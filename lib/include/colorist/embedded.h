@@ -16,8 +16,4 @@ extern unsigned char hlgCurveBinaryData[];
 extern unsigned int pqCurveBinarySize;
 extern unsigned char pqCurveBinaryData[];
 
-// reportTemplateBinary.h
-extern unsigned int reportTemplateBinarySize;
-extern unsigned char reportTemplateBinaryData[];
-
 #endif

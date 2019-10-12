@@ -39,12 +39,10 @@ set(COLORIST_LIB_INCLUDES
     include/colorist/types.h
     include/colorist/version.h
     include/colorist/embedded.h
-    ${CMAKE_CURRENT_BINARY_DIR}/reportTemplateBinary.h
     ${CMAKE_CURRENT_BINARY_DIR}/pqCurveBinary.h
     ${CMAKE_CURRENT_BINARY_DIR}/hlgCurveBinary.h
 )
 
-generate_headers(templates/reportTemplate.html)
 generate_headers(raw/pqCurve.bin)
 generate_headers(raw/hlgCurve.bin)
 
@@ -57,7 +55,6 @@ set(COLORIST_LIB_SRCS
     src/context_log.c
     src/context_memory.c
     src/context_modify.c
-    src/context_report.c
     src/context_rw.c
     src/context_version.c
     src/embedded.c
