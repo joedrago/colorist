@@ -78,8 +78,8 @@ static void roundtrip(clContext * C, int depth, clProfile * profile, clProfile *
             src16[1] = (uint16_t)((float)channelIndex * pattern[1]);
             src16[2] = (uint16_t)((float)channelIndex * pattern[2]);
 
-            clTransformRun(C, srcToInt, 1, src16, intermediate, 1);
-            clTransformRun(C, intToDst, 1, intermediate, dst16, 1);
+            clTransformRun(C, srcToInt, src16, intermediate, 1);
+            clTransformRun(C, intToDst, intermediate, dst16, 1);
             diffs = countCodePointDiffs(src16, dst16);
             if (diffs > 0) {
                 ++totalMismatches;

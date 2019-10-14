@@ -22,7 +22,6 @@ void clPixelMathUNormToFloat(struct clContext * C, uint16_t * inPixels, int inDe
 void clPixelMathFloatToUNorm(struct clContext * C, float * inPixels, uint16_t * outPixels, int outDepth, int pixelCount);
 void clPixelMathScaleLuminance(struct clContext * C, float * pixels, int pixelCount, float luminanceScale, clBool tonemap);
 void clPixelMathColorGrade(struct clContext * C,
-                           int taskCount,
                            struct clProfile * pixelProfile,
                            float * pixels,
                            int pixelCount,

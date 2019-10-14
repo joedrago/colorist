@@ -191,7 +191,6 @@ typedef struct clConversionParams
     uint32_t frameIndex;            // --frameindex
     float gamma;                    // -g
     const char * hald;              // --hald
-    int jobs;                       // -j
     int luminance;                  // -l
     const char * iccOverrideOut;    // -o
     float primaries[8];             // -p
@@ -231,6 +230,7 @@ typedef struct clContext
     clReadExtraInfo readExtraInfo; // populated by some formats' readers
     clBool help;                   // -h
     const char * iccOverrideIn;    // -i
+    int jobs;                      // -j
     clBool verbose;                // -v
     clBool ccmmAllowed;            // --ccmm
     const char * inputFilename;    // index 0

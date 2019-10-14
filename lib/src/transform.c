@@ -874,7 +874,7 @@ float clTransformCalcMaxY(clContext * C, clTransform * linearFromXYZ, clTransfor
     floatXYZ[0] = (float)XYZ.X;
     floatXYZ[1] = (float)XYZ.Y;
     floatXYZ[2] = (float)XYZ.Z;
-    clTransformRun(C, linearFromXYZ, 1, floatXYZ, floatRGB, 1);
+    clTransformRun(C, linearFromXYZ, floatXYZ, floatRGB, 1);
     maxChannel = floatRGB[0];
     if (maxChannel < floatRGB[1])
         maxChannel = floatRGB[1];
@@ -883,7 +883,7 @@ float clTransformCalcMaxY(clContext * C, clTransform * linearFromXYZ, clTransfor
     floatRGB[0] /= maxChannel;
     floatRGB[1] /= maxChannel;
     floatRGB[2] /= maxChannel;
-    clTransformRun(C, linearToXYZ, 1, floatRGB, floatXYZ, 1);
+    clTransformRun(C, linearToXYZ, floatRGB, floatXYZ, 1);
     return floatXYZ[1];
 }
 
@@ -1026,11 +1026,12 @@ static void transformTaskFunc(clTransformTask * info)
     clCCMMTransform(info->C, info->transform, info->useCCMM, info->inPixels, info->outPixels, info->pixelCount);
 }
 
-void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount)
+void clTransformRun(struct clContext * C, clTransform * transform, void * srcPixels, void * dstPixels, int pixelCount)
 {
     int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat, transform->srcDepth);
     int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat, transform->dstDepth);
     clBool useCCMM = clTransformUsesCCMM(C, transform);
+    int taskCount = C->jobs;
 
     clTransformPrepare(C, transform);
 

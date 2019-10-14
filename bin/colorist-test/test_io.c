@@ -87,7 +87,7 @@ static void test_images(const char * ext, int threshold, int additionalArgc, cha
 
     TEST_ASSERT_TRUE_MESSAGE(clProfileComponentsMatch(C, srcImage->profile, dstImage->profile), "profiles don't match");
 
-    clImageDiff * diff = clImageDiffCreate(C, srcImage, dstImage, C->params.jobs, 0.1f, threshold);
+    clImageDiff * diff = clImageDiffCreate(C, srcImage, dstImage, 0.1f, threshold);
     TEST_ASSERT_NOT_NULL_MESSAGE(diff, "failed to diff images");
     if (diff->overThresholdCount > 0) {
         printf("ERROR: overThresholdCount: %d / %d, largestChannelDiff: %d\n", diff->overThresholdCount, diff->pixelCount, diff->largestChannelDiff);
@@ -145,14 +145,14 @@ static void test_ext(struct clExtInfo * extInfo)
                             }
 
                             printf("Testing ext:%s threshold:%d bpc:%s q/r:%s primaries:%s curve:%s luminance:%s yuv:%s\n",
-                                extInfo->ext,
-                                threshold,
-                                *bpc,
-                                *quality,
-                                *primaries,
-                                *curve,
-                                *luminance,
-                                *yuv);
+                                   extInfo->ext,
+                                   threshold,
+                                   *bpc,
+                                   *quality,
+                                   *primaries,
+                                   *curve,
+                                   *luminance,
+                                   *yuv);
 
                             test_images(extInfo->ext, threshold, argc, argv);
                         }

@@ -218,7 +218,7 @@ static const char * parseParenColor(struct clContext * C, const char * s, int de
             src[0] = parsedColor->fr * (float)luminance;
             src[1] = parsedColor->fg * (float)luminance;
             src[2] = parsedColor->fb * (float)luminance;
-            clTransformRun(C, fromXYZ, 1, src, dst, 1);
+            clTransformRun(C, fromXYZ, src, dst, 1);
             parsedColor->fr = dst[0];
             parsedColor->fg = dst[1];
             parsedColor->fb = dst[2];

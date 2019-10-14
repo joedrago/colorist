@@ -166,7 +166,7 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
     clPixelMathUNormToFloat(C, srcImage->pixels, srcImage->depth, srcFloats, pixelCount);
 
     float * xyzPixels = clAllocate(3 * sizeof(float) * pixelCount);
-    clTransformRun(C, toXYZ, C->params.jobs, (uint8_t *)srcFloats, (uint8_t *)xyzPixels, pixelCount);
+    clTransformRun(C, toXYZ, (uint8_t *)srcFloats, (uint8_t *)xyzPixels, pixelCount);
 
     clImageSRGBHighlightPixelInfo * pixelInfo = outPixelInfo;
     if (!pixelInfo) {

@@ -384,7 +384,6 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->bpc = 0;
     params->formatName = NULL;
     params->hald = NULL;
-    params->jobs = clTaskLimit();
     params->iccOverrideOut = NULL;
     params->rect[0] = 0;
     params->rect[1] = 0;
@@ -421,6 +420,7 @@ static void clContextSetDefaultArgs(clContext * C)
     clConversionParamsSetDefaults(C, &C->params);
     C->help = clFalse;
     C->iccOverrideIn = NULL;
+    C->jobs = clTaskLimit();
     C->verbose = clFalse;
     C->ccmmAllowed = clTrue;
     C->inputFilename = NULL;
@@ -742,9 +742,9 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 C->iccOverrideIn = arg;
             } else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs")) {
                 NEXTARG();
-                C->params.jobs = atoi(arg);
-                if ((C->params.jobs <= 0) || (C->params.jobs > taskLimit))
-                    C->params.jobs = taskLimit;
+                C->jobs = atoi(arg);
+                if ((C->jobs <= 0) || (C->jobs > taskLimit))
+                    C->jobs = taskLimit;
             } else if (!strcmp(arg, "--json")) {
                 // Allow it to exist on the cmdline, it doesn't adjust any params
             } else if (!strcmp(arg, "-l") || !strcmp(arg, "--luminance")) {

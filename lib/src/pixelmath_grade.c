@@ -90,7 +90,6 @@ static void gammaErrorTermTaskFunc(clGammaErrorTermTask * info)
 }
 
 void clPixelMathColorGrade(struct clContext * C,
-                           int taskCount,
                            struct clProfile * pixelProfile,
                            float * pixels,
                            int pixelCount,
@@ -133,7 +132,7 @@ void clPixelMathColorGrade(struct clContext * C,
             pixel += 4;
         }
 
-        clTransformRun(C, toXYZ, 1, &pixels[indexWithMaxChannel * 4], xyz, 1);
+        clTransformRun(C, toXYZ, &pixels[indexWithMaxChannel * 4], xyz, 1);
         pixelX = indexWithMaxChannel % imageWidth;
         pixelY = indexWithMaxChannel / imageWidth;
         pixelLuminance = xyz[1];
@@ -142,7 +141,7 @@ void clPixelMathColorGrade(struct clContext * C,
         maxPixel[1] = maxChannel;
         maxPixel[2] = maxChannel;
         maxPixel[3] = 1.0f;
-        clTransformRun(C, toXYZ, 1, maxPixel, xyz, 1);
+        clTransformRun(C, toXYZ, maxPixel, xyz, 1);
         maxLuminanceFloat = xyz[1];
         maxLuminance = (int)clPixelMathRoundf(maxLuminanceFloat);
 
@@ -171,7 +170,7 @@ void clPixelMathColorGrade(struct clContext * C,
         clTask ** tasks;
         clGammaErrorTermTask * infos;
         int tasksInFlight = 0;
-        COLORIST_ASSERT(taskCount);
+        int taskCount = C->jobs;
 
         clContextLog(C, "grading", 1, "Using %d thread%s to find best gamma.", taskCount, (taskCount == 1) ? "" : "s");
 

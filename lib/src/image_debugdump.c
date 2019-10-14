@@ -140,7 +140,7 @@ static void dumpPixel(struct clContext * C,
     floatRGBA[1] = intRGB[1] / maxChannel;
     floatRGBA[2] = intRGB[2] / maxChannel;
     floatRGBA[3] = intRGB[3] / maxChannel;
-    clTransformRun(C, toXYZ, 1, floatRGBA, floatXYZ, 1);
+    clTransformRun(C, toXYZ, floatRGBA, floatXYZ, 1);
     XYZ.X = floatXYZ[0];
     XYZ.Y = floatXYZ[1];
     XYZ.Z = floatXYZ[2];

@@ -269,7 +269,7 @@ int clContextConvert(clContext * C)
         clContextLog(C, "grading", 0, "Color grading ...");
         timerStart(&t);
         dstInfo.curve.type = CL_PCT_GAMMA;
-        clImageColorGrade(C, srcImage, params.jobs, dstInfo.depth, &dstInfo.luminance, &dstInfo.curve.gamma, C->verbose);
+        clImageColorGrade(C, srcImage, dstInfo.depth, &dstInfo.luminance, &dstInfo.curve.gamma, C->verbose);
         clContextLog(C, "grading", 0, "Using maxLum: %d, gamma: %g", dstInfo.luminance, dstInfo.curve.gamma);
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
@@ -334,7 +334,7 @@ int clContextConvert(clContext * C)
         }
     }
 
-    dstImage = clImageConvert(C, srcImage, params.jobs, dstInfo.depth, dstProfile, params.autoGrade ? CL_TONEMAP_OFF : params.tonemap);
+    dstImage = clImageConvert(C, srcImage, dstInfo.depth, dstProfile, params.autoGrade ? CL_TONEMAP_OFF : params.tonemap);
     if (!dstImage) {
         FAIL();
     }
@@ -372,7 +372,7 @@ int clContextConvert(clContext * C)
                      params.compositeParams.gamma,
                      params.compositeParams.premultiplied ? "premultiplied" : "not premultiplied");
         timerStart(&t);
-        clImage * blendedImage = clImageBlend(C, dstImage, compositeImage, params.jobs, &params.compositeParams);
+        clImage * blendedImage = clImageBlend(C, dstImage, compositeImage, &params.compositeParams);
         if (!blendedImage) {
             clContextLogError(C, "Image blend failed, bailing out");
             clImageDestroy(C, blendedImage);
@@ -415,7 +415,7 @@ int clContextConvert(clContext * C)
         clImage * convertedImage = clContextRead(C, C->outputFilename, NULL, NULL);
         if (convertedImage) {
             clImageSignals signals;
-            if (clImageCalcSignals(C, params.jobs, srcImage, convertedImage, &signals)) {
+            if (clImageCalcSignals(C, srcImage, convertedImage, &signals)) {
                 clContextLog(C, "stats", 1, "MSE  (Lin) : %g", signals.mseLinear);
                 clContextLog(C, "stats", 1, "PSNR (Lin) : %g", signals.psnrLinear);
                 clContextLog(C, "stats", 1, "MSE  (2.2g): %g", signals.mseG22);

@@ -573,7 +573,6 @@ static void test_clTask(void)
     TEST_ASSERT_NOT_NULL(C);
 
     // Invoke a conversion via color grading
-    int taskLimit = clTaskLimit();
     clProfile * profile = clProfileCreateStock(C, CL_PS_SRGB);
     int width = 100;
     int height = 100;
@@ -589,11 +588,11 @@ static void test_clTask(void)
 
     int luminance = 300;
     float gamma = 2.2f;
-    clPixelMathColorGrade(C, taskLimit, profile, srcPixels, pixelCount, width, 300, 16, &luminance, &gamma, clFalse);
+    clPixelMathColorGrade(C, profile, srcPixels, pixelCount, width, 300, 16, &luminance, &gamma, clFalse);
 
     luminance = 0;
     gamma = 0.0f;
-    clPixelMathColorGrade(C, taskLimit, profile, srcPixels, pixelCount, width, 300, 16, &luminance, &gamma, clTrue);
+    clPixelMathColorGrade(C, profile, srcPixels, pixelCount, width, 300, 16, &luminance, &gamma, clTrue);
 
     clFree(srcPixels);
     clProfileDestroy(C, profile);

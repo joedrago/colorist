@@ -89,7 +89,7 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform);
 clBool clTransformUsesCCMM(struct clContext * C, clTransform * transform);
 const char * clTransformCMMName(struct clContext * C, clTransform * transform);    // Convenience function
 float clTransformGetLuminanceScale(struct clContext * C, clTransform * transform); // Convenience function
-void clTransformRun(struct clContext * C, clTransform * transform, int taskCount, void * srcPixels, void * dstPixels, int pixelCount);
+void clTransformRun(struct clContext * C, clTransform * transform, void * srcPixels, void * dstPixels, int pixelCount);
 
 clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format, int depth);
 int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format, int depth);

@@ -121,7 +121,7 @@ void clBlendParamsSetDefaults(struct clContext * C, clBlendParams * blendParams)
     blendParams->premultiplied = clFalse;
 }
 
-clImage * clImageBlend(struct clContext * C, clImage * image, clImage * compositeImage, int taskCount, clBlendParams * blendParams)
+clImage * clImageBlend(struct clContext * C, clImage * image, clImage * compositeImage, clBlendParams * blendParams)
 {
     // Sanity checks
     if ((image->width != compositeImage->width) || (image->height != compositeImage->height)) {
@@ -155,9 +155,9 @@ clImage * clImageBlend(struct clContext * C, clImage * image, clImage * composit
     // Transform src and comp images into normalized blend space
     int pixelCount = image->width * image->height;
     float * srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
-    clTransformRun(C, srcBlendTransform, taskCount, image->pixels, srcFloats, pixelCount);
+    clTransformRun(C, srcBlendTransform, image->pixels, srcFloats, pixelCount);
     float * cmpFloats = clAllocate(4 * sizeof(float) * pixelCount);
-    clTransformRun(C, cmpBlendTransform, taskCount, compositeImage->pixels, cmpFloats, pixelCount);
+    clTransformRun(C, cmpBlendTransform, compositeImage->pixels, cmpFloats, pixelCount);
 
     // Perform SourceOver blend
     float * dstFloats = clAllocate(4 * sizeof(float) * pixelCount);
@@ -191,7 +191,7 @@ clImage * clImageBlend(struct clContext * C, clImage * image, clImage * composit
 
     // Transform blended pixels into new destination image
     clImage * dstImage = clImageCreate(C, image->width, image->height, image->depth, image->profile);
-    clTransformRun(C, dstTransform, taskCount, dstFloats, dstImage->pixels, pixelCount);
+    clTransformRun(C, dstTransform, dstFloats, dstImage->pixels, pixelCount);
 
     // Cleanup
     clTransformDestroy(C, srcBlendTransform);
@@ -279,7 +279,7 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
     return rotated;
 }
 
-clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount, int depth, struct clProfile * dstProfile, clTonemap tonemap)
+clImage * clImageConvert(struct clContext * C, clImage * srcImage, int depth, struct clProfile * dstProfile, clTonemap tonemap)
 {
     Timer t;
 
@@ -307,7 +307,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount
                  luminanceScale,
                  transform->tonemapEnabled ? "tonemap" : "clip");
     timerStart(&t);
-    clTransformRun(C, transform, taskCount, srcImage->pixels, dstImage->pixels, srcImage->width * srcImage->height);
+    clTransformRun(C, transform, srcImage->pixels, dstImage->pixels, srcImage->width * srcImage->height);
     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
 
     // Cleanup
@@ -315,7 +315,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, int taskCount
     return dstImage;
 }
 
-void clImageColorGrade(struct clContext * C, clImage * image, int taskCount, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose)
+void clImageColorGrade(struct clContext * C, clImage * image, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose)
 {
     int srcLuminance = 0;
     clProfileQuery(C, image->profile, NULL, NULL, &srcLuminance);
@@ -324,7 +324,7 @@ void clImageColorGrade(struct clContext * C, clImage * image, int taskCount, int
     int pixelCount = image->width * image->height;
     float * floatPixels = clAllocate(4 * sizeof(float) * pixelCount);
     clPixelMathUNormToFloat(C, image->pixels, image->depth, floatPixels, pixelCount);
-    clPixelMathColorGrade(C, taskCount, image->profile, floatPixels, pixelCount, image->width, srcLuminance, dstColorDepth, outLuminance, outGamma, verbose);
+    clPixelMathColorGrade(C, image->profile, floatPixels, pixelCount, image->width, srcLuminance, dstColorDepth, outLuminance, outGamma, verbose);
     clFree(floatPixels);
 }
 

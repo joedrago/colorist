@@ -231,7 +231,7 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
     }
 
     encoder = avifEncoderCreate();
-    encoder->maxThreads = C->params.jobs;
+    encoder->maxThreads = C->jobs;
     if ((writeParams->quantizerMin == -1) && (writeParams->quantizerMax == -1)) {
         int quality = writeParams->quality ? writeParams->quality : 100; // consider 0 to be lossless (100)
 

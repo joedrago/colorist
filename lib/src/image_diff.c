@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage * image2, int taskCount, float minIntensity, int threshold)
+clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage * image2, float minIntensity, int threshold)
 {
     if (!clProfileComponentsMatch(C, image1->profile, image2->profile) || (image1->width != image2->width) ||
         (image1->height != image2->height) || (image1->depth != image2->depth)) {
@@ -47,7 +47,7 @@ clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage 
     curve.implicitScale = 1.0f;
     curve.gamma = 1.0f;
     clProfile * intensityProfile = clProfileCreate(C, &primaries, &curve, C->defaultLuminance, NULL);
-    clImage * intensityMap = clImageConvert(C, image1, taskCount, 16, intensityProfile, CL_TONEMAP_AUTO);
+    clImage * intensityMap = clImageConvert(C, image1, 16, intensityProfile, CL_TONEMAP_AUTO);
     clProfileDestroy(C, intensityProfile);
 
     float kr = 0.2126f;
