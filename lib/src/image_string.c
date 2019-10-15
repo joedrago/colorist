@@ -712,6 +712,11 @@ clImage * clImageParseString(struct clContext * C, const char * str, int depth, 
     clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, profile, CL_XF_RGB, CL_TONEMAP_OFF);
     int luminance = 0;
 
+    int originalDepth = depth;
+    if (depth == 32) {
+        depth = 16;
+    }
+
     clContextLog(C, "parse", 0, "Parsing image string (%s)...", clTransformCMMName(C, fromXYZ));
 
     if (profile) {
@@ -771,6 +776,10 @@ clImage * clImageParseString(struct clContext * C, const char * str, int depth, 
     } else {
         image = stripes->image;
         stripes->image = NULL;
+    }
+    if (originalDepth != depth) {
+        // Naughty!
+        image->depth = originalDepth;
     }
     clContextLog(C, "parse", 1, "Successfully parsed image string.");
 
