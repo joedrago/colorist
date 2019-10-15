@@ -492,6 +492,36 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, int depth, st
     clContextLog(C, "details", 0, "Destination:");
     clImageDebugDump(C, dstImage, 0, 0, 0, 0, 1);
 
+    if (tonemap == CL_TONEMAP_AUTO) {
+        if (depth == 32) {
+            // Allow overranging, never tonemap
+            clContextLog(C, "tonemap", 0, "Tonemap: converting to FP32 (overranging), auto-tonemap disabled");
+            tonemap = CL_TONEMAP_OFF;
+        } else {
+            int srcPeakLuminance = (int)clImagePeakLuminance(C, srcImage);
+            int dstLuminance = CL_LUMINANCE_UNSPECIFIED;
+            clProfileQuery(C, dstProfile, NULL, NULL, &dstLuminance);
+            if (dstLuminance == CL_LUMINANCE_UNSPECIFIED) {
+                dstLuminance = C->defaultLuminance;
+            }
+
+            if (srcPeakLuminance > dstLuminance) {
+                tonemap = CL_TONEMAP_ON;
+            } else {
+                tonemap = CL_TONEMAP_OFF;
+            }
+
+            clContextLog(C,
+                         "tonemap",
+                         0,
+                         "Tonemap: %d nits (measured potential peak) -> %d nits normalized (%dbpc), auto-tonemap %s",
+                         srcPeakLuminance,
+                         dstLuminance,
+                         depth,
+                         (tonemap == CL_TONEMAP_ON) ? "enabled" : "disabled");
+        }
+    }
+
     // Create the transform
     clTransform * transform = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, dstImage->profile, CL_XF_RGBA, tonemap);
     clTransformPrepare(C, transform);
@@ -500,14 +530,13 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, int depth, st
     clImagePrepareReadPixels(C, srcImage, CL_PIXELFORMAT_F32);
     clImagePrepareWritePixels(C, dstImage, CL_PIXELFORMAT_F32);
 
+    const char * tonemapDescription = transform->tonemapEnabled ? "tonemap" : "clip";
+    if ((tonemap == CL_TONEMAP_OFF) && (depth == 32)) {
+        tonemapDescription = "overrange";
+    }
+
     // Perform conversion
-    clContextLog(C,
-                 "convert",
-                 0,
-                 "Converting (%s, lum scale %gx, %s)...",
-                 clTransformCMMName(C, transform),
-                 luminanceScale,
-                 transform->tonemapEnabled ? "tonemap" : "clip");
+    clContextLog(C, "convert", 0, "Converting (%s, lum scale %gx, %s)...", clTransformCMMName(C, transform), luminanceScale, tonemapDescription);
     timerStart(&t);
     clTransformRun(C, transform, srcImage->pixelsF32, dstImage->pixelsF32, srcImage->width * srcImage->height);
     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
