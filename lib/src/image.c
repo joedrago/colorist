@@ -88,7 +88,8 @@ void clImagePrepareReadPixels(struct clContext * C, clImage * image, clPixelForm
 {
     static const uint32_t maxChannelU8 = 255;
     static const float maxChannelU8f = 255.0f;
-    uint32_t maxChannelU16 = (1 << image->depth) - 1;
+    uint32_t depthU16 = CL_CLAMP(image->depth, 8, 16);
+    uint32_t maxChannelU16 = (1 << depthU16) - 1;
     float maxChannelU16f = (float)maxChannelU16;
 
     switch (pixelFormat) {
