@@ -57,6 +57,7 @@ typedef enum clFormatDepth
     CL_FORMAT_DEPTH_8_OR_10,
     CL_FORMAT_DEPTH_8_OR_10_OR_12,
     CL_FORMAT_DEPTH_8_OR_16,
+    CL_FORMAT_DEPTH_8_OR_16_OR_32,
     CL_FORMAT_DEPTH_8_TO_16
 } clFormatDepth;
 

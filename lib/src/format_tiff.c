@@ -134,10 +134,12 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
     int iccLen = 0;
     int channelCount = 0;
     int orientation = ORIENTATION_TOPLEFT;
+    int sampleFormat = SAMPLEFORMAT_UINT;
     uint8_t * iccBuf = NULL;
     int rowIndex, rowBytes;
     tiffCallbackInfo ci;
     uint8_t * pixels = NULL;
+    clBool fp32 = clFalse;
 
     ci.C = C;
     ci.raw = input;
@@ -179,15 +181,27 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
         goto readCleanup;
     }
 
+    TIFFGetField(tiff, TIFFTAG_SAMPLEFORMAT, &sampleFormat);
+    if (sampleFormat < 0) {
+        sampleFormat = SAMPLEFORMAT_UINT;
+    }
     TIFFGetField(tiff, TIFFTAG_BITSPERSAMPLE, &depth);
     if ((depth <= 0)) {
         // TODO: convert to 16bit
         clContextLogError(C, "cannot read depth from TIFF: '%s'");
         goto readCleanup;
     }
-    if ((depth != 8) && (depth != 16)) {
-        clContextLogError(C, "unsupported depth(%d) from TIFF", depth);
-        goto readCleanup;
+    if ((sampleFormat == SAMPLEFORMAT_IEEEFP) && (depth == 32)) {
+        fp32 = clTrue;
+    } else {
+        if (sampleFormat != SAMPLEFORMAT_UINT) {
+            clContextLogError(C, "unsupported sample format (%d) with depth(%d) from TIFF", sampleFormat, depth);
+            goto readCleanup;
+        }
+        if ((depth != 8) && (depth != 16)) {
+            clContextLogError(C, "unsupported uint depth(%d) from TIFF", depth);
+            goto readCleanup;
+        }
     }
 
     if (overrideProfile) {
@@ -213,7 +227,12 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
 
     clImageLogCreate(C, width, height, depth, profile);
     image = clImageCreate(C, width, height, depth, profile);
-    if (depth == 8) {
+
+    if (fp32) {
+        clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_F32);
+        pixels = (uint8_t *)image->pixelsF32;
+        rowBytes = image->width * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_F32);
+    } else if (depth == 8) {
         clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U8);
         pixels = image->pixelsU8;
         rowBytes = image->width * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U8);
@@ -239,23 +258,32 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
 
         if (channelCount == 3) {
             // Expand RGB in-place into RGBA, then fill A
-            if (depth == 8) {
+            if (fp32) {
+                for (int x = image->width - 1; x >= 0; --x) {
+                    float * srcPixel = (float *)&pixelRow[x * 3 * sizeof(float)];
+                    float * dstPixel = (float *)&pixelRow[x * 4 * sizeof(float)];
+                    dstPixel[3] = 1.0f;
+                    dstPixel[2] = srcPixel[2];
+                    dstPixel[1] = srcPixel[1];
+                    dstPixel[0] = srcPixel[0];
+                }
+            } else if (depth == 8) {
                 for (int x = image->width - 1; x >= 0; --x) {
                     uint8_t * srcPixel = &pixelRow[x * 3 * sizeof(uint8_t)];
                     uint8_t * dstPixel = &pixelRow[x * 4 * sizeof(uint8_t)];
-                    dstPixel[0] = srcPixel[0];
-                    dstPixel[1] = srcPixel[1];
-                    dstPixel[2] = srcPixel[2];
                     dstPixel[3] = 255;
+                    dstPixel[2] = srcPixel[2];
+                    dstPixel[1] = srcPixel[1];
+                    dstPixel[0] = srcPixel[0];
                 }
             } else {
                 for (int x = image->width - 1; x >= 0; --x) {
                     uint16_t * srcPixel = (uint16_t *)&pixelRow[x * 3 * sizeof(uint16_t)];
                     uint16_t * dstPixel = (uint16_t *)&pixelRow[x * 4 * sizeof(uint16_t)];
-                    dstPixel[0] = srcPixel[0];
-                    dstPixel[1] = srcPixel[1];
-                    dstPixel[2] = srcPixel[2];
                     dstPixel[3] = 65535;
+                    dstPixel[2] = srcPixel[2];
+                    dstPixel[1] = srcPixel[1];
+                    dstPixel[0] = srcPixel[0];
                 }
             }
         }
@@ -315,20 +343,31 @@ clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const cha
         goto writeCleanup;
     }
 
-    if (image->depth == 8) {
-        clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U8);
-        pixels = image->pixelsU8;
-        rowBytes = image->width * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U8);
+    clBool fp32 = (image->depth == 32) ? clTrue : clFalse;
+    if (fp32) {
+        TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, 32);
+        TIFFSetField(tiff, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP);
+
+        clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_F32);
+        pixels = (uint8_t *)image->pixelsF32;
+        rowBytes = image->width * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_F32);
     } else {
-        clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U16);
-        pixels = (uint8_t *)image->pixelsU16;
-        rowBytes = image->width * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U16);
+        TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, image->depth);
+        TIFFSetField(tiff, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
+        if (image->depth == 8) {
+            clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U8);
+            pixels = image->pixelsU8;
+            rowBytes = image->width * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U8);
+        } else {
+            clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U16);
+            pixels = (uint8_t *)image->pixelsU16;
+            rowBytes = image->width * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U16);
+        }
     }
 
     TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, image->width);
     TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, image->height);
     TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, 4);
-    TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, image->depth);
     TIFFSetField(tiff, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
     TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
     TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);

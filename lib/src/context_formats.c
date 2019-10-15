@@ -214,7 +214,7 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.signatureLengths[0] = sizeof(tiffSig0);
         format.signatures[1] = tiffSig1;
         format.signatureLengths[1] = sizeof(tiffSig1);
-        format.depth = CL_FORMAT_DEPTH_8_OR_16;
+        format.depth = CL_FORMAT_DEPTH_8_OR_16_OR_32;
         format.usesQuality = clFalse;
         format.usesRate = clFalse;
         format.usesYUVFormat = clFalse;

@@ -161,6 +161,8 @@ int clFormatMaxDepth(struct clContext * C, const char * formatName)
         case CL_FORMAT_DEPTH_8_OR_16:
         case CL_FORMAT_DEPTH_8_TO_16:
             return 16;
+        case CL_FORMAT_DEPTH_8_OR_16_OR_32:
+            return 32;
     }
     return 8;
 }
@@ -202,6 +204,12 @@ int clFormatBestDepth(struct clContext * C, const char * formatName, int reqDept
             if (reqDepth > 16)
                 return 16;
             return reqDepth;
+        case CL_FORMAT_DEPTH_8_OR_16_OR_32:
+            if (reqDepth == 32)
+                return 32;
+            if (reqDepth > 8)
+                return 16;
+            break;
     }
 
     // Everything else gets 8 bit
