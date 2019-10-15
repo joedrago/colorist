@@ -601,6 +601,7 @@ static clBool parsePrimaries(clContext * C, float primaries[8], const char * arg
 static clBool parseRect(clContext * C, int rect[4], const char * arg)
 {
     char * buffer = clContextStrdup(C, arg);
+    int defaultRect[4] = { 0, 0, 1, 1 }; // the top-left pixel
 
     int index = 0;
     for (char * token = strtok(buffer, ","); token != NULL; token = strtok(NULL, ",")) {
@@ -611,9 +612,9 @@ static clBool parseRect(clContext * C, int rect[4], const char * arg)
         rect[index] = atoi(token);
         ++index;
     }
-    if (index < 4) {
-        clContextLogError(C, "Too few values for rect: (expecting: x,y,w,h)");
-        return clFalse;
+    while (index < 4) {
+        rect[index] = defaultRect[index];
+        ++index;
     }
     clFree(buffer);
     return clTrue;
