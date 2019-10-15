@@ -14,10 +14,6 @@
 
 #include <string.h>
 
-// This much match clImageSRGBHighlightPixel member order exactly!
-#define HII_COUNT 6 // Must match clImageSRGBHighlightPixel member count!
-static const char * highlightInfoPropertyNames[HII_COUNT] = { "x", "y", "Y", "nits", "maxNits", "outOfGamut" };
-
 static float calcOverbright(float Y, float overbrightScale, float maxY)
 {
     // Even at 10,000 nits, this is only 1 nit difference. If its less than this, we're not over.

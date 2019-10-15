@@ -199,6 +199,10 @@ void clImagePrepareReadPixels(struct clContext * C, clImage * image, clPixelForm
                 }
             }
             break;
+
+        case CL_PIXELFORMAT_COUNT:
+            COLORIST_ASSERT(0);
+            break;
     }
 }
 
