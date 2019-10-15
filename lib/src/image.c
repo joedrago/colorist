@@ -446,8 +446,9 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
                 case 1: // 90 degrees clockwise
                     for (int j = 0; j < image->height; ++j) {
                         for (int i = 0; i < image->width; ++i) {
-                            uint8_t * srcPixel = &srcPixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
-                            uint8_t * dstPixel = &dstPixels[CL_CHANNELS_PER_PIXEL * ((rotated->width - 1 - j) + (i * rotated->width))];
+                            uint8_t * srcPixel = &srcPixels[CL_BYTES_PER_PIXEL(pixelFormat) * (i + (j * image->width))];
+                            uint8_t * dstPixel =
+                                &dstPixels[CL_BYTES_PER_PIXEL(pixelFormat) * ((rotated->width - 1 - j) + (i * rotated->width))];
                             memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL(pixelFormat));
                         }
                     }
@@ -455,9 +456,9 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
                 case 2: // 180 degrees clockwise
                     for (int j = 0; j < image->height; ++j) {
                         for (int i = 0; i < image->width; ++i) {
-                            uint8_t * srcPixel = &srcPixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
-                            uint8_t * dstPixel = &dstPixels[CL_CHANNELS_PER_PIXEL * ((rotated->width - 1 - i) +
-                                                                                     ((rotated->height - 1 - j) * rotated->width))];
+                            uint8_t * srcPixel = &srcPixels[CL_BYTES_PER_PIXEL(pixelFormat) * (i + (j * image->width))];
+                            uint8_t * dstPixel = &dstPixels[CL_BYTES_PER_PIXEL(pixelFormat) *
+                                                            ((rotated->width - 1 - i) + ((rotated->height - 1 - j) * rotated->width))];
                             memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL(pixelFormat));
                         }
                     }
@@ -465,8 +466,9 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
                 case 3: // 270 degrees clockwise
                     for (int j = 0; j < image->height; ++j) {
                         for (int i = 0; i < image->width; ++i) {
-                            uint8_t * srcPixel = &srcPixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
-                            uint8_t * dstPixel = &dstPixels[CL_CHANNELS_PER_PIXEL * (j + ((rotated->height - 1 - i) * rotated->width))];
+                            uint8_t * srcPixel = &srcPixels[CL_BYTES_PER_PIXEL(pixelFormat) * (i + (j * image->width))];
+                            uint8_t * dstPixel =
+                                &dstPixels[CL_BYTES_PER_PIXEL(pixelFormat) * (j + ((rotated->height - 1 - i) * rotated->width))];
                             memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL(pixelFormat));
                         }
                     }
