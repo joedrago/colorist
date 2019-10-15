@@ -145,8 +145,6 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
         }
     }
 
-    float overbrightScale = (float)srcLuminance * srcCurve.implicitScale / (float)srgbLuminance;
-
     // clTransformCalcMaxY assumes the RGB profile is linear with a 1 nit luminance
     clProfileCurve gamma1;
     gamma1.type = CL_PCT_GAMMA;
@@ -159,6 +157,9 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
     int pixelCount = stats->pixelCount = srcImage->width * srcImage->height;
 
     clImagePrepareReadPixels(C, srcImage, CL_PIXELFORMAT_F32);
+
+    float measuredPeakLuminance = clImagePeakLuminance(C, srcImage);
+    float overbrightScale = measuredPeakLuminance * srcCurve.implicitScale / (float)srgbLuminance;
 
     float * xyzPixels = clAllocate(3 * sizeof(float) * pixelCount);
     clTransformRun(C, toXYZ, srcImage->pixelsF32, xyzPixels, pixelCount);

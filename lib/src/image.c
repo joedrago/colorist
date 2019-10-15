@@ -528,6 +528,45 @@ void clImageColorGrade(struct clContext * C, clImage * image, int dstColorDepth,
     clPixelMathColorGrade(C, image->profile, image->pixelsF32, pixelCount, image->width, srcLuminance, dstColorDepth, outLuminance, outGamma, verbose);
 }
 
+float clImageLargestChannel(struct clContext * C, clImage * image)
+{
+    clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_F32);
+
+    float largestChannel = 0.0f;
+    int pixelCount = image->width * image->height;
+    for (int i = 0; i < pixelCount; ++i) {
+        float * pixel = &image->pixelsF32[i * CL_CHANNELS_PER_PIXEL];
+        if (largestChannel < pixel[0]) {
+            largestChannel = pixel[0];
+        }
+        if (largestChannel < pixel[1]) {
+            largestChannel = pixel[1];
+        }
+        if (largestChannel < pixel[2]) {
+            largestChannel = pixel[2];
+        }
+    }
+    return largestChannel;
+}
+
+float clImagePeakLuminance(struct clContext * C, clImage * image)
+{
+    float largestChannel = clImageLargestChannel(C, image);
+
+    float peakPixel[4];
+    peakPixel[0] = largestChannel;
+    peakPixel[1] = largestChannel;
+    peakPixel[2] = largestChannel;
+    peakPixel[3] = 1.0f;
+
+    float peakXYZ[3];
+    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, NULL, CL_XF_XYZ, CL_TONEMAP_OFF);
+    clTransformRun(C, toXYZ, peakPixel, peakXYZ, 1);
+    clTransformDestroy(C, toXYZ);
+
+    return peakXYZ[1];
+}
+
 void clImageDestroy(clContext * C, clImage * image)
 {
     clProfileDestroy(C, image->profile);

@@ -137,6 +137,8 @@ void clImageDestroy(struct clContext * C, clImage * image);
 void clImageLogCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
 clImage * clImageParseString(struct clContext * C, const char * str, int depth, struct clProfile * profile);
 clBool clImageCalcSignals(struct clContext * C, clImage * srcImage, clImage * dstImage, clImageSignals * signals);
+float clImageLargestChannel(struct clContext * C, clImage * image);
+float clImagePeakLuminance(struct clContext * C, clImage * image); // Doesn't return maxCLL, but the lum of (largestChannel, largestChannel, largestChannel)
 
 clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage * image2, float minIntensity, int threshold);
 void clImageDiffUpdate(struct clContext * C, clImageDiff * diff, int threshold);
