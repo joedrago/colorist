@@ -112,6 +112,17 @@ typedef enum clFilter
 clFilter clFilterFromString(struct clContext * C, const char * str);
 const char * clFilterToString(struct clContext * C, clFilter filter);
 
+typedef enum clPixelFormat
+{
+    CL_PIXELFORMAT_FIRST = 0,
+
+    CL_PIXELFORMAT_U8 = 0,
+    CL_PIXELFORMAT_U16,
+    CL_PIXELFORMAT_F32,
+
+    CL_PIXELFORMAT_COUNT
+} clPixelFormat;
+
 typedef enum clYUVFormat
 {
     CL_YUVFORMAT_AUTO,

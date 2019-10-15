@@ -12,8 +12,10 @@
 #include "colorist/types.h"
 
 #define CL_CHANNELS_PER_PIXEL 4 // R, G, B, A
-#define CL_BYTES_PER_CHANNEL 2
-#define CL_BYTES_PER_PIXEL (CL_CHANNELS_PER_PIXEL * CL_BYTES_PER_CHANNEL)
+static const uint32_t CL_BYTES_PER_CHANNEL[CL_PIXELFORMAT_COUNT] = { (uint32_t)sizeof(uint8_t),
+                                                                     (uint32_t)sizeof(uint16_t),
+                                                                     (uint32_t)sizeof(float) };
+#define CL_BYTES_PER_PIXEL(PIXELFORMAT) (CL_CHANNELS_PER_PIXEL * CL_BYTES_PER_CHANNEL[PIXELFORMAT])
 
 struct clProfile;
 struct clRaw;
@@ -24,9 +26,14 @@ typedef struct clImage
     int width;
     int height;
     int depth;
-    int size;
-    uint16_t * pixels; // always RGBA
     struct clProfile * profile;
+
+    // By default, all of these pixels ptrs are just NULL. To use them,
+    // you must prepare them using either clImagePrepareReadPixels()
+    // or clImagePrepareWritePixels().
+    uint8_t * pixelsU8;
+    uint16_t * pixelsU16;
+    float * pixelsF32;
 } clImage;
 
 typedef struct clImageSignals
@@ -119,9 +126,10 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
                                      int srgbLuminance,
                                      clImageSRGBHighlightStats * stats,
                                      clImageSRGBHighlightPixelInfo * outPixelInfo);
+void clImagePrepareReadPixels(struct clContext * C, clImage * image, clPixelFormat pixelFormat);
+void clImagePrepareWritePixels(struct clContext * C, clImage * image, clPixelFormat pixelFormat);
 clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y, int * w, int * h);
 void clImageColorGrade(struct clContext * C, clImage * image, int dstColorDepth, int * outLuminance, float * outGamma, clBool verbose);
-void clImageSetPixel(struct clContext * C, clImage * image, int x, int y, int r, int g, int b, int a);
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent);
 void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clImage * image, int x, int y, int w, int h);
 void clImageDebugDumpPixel(struct clContext * C, clImage * image, int x, int y, clImagePixelInfo * pixelInfo);
@@ -133,12 +141,5 @@ clBool clImageCalcSignals(struct clContext * C, clImage * srcImage, clImage * ds
 clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage * image2, float minIntensity, int threshold);
 void clImageDiffUpdate(struct clContext * C, clImageDiff * diff, int threshold);
 void clImageDiffDestroy(struct clContext * C, clImageDiff * diff);
-
-void clImageToRGB8(struct clContext * C, clImage * image, uint8_t * outPixels);
-void clImageFromRGB8(struct clContext * C, clImage * image, uint8_t * inPixels);
-void clImageToRGBA8(struct clContext * C, clImage * image, uint8_t * outPixels);
-void clImageFromRGBA8(struct clContext * C, clImage * image, uint8_t * inPixels);
-void clImageToBGRA8(struct clContext * C, clImage * image, uint8_t * outPixels);
-void clImageFromBGRA8(struct clContext * C, clImage * image, uint8_t * inPixels);
 
 #endif // ifndef COLORIST_IMAGE_H

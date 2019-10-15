@@ -15,13 +15,11 @@
 // this close.)
 #define AUTO_TONEMAP_LUMINANCE_SCALE_THRESHOLD (1.001f)
 
-#define SRC_16_HAS_ALPHA() (srcPixelBytes > 7)
-#define SRC_FLOAT_HAS_ALPHA() (srcPixelBytes > 15)
-
-#define DST_16_HAS_ALPHA() (dstPixelBytes > 7)
-#define DST_FLOAT_HAS_ALPHA() (dstPixelBytes > 15)
+#define SRC_FLOAT_HAS_ALPHA() (srcChannelCount > 3)
+#define DST_FLOAT_HAS_ALPHA() (dstChannelCount > 3)
 
 static cmsUInt32Number clTransformFormatToLCMSFormat(struct clContext * C, clTransformFormat format);
+static int clTransformFormatToChannelCount(struct clContext * C, clTransformFormat format);
 
 // ----------------------------------------------------------------------------
 // Debug Helpers
@@ -404,18 +402,18 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
 }
 
 // The real color conversion function
-static void transformFloatToFloat(struct clContext * C,
-                                  struct clTransform * transform,
-                                  clBool useCCMM,
-                                  uint8_t * srcPixels,
-                                  int srcPixelBytes,
-                                  uint8_t * dstPixels,
-                                  int dstPixelBytes,
-                                  int pixelCount)
+static void colorConvert(struct clContext * C,
+                         struct clTransform * transform,
+                         clBool useCCMM,
+                         float * srcPixels,
+                         int srcChannelCount,
+                         float * dstPixels,
+                         int dstChannelCount,
+                         int pixelCount)
 {
     for (int i = 0; i < pixelCount; ++i) {
-        float * srcPixel = (float *)&srcPixels[i * srcPixelBytes];
-        float * dstPixel = (float *)&dstPixels[i * dstPixelBytes];
+        float * srcPixel = &srcPixels[i * srcChannelCount];
+        float * dstPixel = &dstPixels[i * dstChannelCount];
         gbVec3 src;
         float XYZ[3];
 
@@ -554,275 +552,36 @@ static void transformFloatToFloat(struct clContext * C,
 }
 
 // ----------------------------------------------------------------------------
-// Transform wrappers for RGB/RGBA
-
-static void transformFloatToRGB(struct clContext * C,
-                                struct clTransform * transform,
-                                clBool useCCMM,
-                                uint8_t * srcPixels,
-                                int srcPixelBytes,
-                                uint8_t * dstPixels,
-                                int dstPixelBytes,
-                                int dstDepth,
-                                int pixelCount)
-{
-    const int dstMaxChannel = (1 << dstDepth) - 1;
-    const float dstRescale = (float)dstMaxChannel;
-
-    for (int i = 0; i < pixelCount; ++i) {
-        float tmpPixel[4];
-        int tmpPixelBytes = (DST_16_HAS_ALPHA()) ? sizeof(float) * 4 : sizeof(float) * 3;
-        float * srcPixel = (float *)&srcPixels[i * srcPixelBytes];
-        uint16_t * dstPixel = (uint16_t *)&dstPixels[i * dstPixelBytes];
-        transformFloatToFloat(C, transform, useCCMM, (uint8_t *)srcPixel, srcPixelBytes, (uint8_t *)tmpPixel, tmpPixelBytes, 1);
-        dstPixel[0] = (uint16_t)clPixelMathRoundNormalized(tmpPixel[0], dstRescale);
-        dstPixel[1] = (uint16_t)clPixelMathRoundNormalized(tmpPixel[1], dstRescale);
-        dstPixel[2] = (uint16_t)clPixelMathRoundNormalized(tmpPixel[2], dstRescale);
-        if (DST_16_HAS_ALPHA()) {
-            if (SRC_FLOAT_HAS_ALPHA()) {
-                // reformat alpha
-                dstPixel[3] = (uint16_t)clPixelMathRoundNormalized(tmpPixel[3], dstRescale);
-            } else {
-                // RGB -> RGBA, set full opacity
-                dstPixel[3] = (uint16_t)dstMaxChannel;
-            }
-        }
-    }
-}
-
-static void transformRGBToFloat(struct clContext * C,
-                                struct clTransform * transform,
-                                clBool useCCMM,
-                                uint8_t * srcPixels,
-                                int srcPixelBytes,
-                                int srcDepth,
-                                uint8_t * dstPixels,
-                                int dstPixelBytes,
-                                int pixelCount)
-{
-    const float srcRescale = 1.0f / (float)((1 << srcDepth) - 1);
-
-    for (int i = 0; i < pixelCount; ++i) {
-        float tmpPixel[4];
-        int tmpPixelBytes = (SRC_16_HAS_ALPHA()) ? sizeof(float) * 4 : sizeof(float) * 3;
-        uint16_t * srcPixel = (uint16_t *)&srcPixels[i * srcPixelBytes];
-        float * dstPixel = (float *)&dstPixels[i * dstPixelBytes];
-        tmpPixel[0] = (float)srcPixel[0] * srcRescale;
-        tmpPixel[1] = (float)srcPixel[1] * srcRescale;
-        tmpPixel[2] = (float)srcPixel[2] * srcRescale;
-        if (DST_FLOAT_HAS_ALPHA()) {
-            if (SRC_16_HAS_ALPHA()) {
-                // reformat alpha
-                tmpPixel[3] = (float)srcPixel[3] * srcRescale;
-            } else {
-                // RGB -> RGBA, set full opacity
-                tmpPixel[3] = 1.0f;
-            }
-        }
-        transformFloatToFloat(C, transform, useCCMM, (uint8_t *)tmpPixel, tmpPixelBytes, (uint8_t *)dstPixel, dstPixelBytes, 1);
-    }
-}
-
-static void transformRGBToRGB(struct clContext * C,
-                              struct clTransform * transform,
-                              clBool useCCMM,
-                              uint8_t * srcPixels,
-                              int srcPixelBytes,
-                              int srcDepth,
-                              uint8_t * dstPixels,
-                              int dstPixelBytes,
-                              int dstDepth,
-                              int pixelCount)
-{
-    const int srcMaxChannel = (1 << srcDepth) - 1;
-    const float srcRescale = 1.0f / (float)srcMaxChannel;
-    const int dstMaxChannel = (1 << dstDepth) - 1;
-    const float dstRescale = (float)dstMaxChannel;
-
-    for (int i = 0; i < pixelCount; ++i) {
-        float tmpSrc[4];
-        float tmpDst[4];
-        uint16_t * srcPixel = (uint16_t *)&srcPixels[i * srcPixelBytes];
-        uint16_t * dstPixel = (uint16_t *)&dstPixels[i * dstPixelBytes];
-        int tmpSrcBytes;
-        int tmpDstBytes;
-
-        tmpSrc[0] = (float)srcPixel[0] * srcRescale;
-        tmpSrc[1] = (float)srcPixel[1] * srcRescale;
-        tmpSrc[2] = (float)srcPixel[2] * srcRescale;
-        if (SRC_16_HAS_ALPHA()) {
-            tmpSrc[3] = (float)srcPixel[3] * srcRescale;
-            tmpSrcBytes = 16;
-        } else {
-            tmpSrcBytes = 12;
-        }
-        if (DST_16_HAS_ALPHA()) {
-            tmpDstBytes = 16;
-        } else {
-            tmpDstBytes = 12;
-        }
-
-        transformFloatToFloat(C, transform, useCCMM, (uint8_t *)tmpSrc, tmpSrcBytes, (uint8_t *)tmpDst, tmpDstBytes, 1);
-
-        dstPixel[0] = (uint16_t)clPixelMathRoundNormalized(tmpDst[0], dstRescale);
-        dstPixel[1] = (uint16_t)clPixelMathRoundNormalized(tmpDst[1], dstRescale);
-        dstPixel[2] = (uint16_t)clPixelMathRoundNormalized(tmpDst[2], dstRescale);
-        if (DST_16_HAS_ALPHA()) {
-            if (SRC_16_HAS_ALPHA()) {
-                // reformat alpha
-                dstPixel[3] = (uint16_t)clPixelMathRoundNormalized(tmpDst[3], dstRescale);
-            } else {
-                // RGB -> RGBA, set full opacity
-                dstPixel[3] = (uint16_t)dstMaxChannel;
-            }
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-// Reformatting
-
-static void reformatFloatToFloat(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
-{
-    COLORIST_UNUSED(C);
-
-    for (int i = 0; i < pixelCount; ++i) {
-        float * srcPixel = (float *)&srcPixels[i * srcPixelBytes];
-        float * dstPixel = (float *)&dstPixels[i * dstPixelBytes];
-        memcpy(dstPixel, srcPixel, sizeof(float) * 3); // all float formats are at least 3 floats
-        if (DST_FLOAT_HAS_ALPHA()) {
-            if (SRC_FLOAT_HAS_ALPHA()) {
-                dstPixel[3] = srcPixel[3];
-            } else {
-                // RGB -> RGBA, set full opacity
-                dstPixel[3] = 1.0f;
-            }
-        }
-    }
-}
-
-static void reformatFloatToRGB(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, uint8_t * dstPixels, int dstPixelBytes, int dstDepth, int pixelCount)
-{
-    COLORIST_UNUSED(C);
-
-    const int dstMaxChannel = (1 << dstDepth) - 1;
-    const float dstRescale = (float)dstMaxChannel;
-    for (int i = 0; i < pixelCount; ++i) {
-        float * srcPixel = (float *)&srcPixels[i * srcPixelBytes];
-        uint16_t * dstPixel = (uint16_t *)&dstPixels[i * dstPixelBytes];
-        dstPixel[0] = (uint16_t)clPixelMathRoundNormalized(srcPixel[0], dstRescale);
-        dstPixel[1] = (uint16_t)clPixelMathRoundNormalized(srcPixel[1], dstRescale);
-        dstPixel[2] = (uint16_t)clPixelMathRoundNormalized(srcPixel[2], dstRescale);
-        if (DST_16_HAS_ALPHA()) {
-            if (SRC_FLOAT_HAS_ALPHA()) {
-                // reformat alpha
-                dstPixel[3] = (uint16_t)clPixelMathRoundNormalized(srcPixel[3], dstRescale);
-            } else {
-                // RGB -> RGBA, set full opacity
-                dstPixel[3] = (uint16_t)dstMaxChannel;
-            }
-        }
-    }
-}
-
-static void reformatRGBToFloat(struct clContext * C, uint8_t * srcPixels, int srcPixelBytes, int srcDepth, uint8_t * dstPixels, int dstPixelBytes, int pixelCount)
-{
-    COLORIST_UNUSED(C);
-
-    const int srcMaxChannel = (1 << srcDepth) - 1;
-    const float srcRescale = 1.0f / (float)srcMaxChannel;
-
-    for (int i = 0; i < pixelCount; ++i) {
-        uint16_t * srcPixel = (uint16_t *)&srcPixels[i * srcPixelBytes];
-        float * dstPixel = (float *)&dstPixels[i * dstPixelBytes];
-        dstPixel[0] = (float)srcPixel[0] * srcRescale;
-        dstPixel[1] = (float)srcPixel[1] * srcRescale;
-        dstPixel[2] = (float)srcPixel[2] * srcRescale;
-        if (DST_FLOAT_HAS_ALPHA()) {
-            if (SRC_16_HAS_ALPHA()) {
-                // reformat alpha
-                dstPixel[3] = (float)srcPixel[3] * srcRescale;
-            } else {
-                // RGB -> RGBA, set full opacity
-                dstPixel[3] = 1.0f;
-            }
-        }
-    }
-}
-
-static void reformatRGBToRGB(struct clContext * C,
-                             uint8_t * srcPixels,
-                             int srcPixelBytes,
-                             int srcDepth,
-                             uint8_t * dstPixels,
-                             int dstPixelBytes,
-                             int dstDepth,
-                             int pixelCount)
-{
-    COLORIST_UNUSED(C);
-
-    const int srcMaxChannel = (1 << srcDepth) - 1;
-    const float srcRescale = 1.0f / (float)srcMaxChannel;
-    const int dstMaxChannel = (1 << dstDepth) - 1;
-    const float dstRescale = (float)dstMaxChannel;
-    const float rescale = srcRescale * dstRescale;
-
-    for (int i = 0; i < pixelCount; ++i) {
-        uint16_t * srcPixel = (uint16_t *)&srcPixels[i * srcPixelBytes];
-        uint16_t * dstPixel = (uint16_t *)&dstPixels[i * dstPixelBytes];
-        dstPixel[0] = (uint16_t)((float)srcPixel[0] * rescale);
-        dstPixel[1] = (uint16_t)((float)srcPixel[1] * rescale);
-        dstPixel[2] = (uint16_t)((float)srcPixel[2] * rescale);
-        if (DST_16_HAS_ALPHA()) {
-            if (SRC_16_HAS_ALPHA()) {
-                dstPixel[3] = (uint16_t)((float)srcPixel[3] * rescale);
-            } else {
-                // RGB -> RGBA, set full opacity
-                dstPixel[3] = (uint16_t)dstMaxChannel;
-            }
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
 // Transform entry point
 
-static void clCCMMTransform(struct clContext * C, struct clTransform * transform, clBool useCCMM, void * srcPixels, void * dstPixels, int pixelCount)
+static void clCCMMTransform(struct clContext * C, struct clTransform * transform, clBool useCCMM, float * srcPixels, float * dstPixels, int pixelCount)
 {
-    int srcDepth = transform->srcDepth;
-    int dstDepth = transform->dstDepth;
-    int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat, srcDepth);
-    int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat, dstDepth);
+    int srcChannelCount = clTransformFormatToChannelCount(C, transform->srcFormat);
+    int dstChannelCount = clTransformFormatToChannelCount(C, transform->dstFormat);
 
     // COLORIST_ASSERT(!transform->srcProfile || transform->srcProfile->ccmm);
     // COLORIST_ASSERT(!transform->dstProfile || transform->dstProfile->ccmm);
 
-    // After this point, find a single valid return point from this function, or die
-
     if (clProfileMatches(C, transform->srcProfile, transform->dstProfile)) {
-        // No color conversion necessary, just format conversion
+        // No color conversion necessary, just repack honoring src/dst alpha
 
-        if (clTransformFormatIsFloat(C, transform->srcFormat, srcDepth) && clTransformFormatIsFloat(C, transform->dstFormat, dstDepth)) {
-            reformatFloatToFloat(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
-        } else if (clTransformFormatIsFloat(C, transform->srcFormat, srcDepth)) {
-            reformatFloatToRGB(C, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, dstDepth, pixelCount);
-        } else if (clTransformFormatIsFloat(C, transform->dstFormat, dstDepth)) {
-            reformatRGBToFloat(C, srcPixels, srcPixelBytes, srcDepth, dstPixels, dstPixelBytes, pixelCount);
-        } else {
-            reformatRGBToRGB(C, srcPixels, srcPixelBytes, srcDepth, dstPixels, dstPixelBytes, dstDepth, pixelCount);
+        for (int i = 0; i < pixelCount; ++i) {
+            float * srcPixel = &srcPixels[i * srcChannelCount];
+            float * dstPixel = &dstPixels[i * dstChannelCount];
+            memcpy(dstPixel, srcPixel, sizeof(float) * 3); // all float formats are at least 3 floats
+            if (DST_FLOAT_HAS_ALPHA()) {
+                if (SRC_FLOAT_HAS_ALPHA()) {
+                    dstPixel[3] = srcPixel[3];
+                } else {
+                    // RGB -> RGBA, set full opacity
+                    dstPixel[3] = 1.0f;
+                }
+            }
         }
     } else {
         // Color conversion is required
 
-        if (clTransformFormatIsFloat(C, transform->srcFormat, srcDepth) && clTransformFormatIsFloat(C, transform->dstFormat, dstDepth)) {
-            transformFloatToFloat(C, transform, useCCMM, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, pixelCount);
-        } else if (clTransformFormatIsFloat(C, transform->srcFormat, srcDepth)) {
-            transformFloatToRGB(C, transform, useCCMM, srcPixels, srcPixelBytes, dstPixels, dstPixelBytes, dstDepth, pixelCount);
-        } else if (clTransformFormatIsFloat(C, transform->dstFormat, dstDepth)) {
-            transformRGBToFloat(C, transform, useCCMM, srcPixels, srcPixelBytes, srcDepth, dstPixels, dstPixelBytes, pixelCount);
-        } else {
-            transformRGBToRGB(C, transform, useCCMM, srcPixels, srcPixelBytes, srcDepth, dstPixels, dstPixelBytes, dstDepth, pixelCount);
-        }
+        colorConvert(C, transform, useCCMM, srcPixels, srcChannelCount, dstPixels, dstChannelCount, pixelCount);
     }
 }
 
@@ -890,10 +649,8 @@ float clTransformCalcMaxY(clContext * C, clTransform * linearFromXYZ, clTransfor
 clTransform * clTransformCreate(struct clContext * C,
                                 struct clProfile * srcProfile,
                                 clTransformFormat srcFormat,
-                                int srcDepth,
                                 struct clProfile * dstProfile,
                                 clTransformFormat dstFormat,
-                                int dstDepth,
                                 clTonemap tonemap)
 {
     clTransform * transform = clAllocateStruct(clTransform);
@@ -901,8 +658,6 @@ clTransform * clTransformCreate(struct clContext * C,
     transform->dstProfile = dstProfile;
     transform->srcFormat = srcFormat;
     transform->dstFormat = dstFormat;
-    transform->srcDepth = srcDepth;
-    transform->dstDepth = dstDepth;
     transform->tonemap = tonemap;
 
     transform->ccmmReady = clFalse;
@@ -949,43 +704,21 @@ static cmsUInt32Number clTransformFormatToLCMSFormat(struct clContext * C, clTra
     return TYPE_RGBA_FLT;
 }
 
-clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format, int depth)
+static int clTransformFormatToChannelCount(struct clContext * C, clTransformFormat format)
 {
     COLORIST_UNUSED(C);
 
     switch (format) {
         case CL_XF_XYZ:
-            return clTrue;
         case CL_XF_RGB:
-        case CL_XF_RGBA:
-            return depth == 32;
-    }
-    return clFalse;
-}
-
-int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format, int depth)
-{
-    COLORIST_UNUSED(C);
-
-    switch (format) {
-        case CL_XF_XYZ:
-            return sizeof(float) * 3;
-
-        case CL_XF_RGB:
-            if (depth == 32)
-                return sizeof(float) * 3;
-            else
-                return sizeof(uint16_t) * 3;
+            return 3;
 
         case CL_XF_RGBA:
-            if (depth == 32)
-                return sizeof(float) * 4;
-            else
-                return sizeof(uint16_t) * 4;
+            return 4;
     }
 
-    COLORIST_FAILURE("clTransformFormatToPixelBytes: Unknown transform format");
-    return sizeof(float) * 4;
+    COLORIST_FAILURE("clTransformFormatToChannelCount: Unknown transform format");
+    return 4;
 }
 
 clBool clTransformUsesCCMM(struct clContext * C, clTransform * transform)
@@ -1015,8 +748,8 @@ typedef struct clTransformTask
 {
     clContext * C;
     clTransform * transform;
-    void * inPixels;
-    void * outPixels;
+    float * inPixels;
+    float * outPixels;
     int pixelCount;
     clBool useCCMM;
 } clTransformTask;
@@ -1026,10 +759,10 @@ static void transformTaskFunc(clTransformTask * info)
     clCCMMTransform(info->C, info->transform, info->useCCMM, info->inPixels, info->outPixels, info->pixelCount);
 }
 
-void clTransformRun(struct clContext * C, clTransform * transform, void * srcPixels, void * dstPixels, int pixelCount)
+void clTransformRun(struct clContext * C, clTransform * transform, float * srcPixels, float * dstPixels, int pixelCount)
 {
-    int srcPixelBytes = clTransformFormatToPixelBytes(C, transform->srcFormat, transform->srcDepth);
-    int dstPixelBytes = clTransformFormatToPixelBytes(C, transform->dstFormat, transform->dstDepth);
+    int srcChannelCount = clTransformFormatToChannelCount(C, transform->srcFormat);
+    int dstChannelCount = clTransformFormatToChannelCount(C, transform->dstFormat);
     clBool useCCMM = clTransformUsesCCMM(C, transform);
     int taskCount = C->jobs;
 
@@ -1055,8 +788,6 @@ void clTransformRun(struct clContext * C, clTransform * transform, void * srcPix
         info.useCCMM = useCCMM;
         transformTaskFunc(&info);
     } else {
-        uint8_t * uSrcPixels = (uint8_t *)srcPixels;
-        uint8_t * uDstPixels = (uint8_t *)dstPixels;
         int pixelsPerTask = pixelCount / taskCount;
         int lastTaskPixelCount = pixelCount - (pixelsPerTask * (taskCount - 1));
         clTask ** tasks;
@@ -1068,8 +799,8 @@ void clTransformRun(struct clContext * C, clTransform * transform, void * srcPix
         for (i = 0; i < taskCount; ++i) {
             infos[i].C = C;
             infos[i].transform = transform;
-            infos[i].inPixels = &uSrcPixels[i * pixelsPerTask * srcPixelBytes];
-            infos[i].outPixels = &uDstPixels[i * pixelsPerTask * dstPixelBytes];
+            infos[i].inPixels = &srcPixels[i * pixelsPerTask * srcChannelCount];
+            infos[i].outPixels = &dstPixels[i * pixelsPerTask * dstChannelCount];
             infos[i].pixelCount = (i == (taskCount - 1)) ? lastTaskPixelCount : pixelsPerTask;
             infos[i].useCCMM = useCCMM;
             tasks[i] = clTaskCreate(C, (clTaskFunc)transformTaskFunc, &infos[i]);

@@ -14,6 +14,47 @@
 
 #include <string.h>
 
+static uint8_t * clImagePixelPtr(clContext * C, clImage * image, clPixelFormat pixelFormat)
+{
+    COLORIST_UNUSED(C);
+    switch (pixelFormat) {
+        case CL_PIXELFORMAT_U8:
+            return image->pixelsU8;
+        case CL_PIXELFORMAT_U16:
+            return (uint8_t *)image->pixelsU16;
+        case CL_PIXELFORMAT_F32:
+            return (uint8_t *)image->pixelsF32;
+        case CL_PIXELFORMAT_COUNT:
+            COLORIST_ASSERT(0);
+            break;
+    }
+    return NULL;
+}
+
+static void clImageAllocatePixels(struct clContext * C, clImage * image, clPixelFormat pixelFormat)
+{
+    switch (pixelFormat) {
+        case CL_PIXELFORMAT_U8:
+            if (!image->pixelsU8) {
+                image->pixelsU8 = clAllocate(image->width * image->height * CL_BYTES_PER_PIXEL(pixelFormat));
+            }
+            break;
+        case CL_PIXELFORMAT_U16:
+            if (!image->pixelsU16) {
+                image->pixelsU16 = clAllocate(image->width * image->height * CL_BYTES_PER_PIXEL(pixelFormat));
+            }
+            break;
+        case CL_PIXELFORMAT_F32:
+            if (!image->pixelsF32) {
+                image->pixelsF32 = clAllocate(image->width * image->height * CL_BYTES_PER_PIXEL(pixelFormat));
+            }
+            break;
+        case CL_PIXELFORMAT_COUNT:
+            COLORIST_ASSERT(0);
+            break;
+    }
+}
+
 void clImageLogCreate(clContext * C, int width, int height, int depth, clProfile * profile)
 {
     COLORIST_UNUSED(width);
@@ -37,10 +78,148 @@ clImage * clImageCreate(clContext * C, int width, int height, int depth, clProfi
     image->width = width;
     image->height = height;
     image->depth = depth;
-    image->size = image->width * image->height * CL_BYTES_PER_PIXEL;
-    image->pixels = (uint16_t *)clAllocate(image->size);
-    memset(image->pixels, 0xff, image->size);
+    image->pixelsU8 = NULL;
+    image->pixelsU16 = NULL;
+    image->pixelsF32 = NULL;
     return image;
+}
+
+void clImagePrepareReadPixels(struct clContext * C, clImage * image, clPixelFormat pixelFormat)
+{
+    static const uint32_t maxChannelU8 = 255;
+    static const float maxChannelU8f = 255.0f;
+    uint32_t maxChannelU16 = (1 << image->depth) - 1;
+    float maxChannelU16f = (float)maxChannelU16;
+
+    switch (pixelFormat) {
+        case CL_PIXELFORMAT_U8:
+            if (!image->pixelsU8) {
+                clImageAllocatePixels(C, image, pixelFormat);
+
+                if (image->pixelsF32) {
+                    // F32 -> U8
+                    for (int j = 0; j < image->height; ++j) {
+                        for (int i = 0; i < image->width; ++i) {
+                            float * srcPixel = &image->pixelsF32[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                            uint8_t * dstPixel = &image->pixelsU8[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                            dstPixel[0] = (uint8_t)clPixelMathRoundUNorm(srcPixel[0], maxChannelU8);
+                            dstPixel[1] = (uint8_t)clPixelMathRoundUNorm(srcPixel[1], maxChannelU8);
+                            dstPixel[2] = (uint8_t)clPixelMathRoundUNorm(srcPixel[2], maxChannelU8);
+                            dstPixel[3] = (uint8_t)clPixelMathRoundUNorm(srcPixel[3], maxChannelU8);
+                        }
+                    }
+                } else if (image->pixelsU16) {
+                    // U16 -> U8
+                    for (int j = 0; j < image->height; ++j) {
+                        for (int i = 0; i < image->width; ++i) {
+                            uint16_t * srcPixel = &image->pixelsU16[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                            uint8_t * dstPixel = &image->pixelsU8[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                            dstPixel[0] = (uint8_t)clPixelMathRoundUNorm(srcPixel[0] / maxChannelU16f, maxChannelU8);
+                            dstPixel[1] = (uint8_t)clPixelMathRoundUNorm(srcPixel[1] / maxChannelU16f, maxChannelU8);
+                            dstPixel[2] = (uint8_t)clPixelMathRoundUNorm(srcPixel[2] / maxChannelU16f, maxChannelU8);
+                            dstPixel[3] = (uint8_t)clPixelMathRoundUNorm(srcPixel[3] / maxChannelU16f, maxChannelU8);
+                        }
+                    }
+                } else {
+                    // U8 White
+                    memset(image->pixelsU8, 0xff, image->width * image->height * sizeof(uint8_t));
+                }
+            }
+            break;
+
+        case CL_PIXELFORMAT_U16:
+            if (!image->pixelsU16) {
+                clImageAllocatePixels(C, image, pixelFormat);
+
+                if (image->pixelsF32) {
+                    // F32 -> U16
+                    for (int j = 0; j < image->height; ++j) {
+                        for (int i = 0; i < image->width; ++i) {
+                            float * srcPixel = &image->pixelsF32[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                            uint16_t * dstPixel = &image->pixelsU16[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                            dstPixel[0] = (uint16_t)clPixelMathRoundUNorm(srcPixel[0], maxChannelU16);
+                            dstPixel[1] = (uint16_t)clPixelMathRoundUNorm(srcPixel[1], maxChannelU16);
+                            dstPixel[2] = (uint16_t)clPixelMathRoundUNorm(srcPixel[2], maxChannelU16);
+                            dstPixel[3] = (uint16_t)clPixelMathRoundUNorm(srcPixel[3], maxChannelU16);
+                        }
+                    }
+                } else if (image->pixelsU8) {
+                    // U8 -> U16
+                    for (int j = 0; j < image->height; ++j) {
+                        for (int i = 0; i < image->width; ++i) {
+                            uint8_t * srcPixel = &image->pixelsU8[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                            uint16_t * dstPixel = &image->pixelsU16[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                            dstPixel[0] = (uint16_t)clPixelMathRoundUNorm(srcPixel[0] / maxChannelU8f, maxChannelU16);
+                            dstPixel[1] = (uint16_t)clPixelMathRoundUNorm(srcPixel[1] / maxChannelU8f, maxChannelU16);
+                            dstPixel[2] = (uint16_t)clPixelMathRoundUNorm(srcPixel[2] / maxChannelU8f, maxChannelU16);
+                            dstPixel[3] = (uint16_t)clPixelMathRoundUNorm(srcPixel[3] / maxChannelU8f, maxChannelU16);
+                        }
+                    }
+                } else {
+                    // U16 White
+                    memset(image->pixelsU16, 0xff, image->width * image->height * sizeof(uint16_t));
+                }
+            }
+            break;
+
+        case CL_PIXELFORMAT_F32:
+            if (!image->pixelsF32) {
+                clImageAllocatePixels(C, image, pixelFormat);
+
+                if (image->pixelsU16) {
+                    // U16 -> F32
+                    for (int j = 0; j < image->height; ++j) {
+                        for (int i = 0; i < image->width; ++i) {
+                            uint16_t * srcPixel = &image->pixelsU16[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                            float * dstPixel = &image->pixelsF32[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                            dstPixel[0] = srcPixel[0] / maxChannelU16f;
+                            dstPixel[1] = srcPixel[1] / maxChannelU16f;
+                            dstPixel[2] = srcPixel[2] / maxChannelU16f;
+                            dstPixel[3] = srcPixel[3] / maxChannelU16f;
+                        }
+                    }
+                } else if (image->pixelsU8) {
+                    // U8 -> F32
+                    for (int j = 0; j < image->height; ++j) {
+                        for (int i = 0; i < image->width; ++i) {
+                            uint8_t * srcPixel = &image->pixelsU8[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                            float * dstPixel = &image->pixelsF32[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
+                            dstPixel[0] = srcPixel[0] / maxChannelU8f;
+                            dstPixel[1] = srcPixel[1] / maxChannelU8f;
+                            dstPixel[2] = srcPixel[2] / maxChannelU8f;
+                            dstPixel[3] = srcPixel[3] / maxChannelU8f;
+                        }
+                    }
+                } else {
+                    // F32 White
+                    uint32_t channelCount = image->width * image->height * CL_CHANNELS_PER_PIXEL;
+                    for (uint32_t i = 0; i < channelCount; ++i) {
+                        image->pixelsF32[i] = 1.0f;
+                    }
+                }
+            }
+            break;
+    }
+}
+
+void clImagePrepareWritePixels(struct clContext * C, clImage * image, clPixelFormat pixelFormat)
+{
+    clImagePrepareReadPixels(C, image, pixelFormat);
+
+    // Throw away anything that isn't about to be written to; it will be stale and can be repopulated
+    // lazily by a future call to clImagePrepareReadPixels().
+    if (image->pixelsU8 && (pixelFormat != CL_PIXELFORMAT_U8)) {
+        clFree(image->pixelsU8);
+        image->pixelsU8 = NULL;
+    }
+    if (image->pixelsU16 && (pixelFormat != CL_PIXELFORMAT_U16)) {
+        clFree(image->pixelsU16);
+        image->pixelsU16 = NULL;
+    }
+    if (image->pixelsF32 && (pixelFormat != CL_PIXELFORMAT_F32)) {
+        clFree(image->pixelsF32);
+        image->pixelsF32 = NULL;
+    }
 }
 
 clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, int w, int h, clBool keepSrc)
@@ -53,11 +232,19 @@ clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, in
     }
 
     clImage * dstImage = clImageCreate(C, w, h, srcImage->depth, srcImage->profile);
-    for (int j = 0; j < h; ++j) {
-        for (int i = 0; i < w; ++i) {
-            uint16_t * src = &srcImage->pixels[CL_CHANNELS_PER_PIXEL * ((i + x) + (srcImage->width * (j + y)))];
-            uint16_t * dst = &dstImage->pixels[CL_CHANNELS_PER_PIXEL * (i + (dstImage->width * j))];
-            memcpy(dst, src, CL_BYTES_PER_PIXEL);
+    for (clPixelFormat pixelFormat = CL_PIXELFORMAT_FIRST; pixelFormat != CL_PIXELFORMAT_COUNT; ++pixelFormat) {
+        uint8_t * srcPixels = clImagePixelPtr(C, srcImage, pixelFormat);
+        if (!srcPixels) {
+            continue;
+        }
+        clImageAllocatePixels(C, dstImage, pixelFormat);
+        uint8_t * dstPixels = clImagePixelPtr(C, dstImage, pixelFormat);
+        for (int j = 0; j < h; ++j) {
+            for (int i = 0; i < w; ++i) {
+                uint8_t * src = &srcPixels[CL_BYTES_PER_PIXEL(pixelFormat) * ((i + x) + (srcImage->width * (j + y)))];
+                uint8_t * dst = &dstPixels[CL_BYTES_PER_PIXEL(pixelFormat) * (i + (dstImage->width * j))];
+                memcpy(dst, src, CL_BYTES_PER_PIXEL(pixelFormat));
+            }
         }
     }
 
@@ -70,44 +257,36 @@ clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, in
 clImage * clImageApplyHALD(struct clContext * C, clImage * image, clImage * hald, int haldDims)
 {
     clImage * appliedImage = clImageCreate(C, image->width, image->height, image->depth, image->profile);
+
+    clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_F32);
+    clImagePrepareReadPixels(C, hald, CL_PIXELFORMAT_F32);
+    clImagePrepareWritePixels(C, appliedImage, CL_PIXELFORMAT_F32);
+
     int pixelCount = image->width * image->height;
-    int haldDataCount = hald->width * hald->height;
-
-    float * haldData = clAllocate(4 * sizeof(float) * haldDataCount);
-    clPixelMathUNormToFloat(C, hald->pixels, hald->depth, haldData, haldDataCount);
-    float * srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
-    clPixelMathUNormToFloat(C, image->pixels, image->depth, srcFloats, pixelCount);
-    float * dstFloats = clAllocate(4 * sizeof(float) * pixelCount);
-
     for (int i = 0; i < pixelCount; ++i) {
-        clPixelMathHaldCLUTLookup(C, haldData, haldDims, &srcFloats[i * 4], &dstFloats[i * 4]);
+        clPixelMathHaldCLUTLookup(C,
+                                  hald->pixelsF32,
+                                  haldDims,
+                                  &image->pixelsF32[i * CL_CHANNELS_PER_PIXEL],
+                                  &appliedImage->pixelsF32[i * CL_CHANNELS_PER_PIXEL]);
     }
-    clPixelMathFloatToUNorm(C, dstFloats, appliedImage->pixels, appliedImage->depth, pixelCount);
 
-    clFree(dstFloats);
-    clFree(srcFloats);
-    clFree(haldData);
     return appliedImage;
 }
 
 clImage * clImageResize(struct clContext * C, clImage * image, int width, int height, clFilter resizeFilter)
 {
     clImage * resizedImage = clImageCreate(C, width, height, image->depth, image->profile);
-    int pixelCount = image->width * image->height;
-    int resizedPixelCount = resizedImage->width * resizedImage->height;
-    float * srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
-    float * dstFloats = clAllocate(4 * sizeof(float) * resizedPixelCount);
 
-    clPixelMathUNormToFloat(C, image->pixels, image->depth, srcFloats, pixelCount);
-    clPixelMathResize(C, image->width, image->height, srcFloats, resizedImage->width, resizedImage->height, dstFloats, resizeFilter);
-    int resizedChannelCount = resizedPixelCount * 4;
+    clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_F32);
+    clImagePrepareWritePixels(C, resizedImage, CL_PIXELFORMAT_F32);
+
+    clPixelMathResize(C, image->width, image->height, image->pixelsF32, resizedImage->width, resizedImage->height, resizedImage->pixelsF32, resizeFilter);
+    int resizedChannelCount = resizedImage->width * resizedImage->height * CL_CHANNELS_PER_PIXEL;
     for (int i = 0; i < resizedChannelCount; ++i) {
-        // catmullrom and mitchell sometimes give values outside of 0-1, so clamp before calling clPixelMathFloatToUNorm
-        dstFloats[i] = CL_CLAMP(dstFloats[i], 0.0f, 1.0f);
+        // catmullrom and mitchell sometimes give values outside of 0-1, so clamp them
+        resizedImage->pixelsF32[i] = CL_CLAMP(resizedImage->pixelsF32[i], 0.0f, 1.0f);
     }
-    clPixelMathFloatToUNorm(C, dstFloats, resizedImage->pixels, resizedImage->depth, resizedPixelCount);
-    clFree(dstFloats);
-    clFree(srcFloats);
     return resizedImage;
 }
 
@@ -145,19 +324,20 @@ clImage * clImageBlend(struct clContext * C, clImage * image, clImage * composit
     clProfile * blendProfile = clProfileCreate(C, &primaries, &curve, maxLuminance, NULL);
 
     // Build transforms that go [src -> blend], [cmp -> blend], [blend -> dst]
-    clTransform * srcBlendTransform =
-        clTransformCreate(C, image->profile, CL_XF_RGBA, image->depth, blendProfile, CL_XF_RGBA, 32, blendParams->srcTonemap);
+    clTransform * srcBlendTransform = clTransformCreate(C, image->profile, CL_XF_RGBA, blendProfile, CL_XF_RGBA, blendParams->srcTonemap);
     clTransform * cmpBlendTransform =
-        clTransformCreate(C, compositeImage->profile, CL_XF_RGBA, compositeImage->depth, blendProfile, CL_XF_RGBA, 32, blendParams->cmpTonemap);
+        clTransformCreate(C, compositeImage->profile, CL_XF_RGBA, blendProfile, CL_XF_RGBA, blendParams->cmpTonemap);
     clTransform * dstTransform =
-        clTransformCreate(C, blendProfile, CL_XF_RGBA, 32, image->profile, CL_XF_RGBA, image->depth, CL_TONEMAP_OFF); // maxLuminance should match, no need to tonemap
+        clTransformCreate(C, blendProfile, CL_XF_RGBA, image->profile, CL_XF_RGBA, CL_TONEMAP_OFF); // maxLuminance should match, no need to tonemap
 
     // Transform src and comp images into normalized blend space
+    clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_F32);
+    clImagePrepareReadPixels(C, compositeImage, CL_PIXELFORMAT_F32);
     int pixelCount = image->width * image->height;
     float * srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
-    clTransformRun(C, srcBlendTransform, image->pixels, srcFloats, pixelCount);
+    clTransformRun(C, srcBlendTransform, image->pixelsF32, srcFloats, pixelCount);
     float * cmpFloats = clAllocate(4 * sizeof(float) * pixelCount);
-    clTransformRun(C, cmpBlendTransform, compositeImage->pixels, cmpFloats, pixelCount);
+    clTransformRun(C, cmpBlendTransform, compositeImage->pixelsF32, cmpFloats, pixelCount);
 
     // Perform SourceOver blend
     float * dstFloats = clAllocate(4 * sizeof(float) * pixelCount);
@@ -191,7 +371,8 @@ clImage * clImageBlend(struct clContext * C, clImage * image, clImage * composit
 
     // Transform blended pixels into new destination image
     clImage * dstImage = clImageCreate(C, image->width, image->height, image->depth, image->profile);
-    clTransformRun(C, dstTransform, dstFloats, dstImage->pixels, pixelCount);
+    clImagePrepareWritePixels(C, dstImage, CL_PIXELFORMAT_F32);
+    clTransformRun(C, dstTransform, dstFloats, dstImage->pixelsF32, pixelCount);
 
     // Cleanup
     clTransformDestroy(C, srcBlendTransform);
@@ -225,56 +406,68 @@ clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y
     return clTrue;
 }
 
-void clImageSetPixel(clContext * C, clImage * image, int x, int y, int r, int g, int b, int a)
-{
-    COLORIST_UNUSED(C);
-
-    uint16_t * pixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (x + (y * image->width))];
-    pixel[0] = (uint16_t)r;
-    pixel[1] = (uint16_t)g;
-    pixel[2] = (uint16_t)b;
-    pixel[3] = (uint16_t)a;
-}
-
 clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
 {
     clImage * rotated = NULL;
+
     switch (cwTurns) {
         case 0: // Not rotated
             rotated = clImageCreate(C, image->width, image->height, image->depth, image->profile);
-            memcpy(rotated->pixels, image->pixels, rotated->size);
             break;
         case 1: // 90 degrees clockwise
             rotated = clImageCreate(C, image->height, image->width, image->depth, image->profile);
-            for (int j = 0; j < image->height; ++j) {
-                for (int i = 0; i < image->width; ++i) {
-                    uint16_t * srcPixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
-                    uint16_t * dstPixel = &rotated->pixels[CL_CHANNELS_PER_PIXEL * ((rotated->width - 1 - j) + (i * rotated->width))];
-                    memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL);
-                }
-            }
             break;
         case 2: // 180 degrees clockwise
             rotated = clImageCreate(C, image->width, image->height, image->depth, image->profile);
-            for (int j = 0; j < image->height; ++j) {
-                for (int i = 0; i < image->width; ++i) {
-                    uint16_t * srcPixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
-                    uint16_t * dstPixel =
-                        &rotated->pixels[CL_CHANNELS_PER_PIXEL * ((rotated->width - 1 - i) + ((rotated->height - 1 - j) * rotated->width))];
-                    memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL);
-                }
-            }
             break;
         case 3: // 270 degrees clockwise
             rotated = clImageCreate(C, image->height, image->width, image->depth, image->profile);
-            for (int j = 0; j < image->height; ++j) {
-                for (int i = 0; i < image->width; ++i) {
-                    uint16_t * srcPixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
-                    uint16_t * dstPixel = &rotated->pixels[CL_CHANNELS_PER_PIXEL * (j + ((rotated->height - 1 - i) * rotated->width))];
-                    memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL);
-                }
-            }
             break;
+    }
+
+    if (rotated) {
+        for (clPixelFormat pixelFormat = CL_PIXELFORMAT_FIRST; pixelFormat != CL_PIXELFORMAT_COUNT; ++pixelFormat) {
+            uint8_t * srcPixels = clImagePixelPtr(C, image, pixelFormat);
+            if (!srcPixels) {
+                continue;
+            }
+            clImageAllocatePixels(C, rotated, pixelFormat);
+            uint8_t * dstPixels = clImagePixelPtr(C, rotated, pixelFormat);
+
+            switch (cwTurns) {
+                case 0: // Not rotated
+                    memcpy(dstPixels, srcPixels, rotated->width * rotated->height * CL_BYTES_PER_PIXEL(pixelFormat));
+                    break;
+                case 1: // 90 degrees clockwise
+                    for (int j = 0; j < image->height; ++j) {
+                        for (int i = 0; i < image->width; ++i) {
+                            uint8_t * srcPixel = &srcPixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
+                            uint8_t * dstPixel = &dstPixels[CL_CHANNELS_PER_PIXEL * ((rotated->width - 1 - j) + (i * rotated->width))];
+                            memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL(pixelFormat));
+                        }
+                    }
+                    break;
+                case 2: // 180 degrees clockwise
+                    for (int j = 0; j < image->height; ++j) {
+                        for (int i = 0; i < image->width; ++i) {
+                            uint8_t * srcPixel = &srcPixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
+                            uint8_t * dstPixel = &dstPixels[CL_CHANNELS_PER_PIXEL * ((rotated->width - 1 - i) +
+                                                                                     ((rotated->height - 1 - j) * rotated->width))];
+                            memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL(pixelFormat));
+                        }
+                    }
+                    break;
+                case 3: // 270 degrees clockwise
+                    for (int j = 0; j < image->height; ++j) {
+                        for (int i = 0; i < image->width; ++i) {
+                            uint8_t * srcPixel = &srcPixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
+                            uint8_t * dstPixel = &dstPixels[CL_CHANNELS_PER_PIXEL * (j + ((rotated->height - 1 - i) * rotated->width))];
+                            memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL(pixelFormat));
+                        }
+                    }
+                    break;
+            }
+        }
     }
     return rotated;
 }
@@ -293,10 +486,12 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, int depth, st
     clImageDebugDump(C, dstImage, 0, 0, 0, 0, 1);
 
     // Create the transform
-    clTransform * transform =
-        clTransformCreate(C, srcImage->profile, CL_XF_RGBA, srcImage->depth, dstImage->profile, CL_XF_RGBA, depth, tonemap);
+    clTransform * transform = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, dstImage->profile, CL_XF_RGBA, tonemap);
     clTransformPrepare(C, transform);
     float luminanceScale = clTransformGetLuminanceScale(C, transform);
+
+    clImagePrepareReadPixels(C, srcImage, CL_PIXELFORMAT_F32);
+    clImagePrepareWritePixels(C, dstImage, CL_PIXELFORMAT_F32);
 
     // Perform conversion
     clContextLog(C,
@@ -307,7 +502,7 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, int depth, st
                  luminanceScale,
                  transform->tonemapEnabled ? "tonemap" : "clip");
     timerStart(&t);
-    clTransformRun(C, transform, srcImage->pixels, dstImage->pixels, srcImage->width * srcImage->height);
+    clTransformRun(C, transform, srcImage->pixelsF32, dstImage->pixelsF32, srcImage->width * srcImage->height);
     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
 
     // Cleanup
@@ -322,194 +517,21 @@ void clImageColorGrade(struct clContext * C, clImage * image, int dstColorDepth,
     srcLuminance = (srcLuminance != 0) ? srcLuminance : C->defaultLuminance;
 
     int pixelCount = image->width * image->height;
-    float * floatPixels = clAllocate(4 * sizeof(float) * pixelCount);
-    clPixelMathUNormToFloat(C, image->pixels, image->depth, floatPixels, pixelCount);
-    clPixelMathColorGrade(C, image->profile, floatPixels, pixelCount, image->width, srcLuminance, dstColorDepth, outLuminance, outGamma, verbose);
-    clFree(floatPixels);
+    clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_F32);
+    clPixelMathColorGrade(C, image->profile, image->pixelsF32, pixelCount, image->width, srcLuminance, dstColorDepth, outLuminance, outGamma, verbose);
 }
 
 void clImageDestroy(clContext * C, clImage * image)
 {
     clProfileDestroy(C, image->profile);
-    if (image->pixels) {
-        clFree(image->pixels);
+    if (image->pixelsU8) {
+        clFree(image->pixelsU8);
+    }
+    if (image->pixelsU16) {
+        clFree(image->pixelsU16);
+    }
+    if (image->pixelsF32) {
+        clFree(image->pixelsF32);
     }
     clFree(image);
-}
-
-void clImageToRGB8(struct clContext * C, clImage * image, uint8_t * outPixels)
-{
-    COLORIST_UNUSED(C);
-
-    if (image->depth == 8) {
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint16_t * srcPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                uint8_t * dstPixel = &outPixels[(i + (j * image->width)) * 3];
-                dstPixel[0] = (uint8_t)srcPixel[0];
-                dstPixel[1] = (uint8_t)srcPixel[1];
-                dstPixel[2] = (uint8_t)srcPixel[2];
-            }
-        }
-    } else {
-        float maxSrcChannel = (float)((1 << image->depth) - 1);
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint16_t * srcPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                uint8_t * dstPixel = &outPixels[(i + (j * image->width)) * 3];
-                dstPixel[0] = (uint8_t)clPixelMathRoundf((srcPixel[0] / maxSrcChannel) * 255.0f);
-                dstPixel[1] = (uint8_t)clPixelMathRoundf((srcPixel[1] / maxSrcChannel) * 255.0f);
-                dstPixel[2] = (uint8_t)clPixelMathRoundf((srcPixel[2] / maxSrcChannel) * 255.0f);
-            }
-        }
-    }
-}
-
-void clImageFromRGB8(struct clContext * C, clImage * image, uint8_t * inPixels)
-{
-    COLORIST_UNUSED(C);
-
-    if (image->depth == 8) {
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint8_t * srcPixel = &inPixels[(i + (j * image->width)) * 3];
-                uint16_t * dstPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                dstPixel[0] = srcPixel[0];
-                dstPixel[1] = srcPixel[1];
-                dstPixel[2] = srcPixel[2];
-                dstPixel[3] = 255;
-            }
-        }
-    } else {
-        uint16_t maxDstChannel = (uint16_t)((1 << image->depth) - 1);
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint8_t * srcPixel = &inPixels[(i + (j * image->width)) * 3];
-                uint16_t * dstPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                dstPixel[0] = (uint8_t)clPixelMathRoundf((srcPixel[0] / 255.0f) * maxDstChannel);
-                dstPixel[1] = (uint8_t)clPixelMathRoundf((srcPixel[1] / 255.0f) * maxDstChannel);
-                dstPixel[2] = (uint8_t)clPixelMathRoundf((srcPixel[2] / 255.0f) * maxDstChannel);
-                dstPixel[3] = maxDstChannel;
-            }
-        }
-    }
-}
-void clImageToRGBA8(struct clContext * C, clImage * image, uint8_t * outPixels)
-{
-    COLORIST_UNUSED(C);
-
-    if (image->depth == 8) {
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint16_t * srcPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                uint8_t * dstPixel = &outPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                dstPixel[0] = (uint8_t)srcPixel[0];
-                dstPixel[1] = (uint8_t)srcPixel[1];
-                dstPixel[2] = (uint8_t)srcPixel[2];
-                dstPixel[3] = (uint8_t)srcPixel[3];
-            }
-        }
-    } else {
-        float maxSrcChannel = (float)((1 << image->depth) - 1);
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint16_t * srcPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                uint8_t * dstPixel = &outPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                dstPixel[0] = (uint8_t)clPixelMathRoundf((srcPixel[0] / maxSrcChannel) * 255.0f);
-                dstPixel[1] = (uint8_t)clPixelMathRoundf((srcPixel[1] / maxSrcChannel) * 255.0f);
-                dstPixel[2] = (uint8_t)clPixelMathRoundf((srcPixel[2] / maxSrcChannel) * 255.0f);
-                dstPixel[3] = (uint8_t)clPixelMathRoundf((srcPixel[3] / maxSrcChannel) * 255.0f);
-            }
-        }
-    }
-}
-
-void clImageFromRGBA8(struct clContext * C, clImage * image, uint8_t * inPixels)
-{
-    COLORIST_UNUSED(C);
-
-    if (image->depth == 8) {
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint8_t * srcPixel = &inPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                uint16_t * dstPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                dstPixel[0] = srcPixel[0];
-                dstPixel[1] = srcPixel[1];
-                dstPixel[2] = srcPixel[2];
-                dstPixel[3] = srcPixel[3];
-            }
-        }
-    } else {
-        float maxDstChannel = (float)((1 << image->depth) - 1);
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint8_t * srcPixel = &inPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                uint16_t * dstPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                dstPixel[0] = (uint8_t)clPixelMathRoundf((srcPixel[0] / 255.0f) * maxDstChannel);
-                dstPixel[1] = (uint8_t)clPixelMathRoundf((srcPixel[1] / 255.0f) * maxDstChannel);
-                dstPixel[2] = (uint8_t)clPixelMathRoundf((srcPixel[2] / 255.0f) * maxDstChannel);
-                dstPixel[3] = (uint8_t)clPixelMathRoundf((srcPixel[3] / 255.0f) * maxDstChannel);
-            }
-        }
-    }
-}
-
-void clImageToBGRA8(struct clContext * C, clImage * image, uint8_t * outPixels)
-{
-    COLORIST_UNUSED(C);
-
-    if (image->depth == 8) {
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint16_t * srcPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                uint8_t * dstPixel = &outPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                dstPixel[2] = (uint8_t)srcPixel[0];
-                dstPixel[1] = (uint8_t)srcPixel[1];
-                dstPixel[0] = (uint8_t)srcPixel[2];
-                dstPixel[3] = (uint8_t)srcPixel[3];
-            }
-        }
-    } else {
-        float maxSrcChannel = (float)((1 << image->depth) - 1);
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint16_t * srcPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                uint8_t * dstPixel = &outPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                dstPixel[2] = (uint8_t)clPixelMathRoundf((srcPixel[0] / maxSrcChannel) * 255.0f);
-                dstPixel[1] = (uint8_t)clPixelMathRoundf((srcPixel[1] / maxSrcChannel) * 255.0f);
-                dstPixel[0] = (uint8_t)clPixelMathRoundf((srcPixel[2] / maxSrcChannel) * 255.0f);
-                dstPixel[3] = (uint8_t)clPixelMathRoundf((srcPixel[3] / maxSrcChannel) * 255.0f);
-            }
-        }
-    }
-}
-
-void clImageFromBGRA8(struct clContext * C, clImage * image, uint8_t * inPixels)
-{
-    COLORIST_UNUSED(C);
-
-    if (image->depth == 8) {
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint8_t * srcPixel = &inPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                uint16_t * dstPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                dstPixel[2] = srcPixel[0];
-                dstPixel[1] = srcPixel[1];
-                dstPixel[0] = srcPixel[2];
-                dstPixel[3] = srcPixel[3];
-            }
-        }
-    } else {
-        float maxDstChannel = (float)((1 << image->depth) - 1);
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint8_t * srcPixel = &inPixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                uint16_t * dstPixel = &image->pixels[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                dstPixel[2] = (uint8_t)clPixelMathRoundf((srcPixel[0] / 255.0f) * maxDstChannel);
-                dstPixel[1] = (uint8_t)clPixelMathRoundf((srcPixel[1] / 255.0f) * maxDstChannel);
-                dstPixel[0] = (uint8_t)clPixelMathRoundf((srcPixel[2] / 255.0f) * maxDstChannel);
-                dstPixel[3] = (uint8_t)clPixelMathRoundf((srcPixel[3] / 255.0f) * maxDstChannel);
-            }
-        }
-    }
 }

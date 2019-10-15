@@ -223,12 +223,12 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
 
     clImageLogCreate(C, info.bV5Width, info.bV5Height, depth, profile);
     image = clImageCreate(C, info.bV5Width, info.bV5Height, depth, profile);
+    clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U16);
 
     timerStart(&t);
 
     for (int i = 0; i < pixelCount; ++i) {
-        uint16_t * pixels = (uint16_t *)image->pixels;
-        uint16_t * dstPixel = &pixels[i * 4];
+        uint16_t * dstPixel = &image->pixelsU16[i * 4];
         dstPixel[0] = (uint16_t)((packedPixels[i] & info.bV5RedMask) >> rShift);
         dstPixel[1] = (uint16_t)((packedPixels[i] & info.bV5GreenMask) >> gShift);
         dstPixel[2] = (uint16_t)((packedPixels[i] & info.bV5BlueMask) >> bShift);
@@ -290,11 +290,13 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
         info.bV5CSType = LCS_sRGB;
     }
 
+    clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U16);
+
     packedPixelBytes = sizeof(uint32_t) * image->width * image->height;
     packedPixels = clAllocate(packedPixelBytes);
     if (image->depth == 8) {
         for (int i = 0; i < pixelCount; ++i) {
-            uint16_t * srcPixel = &image->pixels[i * CL_CHANNELS_PER_PIXEL];
+            uint16_t * srcPixel = &image->pixelsU16[i * CL_CHANNELS_PER_PIXEL];
             packedPixels[i] = (srcPixel[2] << 0) +  // B
                               (srcPixel[1] << 8) +  // G
                               (srcPixel[0] << 16) + // R
@@ -307,8 +309,7 @@ clBool clFormatWriteBMP(struct clContext * C, struct clImage * image, const char
     } else {
         // 10 bit
         for (int i = 0; i < pixelCount; ++i) {
-            uint16_t * pixels = (uint16_t *)image->pixels;
-            uint16_t * srcPixel = &pixels[i * CL_CHANNELS_PER_PIXEL];
+            uint16_t * srcPixel = &image->pixelsU16[i * CL_CHANNELS_PER_PIXEL];
             packedPixels[i] = ((srcPixel[2] & 1023) << 0) +  // B
                               ((srcPixel[1] & 1023) << 10) + // G
                               ((srcPixel[0] & 1023) << 20);  // R

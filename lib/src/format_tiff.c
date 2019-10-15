@@ -138,7 +138,6 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
     int rowIndex, rowBytes;
     tiffCallbackInfo ci;
     uint8_t * pixels = NULL;
-    uint8_t * rgba8 = NULL;
 
     ci.C = C;
     ci.raw = input;
@@ -215,12 +214,13 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
     clImageLogCreate(C, width, height, depth, profile);
     image = clImageCreate(C, width, height, depth, profile);
     if (depth == 8) {
-        rgba8 = clAllocate(image->width * image->height * CL_CHANNELS_PER_PIXEL);
-        pixels = rgba8;
-        rowBytes = image->width * CL_CHANNELS_PER_PIXEL * 1;
+        clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U8);
+        pixels = image->pixelsU8;
+        rowBytes = image->width * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U8);
     } else {
-        pixels = (uint8_t *)image->pixels;
-        rowBytes = image->width * CL_CHANNELS_PER_PIXEL * 2;
+        clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U16);
+        pixels = (uint8_t *)image->pixelsU16;
+        rowBytes = image->width * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U16);
     }
     for (rowIndex = 0; rowIndex < image->height; ++rowIndex) {
         uint8_t * pixelRow;
@@ -263,21 +263,12 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
 
     C->readExtraInfo.decodeCodecSeconds = timerElapsedSeconds(&t);
 
-    if (rgba8) {
-        timerStart(&t);
-        clImageFromRGBA8(C, image, rgba8);
-        C->readExtraInfo.decodeFillSeconds = timerElapsedSeconds(&t);
-    }
-
 readCleanup:
     if (tiff) {
         TIFFClose(tiff);
     }
     if (profile) {
         clProfileDestroy(C, profile);
-    }
-    if (rgba8) {
-        clFree(rgba8);
     }
     return image;
 }
@@ -292,7 +283,6 @@ clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const cha
     int rowIndex, rowBytes;
     tiffCallbackInfo ci;
     uint8_t * pixels = NULL;
-    uint8_t * rgba8 = NULL;
 
     clRaw rawProfile = CL_RAW_EMPTY;
     if (!clProfilePack(C, image->profile, &rawProfile)) {
@@ -326,13 +316,13 @@ clBool clFormatWriteTIFF(struct clContext * C, struct clImage * image, const cha
     }
 
     if (image->depth == 8) {
-        rgba8 = clAllocate(image->width * image->height * CL_CHANNELS_PER_PIXEL);
-        clImageToRGBA8(C, image, rgba8);
-        pixels = rgba8;
-        rowBytes = image->width * CL_CHANNELS_PER_PIXEL * 1;
+        clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U8);
+        pixels = image->pixelsU8;
+        rowBytes = image->width * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U8);
     } else {
-        pixels = (uint8_t *)image->pixels;
-        rowBytes = image->width * CL_CHANNELS_PER_PIXEL * 2;
+        clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U16);
+        pixels = (uint8_t *)image->pixelsU16;
+        rowBytes = image->width * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U16);
     }
 
     TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, image->width);

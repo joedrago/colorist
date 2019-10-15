@@ -75,9 +75,10 @@ struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName,
 
     clImageLogCreate(C, width, height, 8, profile);
     image = clImageCreate(C, width, height, 8, profile);
+    clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U8);
 
     timerStart(&t);
-    clImageFromRGBA8(C, image, readPixels);
+    memcpy(image->pixelsU8, readPixels, image->width * image->height * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U8));
     C->readExtraInfo.decodeFillSeconds = timerElapsedSeconds(&t);
 
 readCleanup:
@@ -130,9 +131,9 @@ clBool clFormatWriteWebP(struct clContext * C, struct clImage * image, const cha
     picture.use_argb = 1;
     picture.width = image->width;
     picture.height = image->height;
-    WebPPictureAlloc(&picture);
 
-    clImageToBGRA8(C, image, (uint8_t *)picture.argb);
+    clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U8);
+    WebPPictureImportRGBA(&picture, image->pixelsU8, CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U8) * image->width);
 
     if (!WebPEncode(&config, &picture)) {
         clContextLogError(C, "Failed to encode WebP");

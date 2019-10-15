@@ -18,39 +18,39 @@ static void test_basic_hexcodes(void)
 
     image = clImageParseString(C, "#000000", 8, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    TEST_ASSERT_EQUAL_INT(image->pixels[0], 0);
-    TEST_ASSERT_EQUAL_INT(image->pixels[1], 0);
-    TEST_ASSERT_EQUAL_INT(image->pixels[2], 0);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[0], 0);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[1], 0);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[2], 0);
     clImageDestroy(C, image);
 
     image = clImageParseString(C, "#ffffff", 8, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    TEST_ASSERT_EQUAL_INT(image->pixels[0], 255);
-    TEST_ASSERT_EQUAL_INT(image->pixels[1], 255);
-    TEST_ASSERT_EQUAL_INT(image->pixels[2], 255);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[0], 255);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[1], 255);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[2], 255);
     clImageDestroy(C, image);
 
     image = clImageParseString(C, "#ff0000", 8, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    TEST_ASSERT_EQUAL_INT(image->pixels[0], 255);
-    TEST_ASSERT_EQUAL_INT(image->pixels[1], 0);
-    TEST_ASSERT_EQUAL_INT(image->pixels[2], 0);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[0], 255);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[1], 0);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[2], 0);
     clImageDestroy(C, image);
 
     image = clImageParseString(C, "#010203", 8, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    TEST_ASSERT_EQUAL_INT(image->pixels[0], 1);
-    TEST_ASSERT_EQUAL_INT(image->pixels[1], 2);
-    TEST_ASSERT_EQUAL_INT(image->pixels[2], 3);
-    TEST_ASSERT_EQUAL_INT(image->pixels[3], 255);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[0], 1);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[1], 2);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[2], 3);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[3], 255);
     clImageDestroy(C, image);
 
     image = clImageParseString(C, "#01020304", 8, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    TEST_ASSERT_EQUAL_INT(image->pixels[0], 1);
-    TEST_ASSERT_EQUAL_INT(image->pixels[1], 2);
-    TEST_ASSERT_EQUAL_INT(image->pixels[2], 3);
-    TEST_ASSERT_EQUAL_INT(image->pixels[3], 4);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[0], 1);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[1], 2);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[2], 3);
+    TEST_ASSERT_EQUAL_INT(image->pixelsU16[3], 4);
     clImageDestroy(C, image);
 
     clContextDestroy(C);
@@ -63,47 +63,47 @@ static void test_basic_parens_8bit(void)
 
     image = clImageParseString(C, "(0,0,0)", 8, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    TEST_ASSERT_EQUAL_INT(0, image->pixels[0]);
-    TEST_ASSERT_EQUAL_INT(0, image->pixels[1]);
-    TEST_ASSERT_EQUAL_INT(0, image->pixels[2]);
+    TEST_ASSERT_EQUAL_INT(0, image->pixelsU16[0]);
+    TEST_ASSERT_EQUAL_INT(0, image->pixelsU16[1]);
+    TEST_ASSERT_EQUAL_INT(0, image->pixelsU16[2]);
     clImageDestroy(C, image);
 
     image = clImageParseString(C, "(255,255,255)", 8, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    TEST_ASSERT_EQUAL_INT(255, image->pixels[0]);
-    TEST_ASSERT_EQUAL_INT(255, image->pixels[1]);
-    TEST_ASSERT_EQUAL_INT(255, image->pixels[2]);
+    TEST_ASSERT_EQUAL_INT(255, image->pixelsU16[0]);
+    TEST_ASSERT_EQUAL_INT(255, image->pixelsU16[1]);
+    TEST_ASSERT_EQUAL_INT(255, image->pixelsU16[2]);
     clImageDestroy(C, image);
 
     image = clImageParseString(C, "(255,0,0)", 8, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    TEST_ASSERT_EQUAL_INT(255, image->pixels[0]);
-    TEST_ASSERT_EQUAL_INT(0, image->pixels[1]);
-    TEST_ASSERT_EQUAL_INT(0, image->pixels[2]);
+    TEST_ASSERT_EQUAL_INT(255, image->pixelsU16[0]);
+    TEST_ASSERT_EQUAL_INT(0, image->pixelsU16[1]);
+    TEST_ASSERT_EQUAL_INT(0, image->pixelsU16[2]);
     clImageDestroy(C, image);
 
     image = clImageParseString(C, "(1,2,3)", 8, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    TEST_ASSERT_EQUAL_INT(1, image->pixels[0]);
-    TEST_ASSERT_EQUAL_INT(2, image->pixels[1]);
-    TEST_ASSERT_EQUAL_INT(3, image->pixels[2]);
-    TEST_ASSERT_EQUAL_INT(255, image->pixels[3]);
+    TEST_ASSERT_EQUAL_INT(1, image->pixelsU16[0]);
+    TEST_ASSERT_EQUAL_INT(2, image->pixelsU16[1]);
+    TEST_ASSERT_EQUAL_INT(3, image->pixelsU16[2]);
+    TEST_ASSERT_EQUAL_INT(255, image->pixelsU16[3]);
     clImageDestroy(C, image);
 
     image = clImageParseString(C, "(1,2,3,4)", 8, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    TEST_ASSERT_EQUAL_INT(1, image->pixels[0]);
-    TEST_ASSERT_EQUAL_INT(2, image->pixels[1]);
-    TEST_ASSERT_EQUAL_INT(3, image->pixels[2]);
-    TEST_ASSERT_EQUAL_INT(4, image->pixels[3]);
+    TEST_ASSERT_EQUAL_INT(1, image->pixelsU16[0]);
+    TEST_ASSERT_EQUAL_INT(2, image->pixelsU16[1]);
+    TEST_ASSERT_EQUAL_INT(3, image->pixelsU16[2]);
+    TEST_ASSERT_EQUAL_INT(4, image->pixelsU16[3]);
     clImageDestroy(C, image);
 
     // This is a sneaky one
     image = clImageParseString(C, "rgba16(65535,0,0)", 8, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    TEST_ASSERT_EQUAL_INT(255, image->pixels[0]);
-    TEST_ASSERT_EQUAL_INT(0, image->pixels[1]);
-    TEST_ASSERT_EQUAL_INT(0, image->pixels[2]);
+    TEST_ASSERT_EQUAL_INT(255, image->pixelsU16[0]);
+    TEST_ASSERT_EQUAL_INT(0, image->pixelsU16[1]);
+    TEST_ASSERT_EQUAL_INT(0, image->pixelsU16[2]);
     clImageDestroy(C, image);
 
     clContextDestroy(C);
@@ -117,7 +117,7 @@ static void test_basic_parens_16bit(void)
 
     image = clImageParseString(C, "(0,0,0)", 16, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    pixels = (uint16_t *)image->pixels;
+    pixels = (uint16_t *)image->pixelsU16;
     TEST_ASSERT_EQUAL_INT(0, pixels[0]);
     TEST_ASSERT_EQUAL_INT(0, pixels[1]);
     TEST_ASSERT_EQUAL_INT(0, pixels[2]);
@@ -125,7 +125,7 @@ static void test_basic_parens_16bit(void)
 
     image = clImageParseString(C, "(255,255,255)", 16, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    pixels = (uint16_t *)image->pixels;
+    pixels = (uint16_t *)image->pixelsU16;
     TEST_ASSERT_EQUAL_INT(65535, pixels[0]);
     TEST_ASSERT_EQUAL_INT(65535, pixels[1]);
     TEST_ASSERT_EQUAL_INT(65535, pixels[2]);
@@ -133,7 +133,7 @@ static void test_basic_parens_16bit(void)
 
     image = clImageParseString(C, "(255,0,0)", 16, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    pixels = (uint16_t *)image->pixels;
+    pixels = (uint16_t *)image->pixelsU16;
     TEST_ASSERT_EQUAL_INT(65535, pixels[0]);
     TEST_ASSERT_EQUAL_INT(0, pixels[1]);
     TEST_ASSERT_EQUAL_INT(0, pixels[2]);
@@ -141,7 +141,7 @@ static void test_basic_parens_16bit(void)
 
     image = clImageParseString(C, "rgb16(1,2,3)", 16, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    pixels = (uint16_t *)image->pixels;
+    pixels = (uint16_t *)image->pixelsU16;
     TEST_ASSERT_EQUAL_INT(1, pixels[0]);
     TEST_ASSERT_EQUAL_INT(2, pixels[1]);
     TEST_ASSERT_EQUAL_INT(3, pixels[2]);
@@ -150,7 +150,7 @@ static void test_basic_parens_16bit(void)
 
     image = clImageParseString(C, "rgba16(1,2,3,4)", 16, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    pixels = (uint16_t *)image->pixels;
+    pixels = (uint16_t *)image->pixelsU16;
     TEST_ASSERT_EQUAL_INT(1, pixels[0]);
     TEST_ASSERT_EQUAL_INT(2, pixels[1]);
     TEST_ASSERT_EQUAL_INT(3, pixels[2]);
@@ -159,7 +159,7 @@ static void test_basic_parens_16bit(void)
 
     image = clImageParseString(C, "rgba16(65532,27302,13476)", 16, NULL);
     TEST_ASSERT_NOT_NULL(image);
-    pixels = (uint16_t *)image->pixels;
+    pixels = (uint16_t *)image->pixelsU16;
     TEST_ASSERT_EQUAL_INT(65532, pixels[0]);
     TEST_ASSERT_EQUAL_INT(27302, pixels[1]);
     TEST_ASSERT_EQUAL_INT(13476, pixels[2]);

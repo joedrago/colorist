@@ -39,7 +39,6 @@ struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, 
 
     clImage * image = NULL;
     png_bytep * rowPointers = NULL;
-    uint8_t * rgba8 = NULL;
 
     if (png_sig_cmp(input->ptr, 0, 8)) {
         clContextLogError(C, "not a PNG");
@@ -127,24 +126,19 @@ struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, 
     }
     rowPointers = (png_bytep *)clAllocate(sizeof(png_bytep) * rawHeight);
     if (imgBytesPerChannel == 1) {
-        rgba8 = clAllocate(image->width * image->height * CL_CHANNELS_PER_PIXEL);
+        clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U8);
         for (int y = 0; y < rawHeight; ++y) {
-            rowPointers[y] = &rgba8[CL_CHANNELS_PER_PIXEL * y * rawWidth];
+            rowPointers[y] = &image->pixelsU8[CL_CHANNELS_PER_PIXEL * y * rawWidth];
         }
     } else {
+        clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U16);
         for (int y = 0; y < rawHeight; ++y) {
-            rowPointers[y] = (png_byte *)&image->pixels[CL_CHANNELS_PER_PIXEL * y * rawWidth];
+            rowPointers[y] = (png_byte *)&image->pixelsU16[CL_CHANNELS_PER_PIXEL * y * rawWidth];
         }
     }
     png_read_image(png, rowPointers);
     C->readExtraInfo.decodeCodecSeconds = timerElapsedSeconds(&t);
 
-    if (rgba8) {
-        timerStart(&t);
-        clImageFromRGBA8(C, image, rgba8);
-        C->readExtraInfo.decodeFillSeconds = timerElapsedSeconds(&t);
-        clFree(rgba8);
-    }
     png_destroy_read_struct(&png, &info, NULL);
     clFree(rowPointers);
     return image;
@@ -188,7 +182,6 @@ clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char
     }
 
     png_bytep * rowPointers = NULL;
-    uint8_t * rgba8 = NULL;
 
     if (setjmp(png_jmpbuf(png))) {
         if (rowPointers) {
@@ -214,14 +207,14 @@ clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char
     rowPointers = (png_bytep *)clAllocate(sizeof(png_bytep) * image->height);
     int imgBytesPerChannel = (image->depth == 16) ? 2 : 1;
     if (imgBytesPerChannel == 1) {
-        rgba8 = clAllocate(image->width * image->height * CL_CHANNELS_PER_PIXEL);
-        clImageToRGBA8(C, image, rgba8);
+        clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U8);
         for (int y = 0; y < image->height; ++y) {
-            rowPointers[y] = &rgba8[CL_CHANNELS_PER_PIXEL * y * image->width];
+            rowPointers[y] = &image->pixelsU8[CL_CHANNELS_PER_PIXEL * y * image->width];
         }
     } else {
+        clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U16);
         for (int y = 0; y < image->height; ++y) {
-            rowPointers[y] = (png_byte *)&image->pixels[CL_CHANNELS_PER_PIXEL * y * image->width];
+            rowPointers[y] = (png_byte *)&image->pixelsU16[CL_CHANNELS_PER_PIXEL * y * image->width];
         }
         png_set_swap(png);
     }
@@ -233,8 +226,5 @@ clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char
     clFree(rowPointers);
     clRawFree(C, &rawProfile);
     output->size = wi.offset;
-    if (rgba8) {
-        clFree(rgba8);
-    }
     return clTrue;
 }

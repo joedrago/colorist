@@ -20,6 +20,15 @@ float clPixelMathRoundf(float val)
     return floorf(val + 0.5f);
 }
 
+uint32_t clPixelMathRoundUNorm(float val, uint32_t maxValue)
+{
+    uint32_t ret = (uint32_t)floorf((val * (float)maxValue) + 0.5f);
+    if (ret > maxValue) {
+        ret = maxValue;
+    }
+    return ret;
+}
+
 float clPixelMathFloorf(float val)
 {
     return floorf(val);
@@ -113,7 +122,7 @@ void clPixelMathColorGrade(struct clContext * C,
         int pixelX, pixelY;
         float pixelLuminance, maxLuminanceFloat;
 
-        clTransform * toXYZ = clTransformCreate(C, pixelProfile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
+        clTransform * toXYZ = clTransformCreate(C, pixelProfile, CL_XF_RGBA, NULL, CL_XF_XYZ, CL_TONEMAP_OFF);
 
         pixel = pixels;
         for (int i = 0; i < pixelCount; ++i) {

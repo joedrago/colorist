@@ -29,6 +29,7 @@ clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage 
     diff->image = clImageCreate(C, image1->width, image1->height, 8, NULL);
     diff->diffs = clAllocate(sizeof(uint16_t) * diff->pixelCount);
     diff->intensities = clAllocate(sizeof(uint16_t) * diff->pixelCount);
+    clImagePrepareWritePixels(C, diff->image, CL_PIXELFORMAT_U16);
 
     clProfilePrimaries primaries;
     clProfileCurve curve;
@@ -47,20 +48,22 @@ clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage 
     curve.implicitScale = 1.0f;
     curve.gamma = 1.0f;
     clProfile * intensityProfile = clProfileCreate(C, &primaries, &curve, C->defaultLuminance, NULL);
-    clImage * intensityMap = clImageConvert(C, image1, 16, intensityProfile, CL_TONEMAP_AUTO);
     clProfileDestroy(C, intensityProfile);
+
+    clImagePrepareReadPixels(C, image1, CL_PIXELFORMAT_U16);
+    clImagePrepareReadPixels(C, image1, CL_PIXELFORMAT_F32); // for intensity calculation
+    clImagePrepareReadPixels(C, image2, CL_PIXELFORMAT_U16);
 
     float kr = 0.2126f;
     float kb = 0.0722f;
     float kg = 1.0f - kr - kb;
     for (int i = 0; i < diff->pixelCount; ++i) {
-        uint16_t * p1 = &image1->pixels[i * CL_CHANNELS_PER_PIXEL];
-        uint16_t * p2 = &image2->pixels[i * CL_CHANNELS_PER_PIXEL];
-        uint16_t * diffPixel = &diff->image->pixels[i * CL_CHANNELS_PER_PIXEL];
+        uint16_t * p1 = &image1->pixelsU16[i * CL_CHANNELS_PER_PIXEL];
+        uint16_t * p2 = &image2->pixelsU16[i * CL_CHANNELS_PER_PIXEL];
+        uint16_t * diffPixel = &diff->image->pixelsU16[i * CL_CHANNELS_PER_PIXEL];
 
-        uint16_t * intensityPixel = &intensityMap->pixels[i * CL_CHANNELS_PER_PIXEL];
-        float intensity =
-            ((intensityPixel[0] / 65535.0f) * kr) + ((intensityPixel[1] / 65535.0f) * kg) + ((intensityPixel[2] / 65535.0f) * kb);
+        float * intensityPixel = &image1->pixelsF32[i * CL_CHANNELS_PER_PIXEL];
+        float intensity = (intensityPixel[0] * kr) + (intensityPixel[1] * kg) + (intensityPixel[2] * kb);
         intensity = CL_CLAMP(intensity + diff->minIntensity, 0.0f, 1.0f);
         diff->intensities[i] = (uint16_t)clPixelMathRoundf(255.0f * powf(intensity, 1.0f / 2.2f));
 
@@ -88,8 +91,6 @@ clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage 
         diffPixel[3] = 255;
     }
 
-    clImageDestroy(C, intensityMap);
-
     clImageDiffUpdate(C, diff, threshold);
     return diff;
 }
@@ -103,8 +104,10 @@ void clImageDiffUpdate(struct clContext * C, clImageDiff * diff, int threshold)
     diff->underThresholdCount = 0;
     diff->overThresholdCount = 0;
 
+    clImagePrepareWritePixels(C, diff->image, CL_PIXELFORMAT_U16);
+
     for (int i = 0; i < diff->pixelCount; ++i) {
-        uint16_t * diffPixel = &diff->image->pixels[i * CL_CHANNELS_PER_PIXEL];
+        uint16_t * diffPixel = &diff->image->pixelsU16[i * CL_CHANNELS_PER_PIXEL];
 
         if (diff->diffs[i] == 0) {
             ++diff->matchCount;

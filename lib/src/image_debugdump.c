@@ -27,7 +27,7 @@ static void dumpPixel(struct clContext * C,
 
 void clImageDebugDump(struct clContext * C, clImage * image, int x, int y, int w, int h, int extraIndent)
 {
-    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
+    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, NULL, CL_XF_XYZ, CL_TONEMAP_OFF);
 
     clContextLog(C, "image", 0 + extraIndent, "Image: %dx%d %d-bit", image->width, image->height, image->depth);
     clProfileDebugDump(C, image->profile, C->verbose, 1 + extraIndent);
@@ -57,7 +57,7 @@ void clImageDebugDumpJSON(struct clContext * C, struct cJSON * jsonOutput, clIma
 {
     cJSON * jsonProfile = cJSON_AddObjectToObject(jsonOutput, "profile");
 
-    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
+    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, NULL, CL_XF_XYZ, CL_TONEMAP_OFF);
 
     cJSON_AddNumberToObject(jsonOutput, "width", image->width);
     cJSON_AddNumberToObject(jsonOutput, "height", image->height);
@@ -97,7 +97,7 @@ void clImageDebugDumpPixel(struct clContext * C, clImage * image, int x, int y, 
         return;
     }
 
-    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
+    clTransform * toXYZ = clTransformCreate(C, image->profile, CL_XF_RGBA, NULL, CL_XF_XYZ, CL_TONEMAP_OFF);
 
     int maxLuminance;
     clProfileQuery(C, image->profile, NULL, NULL, &maxLuminance);
@@ -121,25 +121,16 @@ static void dumpPixel(struct clContext * C,
                       cJSON * jsonPixels,
                       clImagePixelInfo * pixelInfo)
 {
-    uint16_t intRGB[4];
-    float maxChannel = (float)((1 << image->depth) - 1);
-    float floatRGBA[4];
     float floatXYZ[3];
     cmsCIEXYZ XYZ;
     cmsCIExyY xyY;
 
-    COLORIST_ASSERT(image->pixels);
+    clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U16);
+    clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_F32);
 
-    uint16_t * pixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (x + (y * image->width))];
-    intRGB[0] = pixel[0];
-    intRGB[1] = pixel[1];
-    intRGB[2] = pixel[2];
-    intRGB[3] = pixel[3];
+    uint16_t * unormRGBA = &image->pixelsU16[CL_CHANNELS_PER_PIXEL * (x + (y * image->width))];
+    float * floatRGBA = &image->pixelsF32[CL_CHANNELS_PER_PIXEL * (x + (y * image->width))];
 
-    floatRGBA[0] = intRGB[0] / maxChannel;
-    floatRGBA[1] = intRGB[1] / maxChannel;
-    floatRGBA[2] = intRGB[2] / maxChannel;
-    floatRGBA[3] = intRGB[3] / maxChannel;
     clTransformRun(C, toXYZ, floatRGBA, floatXYZ, 1);
     XYZ.X = floatXYZ[0];
     XYZ.Y = floatXYZ[1];
@@ -159,10 +150,10 @@ static void dumpPixel(struct clContext * C,
         cJSON_AddNumberToObject(jsonPixel, "y", y);
 
         t = cJSON_AddObjectToObject(jsonPixel, "raw");
-        cJSON_AddNumberToObject(t, "r", intRGB[0]);
-        cJSON_AddNumberToObject(t, "g", intRGB[1]);
-        cJSON_AddNumberToObject(t, "b", intRGB[2]);
-        cJSON_AddNumberToObject(t, "a", intRGB[3]);
+        cJSON_AddNumberToObject(t, "r", unormRGBA[0]);
+        cJSON_AddNumberToObject(t, "g", unormRGBA[1]);
+        cJSON_AddNumberToObject(t, "b", unormRGBA[2]);
+        cJSON_AddNumberToObject(t, "a", unormRGBA[3]);
 
         t = cJSON_AddObjectToObject(jsonPixel, "float");
         cJSON_AddNumberToObject(t, "r", floatRGBA[0]);
@@ -184,10 +175,10 @@ static void dumpPixel(struct clContext * C,
 
         cJSON_AddItemToArray(jsonPixels, jsonPixel);
     } else if (pixelInfo) {
-        pixelInfo->rawR = intRGB[0];
-        pixelInfo->rawG = intRGB[1];
-        pixelInfo->rawB = intRGB[2];
-        pixelInfo->rawA = intRGB[3];
+        pixelInfo->rawR = unormRGBA[0];
+        pixelInfo->rawG = unormRGBA[1];
+        pixelInfo->rawB = unormRGBA[2];
+        pixelInfo->rawA = unormRGBA[3];
         pixelInfo->normR = floatRGBA[0];
         pixelInfo->normG = floatRGBA[1];
         pixelInfo->normB = floatRGBA[2];
@@ -205,10 +196,10 @@ static void dumpPixel(struct clContext * C,
                      x,
                      y,
                      image->depth,
-                     intRGB[0],
-                     intRGB[1],
-                     intRGB[2],
-                     intRGB[3],
+                     unormRGBA[0],
+                     unormRGBA[1],
+                     unormRGBA[2],
+                     unormRGBA[3],
                      floatRGBA[0],
                      floatRGBA[1],
                      floatRGBA[2],

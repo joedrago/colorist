@@ -45,8 +45,6 @@ typedef struct clTransform
     struct clProfile * dstProfile; // If NULL, is XYZ profile
     clTransformFormat srcFormat;
     clTransformFormat dstFormat;
-    int srcDepth;
-    int dstDepth;
     float whitePointX;
     float whitePointY;
     float srcCurveScale;
@@ -79,20 +77,15 @@ typedef struct clTransform
 clTransform * clTransformCreate(struct clContext * C,
                                 struct clProfile * srcProfile,
                                 clTransformFormat srcFormat,
-                                int srcDepth,
                                 struct clProfile * dstProfile,
                                 clTransformFormat dstFormat,
-                                int dstDepth,
                                 clTonemap tonemap);
 void clTransformDestroy(struct clContext * C, clTransform * transform);
 void clTransformPrepare(struct clContext * C, struct clTransform * transform);
 clBool clTransformUsesCCMM(struct clContext * C, clTransform * transform);
 const char * clTransformCMMName(struct clContext * C, clTransform * transform);    // Convenience function
 float clTransformGetLuminanceScale(struct clContext * C, clTransform * transform); // Convenience function
-void clTransformRun(struct clContext * C, clTransform * transform, void * srcPixels, void * dstPixels, int pixelCount);
-
-clBool clTransformFormatIsFloat(struct clContext * C, clTransformFormat format, int depth);
-int clTransformFormatToPixelBytes(struct clContext * C, clTransformFormat format, int depth);
+void clTransformRun(struct clContext * C, clTransform * transform, float * srcPixels, float * dstPixels, int pixelCount);
 
 // if X+Y+Z is 0, clTransformXYZToXYY() returns (whitePointX, whitePointY, 0)
 void clTransformXYZToXYY(struct clContext * C, float * dstXYY, const float * srcXYZ, float whitePointX, float whitePointY);

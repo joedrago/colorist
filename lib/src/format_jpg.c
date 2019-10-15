@@ -88,6 +88,7 @@ struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, 
 
     clImageLogCreate(C, cinfo.output_width, cinfo.output_height, 8, profile);
     image = clImageCreate(C, cinfo.output_width, cinfo.output_height, 8, profile);
+    clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U8);
 
     if (profile) {
         clProfileDestroy(C, profile);
@@ -96,9 +97,9 @@ struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, 
     int row = 0;
     while (cinfo.output_scanline < cinfo.output_height) {
         jpeg_read_scanlines(&cinfo, buffer, 1);
-        uint16_t * pixelRow = &image->pixels[row * image->width * CL_CHANNELS_PER_PIXEL];
+        uint8_t * pixelRow = &image->pixelsU8[row * image->width * CL_CHANNELS_PER_PIXEL];
         for (unsigned int i = 0; i < cinfo.output_width; ++i) {
-            uint16_t * dst = &pixelRow[i * CL_CHANNELS_PER_PIXEL];
+            uint8_t * dst = &pixelRow[i * CL_CHANNELS_PER_PIXEL];
             uint8_t * src = &buffer[0][i * 3];
             dst[0] = src[0];
             dst[1] = src[1];
@@ -136,8 +137,17 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
     jpeg_create_compress(&cinfo);
     jpeg_mem_dest(&cinfo, &outbuffer, &outsize);
 
-    uint8_t * jpegPixels = clAllocate(3 * image->width * image->height);
-    clImageToRGB8(C, image, jpegPixels);
+    clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U8);
+
+    int pixelCount = image->width * image->height;
+    uint8_t * jpegPixels = clAllocate(3 * pixelCount);
+    for (int i = 0; i < pixelCount; ++i) {
+        uint8_t * imagePixel = &image->pixelsU8[i * CL_CHANNELS_PER_PIXEL];
+        uint8_t * jpegPixel = &jpegPixels[i * 3];
+        jpegPixel[0] = imagePixel[0];
+        jpegPixel[1] = imagePixel[1];
+        jpegPixel[2] = imagePixel[2];
+    }
 
     cinfo.image_width = image->width;
     cinfo.image_height = image->height;

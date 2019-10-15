@@ -132,8 +132,8 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
 {
     const float minHighlight = 0.4f;
 
-    clTransform * toXYZ = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
-    clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, 32, srcImage->profile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
+    clTransform * toXYZ = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, NULL, CL_XF_XYZ, CL_TONEMAP_OFF);
+    clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, srcImage->profile, CL_XF_RGB, CL_TONEMAP_OFF);
 
     clContextLog(C, "highlight", 1, "Creating sRGB highlight (%d nits, %s)...", srgbLuminance, clTransformCMMName(C, toXYZ));
 
@@ -156,17 +156,16 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
     gamma1.type = CL_PCT_GAMMA;
     gamma1.gamma = 1.0f;
     clProfile * linearProfile = clProfileCreate(C, &srcPrimaries, &gamma1, 1, NULL);
-    clTransform * linearToXYZ = clTransformCreate(C, linearProfile, CL_XF_RGBA, 32, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
-    clTransform * linearFromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, 32, linearProfile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
+    clTransform * linearToXYZ = clTransformCreate(C, linearProfile, CL_XF_RGBA, NULL, CL_XF_XYZ, CL_TONEMAP_OFF);
+    clTransform * linearFromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, linearProfile, CL_XF_RGB, CL_TONEMAP_OFF);
 
     memset(stats, 0, sizeof(clImageSRGBHighlightStats));
     int pixelCount = stats->pixelCount = srcImage->width * srcImage->height;
 
-    float * srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
-    clPixelMathUNormToFloat(C, srcImage->pixels, srcImage->depth, srcFloats, pixelCount);
+    clImagePrepareReadPixels(C, srcImage, CL_PIXELFORMAT_F32);
 
     float * xyzPixels = clAllocate(3 * sizeof(float) * pixelCount);
-    clTransformRun(C, toXYZ, (uint8_t *)srcFloats, (uint8_t *)xyzPixels, pixelCount);
+    clTransformRun(C, toXYZ, srcImage->pixelsF32, xyzPixels, pixelCount);
 
     clImageSRGBHighlightPixelInfo * pixelInfo = outPixelInfo;
     if (!pixelInfo) {
@@ -174,9 +173,10 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
     }
 
     clImage * highlight = clImageCreate(C, srcImage->width, srcImage->height, 8, NULL);
+    clImagePrepareWritePixels(C, highlight, CL_PIXELFORMAT_U16);
     for (int i = 0; i < pixelCount; ++i) {
         float * srcXYZ = &xyzPixels[i * 3];
-        uint16_t * dstPixel = &highlight->pixels[i * CL_CHANNELS_PER_PIXEL];
+        uint16_t * dstPixel = &highlight->pixelsU16[i * CL_CHANNELS_PER_PIXEL];
         clImageSRGBHighlightPixel * pixelHighlightInfo = &pixelInfo->pixels[i];
 
         cmsCIEXYZ XYZ;
@@ -258,7 +258,6 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
 
     clTransformDestroy(C, fromXYZ);
     clTransformDestroy(C, toXYZ);
-    clFree(srcFloats);
     clFree(xyzPixels);
     return highlight;
 }

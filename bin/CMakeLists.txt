@@ -7,6 +7,5 @@
 
 add_subdirectory(colorist)
 add_subdirectory(colorist-benchmark)
-add_subdirectory(colorist-roundtrip)
 add_subdirectory(colorist-test)
 add_subdirectory(colorist-yuv)

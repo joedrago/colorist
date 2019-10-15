@@ -33,14 +33,16 @@ clBool clImageCalcSignals(struct clContext * C, clImage * srcImage, clImage * ds
     }
     float maxLuminanceF = (float)maxLuminance;
 
-    clTransform * srcToXYZ = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, srcImage->depth, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
+    clImagePrepareReadPixels(C, srcImage, CL_PIXELFORMAT_F32);
+    clTransform * srcToXYZ = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, NULL, CL_XF_XYZ, CL_TONEMAP_OFF);
     float * srcXYZ = clAllocate(3 * sizeof(float) * pixelCount);
-    clTransformRun(C, srcToXYZ, srcImage->pixels, srcXYZ, pixelCount);
+    clTransformRun(C, srcToXYZ, srcImage->pixelsF32, srcXYZ, pixelCount);
     clTransformDestroy(C, srcToXYZ);
 
-    clTransform * dstToXYZ = clTransformCreate(C, dstImage->profile, CL_XF_RGBA, dstImage->depth, NULL, CL_XF_XYZ, 32, CL_TONEMAP_OFF);
+    clImagePrepareReadPixels(C, dstImage, CL_PIXELFORMAT_F32);
+    clTransform * dstToXYZ = clTransformCreate(C, dstImage->profile, CL_XF_RGBA, NULL, CL_XF_XYZ, CL_TONEMAP_OFF);
     float * dstXYZ = clAllocate(3 * sizeof(float) * pixelCount);
-    clTransformRun(C, dstToXYZ, dstImage->pixels, dstXYZ, pixelCount);
+    clTransformRun(C, dstToXYZ, dstImage->pixelsF32, dstXYZ, pixelCount);
     clTransformDestroy(C, dstToXYZ);
 
     float errorSquaredSumLinear = 0.0f;

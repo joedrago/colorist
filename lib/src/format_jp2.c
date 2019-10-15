@@ -248,6 +248,7 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
     if (profile) {
         clProfileDestroy(C, profile);
     }
+    clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U16);
 
     pixelCount = image->width * image->height;
 
@@ -257,7 +258,7 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
         int yuvUNorm[3];
         for (int y = 0; y < image->height; ++y) {
             for (int x = 0; x < image->width; ++x) {
-                uint16_t * pixel = &image->pixels[(x + (y * image->width)) * CL_CHANNELS_PER_PIXEL];
+                uint16_t * pixel = &image->pixelsU16[(x + (y * image->width)) * CL_CHANNELS_PER_PIXEL];
                 int uvX = x >> chromaShiftX;
                 int uvY = y >> chromaShiftY;
 
@@ -296,7 +297,7 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
         }
         C->readExtraInfo.decodeYUVtoRGBSeconds = timerElapsedSeconds(&t);
     } else {
-        uint16_t * pixel = image->pixels;
+        uint16_t * pixel = image->pixelsU16;
         if (opjImage->numcomps == 3) {
             // RGB, fill A
             for (i = 0; i < pixelCount; ++i) {
@@ -390,14 +391,15 @@ clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char
         return 0;
     }
 
+    clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U16);
     for (int j = 0; j < image->height; ++j) {
         for (int i = 0; i < image->width; ++i) {
             int dstOffset = i + (j * image->width);
             int srcOffset = 4 * dstOffset;
-            opjImage->comps[0].data[dstOffset] = image->pixels[srcOffset + 0];
-            opjImage->comps[1].data[dstOffset] = image->pixels[srcOffset + 1];
-            opjImage->comps[2].data[dstOffset] = image->pixels[srcOffset + 2];
-            opjImage->comps[3].data[dstOffset] = image->pixels[srcOffset + 3];
+            opjImage->comps[0].data[dstOffset] = image->pixelsU16[srcOffset + 0];
+            opjImage->comps[1].data[dstOffset] = image->pixelsU16[srcOffset + 1];
+            opjImage->comps[2].data[dstOffset] = image->pixelsU16[srcOffset + 2];
+            opjImage->comps[3].data[dstOffset] = image->pixelsU16[srcOffset + 3];
         }
     }
 

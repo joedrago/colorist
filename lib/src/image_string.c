@@ -709,7 +709,7 @@ clImage * clImageParseString(struct clContext * C, const char * str, int depth, 
     const char * stripeDelims = "|/";
     char * stripeString;
     uint16_t * pixelPos;
-    clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, 32, profile, CL_XF_RGB, 32, CL_TONEMAP_OFF);
+    clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, profile, CL_XF_RGB, CL_TONEMAP_OFF);
     int luminance = 0;
 
     clContextLog(C, "parse", 0, "Parsing image string (%s)...", clTransformCMMName(C, fromXYZ));
@@ -757,13 +757,14 @@ clImage * clImageParseString(struct clContext * C, const char * str, int depth, 
     if (stripeCount > 1) {
         clContextLog(C, "parse", 0, "Compositing final image (stacking vertically): %dx%d", maxStripeWidth, totalStripeHeight);
         image = clImageCreate(C, maxStripeWidth, totalStripeHeight, depth, profile);
-        pixelPos = image->pixels;
+        clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U16);
+        pixelPos = image->pixelsU16;
         for (stripe = stripes; stripe != NULL; stripe = stripe->next) {
             int y;
             for (y = 0; y < stripe->image->height; ++y) {
                 memcpy(pixelPos,
-                       &stripe->image->pixels[CL_CHANNELS_PER_PIXEL * y * stripe->image->width],
-                       CL_BYTES_PER_PIXEL * stripe->image->width);
+                       &stripe->image->pixelsU16[CL_CHANNELS_PER_PIXEL * y * stripe->image->width],
+                       CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U16) * stripe->image->width);
                 pixelPos += CL_CHANNELS_PER_PIXEL * image->width;
             }
         }
@@ -936,6 +937,7 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
 
     pixelCount = imageWidth * imageHeight;
     image = clImageCreate(C, imageWidth, imageHeight, depth, profile);
+    clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U16);
 
     if (hald > 0) {
         uint16_t maxChannel = (uint16_t)((1 << depth) - 1);
@@ -959,7 +961,7 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
                         xValue = maxChannel;
                     }
 
-                    uint16_t * pixel = &image->pixels[4 * (x + (y * hald) + (z * hald * hald))];
+                    uint16_t * pixel = &image->pixelsU16[4 * (x + (y * hald) + (z * hald * hald))];
                     pixel[0] = xValue;
                     pixel[1] = yValue;
                     pixel[2] = zValue;
@@ -986,7 +988,7 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
             }
             colorIndex = CL_CLAMP(colorIndex, 0, colorCount - 1);
             getColor(C, tokens, colorIndex, depth, &color);
-            uint16_t * pixel = &image->pixels[4 * verticalPixelIndex];
+            uint16_t * pixel = &image->pixelsU16[4 * verticalPixelIndex];
             pixel[0] = (uint16_t)(color.r);
             pixel[1] = (uint16_t)(color.g);
             pixel[2] = (uint16_t)(color.b);

@@ -42,11 +42,11 @@ int clContextIdentify(clContext * C, struct cJSON * output)
         if (image) {
             int rect[4];
             memcpy(rect, C->params.rect, sizeof(rect));
-            if ((rect[2] < 0) && (rect[3] < 0)) {
-                // Defaults for identify
-                rect[2] = 3;
-                rect[3] = 3;
-            }
+            // if ((rect[2] < 0) && (rect[3] < 0)) {
+            //     // Defaults for identify
+            //     rect[2] = 3;
+            //     rect[3] = 3;
+            // }
             clContextLog(C, "identify", 1, "Format: %s", formatName);
             if (output) {
                 clImageDebugDumpJSON(C, output, image, rect[0], rect[1], rect[2], rect[3]);

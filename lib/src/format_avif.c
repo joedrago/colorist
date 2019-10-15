@@ -105,12 +105,14 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
 
     timerStart(&t);
 
+    clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U16);
+
     avifBool usesU16 = avifImageUsesU16(avif);
     int maxChannel = (1 << image->depth) - 1;
     if (usesU16) {
         for (int j = 0; j < image->height; ++j) {
             for (int i = 0; i < image->width; ++i) {
-                uint16_t * pixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
+                uint16_t * pixel = &image->pixelsU16[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
                 pixel[0] = *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_R][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_R])]);
                 pixel[1] = *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_G][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_G])]);
                 pixel[2] = *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_B][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_B])]);
@@ -124,7 +126,7 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
     } else {
         for (int j = 0; j < image->height; ++j) {
             for (int i = 0; i < image->width; ++i) {
-                uint16_t * pixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
+                uint16_t * pixel = &image->pixelsU16[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
                 pixel[0] = avif->rgbPlanes[AVIF_CHAN_R][i + (j * avif->rgbRowBytes[AVIF_CHAN_R])];
                 pixel[1] = avif->rgbPlanes[AVIF_CHAN_G][i + (j * avif->rgbRowBytes[AVIF_CHAN_G])];
                 pixel[2] = avif->rgbPlanes[AVIF_CHAN_B][i + (j * avif->rgbRowBytes[AVIF_CHAN_B])];
@@ -212,10 +214,12 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
     avifImageAllocatePlanes(avif, AVIF_PLANES_RGB | AVIF_PLANES_A);
     avifRWData avifOutput = AVIF_DATA_EMPTY;
 
+    clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U16);
+
     avifBool usesU16 = avifImageUsesU16(avif);
     for (int j = 0; j < image->height; ++j) {
         for (int i = 0; i < image->width; ++i) {
-            uint16_t * pixel = &image->pixels[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
+            uint16_t * pixel = &image->pixelsU16[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
             if (usesU16) {
                 *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_R][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_R])]) = pixel[0];
                 *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_G][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_G])]) = pixel[1];
