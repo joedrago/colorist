@@ -19,7 +19,6 @@ uint32_t clPixelMathRoundUNorm(float val, uint32_t maxValue);
 float clPixelMathFloorf(float val);
 clBool clPixelMathEqualsf(float a, float b);
 float clPixelMathRoundNormalized(float normalizedValue, float factor); // Clamps normalizedValue int [0,1], then scales by factor, then rounds. Used in unorm conversion
-void clPixelMathScaleLuminance(struct clContext * C, float * pixels, int pixelCount, float luminanceScale, clBool tonemap);
 void clPixelMathColorGrade(struct clContext * C,
                            struct clProfile * pixelProfile,
                            float * pixels,

@@ -256,10 +256,6 @@ static void finishColor(struct clContext * C, clColor * parsedColor)
     } else if (parsedColor->depth != 32) {
         COLORIST_FAILURE1("finishColor: unexpected depth %d", parsedColor->depth);
     }
-    parsedColor->fr = CL_CLAMP(parsedColor->fr, 0.0f, 1.0f);
-    parsedColor->fg = CL_CLAMP(parsedColor->fg, 0.0f, 1.0f);
-    parsedColor->fb = CL_CLAMP(parsedColor->fb, 0.0f, 1.0f);
-    parsedColor->fa = CL_CLAMP(parsedColor->fa, 0.0f, 1.0f);
 }
 
 static const char * parseColor(struct clContext * C, const char * s, clColor * parsedColor, clTransform * fromXYZ, int luminance)
@@ -708,20 +704,15 @@ clImage * clImageParseString(struct clContext * C, const char * str, int depth, 
     char * buffer = clContextStrdup(C, str);
     const char * stripeDelims = "|/";
     char * stripeString;
-    uint16_t * pixelPos;
     clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, profile, CL_XF_RGB, CL_TONEMAP_OFF);
     int luminance = 0;
-
-    int originalDepth = depth;
-    if (depth == 32) {
-        depth = 16;
-    }
 
     clContextLog(C, "parse", 0, "Parsing image string (%s)...", clTransformCMMName(C, fromXYZ));
 
     if (profile) {
         clProfileQuery(C, profile, NULL, NULL, &luminance);
-    } else {
+    }
+    if (luminance <= 0) {
         luminance = C->defaultLuminance;
     }
 
@@ -762,24 +753,20 @@ clImage * clImageParseString(struct clContext * C, const char * str, int depth, 
     if (stripeCount > 1) {
         clContextLog(C, "parse", 0, "Compositing final image (stacking vertically): %dx%d", maxStripeWidth, totalStripeHeight);
         image = clImageCreate(C, maxStripeWidth, totalStripeHeight, depth, profile);
-        clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U16);
-        pixelPos = image->pixelsU16;
+        clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_F32);
+        float * pixelPos = image->pixelsF32;
         for (stripe = stripes; stripe != NULL; stripe = stripe->next) {
             int y;
             for (y = 0; y < stripe->image->height; ++y) {
                 memcpy(pixelPos,
-                       &stripe->image->pixelsU16[CL_CHANNELS_PER_PIXEL * y * stripe->image->width],
-                       CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U16) * stripe->image->width);
+                       &stripe->image->pixelsF32[CL_CHANNELS_PER_PIXEL * y * stripe->image->width],
+                       CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_F32) * stripe->image->width);
                 pixelPos += CL_CHANNELS_PER_PIXEL * image->width;
             }
         }
     } else {
         image = stripes->image;
         stripes->image = NULL;
-    }
-    if (originalDepth != depth) {
-        // Naughty!
-        image->depth = originalDepth;
     }
     clContextLog(C, "parse", 1, "Successfully parsed image string.");
 
@@ -823,7 +810,7 @@ static void getColorFromRange(struct clContext * C, clToken * t, int reqIndex, c
     }
 }
 
-static void getRawColor(struct clContext * C, clToken * tokens, int reqIndex, clColor * outColor)
+static void getColor(struct clContext * C, clToken * tokens, int reqIndex, clColor * outColor)
 {
     int colorEnd = 0;
     for (clToken * t = tokens; t != NULL; t = t->next) {
@@ -844,27 +831,6 @@ static void getRawColor(struct clContext * C, clToken * tokens, int reqIndex, cl
         }
     }
     COLORIST_ASSERT(0); // what to do here?
-}
-
-static void getColor(struct clContext * C, clToken * tokens, int reqIndex, int depth, clColor * outColor)
-{
-    clColor tmpColor;
-    int maxChannel;
-    float maxChannelf;
-    getRawColor(C, tokens, reqIndex, &tmpColor);
-
-    // convert from 32 to destination depth
-    maxChannel = ((1 << depth) - 1);
-    maxChannelf = (float)maxChannel;
-    outColor->r = (uint16_t)clPixelMathRoundf(tmpColor.fr * maxChannelf);
-    outColor->r = CL_CLAMP(outColor->r, 0, maxChannel);
-    outColor->g = (uint16_t)clPixelMathRoundf(tmpColor.fg * maxChannelf);
-    outColor->g = CL_CLAMP(outColor->g, 0, maxChannel);
-    outColor->b = (uint16_t)clPixelMathRoundf(tmpColor.fb * maxChannelf);
-    outColor->b = CL_CLAMP(outColor->b, 0, maxChannel);
-    outColor->a = (uint16_t)clPixelMathRoundf(tmpColor.fa * maxChannelf);
-    outColor->a = CL_CLAMP(outColor->a, 0, maxChannel);
-    outColor->depth = depth;
 }
 
 static clImage * interpretTokens(struct clContext * C, clToken * tokens, int depth, struct clProfile * profile, int defaultW, int defaultH)
@@ -946,35 +912,24 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
 
     pixelCount = imageWidth * imageHeight;
     image = clImageCreate(C, imageWidth, imageHeight, depth, profile);
-    clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U16);
+    clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_F32);
 
     if (hald > 0) {
-        uint16_t maxChannel = (uint16_t)((1 << depth) - 1);
-        float maxChannelf = (float)maxChannel;
         float haldMaxf = (float)(hald - 1);
         for (int z = 0; z < hald; ++z) {
-            uint16_t zValue = (uint16_t)clPixelMathRoundf((float)z * maxChannelf / haldMaxf);
-            if (zValue > maxChannel) {
-                zValue = maxChannel;
-            }
+            float zValue = (float)z / haldMaxf;
 
             for (int y = 0; y < hald; ++y) {
-                uint16_t yValue = (uint16_t)clPixelMathRoundf((float)y * maxChannelf / haldMaxf);
-                if (yValue > maxChannel) {
-                    yValue = maxChannel;
-                }
+                float yValue = (float)y / haldMaxf;
 
                 for (int x = 0; x < hald; ++x) {
-                    uint16_t xValue = (uint16_t)clPixelMathRoundf((float)x * maxChannelf / haldMaxf);
-                    if (xValue > maxChannel) {
-                        xValue = maxChannel;
-                    }
+                    float xValue = (float)x / haldMaxf;
 
-                    uint16_t * pixel = &image->pixelsU16[4 * (x + (y * hald) + (z * hald * hald))];
+                    float * pixel = &image->pixelsF32[CL_CHANNELS_PER_PIXEL * (x + (y * hald) + (z * hald * hald))];
                     pixel[0] = xValue;
                     pixel[1] = yValue;
                     pixel[2] = zValue;
-                    pixel[3] = maxChannel;
+                    pixel[3] = 1.0f;
                 }
             }
         }
@@ -996,12 +951,12 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
                 ++colorIndex;
             }
             colorIndex = CL_CLAMP(colorIndex, 0, colorCount - 1);
-            getColor(C, tokens, colorIndex, depth, &color);
-            uint16_t * pixel = &image->pixelsU16[4 * verticalPixelIndex];
-            pixel[0] = (uint16_t)(color.r);
-            pixel[1] = (uint16_t)(color.g);
-            pixel[2] = (uint16_t)(color.b);
-            pixel[3] = (uint16_t)(color.a);
+            getColor(C, tokens, colorIndex, &color);
+            float * pixel = &image->pixelsF32[4 * verticalPixelIndex];
+            pixel[0] = color.fr;
+            pixel[1] = color.fg;
+            pixel[2] = color.fb;
+            pixel[3] = color.fa;
         }
 
         if (rotate != 0) {

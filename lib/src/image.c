@@ -289,8 +289,8 @@ clImage * clImageResize(struct clContext * C, clImage * image, int width, int he
     clPixelMathResize(C, image->width, image->height, image->pixelsF32, resizedImage->width, resizedImage->height, resizedImage->pixelsF32, resizeFilter);
     int resizedChannelCount = resizedImage->width * resizedImage->height * CL_CHANNELS_PER_PIXEL;
     for (int i = 0; i < resizedChannelCount; ++i) {
-        // catmullrom and mitchell sometimes give values outside of 0-1, so clamp them
-        resizedImage->pixelsF32[i] = CL_CLAMP(resizedImage->pixelsF32[i], 0.0f, 1.0f);
+        // catmullrom and mitchell sometimes give negative values. Protect against that
+        resizedImage->pixelsF32[i] = CL_MAX(resizedImage->pixelsF32[i], 0.0f);
     }
     return resizedImage;
 }

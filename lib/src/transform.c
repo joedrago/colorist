@@ -489,18 +489,18 @@ static void colorConvert(struct clContext * C,
             switch (transform->ccmmDstOETF) {
                 case CL_XTF_NONE:
                     gb_mat3_mul_vec3((gbVec3 *)dstPixel, &transform->ccmmXYZToDst, src);
-                    if (transform->dstProfile) {                         // don't clamp XYZ
-                        dstPixel[0] = CL_CLAMP(dstPixel[0], 0.0f, 1.0f); // clamp
-                        dstPixel[1] = CL_CLAMP(dstPixel[1], 0.0f, 1.0f); // clamp
-                        dstPixel[2] = CL_CLAMP(dstPixel[2], 0.0f, 1.0f); // clamp
+                    if (transform->dstProfile) {                 // don't clamp XYZ
+                        dstPixel[0] = CL_MAX(dstPixel[0], 0.0f); // clamp (allow overranging)
+                        dstPixel[1] = CL_MAX(dstPixel[1], 0.0f); // clamp (allow overranging)
+                        dstPixel[2] = CL_MAX(dstPixel[2], 0.0f); // clamp (allow overranging)
                     }
                     break;
                 case CL_XTF_GAMMA:
                     gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->ccmmXYZToDst, src);
-                    if (transform->dstProfile) {               // don't clamp XYZ
-                        tmp[0] = CL_CLAMP(tmp[0], 0.0f, 1.0f); // clamp
-                        tmp[1] = CL_CLAMP(tmp[1], 0.0f, 1.0f); // clamp
-                        tmp[2] = CL_CLAMP(tmp[2], 0.0f, 1.0f); // clamp
+                    if (transform->dstProfile) {       // don't clamp XYZ
+                        tmp[0] = CL_MAX(tmp[0], 0.0f); // clamp (allow overranging)
+                        tmp[1] = CL_MAX(tmp[1], 0.0f); // clamp (allow overranging)
+                        tmp[2] = CL_MAX(tmp[2], 0.0f); // clamp (allow overranging)
                     }
                     dstPixel[0] = powf((tmp[0] >= 0.0f) ? tmp[0] : 0.0f, transform->ccmmDstInvGamma);
                     dstPixel[1] = powf((tmp[1] >= 0.0f) ? tmp[1] : 0.0f, transform->ccmmDstInvGamma);
@@ -532,10 +532,10 @@ static void colorConvert(struct clContext * C,
         } else {
             // LittleCMS
             cmsDoTransform(transform->lcmsXYZToDst, XYZ, dstPixel, 1);
-            if (transform->dstProfile) {                         // don't clamp XYZ
-                dstPixel[0] = CL_CLAMP(dstPixel[0], 0.0f, 1.0f); // clamp
-                dstPixel[1] = CL_CLAMP(dstPixel[1], 0.0f, 1.0f); // clamp
-                dstPixel[2] = CL_CLAMP(dstPixel[2], 0.0f, 1.0f); // clamp
+            if (transform->dstProfile) {                 // don't clamp XYZ
+                dstPixel[0] = CL_MAX(dstPixel[0], 0.0f); // clamp (allow overranging)
+                dstPixel[1] = CL_MAX(dstPixel[1], 0.0f); // clamp (allow overranging)
+                dstPixel[2] = CL_MAX(dstPixel[2], 0.0f); // clamp (allow overranging)
             }
         }
 
