@@ -836,6 +836,8 @@ char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primarie
         strcpy(curveString, "HLG");
     } else if (curve->type == CL_PCT_PQ) {
         strcpy(curveString, "PQ");
+    } else if (curve->gamma == 1.0f) {
+        strcpy(curveString, "Linear");
     } else {
         sprintf(curveString, "%gg", curve->gamma);
     }
