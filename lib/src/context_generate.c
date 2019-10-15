@@ -113,11 +113,11 @@ int clContextGenerate(clContext * C, struct cJSON * output)
             depth = 8;
         }
 
-        if (C->outputFilename) {
-            if ((depth != 8) && outputFileFormat && (strcmp(outputFileFormat, "icc") != 0) &&
-                (clFormatMaxDepth(C, outputFileFormat) < depth)) {
-                clContextLog(C, "validate", 0, "Forcing output to 8-bit (format limitations)");
-                depth = 8;
+        if (C->outputFilename && (depth != 8) && outputFileFormat && (strcmp(outputFileFormat, "icc") != 0)) {
+            int bestDepth = clFormatBestDepth(C, outputFileFormat, depth);
+            if (depth != bestDepth) {
+                clContextLog(C, "validate", 0, "Overriding output depth %d-bit -> %d-bit (format limitations)", depth, bestDepth);
+                depth = bestDepth;
             }
         }
 
