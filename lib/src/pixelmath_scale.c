@@ -2,33 +2,6 @@
 
 #include "colorist/context.h"
 
-void clPixelMathUNormToFloat(struct clContext * C, uint16_t * inPixels, int inDepth, float * outPixels, int pixelCount)
-{
-    COLORIST_UNUSED(C);
-
-    float maxChannel = (float)((1 << inDepth) - 1);
-    int channelCount = pixelCount * 4;
-    uint16_t * inChannel = (uint16_t *)inPixels;
-    float * outChannel = outPixels;
-    for (int i = 0; i < channelCount; ++i) {
-        outChannel[i] = inChannel[i] / maxChannel;
-    }
-}
-
-void clPixelMathFloatToUNorm(struct clContext * C, float * inPixels, uint16_t * outPixels, int outDepth, int pixelCount)
-{
-    float maxChannel = (float)((1 << outDepth) - 1);
-    int channelCount = pixelCount * 4;
-
-    float * inChannel = inPixels;
-    uint16_t * outChannel = (uint16_t *)outPixels;
-    for (int i = 0; i < channelCount; ++i) {
-        outChannel[i] = (uint16_t)clPixelMathRoundf(inChannel[i] * maxChannel);
-    }
-
-    COLORIST_UNUSED(C);
-}
-
 void clPixelMathScaleLuminance(struct clContext * C, float * pixels, int pixelCount, float luminanceScale, clBool tonemap)
 {
     COLORIST_UNUSED(C);
