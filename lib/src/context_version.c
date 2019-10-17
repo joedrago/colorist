@@ -29,11 +29,18 @@
 
 void clContextPrintVersions(clContext * C)
 {
+    char avifCodecs[256];
+    avifCodecVersions(avifCodecs);
+
     int version;
     clContextLog(C, NULL, 0, "Versions:");
     clContextLog(C, NULL, 1, "colorist   : %s", COLORIST_VERSION_STRING);
-    clContextLog(C, NULL, 1, "avif       : %s", avifVersion());
+    clContextLog(C, NULL, 1, "avif       : %s (%s)", avifVersion(), avifCodecs);
+#if defined(COLORIST_LIBJPEG_TURBO)
+    clContextLog(C, NULL, 1, "jpeglib    : %d (turbo)", JPEG_LIB_VERSION);
+#else
     clContextLog(C, NULL, 1, "jpeglib    : %d", JPEG_LIB_VERSION);
+#endif
     clContextLog(C, NULL, 1, "lcms2      : %d.%d", LCMS_VERSION / 1000, (LCMS_VERSION % 1000) / 10);
     clContextLog(C, NULL, 1, "libpng     : %s", PNG_LIBPNG_VER_STRING);
     clContextLog(C, NULL, 1, "openjpeg   : %s", opj_version());

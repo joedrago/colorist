@@ -57,6 +57,7 @@ option(COLORIST_AVIF_ONLY_DAV1D "When building avif, avoid using aom and just us
 option(COLORIST_USE_LIBJPEG_TURBO "Use libjpeg-turbo instead of regular libjpeg" OFF)
 if(COLORIST_USE_LIBJPEG_TURBO)
     enable_language(ASM_NASM)
+    add_definitions(-DCOLORIST_LIBJPEG_TURBO=1)
 endif()
 
 add_subdirectory(ext)
