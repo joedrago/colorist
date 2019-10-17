@@ -23,6 +23,10 @@ struct clImage * clContextRead(clContext * C, const char * filename, const char 
     if (!formatName) {
         return NULL;
     }
+    if (!strcmp(formatName, "icc")) {
+        // Someday, fix clFormatDetect() to not allow "icc" to return, and then this check can go away.
+        return NULL;
+    }
 
     clProfile * overrideProfile = NULL;
     if (iccOverride) {
