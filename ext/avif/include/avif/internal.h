@@ -14,9 +14,11 @@ extern "C" {
 #define AVIF_CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
 // Used by stream related things.
-#define CHECK(A) \
-    if (!(A))    \
-        return AVIF_FALSE;
+#define CHECK(A)               \
+    do {                       \
+        if (!(A))              \
+            return AVIF_FALSE; \
+    } while (0)
 
 // ---------------------------------------------------------------------------
 // URNs
@@ -143,8 +145,10 @@ typedef struct avifCodec
     avifCodecDestroyInternalFunc destroyInternal;
 } avifCodec;
 
-avifCodec * avifCodecCreateAOM(void);   // requires AVIF_CODEC_AOM
-avifCodec * avifCodecCreateDav1d(void); // requires AVIF_CODEC_DAV1D
+const char * avifCodecVersionAOM(void);   // requires AVIF_CODEC_AOM
+avifCodec * avifCodecCreateAOM(void);     // requires AVIF_CODEC_AOM
+const char * avifCodecVersionDav1d(void); // requires AVIF_CODEC_DAV1D
+avifCodec * avifCodecCreateDav1d(void);   // requires AVIF_CODEC_DAV1D
 void avifCodecDestroy(avifCodec * codec);
 
 // ---------------------------------------------------------------------------

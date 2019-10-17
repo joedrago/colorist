@@ -27,6 +27,11 @@
 
 #include <string.h>
 
+const char * avifCodecVersionAOM(void)
+{
+    return aom_codec_version_str();
+}
+
 struct avifCodecInternal
 {
     avifBool decoderInitialized;
@@ -35,7 +40,6 @@ struct avifCodecInternal
     uint32_t inputSampleIndex;
     aom_image_t * image;
 
-    avifRWData encodedOBU;
     avifCodecConfigurationBox config;
 };
 
@@ -44,7 +48,6 @@ static void aomCodecDestroyInternal(avifCodec * codec)
     if (codec->internal->decoderInitialized) {
         aom_codec_destroy(&codec->internal->decoder);
     }
-    avifRWDataFree(&codec->internal->encodedOBU);
     avifFree(codec->internal);
 }
 

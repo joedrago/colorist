@@ -16,7 +16,7 @@ extern "C" {
 
 #define AVIF_VERSION_MAJOR 0
 #define AVIF_VERSION_MINOR 4
-#define AVIF_VERSION_PATCH 0
+#define AVIF_VERSION_PATCH 1
 #define AVIF_VERSION (AVIF_VERSION_MAJOR * 10000) + (AVIF_VERSION_MINOR * 100) + AVIF_VERSION_PATCH
 
 typedef int avifBool;
@@ -56,6 +56,7 @@ enum avifChannelIndex
 // Version
 
 const char * avifVersion(void);
+void avifCodecVersions(char outBuffer[256]);
 
 // ---------------------------------------------------------------------------
 // Memory management
@@ -402,6 +403,16 @@ typedef struct avifDecoder
     // * Else both will be set to 0.
     uint32_t containerWidth;
     uint32_t containerHeight;
+
+    // The bit depth as reported by the AVIF container, if any. There is no guarantee
+    // this matches the decoded images; it is merely reporting what is independently offered
+    // from the container's boxes.
+    // * If decoding an "item" and the item is associated with an av1C property,
+    //   it will use the box's depth flags.
+    // * Else if decoding tracks and there is a SampleDescriptionBox of type av01 containing an av1C box,
+    //   it will use the box's depth flags.
+    // * Else it will be set to 0.
+    uint32_t containerDepth;
 
     // stats from the most recent read, possibly 0s if reading an image sequence
     avifIOStats ioStats;
