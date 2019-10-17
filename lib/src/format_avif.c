@@ -423,16 +423,10 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
             matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT709;
             break;
         case AVIF_NCLX_COLOUR_PRIMARIES_BT2020:
-            if ((luminance == CL_LUMINANCE_UNSPECIFIED) || (curve.type == CL_PCT_HLG))
-                matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL;
-            else
-                matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_CL;
+            matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL;
             break;
         default:
-            if ((luminance == CL_LUMINANCE_UNSPECIFIED) || (curve.type == CL_PCT_HLG))
-                matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL;
-            else
-                matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_CL;
+            matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL;
             break;
     }
 
