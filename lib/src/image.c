@@ -479,7 +479,7 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
     return rotated;
 }
 
-clImage * clImageConvert(struct clContext * C, clImage * srcImage, int depth, struct clProfile * dstProfile, clTonemap tonemap)
+clImage * clImageConvert(struct clContext * C, clImage * srcImage, int depth, struct clProfile * dstProfile, clTonemap tonemap, clTonemapParams * tonemapParams)
 {
     Timer t;
 
@@ -524,6 +524,9 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, int depth, st
 
     // Create the transform
     clTransform * transform = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, dstImage->profile, CL_XF_RGBA, tonemap);
+    if (tonemapParams) {
+        memcpy(&transform->tonemapParams, tonemapParams, sizeof(clTonemapParams));
+    }
     clTransformPrepare(C, transform);
     float luminanceScale = clTransformGetLuminanceScale(C, transform);
 

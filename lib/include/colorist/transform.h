@@ -51,7 +51,8 @@ typedef struct clTransform
     float dstCurveScale;
     float srcLuminanceScale;
     float dstLuminanceScale;
-    clTonemap tonemap;
+    clTonemap requestedTonemap;
+    clTonemapParams tonemapParams;
     clBool tonemapEnabled;        // calculated from incoming tonemap value
     clBool luminanceScaleEnabled; // optimization; if false, avoid all luminance scaling math
 

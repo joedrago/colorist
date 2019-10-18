@@ -95,6 +95,21 @@ typedef enum clTonemap
 clTonemap clTonemapFromString(struct clContext * C, const char * str);
 const char * clTonemapToString(struct clContext * C, clTonemap tonemap);
 
+// Values here simply tune how tonemapping behaves when enabled.
+// All values default to 1.0f, and when all are 1.0f, tonemapping
+// becomes a basic Reinhard operator (x/x+1).
+//
+// Param names and reasoning adopted from Timothy Lottes [AMD] GDC talk:
+// https://www.gdcvault.com/play/1023512/Advanced-Graphics-Techniques-Tutorial-Day
+typedef struct clTonemapParams
+{
+    float contrast;
+    float clippingPoint;
+    float speed;
+    float power;
+} clTonemapParams;
+void clTonemapParamsSetDefaults(struct clContext * C, clTonemapParams * params);
+
 // Filter enumeration and comments taken directly from stb_image_resize
 // (with minor tweaks like DEFAULT -> AUTO, addition of NEAREST)
 typedef enum clFilter

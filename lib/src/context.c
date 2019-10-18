@@ -262,6 +262,19 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
     return "unknown";
 }
 
+// ----------------------------------------------------------------------------
+// clTonemapParams
+
+void clTonemapParamsSetDefaults(struct clContext * C, clTonemapParams * params)
+{
+    COLORIST_UNUSED(C);
+
+    params->contrast = 1.0f;
+    params->clippingPoint = 1.0f;
+    params->speed = 1.0f;
+    params->power = 1.0f;
+}
+
 // ------------------------------------------------------------------------------------------------
 // clFilter
 

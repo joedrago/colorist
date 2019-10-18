@@ -283,7 +283,7 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
             }
         }
 
-        switch (transform->tonemap) {
+        switch (transform->requestedTonemap) {
             case CL_TONEMAP_AUTO:
                 transform->tonemapEnabled =
                     (((transform->srcLuminanceScale * transform->srcCurveScale) /
@@ -469,8 +469,10 @@ static void colorConvert(struct clContext * C,
 
             // Tonemap
             if (transform->tonemapEnabled) {
-                // reinhard tonemap
-                xyY[2] = xyY[2] / (1.0f + xyY[2]);
+                // reinhard tonemap, with additional tuning (see context.h for attribution)
+                float z = powf(xyY[2] > 0.0f ? xyY[2] : 0.0f, transform->tonemapParams.contrast);
+                xyY[2] = z / ((powf(z, transform->tonemapParams.power) * transform->tonemapParams.clippingPoint) +
+                              transform->tonemapParams.speed);
             }
 
             if (!useCCMM) {
@@ -658,7 +660,8 @@ clTransform * clTransformCreate(struct clContext * C,
     transform->dstProfile = dstProfile;
     transform->srcFormat = srcFormat;
     transform->dstFormat = dstFormat;
-    transform->tonemap = tonemap;
+    transform->requestedTonemap = tonemap;
+    clTonemapParamsSetDefaults(C, &transform->tonemapParams);
 
     transform->ccmmReady = clFalse;
 
