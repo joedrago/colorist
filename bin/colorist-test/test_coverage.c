@@ -98,29 +98,6 @@ static void test_clFormat(void)
     clContextDestroy(C);
 }
 
-static void test_clTonemap(void)
-{
-    clContext * C = clContextCreate(&silentSystem);
-    TEST_ASSERT_NOT_NULL(C);
-
-    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_ON, clTonemapFromString(C, "on"));
-    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_ON, clTonemapFromString(C, "yes"));
-    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_ON, clTonemapFromString(C, "enabled"));
-    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_OFF, clTonemapFromString(C, "off"));
-    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_OFF, clTonemapFromString(C, "no"));
-    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_OFF, clTonemapFromString(C, "disabled"));
-    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_AUTO, clTonemapFromString(C, "auto"));
-    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_AUTO, clTonemapFromString(C, "automatic"));
-    TEST_ASSERT_EQUAL_INT(CL_TONEMAP_AUTO, clTonemapFromString(C, "derp")); // This is weird/dumb maybe, but auto IS the fallback
-
-    TEST_ASSERT_EQUAL_STRING("auto", clTonemapToString(C, CL_TONEMAP_AUTO));
-    TEST_ASSERT_EQUAL_STRING("on", clTonemapToString(C, CL_TONEMAP_ON));
-    TEST_ASSERT_EQUAL_STRING("off", clTonemapToString(C, CL_TONEMAP_OFF));
-    TEST_ASSERT_EQUAL_STRING("unknown", clTonemapToString(C, (clTonemap)555));
-
-    clContextDestroy(C);
-}
-
 static void test_clFilter(void)
 {
     clContext * C = clContextCreate(&silentSystem);
@@ -448,45 +425,6 @@ static void test_clContextParseArgs(void)
         TEST_ASSERT_TRUE(clContextParseArgs(C, ARGS(argv)));
     }
 
-    {
-        C->params.autoGrade = clTrue;
-        C->params.bpc = 16;
-        C->params.copyright = NULL;
-        C->params.description = NULL;
-        C->params.formatName = NULL;
-        C->params.gamma = -1.0f;
-        C->params.hald = NULL;
-        C->help = clFalse;
-        C->verbose = clFalse;
-        C->ccmmAllowed = clFalse;
-        C->iccOverrideIn = NULL;
-        C->params.iccOverrideOut = NULL;
-        C->params.luminance = -1;
-        clContextPrintArgs(C);
-        C->params.autoGrade = clFalse;
-        C->params.bpc = 0;
-        C->params.copyright = "copyright";
-        C->params.description = "description";
-        C->params.formatName = "png";
-        C->params.gamma = 2.2f;
-        C->params.hald = "hald.png";
-        C->help = clTrue;
-        C->verbose = clTrue;
-        C->ccmmAllowed = clTrue;
-        C->iccOverrideIn = "iccin.png";
-        C->params.iccOverrideOut = "iccout.png";
-        C->params.luminance = 0;
-        C->params.stripTags = NULL;
-        clContextPrintArgs(C);
-        C->params.gamma = 0.0f;
-        C->params.luminance = 300;
-        C->params.primaries[0] = 1.0f;
-        C->params.stripTags = "lumi";
-        C->inputFilename = NULL;
-        C->outputFilename = NULL;
-        clContextPrintArgs(C);
-    }
-
     clContextPrintSyntax(C);
     clContextDestroy(C);
 }
@@ -670,7 +608,6 @@ int test_coverage(void)
     RUN_TEST(test_clContextLog);
     RUN_TEST(test_clAction);
     RUN_TEST(test_clFormat);
-    RUN_TEST(test_clTonemap);
     RUN_TEST(test_clFilter);
     RUN_TEST(test_stockPrimaries);
     RUN_TEST(test_clContextParseArgs);

@@ -471,7 +471,7 @@ static void colorConvert(struct clContext * C,
             if (transform->tonemapEnabled) {
                 // reinhard tonemap, with additional tuning (see context.h for attribution)
                 float z = powf(xyY[2] > 0.0f ? xyY[2] : 0.0f, transform->tonemapParams.contrast);
-                xyY[2] = z / ((powf(z, transform->tonemapParams.power) * transform->tonemapParams.clippingPoint) +
+                xyY[2] = z / ((powf(z, transform->tonemapParams.power) * transform->tonemapParams.clipPoint) +
                               transform->tonemapParams.speed);
             }
 

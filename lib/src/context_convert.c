@@ -334,7 +334,7 @@ int clContextConvert(clContext * C)
         }
     }
 
-    dstImage = clImageConvert(C, srcImage, dstInfo.depth, dstProfile, params.autoGrade ? CL_TONEMAP_OFF : params.tonemap, NULL);
+    dstImage = clImageConvert(C, srcImage, dstInfo.depth, dstProfile, params.autoGrade ? CL_TONEMAP_OFF : params.tonemap, &params.tonemapParams);
     if (!dstImage) {
         FAIL();
     }
@@ -372,6 +372,8 @@ int clContextConvert(clContext * C)
                      params.compositeParams.gamma,
                      params.compositeParams.premultiplied ? "premultiplied" : "not premultiplied");
         timerStart(&t);
+        params.compositeParams.srcTonemap = params.tonemap;
+        memcpy(&params.compositeParams.srcParams, &params.tonemapParams, sizeof(clTonemapParams));
         clImage * blendedImage = clImageBlend(C, dstImage, compositeImage, &params.compositeParams);
         if (!blendedImage) {
             clContextLogError(C, "Image blend failed, bailing out");

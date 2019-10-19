@@ -85,15 +85,13 @@ int clFormatMaxDepth(struct clContext * C, const char * formatName);
 int clFormatBestDepth(struct clContext * C, const char * formatName, int reqDepth);
 const char * clFormatDetect(struct clContext * C, const char * filename);
 
+// TODO: consider merging with clTonemapParams (requires API refactor)
 typedef enum clTonemap
 {
     CL_TONEMAP_AUTO = 0,
     CL_TONEMAP_ON,
     CL_TONEMAP_OFF
 } clTonemap;
-
-clTonemap clTonemapFromString(struct clContext * C, const char * str);
-const char * clTonemapToString(struct clContext * C, clTonemap tonemap);
 
 // Values here simply tune how tonemapping behaves when enabled.
 // All values default to 1.0f, and when all are 1.0f, tonemapping
@@ -104,11 +102,13 @@ const char * clTonemapToString(struct clContext * C, clTonemap tonemap);
 typedef struct clTonemapParams
 {
     float contrast;
-    float clippingPoint;
+    float clipPoint;
     float speed;
     float power;
 } clTonemapParams;
 void clTonemapParamsSetDefaults(struct clContext * C, clTonemapParams * params);
+
+clBool clTonemapFromString(struct clContext * C, const char * str, clTonemap * outTonemap, clTonemapParams * outParams);
 
 // Filter enumeration and comments taken directly from stb_image_resize
 // (with minor tweaks like DEFAULT -> AUTO, addition of NEAREST)
@@ -188,10 +188,12 @@ typedef struct clContextSystem
 
 typedef struct clBlendParams
 {
-    float gamma;          // gamma curve used when blending (instead of blending with a potentially-bad dst curve)
-    clTonemap srcTonemap; // hint to conversion pipeline when converting image to dst profile
-    clTonemap cmpTonemap; // hint to conversion pipeline when converting compositeImage to dst profile
-    clBool premultiplied; // if true, compositeImage already has premultiplied alpha
+    float gamma;               // gamma curve used when blending (instead of blending with a potentially-bad dst curve)
+    clTonemap srcTonemap;      // hint to conversion pipeline when converting image to dst profile
+    clTonemapParams srcParams; // tonemap params
+    clTonemap cmpTonemap;      // hint to conversion pipeline when converting compositeImage to dst profile
+    clTonemapParams cmpParams; // tonemap params
+    clBool premultiplied;      // if true, compositeImage already has premultiplied alpha
 } clBlendParams;
 void clBlendParamsSetDefaults(struct clContext * C, clBlendParams * blendParams);
 
@@ -227,6 +229,7 @@ typedef struct clConversionParams
     const char * stripTags;         // -s
     clBool stats;                   // --stats
     clTonemap tonemap;              // -t
+    clTonemapParams tonemapParams;  // -t
     clWriteParams writeParams;      // -n, -q, -r, --yuv
     int rect[4];                    // -z
     const char * compositeFilename; // --composite
@@ -283,7 +286,6 @@ void clContextLogError(clContext * C, const char * format, ...);
 
 void clContextPrintSyntax(clContext * C);
 void clContextPrintVersions(clContext * C);
-void clContextPrintArgs(clContext * C);
 clBool clContextParseArgs(clContext * C, int argc, const char * argv[]);
 
 struct clImage * clContextRead(clContext * C, const char * filename, const char * iccOverride, const char ** outFormatName);

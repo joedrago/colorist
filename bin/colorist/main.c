@@ -84,8 +84,6 @@ int main(int argc, char * argv[])
         clContextPrintSyntax(C);
         goto cleanup;
     }
-    if (C->verbose)
-        clContextPrintArgs(C);
 
     switch (C->action) {
         case CL_ACTION_CALC:

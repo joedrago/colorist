@@ -224,42 +224,59 @@ clBool clFormatExists(struct clContext * C, const char * formatName)
 // ------------------------------------------------------------------------------------------------
 // clTonemap
 
-clTonemap clTonemapFromString(struct clContext * C, const char * str)
+clBool clTonemapFromString(struct clContext * C, const char * str, clTonemap * outTonemap, clTonemapParams * outParams)
 {
-    COLORIST_UNUSED(C);
+    char * buffer = clContextStrdup(C, str);
 
-    if (!strcmp(str, "on"))
-        return CL_TONEMAP_ON;
-    if (!strcmp(str, "yes"))
-        return CL_TONEMAP_ON;
-    if (!strcmp(str, "enabled"))
-        return CL_TONEMAP_ON;
+    for (char * token = strtok(buffer, ","); token != NULL; token = strtok(NULL, ",")) {
+        char * equals = strchr(token, '=');
+        if (equals == NULL) {
+            if (!strcmp(token, "on")) {
+                *outTonemap = CL_TONEMAP_ON;
+            } else if (!strcmp(token, "yes")) {
+                *outTonemap = CL_TONEMAP_ON;
+            } else if (!strcmp(token, "enabled")) {
+                *outTonemap = CL_TONEMAP_ON;
+            } else if (!strcmp(token, "off")) {
+                *outTonemap = CL_TONEMAP_OFF;
+            } else if (!strcmp(token, "no")) {
+                *outTonemap = CL_TONEMAP_OFF;
+            } else if (!strcmp(token, "disabled")) {
+                *outTonemap = CL_TONEMAP_OFF;
+            } else if (!strcmp(token, "auto")) {
+                *outTonemap = CL_TONEMAP_AUTO;
+            } else if (!strcmp(token, "automatic")) {
+                *outTonemap = CL_TONEMAP_AUTO;
+            } else {
+                clContextLogError(C, "Tonemap: Unexpected option: %s", str);
+                return clFalse;
+            }
+        } else {
+            *equals = 0;
+            char * valueString = equals + 1;
+            char * endptr = NULL;
+            float value = (float)strtod(valueString, &endptr);
+            if (endptr == valueString) {
+                clContextLogError(C, "Tonemap: not a floating point value: %s", valueString);
+                return clFalse;
+            }
 
-    if (!strcmp(str, "off"))
-        return CL_TONEMAP_OFF;
-    if (!strcmp(str, "no"))
-        return CL_TONEMAP_OFF;
-    if (!strcmp(str, "disabled"))
-        return CL_TONEMAP_OFF;
-
-    return CL_TONEMAP_AUTO;
-}
-
-const char * clTonemapToString(struct clContext * C, clTonemap tonemap)
-{
-    COLORIST_UNUSED(C);
-
-    switch (tonemap) {
-        case CL_TONEMAP_AUTO:
-            return "auto";
-        case CL_TONEMAP_ON:
-            return "on";
-        case CL_TONEMAP_OFF:
-            return "off";
-        default:
-            break;
+            if (!strcmp(token, "contrast")) {
+                outParams->contrast = value;
+            } else if (!strcmp(token, "clip")) {
+                outParams->clipPoint = value;
+            } else if (!strcmp(token, "clippoint")) {
+                outParams->clipPoint = value;
+            } else if (!strcmp(token, "speed")) {
+                outParams->speed = value;
+            } else if (!strcmp(token, "power")) {
+                outParams->power = value;
+            }
+        }
     }
-    return "unknown";
+
+    clFree(buffer);
+    return clTrue;
 }
 
 // ----------------------------------------------------------------------------
@@ -270,7 +287,7 @@ void clTonemapParamsSetDefaults(struct clContext * C, clTonemapParams * params)
     COLORIST_UNUSED(C);
 
     params->contrast = 1.0f;
-    params->clippingPoint = 1.0f;
+    params->clipPoint = 1.0f;
     params->speed = 1.0f;
     params->power = 1.0f;
 }
@@ -416,6 +433,7 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->stripTags = NULL;
     params->stats = clFalse;
     params->tonemap = CL_TONEMAP_AUTO;
+    clTonemapParamsSetDefaults(C, &params->tonemapParams);
     params->compositeFilename = NULL;
     clWriteParamsSetDefaults(C, &params->writeParams);
     clBlendParamsSetDefaults(C, &params->compositeParams);
@@ -801,7 +819,9 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 C->params.stats = clTrue;
             } else if (!strcmp(arg, "-t") || !strcmp(arg, "--tonemap")) {
                 NEXTARG();
-                C->params.tonemap = clTonemapFromString(C, arg);
+                if (!clTonemapFromString(C, arg, &C->params.tonemap, &C->params.tonemapParams)) {
+                    return clFalse;
+                }
             } else if (!strcmp(arg, "--composite")) {
                 NEXTARG();
                 C->params.compositeFilename = arg;
@@ -814,7 +834,9 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 }
             } else if (!strcmp(arg, "--composite-tonemap")) {
                 NEXTARG();
-                C->params.compositeParams.cmpTonemap = clTonemapFromString(C, arg);
+                if (!clTonemapFromString(C, arg, &C->params.compositeParams.cmpTonemap, &C->params.compositeParams.cmpParams)) {
+                    return clFalse;
+                }
             } else if (!strcmp(arg, "--composite-premultiplied")) {
                 C->params.compositeParams.premultiplied = clTrue;
             } else if (!strcmp(arg, "-v") || !strcmp(arg, "--verbose")) {
@@ -1007,78 +1029,6 @@ static clBool validateArgs(clContext * C)
     return clTrue;
 }
 
-void clContextPrintArgs(clContext * C)
-{
-    clContextLog(C, "syntax", 0, "Args:");
-    clContextLog(C, "syntax", 1, "Action      : %s", clActionToString(C, C->action));
-    clContextLog(C, "syntax", 1, "autoGrade   : %s", C->params.autoGrade ? "true" : "false");
-    if (C->params.bpc)
-        clContextLog(C, "syntax", 1, "bpc         : %d", C->params.bpc);
-    else
-        clContextLog(C, "syntax", 1, "bpc         : auto");
-    clContextLog(C, "syntax", 1, "composite   : %s", C->params.compositeFilename ? C->params.compositeFilename : "--");
-    clContextLog(C, "syntax", 1, "cmp. gamma  : %f", C->params.compositeParams.gamma);
-    clContextLog(C, "syntax", 1, "cmp. tonemap: %s", clTonemapToString(C, C->params.compositeParams.cmpTonemap));
-    clContextLog(C, "syntax", 1, "cmp. premul : %s", C->params.compositeParams.premultiplied ? "true" : "false");
-    clContextLog(C, "syntax", 1, "copyright   : %s", C->params.copyright ? C->params.copyright : "--");
-    clContextLog(C, "syntax", 1, "description : %s", C->params.description ? C->params.description : "--");
-    clContextLog(C, "syntax", 1, "format      : %s", C->params.formatName ? C->params.formatName : "auto");
-    if (C->params.gamma < 0.0f) {
-        clContextLog(C, "syntax", 1, "gamma       : source gamma (forced)");
-    } else if (C->params.gamma > 0.0f) {
-        if (C->params.curveType == CL_PCT_HLG) {
-            clContextLog(C, "syntax", 1, "gamma       : HLG");
-        } else if (C->params.curveType == CL_PCT_PQ) {
-            clContextLog(C, "syntax", 1, "gamma       : PQ");
-        } else {
-            clContextLog(C, "syntax", 1, "gamma       : %g", C->params.gamma);
-        }
-    } else {
-        clContextLog(C, "syntax", 1, "gamma       : auto");
-    }
-    clContextLog(C, "syntax", 1, "frame index : %s", C->params.frameIndex);
-    clContextLog(C, "syntax", 1, "hald clut   : %s", C->params.hald ? C->params.hald : "--");
-    clContextLog(C, "syntax", 1, "help        : %s", C->help ? "enabled" : "disabled");
-    clContextLog(C, "syntax", 1, "ICC in      : %s", C->iccOverrideIn ? C->iccOverrideIn : "--");
-    clContextLog(C, "syntax", 1, "ICC out     : %s", C->params.iccOverrideOut ? C->params.iccOverrideOut : "--");
-    if (C->params.luminance == CL_LUMINANCE_SOURCE) {
-        clContextLog(C, "syntax", 1, "luminance   : source luminance (forced)");
-    } else if (C->params.luminance) {
-        clContextLog(C, "syntax", 1, "luminance   : %d", C->params.luminance);
-    } else {
-        clContextLog(C, "syntax", 1, "luminance   : unspecified");
-    }
-    clContextLog(C, "syntax", 1, "writeProfile: %s", C->params.writeParams.writeProfile ? "true" : "false");
-    if (C->params.primaries[0] > 0.0f)
-        clContextLog(C,
-                     "syntax",
-                     1,
-                     "primaries   : r:(%.4g,%.4g) g:(%.4g,%.4g) b:(%.4g,%.4g) w:(%.4g,%.4g)",
-                     C->params.primaries[0],
-                     C->params.primaries[1],
-                     C->params.primaries[2],
-                     C->params.primaries[3],
-                     C->params.primaries[4],
-                     C->params.primaries[5],
-                     C->params.primaries[6],
-                     C->params.primaries[7]);
-    else
-        clContextLog(C, "syntax", 1, "primaries   : auto");
-    clContextLog(C, "syntax", 1, "resizeW     : %d", C->params.resizeW);
-    clContextLog(C, "syntax", 1, "resizeH     : %d", C->params.resizeH);
-    clContextLog(C, "syntax", 1, "resizeFilter: %s", clFilterToString(C, C->params.resizeFilter));
-    clContextLog(C, "syntax", 1, "rect        : (%d,%d) %dx%d", C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3]);
-    clContextLog(C, "syntax", 1, "stripTags   : %s", C->params.stripTags ? C->params.stripTags : "--");
-    clContextLog(C, "syntax", 1, "stats       : %s", C->params.stats ? "true" : "false");
-    clContextLog(C, "syntax", 1, "tonemap     : %s", clTonemapToString(C, C->params.tonemap));
-    clContextLog(C, "syntax", 1, "yuvFormat   : %s", clYUVFormatToString(C, C->params.writeParams.yuvFormat));
-    clContextLog(C, "syntax", 1, "verbose     : %s", C->verbose ? "enabled" : "disabled");
-    clContextLog(C, "syntax", 1, "Allow CCMM  : %s", C->ccmmAllowed ? "enabled" : "disabled");
-    clContextLog(C, "syntax", 1, "input       : %s", C->inputFilename ? C->inputFilename : "--");
-    clContextLog(C, "syntax", 1, "output      : %s", C->outputFilename ? C->outputFilename : "--");
-    clContextLog(C, NULL, 0, "");
-}
-
 void clContextPrintSyntax(clContext * C)
 {
     clFormatRecord * record = C->formats;
@@ -1128,7 +1078,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, formatLine);
     clContextLog(C, NULL, 0, "    -q,--quality QUALITY     : Output quality for supported output formats. (default: 90)");
     clContextLog(C, NULL, 0, "    -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)");
-    clContextLog(C, NULL, 0, "    -t,--tonemap TM          : Set tonemapping. auto (default), on, or off");
+    clContextLog(C, NULL, 0, "    -t,--tonemap TM          : Set tonemapping. auto (default), on, or off. Tune with optional comma separated vals: contrast=1.0,clip=1.0,speed=1.0,power=1.0");
     clContextLog(C, NULL, 0, "    --yuv YUVFORMAT          : Choose yuv output format for supported formats. auto (default), 444, 422, 420, yv12");
     clContextLog(C, NULL, 0, "    --quantizer MIN,MAX      : Choose min and max quantizer values directly instead of using -q (AVIF only, 0-63 range, 0,0 is lossless)");
     clContextLog(C, NULL, 0, "    --tiling ROWS,COLS       : Enable tiling when encoding (AVIF only, 0-6 range, log2 based. Enables 2^ROWS rows and/or 2^COLS cols)");

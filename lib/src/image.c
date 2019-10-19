@@ -301,7 +301,9 @@ void clBlendParamsSetDefaults(struct clContext * C, clBlendParams * blendParams)
 
     blendParams->gamma = 2.2f;
     blendParams->srcTonemap = CL_TONEMAP_AUTO;
+    clTonemapParamsSetDefaults(C, &blendParams->srcParams);
     blendParams->cmpTonemap = CL_TONEMAP_AUTO;
+    clTonemapParamsSetDefaults(C, &blendParams->cmpParams);
     blendParams->premultiplied = clFalse;
 }
 
@@ -330,8 +332,10 @@ clImage * clImageBlend(struct clContext * C, clImage * image, clImage * composit
 
     // Build transforms that go [src -> blend], [cmp -> blend], [blend -> dst]
     clTransform * srcBlendTransform = clTransformCreate(C, image->profile, CL_XF_RGBA, blendProfile, CL_XF_RGBA, blendParams->srcTonemap);
+    memcpy(&srcBlendTransform->tonemapParams, &blendParams->srcParams, sizeof(clTonemapParams));
     clTransform * cmpBlendTransform =
         clTransformCreate(C, compositeImage->profile, CL_XF_RGBA, blendProfile, CL_XF_RGBA, blendParams->cmpTonemap);
+    memcpy(&cmpBlendTransform->tonemapParams, &blendParams->cmpParams, sizeof(clTonemapParams));
     clTransform * dstTransform =
         clTransformCreate(C, blendProfile, CL_XF_RGBA, image->profile, CL_XF_RGBA, CL_TONEMAP_OFF); // maxLuminance should match, no need to tonemap
 
@@ -540,6 +544,16 @@ clImage * clImageConvert(struct clContext * C, clImage * srcImage, int depth, st
 
     // Perform conversion
     clContextLog(C, "convert", 0, "Converting (%s, lum scale %gx, %s)...", clTransformCMMName(C, transform), luminanceScale, tonemapDescription);
+    if (transform->tonemapEnabled) {
+        clContextLog(C,
+                     "tonemap",
+                     0,
+                     "Tonemap params: contrast:%g clipPoint:%g speed:%g power:%g",
+                     transform->tonemapParams.contrast,
+                     transform->tonemapParams.clipPoint,
+                     transform->tonemapParams.speed,
+                     transform->tonemapParams.power);
+    }
     timerStart(&t);
     clTransformRun(C, transform, srcImage->pixelsF32, dstImage->pixelsF32, srcImage->width * srcImage->height);
     clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
