@@ -3,6 +3,9 @@
 
 #include "avif/internal.h"
 
+#if defined(_MSC_VER)
+#pragma warning(disable : 4201) // nonstandard extension used: nameless struct/union
+#endif
 #include "dav1d/dav1d.h"
 
 #include <string.h>

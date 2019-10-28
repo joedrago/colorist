@@ -40,7 +40,9 @@ void avifEncoderDestroy(avifEncoder * encoder)
 
 static avifCodec * avifCodecCreateForEncode()
 {
-#ifdef AVIF_CODEC_AOM
+#if defined(AVIF_CODEC_RAV1E)
+    return avifCodecCreateRav1e();
+#elif defined(AVIF_CODEC_AOM)
     return avifCodecCreateAOM();
 #else
     return NULL;

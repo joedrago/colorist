@@ -208,7 +208,7 @@ encoding to work, and `libdav1d` overrides `libaom` for decoding if both are
 enabled. Currently `libdav1d` must be externally available (discoverable via
 CMake's `FIND_LIBRARY`) to use it.
 
-You can build libaom alongside libavif if you enable `AVIF_BUILD_AOM`, and you
+You can build libaom alongside libavif if you enable `AVIF_LOCAL_AOM`, and you
 have a copy of the aom repo in the ext/ subdir. See ext/aom.cmd for details.
 
 # Prebuilt Library (Windows)
