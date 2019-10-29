@@ -220,6 +220,11 @@ static void rav1eCodecGetConfigurationBox(avifCodec * codec, avifCodecConfigurat
     memcpy(outConfig, &codec->internal->config, sizeof(avifCodecConfigurationBox));
 }
 
+const char * avifCodecVersionRav1e(void)
+{
+    return "0"; // https://github.com/xiph/rav1e/issues/1801
+}
+
 avifCodec * avifCodecCreateRav1e(void)
 {
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));

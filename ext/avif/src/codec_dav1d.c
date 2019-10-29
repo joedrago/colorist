@@ -15,11 +15,6 @@
 #define DAV1D_ERR(e) (-(e))
 #endif
 
-const char * avifCodecVersionDav1d(void)
-{
-    return dav1d_version();
-}
-
 struct avifCodecInternal
 {
     Dav1dSettings dav1dSettings;
@@ -189,6 +184,11 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         image->decoderOwnsAlphaPlane = AVIF_TRUE;
     }
     return AVIF_TRUE;
+}
+
+const char * avifCodecVersionDav1d(void)
+{
+    return dav1d_version();
 }
 
 avifCodec * avifCodecCreateDav1d(void)

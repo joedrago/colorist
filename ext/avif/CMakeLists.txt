@@ -8,7 +8,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=c99) # Enforce C99 for gcc
 endif()
 
-option(AVIF_CODEC_AOM "Use the AOM codec for encoding (and decoding if no other decoder is present)" ON)
+option(AVIF_CODEC_AOM "Use the AOM codec for encoding (and decoding if no other decoder is present)" OFF)
 option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding (overrides AOM decoding if also enabled)" OFF)
 option(AVIF_CODEC_RAV1E "Use the rav1e codec for encoding (overrides AOM encoding if also enabled)" OFF)
 
@@ -85,7 +85,7 @@ set(AVIF_SRCS
 set(AVIF_CODEC_LIBARIES)
 
 if(AVIF_CODEC_DAV1D)
-    message(STATUS "libavif: Decoding library: dav1d")
+    message(STATUS "libavif: Codec enabled: dav1d (decode)")
     add_definitions(-DAVIF_CODEC_DAV1D=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_dav1d.c
@@ -125,7 +125,7 @@ endif()
 
 
 if(AVIF_CODEC_RAV1E)
-    message(STATUS "libavif: Encoding library: rav1e")
+    message(STATUS "libavif: Codec enabled: rav1e (encode)")
     add_definitions(-DAVIF_CODEC_RAV1E=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_rav1e.c
@@ -168,13 +168,8 @@ if(AVIF_CODEC_RAV1E)
     endif()
 endif()
 
-if(AVIF_CODEC_AOM AND NOT (AVIF_CODEC_DAV1D AND AVIF_CODEC_RAV1E))
-    if(NOT AVIF_CODEC_RAV1E)
-        message(STATUS "libavif: Encoding library: aom")
-    endif()
-    if(NOT AVIF_CODEC_DAV1D)
-        message(STATUS "libavif: Decoding library: aom")
-    endif()
+if(AVIF_CODEC_AOM)
+    message(STATUS "libavif: Codec enabled: aom (encode/decode)")
     add_definitions(-DAVIF_CODEC_AOM=1)
     set(AVIF_SRCS ${AVIF_SRCS}
         src/codec_aom.c
@@ -201,10 +196,6 @@ if(AVIF_CODEC_AOM AND NOT (AVIF_CODEC_DAV1D AND AVIF_CODEC_RAV1E))
         endif()
     endif()
     set(AVIF_CODEC_LIBARIES ${AVIF_CODEC_LIBARIES} aom)
-else()
-    if(NOT AVIF_CODEC_RAV1E)
-        message(STATUS "libavif: Encoding library: (none)")
-    endif()
 endif()
 
 if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D)
