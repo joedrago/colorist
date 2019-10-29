@@ -58,6 +58,16 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
     timerStart(&t);
 
     avifDecoder * decoder = avifDecoderCreate();
+    if (C->params.readCodec) {
+        decoder->codecChoice = avifCodecChoiceFromName(C->params.readCodec);
+    }
+    const char * codecName = avifCodecName(decoder->codecChoice, AVIF_CODEC_FLAG_CAN_DECODE);
+    if (codecName == NULL) {
+        clContextLogError(C, "No AV1 codec available for decoding");
+        goto readCleanup;
+    }
+    clContextLog(C, "avif", 1, "AV1 codec (decode): %s", codecName);
+
     avifResult decodeResult = avifDecoderParse(decoder, &raw);
     if (decodeResult != AVIF_RESULT_OK) {
         clContextLogError(C, "Failed to parse AVIF (%s)", avifResultToString(decodeResult));
@@ -235,6 +245,16 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
     }
 
     encoder = avifEncoderCreate();
+    if (writeParams->codec) {
+        encoder->codecChoice = avifCodecChoiceFromName(writeParams->codec);
+    }
+    const char * codecName = avifCodecName(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
+    if (codecName == NULL) {
+        clContextLogError(C, "No AV1 codec available for encoding");
+        goto writeCleanup;
+    }
+    clContextLog(C, "avif", 1, "AV1 codec (encode): %s", codecName);
+
     encoder->maxThreads = C->jobs;
     if ((writeParams->quantizerMin == -1) && (writeParams->quantizerMax == -1)) {
         int quality = writeParams->quality ? writeParams->quality : 100; // consider 0 to be lossless (100)

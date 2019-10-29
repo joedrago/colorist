@@ -433,6 +433,7 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->stripTags = NULL;
     params->stats = clFalse;
     params->tonemap = CL_TONEMAP_AUTO;
+    params->readCodec = NULL;
     clTonemapParamsSetDefaults(C, &params->tonemapParams);
     params->compositeFilename = NULL;
     clWriteParamsSetDefaults(C, &params->writeParams);
@@ -451,6 +452,7 @@ void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams)
     writeParams->quantizerMax = -1;
     writeParams->tileRowsLog2 = 0;
     writeParams->tileColsLog2 = 0;
+    writeParams->codec = NULL;
 }
 
 static void clContextSetDefaultArgs(clContext * C)
@@ -921,6 +923,21 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 }
                 C->params.writeParams.tileRowsLog2 = CL_CLAMP(C->params.writeParams.tileRowsLog2, 0, 6);
                 C->params.writeParams.tileColsLog2 = CL_CLAMP(C->params.writeParams.tileColsLog2, 0, 6);
+            } else if (!strcmp(arg, "--codec")) {
+                NEXTARG();
+                char tmpBuffer[64];
+                strncpy(tmpBuffer, arg, 63);
+                tmpBuffer[63] = 0;
+                char * comma = strchr(tmpBuffer, ',');
+                if (comma) {
+                    *comma = 0;
+                    ++comma;
+                    C->params.readCodec = clContextStrdup(C, tmpBuffer);
+                    C->params.writeParams.codec = clContextStrdup(C, comma);
+                } else {
+                    C->params.readCodec = clContextStrdup(C, tmpBuffer);
+                    C->params.writeParams.codec = clContextStrdup(C, tmpBuffer);
+                }
             } else if (!strcmp(arg, "-r") || !strcmp(arg, "--rate")) {
                 NEXTARG();
                 C->params.writeParams.rate = atoi(arg);
@@ -1082,6 +1099,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    --yuv YUVFORMAT          : Choose yuv output format for supported formats. auto (default), 444, 422, 420, yv12");
     clContextLog(C, NULL, 0, "    --quantizer MIN,MAX      : Choose min and max quantizer values directly instead of using -q (AVIF only, 0-63 range, 0,0 is lossless)");
     clContextLog(C, NULL, 0, "    --tiling ROWS,COLS       : Enable tiling when encoding (AVIF only, 0-6 range, log2 based. Enables 2^ROWS rows and/or 2^COLS cols)");
+    clContextLog(C, NULL, 0, "    --codec READ,WRITE       : Specify which internal codec to be used when decoding (AVIF only, auto,auto is default, see libavif version below for choices)");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Convert Options:");
     clContextLog(C, NULL, 0, "    --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)");

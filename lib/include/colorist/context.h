@@ -164,6 +164,7 @@ typedef struct clWriteParams
     int quantizerMax;      // AVIF only. 0-63 range. 0 is lossless. -1 is "ignore and use quality"
     int tileRowsLog2;      // AVIF only. 0-6 range. 0 is disabled. Requests 2^n tile rows during encoding.
     int tileColsLog2;      // AVIF only. 0-6 range. 0 is disabled. Requests 2^n tile cols during encoding.
+    const char * codec;    // AVIF only. Specify a codec to write with (NULL == auto)
 } clWriteParams;
 void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams);
 
@@ -231,6 +232,7 @@ typedef struct clConversionParams
     clTonemap tonemap;              // -t
     clTonemapParams tonemapParams;  // -t
     clWriteParams writeParams;      // -n, -q, -r, --yuv
+    const char * readCodec;         // AVIF only. Specify a codec to read with (NULL == auto)
     int rect[4];                    // -z
     const char * compositeFilename; // --composite
     clBlendParams compositeParams;  // --composite-gamma, --composite-premultiplied
