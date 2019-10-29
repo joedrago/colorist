@@ -1,23 +1,21 @@
 # Installation
 
-### OSX
+### Windows and OSX
 
-`brew install joedrago/repo/colorist`
-
-### Windows
-
-Grab the latest executable from [AppVeyor](https://ci.appveyor.com/project/joedrago/colorist/build/artifacts).
+Grab the latest executable from [Releases](https://github.com/joedrago/colorist/releases) and put it somewhere in your PATH.
 
 ### Build from source
 
 Building from source requires [CMake](https://cmake.org/download/), version 3.5
-or higher.
+or higher, and [NASM](https://nasm.us/).
 
 Clone or download a zip of the repo, then run CMake on the root directory and
-run the generated build. If you want to use the same build as someone that
-installed via Homebrew or AppVeyor, download the source of a [tagged
-release](https://github.com/joedrago/colorist/tags) instead of just building
-the latest in the master branch.
+run the generated build.
+
+To use codecs other than libaom (used with AVIF), you must enable the
+associated `AVIF_CODEC_*` CMake variable, and to build locally, you must run
+the appropriate .cmd file in `ext/avif/ext` and then additionally enable the
+associated `AVIF_LOCAL_*` CMake variable.
 
 ---
 

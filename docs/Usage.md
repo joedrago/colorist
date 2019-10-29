@@ -6,7 +6,6 @@ Syntax: colorist convert  [input]        [output]       [OPTIONS]
         colorist generate                [output.icc]   [OPTIONS]
         colorist generate [image string] [output image] [OPTIONS]
         colorist modify   [input.icc]    [output.icc]   [OPTIONS]
-        colorist report   [input]        [output.html]  [OPTIONS]
         colorist calc     [image string]                [OPTIONS]
 
 Basic Options:
@@ -14,12 +13,13 @@ Basic Options:
     -j,--jobs JOBS           : Number of jobs to use when working. 0 for as many as possible (default)
     -v,--verbose             : Verbose mode.
     --cmm WHICH,--cms WHICH  : Choose Color Management Module/System: auto (default), lcms, colorist (built-in, uses when possible)
-    --deflum LUMINANCE       : Choose the default/fallback luminance value in nits when unspecified (default: 300)
+    --deflum LUMINANCE       : Choose the default/fallback luminance value in nits when unspecified (default: 80)
     --hlglum LUMINANCE       : Alternative to --deflum, hlglum chooses an appropriate diffuse white for --deflum based on peak HLG lum.
                                (--hlglum and --deflum are mutually exclusive as they are two ways to set the same value.)
 
 Input Options:
     -i,--iccin file.icc      : Override source ICC profile. default is to use embedded profile (if any), or sRGB@deflum
+    --frameindex INDEX       : Choose the source frame from an image sequence (AVIF only, defaults to frame 0)
 
 Output Profile Options:
     -o,--iccout file.icc     : Override destination ICC profile. Disables all other output profile options
@@ -33,13 +33,14 @@ Output Profile Options:
 
 Output Format Options:
     -b,--bpc BPC             : Output bits-per-channel. 8 - 16, or 0 for auto (default)
-    -f,--format FORMAT       : Output format. auto (default), apg, avif, bmp, jpg, jp2, j2k, png, tiff, webp
+    -f,--format FORMAT       : Output format. auto (default), avif, bmp, jpg, jp2, j2k, png, tiff, webp
     -q,--quality QUALITY     : Output quality for supported output formats. (default: 90)
     -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)
-    -t,--tonemap TM          : Set tonemapping. auto (default), on, or off
+    -t,--tonemap TM          : Set tonemapping. auto (default), on, or off. Tune with optional comma separated vals: contrast=1.0,clip=1.0,speed=1.0,power=1.0
     --yuv YUVFORMAT          : Choose yuv output format for supported formats. auto (default), 444, 422, 420, yv12
     --quantizer MIN,MAX      : Choose min and max quantizer values directly instead of using -q (AVIF only, 0-63 range, 0,0 is lossless)
     --tiling ROWS,COLS       : Enable tiling when encoding (AVIF only, 0-6 range, log2 based. Enables 2^ROWS rows and/or 2^COLS cols)
+    --codec READ,WRITE       : Specify which internal codec to be used when decoding (AVIF only, auto,auto is default, see libavif version below for choices)
 
 Convert Options:
     --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)
