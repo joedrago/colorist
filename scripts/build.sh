@@ -37,7 +37,7 @@ $SHELL ./rav1e.cmd
 cd ../../..
 mkdir build
 cd build
-cmake -G Ninja -DAVIF_CODEC_DAV1D=1 -DAVIF_LOCAL_DAV1D=1 -DAVIF_CODEC_RAV1E=1 -DAVIF_LOCAL_RAV1E=1 -DCMAKE_BUILD_TYPE=Release ..
+cmake -G Ninja -DAVIF_CODEC_DAV1D=1 -DAVIF_LOCAL_DAV1D=1 -DAVIF_CODEC_RAV1E=1 -DAVIF_LOCAL_RAV1E=1 -DCMAKE_BUILD_TYPE=Release "$@" ..
 ninja
 
 echo If there are no errors above, "$COLORIST_ROOT/build/bin/colorist/colorist" should be available. Copy/link it somewhere in your PATH.
