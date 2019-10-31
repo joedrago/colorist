@@ -17,6 +17,12 @@ associated `AVIF_CODEC_*` CMake variable, and to build locally, you must run
 the appropriate .cmd file in `ext/avif/ext` and then additionally enable the
 associated `AVIF_LOCAL_*` CMake variable.
 
+For a near-automated Linux or macOS build, simply run `scripts/build.sh`. It
+requires Rust, CMake, Ninja, NASM, Meson, and Git, but should build `dav1d`
+and `rav1e` (for `libavif`), link them into colorist. Read the contents of
+build.sh and the .cmd files inside of `ext/avif/ext` to see exactly what
+commands will be run.
+
 ---
 
 # Usage
