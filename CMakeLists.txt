@@ -89,7 +89,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=c99) # Enforce C99 for gcc
   MESSAGE(STATUS "Enabling warnings (for colorist lib/bin) for GCC")
-  add_definitions(-Werror -Wall -Wextra -Wno-clobbered)
+  add_definitions(-Werror -Wall -Wextra -Wno-clobbered -Wno-stringop-truncation)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   MESSAGE(STATUS "Enabling warnings (for colorist lib/bin) for MS CL")
   add_definitions(
