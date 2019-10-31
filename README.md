@@ -1,6 +1,14 @@
 # Installation
 
-### Windows and OSX
+### macOS
+
+`brew install joedrago/repo/colorist`
+
+Note: If it doesn't find a pre-compiled bottle, building from source takes a
+while (10+ minutes). I'll try to keep bottles available for the most recent
+macOS releases.
+
+### Windows
 
 Grab the latest executable from [Releases](https://github.com/joedrago/colorist/releases) and put it somewhere in your PATH.
 
