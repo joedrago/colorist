@@ -25,10 +25,11 @@ if ! [ -x "$(command -v git)" ]; then
   exit 1
 fi
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-cd "$DIR/.."
+# Change to scripts dir, then go back one
+cd "${0%/*}"
+cd ..
 COLORIST_ROOT=`pwd`
-echo Colorist Root: $COLORIST_ROOT 
+echo Colorist Root: $COLORIST_ROOT
 
 cd ext/avif/ext
 $SHELL ./dav1d.cmd
@@ -40,4 +41,3 @@ cmake -G Ninja -DAVIF_CODEC_DAV1D=1 -DAVIF_LOCAL_DAV1D=1 -DAVIF_CODEC_RAV1E=1 -D
 ninja
 
 echo If there are no errors above, "$COLORIST_ROOT/build/bin/colorist/colorist" should be available. Copy/link it somewhere in your PATH.
-
