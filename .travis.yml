@@ -9,66 +9,58 @@ matrix:
     addons:
       apt:
         packages:
+          - meson
           - nasm
           - ninja-build
-    before_script:
-      - mkdir build
-      - cd build
-      - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+          - rust
     script:
-      - ninja
+      - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Debug
 
   - name: "GCC Release"
     compiler: gcc
     addons:
       apt:
         packages:
+          - meson
           - nasm
           - ninja-build
-    before_script:
-      - mkdir build
-      - cd build
-      - cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+          - rust
     script:
-      - ninja
+      - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Release
 
   - name: "Clang Debug"
     compiler: clang
     addons:
       apt:
         packages:
+          - meson
           - nasm
           - ninja-build
-    before_script:
-      - mkdir build
-      - cd build
-      - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+          - rust
     script:
-      - ninja
+      - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Debug
 
   - name: "Clang Release"
     compiler: clang
     addons:
       apt:
         packages:
+          - meson
           - nasm
           - ninja-build
-    before_script:
-      - mkdir build
-      - cd build
-      - cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+          - rust
     script:
-      - ninja
+      - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Release
 
   - name: "Clang Test IO"
     compiler: clang
     addons:
       apt:
         packages:
+          - meson
           - nasm
-    before_script:
-      - mkdir build
-      - cd build
-      - cmake -DCMAKE_BUILD_TYPE=Release -DCOLORIST_TEST_IO=1 ..
+          - ninja-build
+          - rust
     script:
-      - make -j colorist-test-io
+      - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Release -DCOLORIST_TEST_IO=1
+      - ninja -v colorist-test-io
