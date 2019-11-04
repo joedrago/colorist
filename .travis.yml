@@ -1,13 +1,15 @@
 language: c
 
 os: linux
-rust: stable
 addons:
   apt:
     packages:
       - meson
       - nasm
       - ninja-build
+      - rustup
+before_build:
+  - rustup toolchain install stable
 
 matrix:
   include:
