@@ -1,66 +1,38 @@
 language: c
 
 os: linux
+rust: stable
+addons:
+  apt:
+    packages:
+      - meson
+      - nasm
+      - ninja-build
 
 matrix:
   include:
   - name: "GCC Debug"
     compiler: gcc
-    addons:
-      apt:
-        packages:
-          - meson
-          - nasm
-          - ninja-build
-          - rust
     script:
       - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Debug
 
   - name: "GCC Release"
     compiler: gcc
-    addons:
-      apt:
-        packages:
-          - meson
-          - nasm
-          - ninja-build
-          - rust
     script:
       - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Release
 
   - name: "Clang Debug"
     compiler: clang
-    addons:
-      apt:
-        packages:
-          - meson
-          - nasm
-          - ninja-build
-          - rust
     script:
       - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Debug
 
   - name: "Clang Release"
     compiler: clang
-    addons:
-      apt:
-        packages:
-          - meson
-          - nasm
-          - ninja-build
-          - rust
     script:
       - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Release
 
   - name: "Clang Test IO"
     compiler: clang
-    addons:
-      apt:
-        packages:
-          - meson
-          - nasm
-          - ninja-build
-          - rust
     script:
       - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Release -DCOLORIST_TEST_IO=1
       - ninja -v colorist-test-io
