@@ -1,39 +1,74 @@
 language: c
 
 os: linux
-language: rust
-addons:
-  apt:
-    packages:
-      - cmake
-      - meson
-      - nasm
-      - ninja-build
 
 matrix:
   include:
   - name: "GCC Debug"
     compiler: gcc
+    addons:
+      apt:
+        packages:
+          - nasm
+          - ninja-build
+    before_script:
+      - mkdir build
+      - cd build
+      - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
     script:
-      - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Debug
+      - ninja
 
   - name: "GCC Release"
     compiler: gcc
+    addons:
+      apt:
+        packages:
+          - nasm
+          - ninja-build
+    before_script:
+      - mkdir build
+      - cd build
+      - cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
     script:
-      - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Release
+      - ninja
 
   - name: "Clang Debug"
     compiler: clang
+    addons:
+      apt:
+        packages:
+          - nasm
+          - ninja-build
+    before_script:
+      - mkdir build
+      - cd build
+      - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
     script:
-      - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Debug
+      - ninja
 
   - name: "Clang Release"
     compiler: clang
+    addons:
+      apt:
+        packages:
+          - nasm
+          - ninja-build
+    before_script:
+      - mkdir build
+      - cd build
+      - cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
     script:
-      - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Release
+      - ninja
 
   - name: "Clang Test IO"
     compiler: clang
+    addons:
+      apt:
+        packages:
+          - nasm
+    before_script:
+      - mkdir build
+      - cd build
+      - cmake -DCMAKE_BUILD_TYPE=Release -DCOLORIST_TEST_IO=1 ..
     script:
-      - ./scripts/build.sh -DCMAKE_BUILD_TYPE=Release -DCOLORIST_TEST_IO=1
-      - ninja -v colorist-test-io
+      - make -j colorist-test-io
