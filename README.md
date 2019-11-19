@@ -31,6 +31,21 @@ and `rav1e` (for `libavif`), link them into colorist. Read the contents of
 build.sh and the .cmd files inside of `ext/avif/ext` to see exactly what
 commands will be run.
 
+On a fresh Ubuntu 19.10 install, this appears to setup a proper build for colorist:
+
+```bash
+    # All base packages needed for building on Ubuntu 19.10
+    sudo apt get install build-essential curl git cmake ninja-build meson nasm
+
+    # latest cmdline pasted from rustup.rs, as of this writing
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+    # Clone and build colorist
+    git clone https://github.com/joedrago/colorist.git
+    cd colorist
+    bash ./scripts/build.sh
+```
+
 ---
 
 # Usage
