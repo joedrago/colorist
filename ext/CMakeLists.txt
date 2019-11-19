@@ -153,13 +153,7 @@ else()
     )
 endif()
 
-if(COLORIST_AVIF_USE_AOM)
-    set(AVIF_CODEC_AOM ON CACHE BOOL "" FORCE)
-    set(AVIF_LOCAL_AOM ON CACHE BOOL "" FORCE)
-else()
-    set(AVIF_CODEC_AOM OFF CACHE BOOL "" FORCE)
-    set(AVIF_LOCAL_AOM OFF CACHE BOOL "" FORCE)
-endif()
+set(AVIF_BUILD_STATIC ON CACHE BOOL "" FORCE)
 add_subdirectory(avif)
 
 set(COLORIST_EXT_INCLUDES
