@@ -31,11 +31,11 @@ before_build:
 
     nasm -v
 
-    cd ext
+    cd ext\avif\ext
 
     call aom.cmd
 
-    cd ..
+    cd ..\..\..
 
     mkdir build
 
