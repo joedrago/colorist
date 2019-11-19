@@ -31,6 +31,11 @@ before_build:
 
     nasm -v
 
+    cd ext
+
+    call aom.cmd
+
+    cd ..
 
     mkdir build
 
@@ -38,7 +43,7 @@ before_build:
 
     cmake --version
 
-    cmake .. -G %generator%
+    cmake .. -G %generator% -DAVIF_CODEC_AOM=1 -DAVIF_LOCAL_AOM=1
 build:
   project: C:/projects/colorist/build/colorist.sln
   parallel: true
