@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.8] - 2019-11-19
+### Added
+- avifEncoder now has a speed setting
+- codec_aom only flushes encoder when necessary (avoids lost frame packets)
+- shared library compilation (build shared by default, use `-DAVIF_BUILD_STATIC=1` for static lib)
+- make install support
+- cmake fixes/support for find_package (cryptomilk)
+
+### Changed
+- Updated libaom to more recent SHA in aom.cmd
+- Tweaked AVIF_LOCAL_AOM settings to play nice with libaom's usage of CMake's option()
+- Remove all libaom special cases from libavif's CMakefiles, and have it work the same way dav1d and rav1e do
+- Minor cleanup
+
 ## [0.4.7] - 2019-11-11
 ### Changed
 - Fix memory leak in rav1e codec (PR20, AurelC2G)
@@ -225,7 +239,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.4.7...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.4.8...HEAD
+[0.4.8]: https://github.com/AOMediaCodec/libavif/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/AOMediaCodec/libavif/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/AOMediaCodec/libavif/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/AOMediaCodec/libavif/compare/v0.4.4...v0.4.5
