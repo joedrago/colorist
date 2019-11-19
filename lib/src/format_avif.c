@@ -293,6 +293,12 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
     } else {
         clContextLog(C, "avif", 1, "Encoding tiling (log2): disabled");
     }
+    encoder->speed = writeParams->speed;
+    if (encoder->speed == -1) {
+        clContextLog(C, "avif", 1, "Encoding speed (0=BestQuality, 10=Fastest): default (%s)", codecName);
+    } else {
+        clContextLog(C, "avif", 1, "Encoding speed (0=BestQuality, 10=Fastest): %d", encoder->speed);
+    }
     avifResult encodeResult = avifEncoderWrite(encoder, avif, &avifOutput);
     if (encodeResult != AVIF_RESULT_OK) {
         clContextLogError(C, "AVIF encoder failed (%s)", avifResultToString(encodeResult));

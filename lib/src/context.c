@@ -452,6 +452,7 @@ void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams)
     writeParams->quantizerMax = -1;
     writeParams->tileRowsLog2 = 0;
     writeParams->tileColsLog2 = 0;
+    writeParams->speed = -1;
     writeParams->codec = NULL;
 }
 
@@ -905,6 +906,14 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 }
                 C->params.writeParams.quantizerMin = CL_CLAMP(C->params.writeParams.quantizerMin, 0, 63);
                 C->params.writeParams.quantizerMax = CL_CLAMP(C->params.writeParams.quantizerMax, 0, 63);
+            } else if (!strcmp(arg, "--speed")) {
+                NEXTARG();
+                if (!strcmp(arg, "auto")) {
+                    C->params.writeParams.speed = -1;
+                } else {
+                    C->params.writeParams.speed = atoi(arg);
+                    C->params.writeParams.speed = CL_CLAMP(C->params.writeParams.speed, 0, 10);
+                }
             } else if (!strcmp(arg, "--tiling")) {
                 NEXTARG();
                 char tmpBuffer[16]; // the biggest legal string is "6,6", so I don't mind truncation here
@@ -1100,6 +1109,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    --quantizer MIN,MAX      : Choose min and max quantizer values directly instead of using -q (AVIF only, 0-63 range, 0,0 is lossless)");
     clContextLog(C, NULL, 0, "    --tiling ROWS,COLS       : Enable tiling when encoding (AVIF only, 0-6 range, log2 based. Enables 2^ROWS rows and/or 2^COLS cols)");
     clContextLog(C, NULL, 0, "    --codec READ,WRITE       : Specify which internal codec to be used when decoding (AVIF only, auto,auto is default, see libavif version below for choices)");
+    clContextLog(C, NULL, 0, "    --speed SPEED            : Specify the quality/speed tradeoff when encoding (AVIF only, [0-10] range. auto = default (let the codec decide), 0=best quality, 10=fastest)");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Convert Options:");
     clContextLog(C, NULL, 0, "    --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)");

@@ -164,6 +164,8 @@ typedef struct clWriteParams
     int quantizerMax;      // AVIF only. 0-63 range. 0 is lossless. -1 is "ignore and use quality"
     int tileRowsLog2;      // AVIF only. 0-6 range. 0 is disabled. Requests 2^n tile rows during encoding.
     int tileColsLog2;      // AVIF only. 0-6 range. 0 is disabled. Requests 2^n tile cols during encoding.
+    int speed;             // AVIF only. [-1,10] range. -1 is "let the codec choose a default".
+                           //            0 is best quality, 10 is fastest encoding speed
     const char * codec;    // AVIF only. Specify a codec to write with (NULL == auto)
 } clWriteParams;
 void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams);
