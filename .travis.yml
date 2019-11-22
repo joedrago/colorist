@@ -78,6 +78,7 @@ matrix:
       apt:
         packages:
           - nasm
+          - ninja-build
     before_script:
       - cd ext/avif/ext
       - bash aom.cmd
