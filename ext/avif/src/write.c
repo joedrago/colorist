@@ -20,6 +20,9 @@ static void ipmaPush(struct ipmaArray * ipma, uint8_t assoc)
 static const char alphaURN[] = URN_ALPHA0;
 static const size_t alphaURNSize = sizeof(alphaURN);
 
+static const char xmpContentType[] = CONTENT_TYPE_XMP;
+static const size_t xmpContentTypeSize = sizeof(xmpContentType);
+
 static avifBool avifImageIsOpaque(avifImage * image);
 static void fillConfigBox(avifCodec * codec, avifImage * image, avifBool alpha);
 static void writeConfigBox(avifRWStream * s, avifCodecConfigurationBox * cfg);
@@ -66,6 +69,33 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
         codec[AVIF_CODEC_PLANES_ALPHA] = avifCodecCreate(encoder->codecChoice, AVIF_CODEC_FLAG_CAN_ENCODE);
         if (!codec[AVIF_CODEC_PLANES_ALPHA]) {
             return AVIF_RESULT_NO_CODEC_AVAILABLE;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Validate Exif payload (if any) and find TIFF header offset
+
+    uint32_t exifTiffHeaderOffset = 0;
+    if (image->exif.size > 0) {
+        if (image->exif.size < 4) {
+            // Can't even fit the TIFF header, something is wrong
+            return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
+        }
+
+        const uint8_t tiffHeaderBE[4] = { 'M', 'M', 0, 42 };
+        const uint8_t tiffHeaderLE[4] = { 'I', 'I', 42, 0 };
+        for (; exifTiffHeaderOffset < (image->exif.size - 4); ++exifTiffHeaderOffset) {
+            if (!memcmp(&image->exif.data[exifTiffHeaderOffset], tiffHeaderBE, sizeof(tiffHeaderBE))) {
+                break;
+            }
+            if (!memcmp(&image->exif.data[exifTiffHeaderOffset], tiffHeaderLE, sizeof(tiffHeaderLE))) {
+                break;
+            }
+        }
+
+        if (exifTiffHeaderOffset >= image->exif.size - 4) {
+            // Couldn't find the TIFF header
+            return AVIF_RESULT_INVALID_EXIF_PAYLOAD;
         }
     }
 
@@ -121,7 +151,10 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
         }
     }
 
+    // TODO: consider collapsing all items into local structs for iteration / code sharing
     avifBool hasAlpha = (alphaOBU.size > 0) ? AVIF_TRUE : AVIF_FALSE;
+    avifBool hasExif = (image->exif.size > 0) ? AVIF_TRUE : AVIF_FALSE;
+    avifBool hasXMP = (image->xmp.size > 0) ? AVIF_TRUE : AVIF_FALSE;
 
     // -----------------------------------------------------------------------
     // Write ftyp
@@ -163,11 +196,39 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     avifRWStreamWriteU16(&s, 1); //  unsigned int(16) item_ID;
 
     // -----------------------------------------------------------------------
+    // Calculate item IDs and counts
+
+    uint16_t itemCount = 1;
+    uint16_t colorItemID = 1;
+    uint16_t nextItemID = 2;
+    uint16_t alphaItemID = 0;
+    uint16_t exifItemID = 0;
+    uint16_t xmpItemID = 0;
+    if (hasAlpha) {
+        ++itemCount;
+        alphaItemID = nextItemID;
+        ++nextItemID;
+    }
+    if (hasExif) {
+        ++itemCount;
+        exifItemID = nextItemID;
+        ++nextItemID;
+    }
+    if (hasXMP) {
+        ++itemCount;
+        xmpItemID = nextItemID;
+        ++nextItemID;
+    }
+
+    // -----------------------------------------------------------------------
     // Write iloc
 
     // Remember where we want to store the offsets to the mdat OBU offsets to adjust them later.
+    // These are named as such because they are remembering the stream offset where we will write an offset later.
     size_t colorOBUOffsetOffset = 0;
     size_t alphaOBUOffsetOffset = 0;
+    size_t exifOffsetOffset = 0;
+    size_t xmpOffsetOffset = 0;
 
     avifBoxMarker iloc = avifRWStreamWriteBox(&s, "iloc", 0, 0);
 
@@ -177,10 +238,10 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     avifRWStreamWrite(&s, &offsetSizeAndLengthSize, 1);    //
     avifRWStreamWriteZeros(&s, 1);                         // unsigned int(4) base_offset_size;
                                                            // unsigned int(4) reserved;
-    avifRWStreamWriteU16(&s, hasAlpha ? 2 : 1);            // unsigned int(16) item_count;
+    avifRWStreamWriteU16(&s, itemCount);                   // unsigned int(16) item_count;
 
     // Item ID #1 (Color OBU)
-    avifRWStreamWriteU16(&s, 1);                       // unsigned int(16) item_ID;
+    avifRWStreamWriteU16(&s, colorItemID);             // unsigned int(16) item_ID;
     avifRWStreamWriteU16(&s, 0);                       // unsigned int(16) data_reference_index;
     avifRWStreamWriteU16(&s, 1);                       // unsigned int(16) extent_count;
     colorOBUOffsetOffset = avifRWStreamOffset(&s);     //
@@ -188,12 +249,37 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     avifRWStreamWriteU32(&s, (uint32_t)colorOBU.size); // unsigned int(length_size*8) extent_length;
 
     if (hasAlpha) {
-        avifRWStreamWriteU16(&s, 2);                       // unsigned int(16) item_ID;
+        avifRWStreamWriteU16(&s, alphaItemID);             // unsigned int(16) item_ID;
         avifRWStreamWriteU16(&s, 0);                       // unsigned int(16) data_reference_index;
         avifRWStreamWriteU16(&s, 1);                       // unsigned int(16) extent_count;
         alphaOBUOffsetOffset = avifRWStreamOffset(&s);     //
         avifRWStreamWriteU32(&s, 0 /* set later */);       // unsigned int(offset_size*8) extent_offset;
         avifRWStreamWriteU32(&s, (uint32_t)alphaOBU.size); // unsigned int(length_size*8) extent_length;
+    }
+
+    if (hasExif) {
+        // From ISO/IEC 23008-12:2017
+        // :: aligned(8) class ExifDataBlock() {
+        // ::     unsigned int(32) exif_tiff_header_offset;
+        // ::     unsigned int(8) exif_payload[];
+        // :: }
+        uint32_t exifDataBlockSize = (uint32_t)(sizeof(uint32_t) + image->exif.size);
+
+        avifRWStreamWriteU16(&s, exifItemID);        // unsigned int(16) item_ID;
+        avifRWStreamWriteU16(&s, 0);                 // unsigned int(16) data_reference_index;
+        avifRWStreamWriteU16(&s, 1);                 // unsigned int(16) extent_count;
+        exifOffsetOffset = avifRWStreamOffset(&s);   //
+        avifRWStreamWriteU32(&s, 0 /* set later */); // unsigned int(offset_size*8) extent_offset;
+        avifRWStreamWriteU32(&s, exifDataBlockSize); // unsigned int(length_size*8) extent_length;
+    }
+
+    if (hasXMP) {
+        avifRWStreamWriteU16(&s, xmpItemID);                 // unsigned int(16) item_ID;
+        avifRWStreamWriteU16(&s, 0);                         // unsigned int(16) data_reference_index;
+        avifRWStreamWriteU16(&s, 1);                         // unsigned int(16) extent_count;
+        xmpOffsetOffset = avifRWStreamOffset(&s);            //
+        avifRWStreamWriteU32(&s, 0 /* set later */);         // unsigned int(offset_size*8) extent_offset;
+        avifRWStreamWriteU32(&s, (uint32_t)image->xmp.size); // unsigned int(length_size*8) extent_length;
     }
 
     avifRWStreamFinishBox(&s, iloc);
@@ -202,21 +288,38 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     // Write iinf
 
     avifBoxMarker iinf = avifRWStreamWriteBox(&s, "iinf", 0, 0);
-    avifRWStreamWriteU16(&s, hasAlpha ? 2 : 1); //  unsigned int(16) entry_count;
+    avifRWStreamWriteU16(&s, itemCount); //  unsigned int(16) entry_count;
 
-    avifBoxMarker infe0 = avifRWStreamWriteBox(&s, "infe", 2, 0);
-    avifRWStreamWriteU16(&s, 1);            // unsigned int(16) item_ID;
+    avifBoxMarker infeImage = avifRWStreamWriteBox(&s, "infe", 2, 0);
+    avifRWStreamWriteU16(&s, colorItemID);  // unsigned int(16) item_ID;
     avifRWStreamWriteU16(&s, 0);            // unsigned int(16) item_protection_index;
     avifRWStreamWriteChars(&s, "av01", 4);  // unsigned int(32) item_type;
     avifRWStreamWriteChars(&s, "Color", 6); // string item_name; (writing null terminator)
-    avifRWStreamFinishBox(&s, infe0);
+    avifRWStreamFinishBox(&s, infeImage);
     if (hasAlpha) {
-        avifBoxMarker infe1 = avifRWStreamWriteBox(&s, "infe", 2, 0);
-        avifRWStreamWriteU16(&s, 2);            // unsigned int(16) item_ID;
+        avifBoxMarker infeAlpha = avifRWStreamWriteBox(&s, "infe", 2, 0);
+        avifRWStreamWriteU16(&s, alphaItemID);  // unsigned int(16) item_ID;
         avifRWStreamWriteU16(&s, 0);            // unsigned int(16) item_protection_index;
         avifRWStreamWriteChars(&s, "av01", 4);  // unsigned int(32) item_type;
         avifRWStreamWriteChars(&s, "Alpha", 6); // string item_name; (writing null terminator)
-        avifRWStreamFinishBox(&s, infe1);
+        avifRWStreamFinishBox(&s, infeAlpha);
+    }
+    if (hasExif) {
+        avifBoxMarker infeExif = avifRWStreamWriteBox(&s, "infe", 2, 0);
+        avifRWStreamWriteU16(&s, exifItemID);  // unsigned int(16) item_ID;
+        avifRWStreamWriteU16(&s, 0);           // unsigned int(16) item_protection_index;
+        avifRWStreamWriteChars(&s, "Exif", 4); // unsigned int(32) item_type;
+        avifRWStreamWriteChars(&s, "Exif", 5); // string item_name; (writing null terminator)
+        avifRWStreamFinishBox(&s, infeExif);
+    }
+    if (hasXMP) {
+        avifBoxMarker infeXMP = avifRWStreamWriteBox(&s, "infe", 2, 0);
+        avifRWStreamWriteU16(&s, xmpItemID);                            // unsigned int(16) item_ID;
+        avifRWStreamWriteU16(&s, 0);                                    // unsigned int(16) item_protection_index;
+        avifRWStreamWriteChars(&s, "mime", 4);                          // unsigned int(32) item_type;
+        avifRWStreamWriteChars(&s, "XMP", 4);                           // string item_name; (writing null terminator)
+        avifRWStreamWriteChars(&s, xmpContentType, xmpContentTypeSize); // string content_type; (writing null terminator)
+        avifRWStreamFinishBox(&s, infeXMP);
     }
     avifRWStreamFinishBox(&s, iinf);
 
@@ -226,10 +329,36 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     if (hasAlpha) {
         avifBoxMarker iref = avifRWStreamWriteBox(&s, "iref", 0, 0);
         avifBoxMarker auxl = avifRWStreamWriteBox(&s, "auxl", -1, 0);
-        avifRWStreamWriteU16(&s, 2); // unsigned int(16) from_item_ID;
-        avifRWStreamWriteU16(&s, 1); // unsigned int(16) reference_count;
-        avifRWStreamWriteU16(&s, 1); // unsigned int(16) to_item_ID;
+        avifRWStreamWriteU16(&s, alphaItemID); // unsigned int(16) from_item_ID;
+        avifRWStreamWriteU16(&s, 1);           // unsigned int(16) reference_count;
+        avifRWStreamWriteU16(&s, colorItemID); // unsigned int(16) to_item_ID;
         avifRWStreamFinishBox(&s, auxl);
+        avifRWStreamFinishBox(&s, iref);
+    }
+
+    // -----------------------------------------------------------------------
+    // Write iref (cdsc) for Exif, if any
+
+    if (hasExif) {
+        avifBoxMarker iref = avifRWStreamWriteBox(&s, "iref", 0, 0);
+        avifBoxMarker cdsc = avifRWStreamWriteBox(&s, "cdsc", -1, 0);
+        avifRWStreamWriteU16(&s, exifItemID);  // unsigned int(16) from_item_ID;
+        avifRWStreamWriteU16(&s, 1);           // unsigned int(16) reference_count;
+        avifRWStreamWriteU16(&s, colorItemID); // unsigned int(16) to_item_ID;
+        avifRWStreamFinishBox(&s, cdsc);
+        avifRWStreamFinishBox(&s, iref);
+    }
+
+    // -----------------------------------------------------------------------
+    // Write iref (cdsc) for XMP, if any
+
+    if (hasXMP) {
+        avifBoxMarker iref = avifRWStreamWriteBox(&s, "iref", 0, 0);
+        avifBoxMarker cdsc = avifRWStreamWriteBox(&s, "cdsc", -1, 0);
+        avifRWStreamWriteU16(&s, xmpItemID);   // unsigned int(16) from_item_ID;
+        avifRWStreamWriteU16(&s, 1);           // unsigned int(16) reference_count;
+        avifRWStreamWriteU16(&s, colorItemID); // unsigned int(16) to_item_ID;
+        avifRWStreamFinishBox(&s, cdsc);
         avifRWStreamFinishBox(&s, iref);
     }
 
@@ -344,6 +473,13 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     avifRWStreamWrite(&s, colorOBU.data, colorOBU.size);
     uint32_t alphaOBUOffset = (uint32_t)s.offset;
     avifRWStreamWrite(&s, alphaOBU.data, alphaOBU.size);
+    uint32_t exifOffset = (uint32_t)s.offset;
+    if (image->exif.size > 0) {
+        avifRWStreamWriteU32(&s, (uint32_t)exifTiffHeaderOffset); // unsigned int(32) exif_tiff_header_offset; (Annex A.2.1)
+        avifRWStreamWrite(&s, image->exif.data, image->exif.size);
+    }
+    uint32_t xmpOffset = (uint32_t)s.offset;
+    avifRWStreamWrite(&s, image->xmp.data, image->xmp.size);
     avifRWStreamFinishBox(&s, mdat);
 
     // -----------------------------------------------------------------------
@@ -358,6 +494,14 @@ avifResult avifEncoderWrite(avifEncoder * encoder, avifImage * image, avifRWData
     if (alphaOBUOffsetOffset != 0) {
         avifRWStreamSetOffset(&s, alphaOBUOffsetOffset);
         avifRWStreamWriteU32(&s, alphaOBUOffset);
+    }
+    if (exifOffsetOffset != 0) {
+        avifRWStreamSetOffset(&s, exifOffsetOffset);
+        avifRWStreamWriteU32(&s, exifOffset);
+    }
+    if (xmpOffsetOffset != 0) {
+        avifRWStreamSetOffset(&s, xmpOffsetOffset);
+        avifRWStreamWriteU32(&s, xmpOffset);
     }
     avifRWStreamSetOffset(&s, prevOffset);
 

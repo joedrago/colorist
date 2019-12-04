@@ -15,8 +15,8 @@ extern "C" {
 // Constants
 
 #define AVIF_VERSION_MAJOR 0
-#define AVIF_VERSION_MINOR 4
-#define AVIF_VERSION_PATCH 8
+#define AVIF_VERSION_MINOR 5
+#define AVIF_VERSION_PATCH 3
 #define AVIF_VERSION (AVIF_VERSION_MAJOR * 10000) + (AVIF_VERSION_MINOR * 100) + AVIF_VERSION_PATCH
 
 typedef int avifBool;
@@ -89,7 +89,8 @@ typedef enum avifResult
     AVIF_RESULT_COLOR_ALPHA_SIZE_MISMATCH,
     AVIF_RESULT_ISPE_SIZE_MISMATCH,
     AVIF_RESULT_NO_CODEC_AVAILABLE,
-    AVIF_RESULT_NO_IMAGES_REMAINING
+    AVIF_RESULT_NO_IMAGES_REMAINING,
+    AVIF_RESULT_INVALID_EXIF_PAYLOAD
 } avifResult;
 
 const char * avifResultToString(avifResult result);
@@ -300,6 +301,10 @@ typedef struct avifImage
     avifProfileFormat profileFormat;
     avifRWData icc;
     avifNclxColorProfile nclx;
+
+    // Metadata - set with avifImageSetMetadata*() before write, check .size>0 for existence after read
+    avifRWData exif;
+    avifRWData xmp;
 } avifImage;
 
 avifImage * avifImageCreate(int width, int height, int depth, avifPixelFormat yuvFormat);
@@ -310,6 +315,10 @@ void avifImageDestroy(avifImage * image);
 void avifImageSetProfileNone(avifImage * image);
 void avifImageSetProfileICC(avifImage * image, const uint8_t * icc, size_t iccSize);
 void avifImageSetProfileNCLX(avifImage * image, avifNclxColorProfile * nclx);
+
+// Warning: If the Exif payload is set and invalid, avifEncoderWrite() may return AVIF_RESULT_INVALID_EXIF_PAYLOAD
+void avifImageSetMetadataExif(avifImage * image, const uint8_t * exif, size_t exifSize);
+void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpSize);
 
 void avifImageAllocatePlanes(avifImage * image, uint32_t planes); // Ignores any pre-existing planes
 void avifImageFreePlanes(avifImage * image, uint32_t planes);     // Ignores already-freed planes

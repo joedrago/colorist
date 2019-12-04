@@ -12,6 +12,7 @@ extern "C" {
 
 // Yes, clamp macros are nasty. Do not use them.
 #define AVIF_CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+#define AVIF_MIN(a, b) (((a) < (b)) ? (a) : (b))
 
 // Used by stream related things.
 #define CHECK(A)               \
@@ -21,10 +22,12 @@ extern "C" {
     } while (0)
 
 // ---------------------------------------------------------------------------
-// URNs
+// URNs and Content-Types
 
 #define URN_ALPHA0 "urn:mpeg:mpegB:cicp:systems:auxiliary:alpha"
 #define URN_ALPHA1 "urn:mpeg:hevc:2015:auxid:1"
+
+#define CONTENT_TYPE_XMP "application/rdf+xml"
 
 // ---------------------------------------------------------------------------
 // Utils

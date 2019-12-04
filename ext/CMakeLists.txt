@@ -153,7 +153,7 @@ else()
     )
 endif()
 
-set(AVIF_BUILD_STATIC ON CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 add_subdirectory(avif)
 
 set(COLORIST_EXT_INCLUDES

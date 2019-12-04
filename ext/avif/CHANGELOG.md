@@ -6,6 +6,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] - 2019-12-03
+### Added
+- Honor CMake's builtin `CMAKE_SKIP_INSTALL_RULES`
+
+### Changed
+- avifenc - Removed accidental double-delete of avifImage when failing to read a y4m file input
+- Round dimensions down when decoding subsampled YUV with odd dimensions
+
+## [0.5.2] - 2019-11-23
+### Changed
+- Fix incorrect free in 0-case for `avifRWDataSet()`
+
+## [0.5.1] - 2019-11-21
+### Changed
+- Fix expectations for Exif payload to better match normal usage
+
+## [0.5.0] - 2019-11-21
+### Added
+- Define version and SO-version for shared library
+- Use -DBUILD_SHARED_LIBS=OFF for building a static lib
+- avifImage can now hold Exif and XMP metadata (`avifImageSetMetadataExif`, `avifImageSetMetadataXMP`)
+- Support for reading/writing Exif and XMP items
+- Now tracking idat boxes across meta boxes
+- Support for iloc construction_method 1 (idat)
+
+### Changed
+- Proper handling of the primary item box (pitm) on read
+- avifROStreamReadString() now allows string skipping by passing a NULL output buffer
+- Updated README to show Exif/XMP support
+
 ## [0.4.8] - 2019-11-19
 ### Added
 - avifEncoder now has a speed setting
@@ -239,7 +269,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.4.8...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.5.3...HEAD
+[0.5.3]: https://github.com/AOMediaCodec/libavif/compare/v0.5.2...v0.5.3
+[0.5.2]: https://github.com/AOMediaCodec/libavif/compare/v0.5.1...v0.5.2
+[0.5.1]: https://github.com/AOMediaCodec/libavif/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/AOMediaCodec/libavif/compare/v0.4.8...v0.5.0
 [0.4.8]: https://github.com/AOMediaCodec/libavif/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/AOMediaCodec/libavif/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/AOMediaCodec/libavif/compare/v0.4.5...v0.4.6

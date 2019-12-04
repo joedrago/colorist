@@ -30,6 +30,8 @@ install:
     git submodule update --init --recursive
 before_build:
 - cmd: >-
+    call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+
     appveyor DownloadFile "https://github.com/joedrago/nasm_mirror/raw/master/nasm-2.14.02-win64.zip" -FileName "nasm.zip"
 
     7z x "nasm.zip" > nul
@@ -39,6 +41,14 @@ before_build:
     set PATH=%PATH%;%CD%\NASM;
 
     nasm -v
+
+    set NINJA_URL="https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-win.zip"
+
+    appveyor DownloadFile %NINJA_URL% -FileName ninja.zip
+
+    7z x ninja.zip -oC:\projects\deps\ninja > nul
+
+    set PATH=C:\projects\deps\ninja;%PATH%
 
     cd ext
 

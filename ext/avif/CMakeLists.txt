@@ -2,13 +2,23 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 cmake_minimum_required(VERSION 3.5)
-project(libavif LANGUAGES C VERSION 0.4.8)
+project(libavif LANGUAGES C VERSION 0.5.3)
+
+# SOVERSION scheme: CURRENT.AGE.REVISION
+#   If there was an incompatible interface change:
+#     Increment CURRENT. Set AGE and REVISION to 0
+#   If there was a compatible interface change:
+#     Increment AGE. Set REVISION to 0
+#   If the source code was changed, but there were no interface changes:
+#     Increment REVISION.
+set(LIBRARY_VERSION "0.1.3")
+set(LIBRARY_SOVERSION "0")
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=c99) # Enforce C99 for gcc
 endif()
 
-option(AVIF_BUILD_STATIC "Build static avif library" OFF)
+option(BUILD_SHARED_LIBS "Build shared avif library" ON)
 
 option(AVIF_CODEC_AOM "Use the AOM codec for encoding (and decoding if no other decoder is present)" OFF)
 option(AVIF_CODEC_DAV1D "Use the dav1d codec for decoding (overrides AOM decoding if also enabled)" OFF)
@@ -216,11 +226,11 @@ if(NOT AVIF_CODEC_AOM AND NOT AVIF_CODEC_DAV1D)
     message(FATAL_ERROR "libavif: No decoding library is enabled, bailing out.")
 endif()
 
-if(AVIF_BUILD_STATIC)
-    add_library(avif STATIC ${AVIF_SRCS})
-else()
-    add_library(avif SHARED ${AVIF_SRCS})
-endif()
+add_library(avif ${AVIF_SRCS})
+set_target_properties(avif
+                      PROPERTIES
+                          VERSION ${LIBRARY_VERSION}
+                          SOVERSION ${LIBRARY_SOVERSION})
 target_link_libraries(avif
                       PRIVATE ${AVIF_CODEC_LIBRARIES} ${AVIF_PLATFORM_LIBRARIES})
 target_include_directories(avif
@@ -231,6 +241,10 @@ option(AVIF_BUILD_EXAMPLES "Build avif Examples." OFF)
 if(AVIF_BUILD_EXAMPLES)
     add_executable(avif_example1 examples/avif_example1.c)
     target_link_libraries(avif_example1 avif ${AVIF_PLATFORM_LIBRARIES})
+endif()
+
+if(CMAKE_SKIP_INSTALL_RULES)
+    set(SKIP_INSTALL_ALL TRUE)
 endif()
 
 if(NOT SKIP_INSTALL_ALL)
