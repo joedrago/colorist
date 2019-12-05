@@ -25,9 +25,18 @@ double timerElapsedSeconds(Timer * timer)
 #pragma warning(disable : 5031)
 #pragma warning(disable : 5032)
 #include <windows.h>
+static uint64_t frequency;
 static double now(void)
 {
-    return (double)GetTickCount64() / 1000.0;
+    if (!frequency) {
+        LARGE_INTEGER perfFreq;
+        QueryPerformanceFrequency(&perfFreq);
+        frequency = perfFreq.QuadPart;
+    }
+
+    LARGE_INTEGER current;
+    QueryPerformanceCounter(&current);
+    return (double)current.QuadPart / (double)frequency;
 }
 #else
 #include <sys/time.h>
