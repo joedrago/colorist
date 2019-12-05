@@ -68,6 +68,7 @@ set(COLORIST_LIB_SRCS
     src/image.c
     src/image_debugdump.c
     src/image_diff.c
+    src/image_draw.c
     src/image_highlight.c
     src/image_stats.c
     src/image_string.c

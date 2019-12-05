@@ -144,6 +144,16 @@ clImage * clImageParseString(struct clContext * C, const char * str, int depth, 
 clBool clImageCalcSignals(struct clContext * C, clImage * srcImage, clImage * dstImage, clImageSignals * signals);
 float clImageLargestChannel(struct clContext * C, clImage * image);
 float clImagePeakLuminance(struct clContext * C, clImage * image); // Doesn't return maxCLL, but the lum of (largestChannel, largestChannel, largestChannel)
+void clImageClear(struct clContext * C, clImage * image, float color[4]);
+void clImageDrawCIE(struct clContext * C, clImage * image, float borderColor[4], int borderThickness);
+void clImageDrawGamut(struct clContext * C,
+                      clImage * image,
+                      struct clProfilePrimaries * primaries,
+                      float color[4],
+                      int thickness,
+                      float wpColor[4],
+                      int wpThickness);
+void clImageDrawLine(struct clContext * C, clImage * image, int x0, int y0, int x1, int y1, float color[4], int thickness);
 
 clImageDiff * clImageDiffCreate(struct clContext * C, clImage * image1, clImage * image2, float minIntensity, int threshold);
 void clImageDiffUpdate(struct clContext * C, clImageDiff * diff, int threshold);

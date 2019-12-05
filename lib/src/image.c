@@ -613,6 +613,17 @@ float clImagePeakLuminance(struct clContext * C, clImage * image)
     return peakXYZ[1];
 }
 
+void clImageClear(struct clContext * C, clImage * image, float color[4])
+{
+    clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_F32);
+
+    int pixelCount = image->width * image->height;
+    for (int i = 0; i < pixelCount; ++i) {
+        float * pixel = &image->pixelsF32[i * CL_CHANNELS_PER_PIXEL];
+        memcpy(pixel, color, sizeof(float) * 4);
+    }
+}
+
 void clImageDestroy(clContext * C, clImage * image)
 {
     clProfileDestroy(C, image->profile);

@@ -48,6 +48,7 @@ int clFileSize(const char * filename);
 // Yes, clamp macros are nasty. Do not use them.
 #define CL_CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 #define CL_MAX(x, low) (((x) < (low)) ? (low) : (x))
+#define CL_MIN(x, high) (((x) > (high)) ? (high) : (x))
 
 typedef int clBool;
 #define clFalse 0

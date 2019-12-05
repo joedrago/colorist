@@ -84,6 +84,9 @@ typedef struct clToken
     // HALD clut: if non-zero, generate an identity hald of NxNxN
     int hald;
 
+    // CIE 1931 chromaticity chart: if non-zero, generate a chart of NxN
+    int cie;
+
     // cw, ccw
     // -1 is ccw, 1 is cw
     int rotate;
@@ -479,7 +482,44 @@ static const char * parseHald(struct clContext * C, const char * s, clToken * to
     if (*end == ')') {
         ++end; // Skip past close paren
     } else {
-        clContextLogError(C, "Unexpected character here: %s", len, end);
+        clContextLogError(C, "Unexpected character here: %s", end);
+        return NULL;
+    }
+    return end;
+}
+
+static const char * parseCIE(struct clContext * C, const char * s, clToken * token)
+{
+    char buffer[32];
+    size_t len;
+    const char * end;
+
+    if (strncmp(s, "cie(", 4) != 0) {
+        return NULL;
+    }
+    s += 4;
+
+    // Dimension
+    end = s;
+    while (isdigit(*end)) {
+        ++end;
+    }
+    len = end - s;
+    if (len == 0) {
+        clContextLogError(C, "Invalid CIE dimension here: %s", s);
+        return NULL;
+    }
+    if (len > 31) {
+        clContextLogError(C, "Dimension number too long [%d] here: %s", len, s);
+        return NULL;
+    }
+    memcpy(buffer, s, len);
+    buffer[len] = 0;
+    token->cie = atoi(buffer);
+    if (*end == ')') {
+        ++end; // Skip past close paren
+    } else {
+        clContextLogError(C, "Unexpected character here: %s", end);
         return NULL;
     }
     return end;
@@ -548,6 +588,11 @@ static const char * parseNext(struct clContext * C, const char * s, clToken * to
         }
     } else if ((!strncmp(s, "hald(", 5))) {
         s = parseHald(C, s, token);
+        if (s == NULL) {
+            return NULL;
+        }
+    } else if ((!strncmp(s, "cie(", 4))) {
+        s = parseCIE(C, s, token);
         if (s == NULL) {
             return NULL;
         }
@@ -845,6 +890,7 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
     int every = 0;
     int colorIndex = 0;
     int hald = 0;
+    clBool cie = clFalse;
     clToken * t;
 
     colorCount = 0;
@@ -863,6 +909,9 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
         if (t->hald) {
             hald = t->hald;
         }
+        if (t->cie) {
+            cie = t->cie;
+        }
         rotate += t->rotate;
     }
     while (rotate < 0) {
@@ -870,7 +919,11 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
     }
     rotate = rotate % 4;
 
-    if (hald > 0) {
+    if (cie > 0) {
+        imageWidth = cie;
+        imageHeight = cie;
+        clContextLog(C, "parse", 1, "Image stripe specifies a CIE1931 chart (%dbpc) of %dx%d", depth, imageWidth, imageHeight);
+    } else if (hald > 0) {
         int imageDimensions = 0;
         for (int i = 0; i < 32; ++i) {
             if ((i * i) == hald) {
@@ -914,7 +967,21 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
     image = clImageCreate(C, imageWidth, imageHeight, depth, profile);
     clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_F32);
 
-    if (hald > 0) {
+    if (cie) {
+        // float transparent[4] = { 0, 0, 0, 0 };
+        // clImageClear(C, image, transparent);
+
+        float black[4] = { 0, 0, 0, 1 };
+        clImageDrawCIE(C, image, black, 1);
+
+        // clProfilePrimaries primaries;
+        // clContextGetStockPrimaries(C, "bt709", &primaries);
+        // clImageDrawGamut(C, image, &primaries, black, 2, black, 4);
+        // clContextGetStockPrimaries(C, "p3", &primaries);
+        // clImageDrawGamut(C, image, &primaries, black, 2, black, 4);
+        // clContextGetStockPrimaries(C, "bt2020", &primaries);
+        // clImageDrawGamut(C, image, &primaries, black, 2, black, 4);
+    } else if (hald > 0) {
         float haldMaxf = (float)(hald - 1);
         for (int z = 0; z < hald; ++z) {
             float zValue = (float)z / haldMaxf;
