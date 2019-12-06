@@ -305,15 +305,12 @@ void clBlendParamsSetDefaults(struct clContext * C, clBlendParams * blendParams)
     blendParams->cmpTonemap = CL_TONEMAP_AUTO;
     clTonemapParamsSetDefaults(C, &blendParams->cmpParams);
     blendParams->premultiplied = clFalse;
+    blendParams->offsetX = 0;
+    blendParams->offsetY = 0;
 }
 
 clImage * clImageBlend(struct clContext * C, clImage * image, clImage * compositeImage, clBlendParams * blendParams)
 {
-    // Sanity checks
-    if ((image->width != compositeImage->width) || (image->height != compositeImage->height)) {
-        return NULL;
-    }
-
     // Query profile used for both src and dst image
     clProfilePrimaries primaries;
     clProfileCurve curve;
@@ -342,46 +339,58 @@ clImage * clImageBlend(struct clContext * C, clImage * image, clImage * composit
     // Transform src and comp images into normalized blend space
     clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_F32);
     clImagePrepareReadPixels(C, compositeImage, CL_PIXELFORMAT_F32);
-    int pixelCount = image->width * image->height;
-    float * srcFloats = clAllocate(4 * sizeof(float) * pixelCount);
-    clTransformRun(C, srcBlendTransform, image->pixelsF32, srcFloats, pixelCount);
-    float * cmpFloats = clAllocate(4 * sizeof(float) * pixelCount);
-    clTransformRun(C, cmpBlendTransform, compositeImage->pixelsF32, cmpFloats, pixelCount);
+    float * srcFloats = clAllocate(4 * sizeof(float) * image->width * image->height);
+    clTransformRun(C, srcBlendTransform, image->pixelsF32, srcFloats, image->width * image->height);
+    float * cmpFloats = clAllocate(4 * sizeof(float) * compositeImage->width * compositeImage->height);
+    clTransformRun(C, cmpBlendTransform, compositeImage->pixelsF32, cmpFloats, compositeImage->width * compositeImage->height);
+
+    // Find bounds and offset for composition
+    int offsetX = blendParams->offsetX;
+    int offsetY = blendParams->offsetY;
+    int rangeX = CL_MIN(image->width - offsetX, compositeImage->width);
+    int rangeY = CL_MIN(image->height - offsetY, compositeImage->height);
 
     // Perform SourceOver blend
-    float * dstFloats = clAllocate(4 * sizeof(float) * pixelCount);
-    if (blendParams->premultiplied) {
-        // Premultiplied alpha
-        for (int i = 0; i < pixelCount; ++i) {
-            float * srcPixel = &srcFloats[i * 4];
-            float * cmpPixel = &cmpFloats[i * 4];
-            float * dstPixel = &dstFloats[i * 4];
+    float * dstFloats = clAllocate(4 * sizeof(float) * image->width * image->height);
+    memcpy(dstFloats, srcFloats, 4 * sizeof(float) * image->width * image->height); // start with the original pixels
+    if ((rangeX >= 1) && (rangeY >= 1)) {
+        if (blendParams->premultiplied) {
+            // Premultiplied alpha
+            for (int j = 0; j < rangeY; ++j) {
+                for (int i = 0; i < rangeX; ++i) {
+                    float * srcPixel = &srcFloats[CL_CHANNELS_PER_PIXEL * ((i + offsetX) + ((j + offsetY) * image->width))];
+                    float * cmpPixel = &cmpFloats[CL_CHANNELS_PER_PIXEL * (i + (j * compositeImage->width))];
+                    float * dstPixel = &dstFloats[CL_CHANNELS_PER_PIXEL * ((i + offsetX) + ((j + offsetY) * image->width))];
 
-            // cmpPixel is the "Source" in a SourceOver Porter/Duff blend
-            dstPixel[0] = cmpPixel[0] + (srcPixel[0] * (1 - cmpPixel[3]));
-            dstPixel[1] = cmpPixel[1] + (srcPixel[1] * (1 - cmpPixel[3]));
-            dstPixel[2] = cmpPixel[2] + (srcPixel[2] * (1 - cmpPixel[3]));
-            dstPixel[3] = cmpPixel[3] + (srcPixel[3] * (1 - cmpPixel[3]));
-        }
-    } else {
-        // Not Premultiplied alpha, perform the multiply during the blend
-        for (int i = 0; i < pixelCount; ++i) {
-            float * srcPixel = &srcFloats[i * 4];
-            float * cmpPixel = &cmpFloats[i * 4];
-            float * dstPixel = &dstFloats[i * 4];
+                    // cmpPixel is the "Source" in a SourceOver Porter/Duff blend
+                    dstPixel[0] = cmpPixel[0] + (srcPixel[0] * (1 - cmpPixel[3]));
+                    dstPixel[1] = cmpPixel[1] + (srcPixel[1] * (1 - cmpPixel[3]));
+                    dstPixel[2] = cmpPixel[2] + (srcPixel[2] * (1 - cmpPixel[3]));
+                    dstPixel[3] = cmpPixel[3] + (srcPixel[3] * (1 - cmpPixel[3]));
+                }
+            }
+        } else {
+            // Not Premultiplied alpha, perform the multiply during the blend
+            for (int j = 0; j < rangeY; ++j) {
+                for (int i = 0; i < rangeX; ++i) {
+                    float * srcPixel = &srcFloats[CL_CHANNELS_PER_PIXEL * ((i + offsetX) + ((j + offsetY) * image->width))];
+                    float * cmpPixel = &cmpFloats[CL_CHANNELS_PER_PIXEL * (i + (j * compositeImage->width))];
+                    float * dstPixel = &dstFloats[CL_CHANNELS_PER_PIXEL * ((i + offsetX) + ((j + offsetY) * image->width))];
 
-            // cmpPixel is the "Source" in a SourceOver Porter/Duff blend
-            dstPixel[0] = (cmpPixel[0] * cmpPixel[3]) + (srcPixel[0] * srcPixel[3] * (1 - cmpPixel[3]));
-            dstPixel[1] = (cmpPixel[1] * cmpPixel[3]) + (srcPixel[1] * srcPixel[3] * (1 - cmpPixel[3]));
-            dstPixel[2] = (cmpPixel[2] * cmpPixel[3]) + (srcPixel[2] * srcPixel[3] * (1 - cmpPixel[3]));
-            dstPixel[3] = cmpPixel[3] + (srcPixel[3] * (1 - cmpPixel[3]));
+                    // cmpPixel is the "Source" in a SourceOver Porter/Duff blend
+                    dstPixel[0] = (cmpPixel[0] * cmpPixel[3]) + (srcPixel[0] * srcPixel[3] * (1 - cmpPixel[3]));
+                    dstPixel[1] = (cmpPixel[1] * cmpPixel[3]) + (srcPixel[1] * srcPixel[3] * (1 - cmpPixel[3]));
+                    dstPixel[2] = (cmpPixel[2] * cmpPixel[3]) + (srcPixel[2] * srcPixel[3] * (1 - cmpPixel[3]));
+                    dstPixel[3] = cmpPixel[3] + (srcPixel[3] * (1 - cmpPixel[3]));
+                }
+            }
         }
     }
 
     // Transform blended pixels into new destination image
     clImage * dstImage = clImageCreate(C, image->width, image->height, image->depth, image->profile);
     clImagePrepareWritePixels(C, dstImage, CL_PIXELFORMAT_F32);
-    clTransformRun(C, dstTransform, dstFloats, dstImage->pixelsF32, pixelCount);
+    clTransformRun(C, dstTransform, dstFloats, dstImage->pixelsF32, image->width * image->height);
 
     // Cleanup
     clTransformDestroy(C, srcBlendTransform);

@@ -431,6 +431,7 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->resizeW = 0;
     params->resizeH = 0;
     params->resizeFilter = CL_FILTER_AUTO;
+    params->rotate = 0;
     params->stripTags = NULL;
     params->stats = clFalse;
     params->tonemap = CL_TONEMAP_AUTO;
@@ -841,6 +842,20 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 if (!clTonemapFromString(C, arg, &C->params.compositeParams.cmpTonemap, &C->params.compositeParams.cmpParams)) {
                     return clFalse;
                 }
+            } else if (!strcmp(arg, "--composite-offset")) {
+                NEXTARG();
+                char tmpBuffer[32];
+                strncpy(tmpBuffer, arg, 31);
+                tmpBuffer[31] = 0;
+                char * comma = strchr(tmpBuffer, ',');
+                if (comma) {
+                    *comma = 0;
+                    ++comma;
+                    C->params.compositeParams.offsetX = atoi(tmpBuffer);
+                    C->params.compositeParams.offsetY = atoi(comma);
+                } else {
+                    return clFalse;
+                }
             } else if (!strcmp(arg, "--composite-premultiplied")) {
                 C->params.compositeParams.premultiplied = clTrue;
             } else if (!strcmp(arg, "-v") || !strcmp(arg, "--verbose")) {
@@ -907,6 +922,10 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 }
                 C->params.writeParams.quantizerMin = CL_CLAMP(C->params.writeParams.quantizerMin, 0, 63);
                 C->params.writeParams.quantizerMax = CL_CLAMP(C->params.writeParams.quantizerMax, 0, 63);
+            } else if (!strcmp(arg, "--rotate")) {
+                NEXTARG();
+                C->params.rotate = atoi(arg);
+                C->params.rotate = CL_MAX(C->params.rotate % 4, 0);
             } else if (!strcmp(arg, "--speed")) {
                 NEXTARG();
                 if (!strcmp(arg, "auto")) {
@@ -1114,11 +1133,13 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Convert Options:");
     clContextLog(C, NULL, 0, "    --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)");
+    clContextLog(C, NULL, 0, "    --rotate cwTurns         : Rotate image cwTurns clockwise");
     clContextLog(C, NULL, 0, "    -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h");
     clContextLog(C, NULL, 0, "    --composite FILENAME     : Composite FILENAME on top of input. Must be identical dimensions to input.");
     clContextLog(C, NULL, 0, "    --composite-gamma GAMMA  : When compositing, perform sourceover blend using this gamma (default: 2.2)");
     clContextLog(C, NULL, 0, "    --composite-premultiplied: When compositing, assume composite image's alpha is premultiplied (default: false)");
     clContextLog(C, NULL, 0, "    --composite-tonemap TM   : When compositing, determines if composite image is tonemapped before blend. auto (default), on, or off");
+    clContextLog(C, NULL, 0, "    --composite-offset x,y   : When compositing, offsets source image onto destination image");
     clContextLog(C, NULL, 0, "    --hald FILENAME          : Image containing valid Hald CLUT to be used after color conversion");
     clContextLog(C, NULL, 0, "    --stats                  : Enable post-conversion stats (MSE, PSNR, etc)");
     clContextLog(C, NULL, 0, "");

@@ -197,6 +197,8 @@ typedef struct clBlendParams
     clTonemap cmpTonemap;      // hint to conversion pipeline when converting compositeImage to dst profile
     clTonemapParams cmpParams; // tonemap params
     clBool premultiplied;      // if true, compositeImage already has premultiplied alpha
+    int offsetX;
+    int offsetY;
 } clBlendParams;
 void clBlendParamsSetDefaults(struct clContext * C, clBlendParams * blendParams);
 
@@ -229,6 +231,7 @@ typedef struct clConversionParams
     int resizeW;                    // --resize
     int resizeH;                    // --resize
     clFilter resizeFilter;          // --resize
+    int rotate;                     // --rotate
     const char * stripTags;         // -s
     clBool stats;                   // --stats
     clTonemap tonemap;              // -t
@@ -239,7 +242,6 @@ typedef struct clConversionParams
     const char * compositeFilename; // --composite
     clBlendParams compositeParams;  // --composite-gamma, --composite-premultiplied
 } clConversionParams;
-
 void clConversionParamsSetDefaults(struct clContext * C, clConversionParams * params);
 
 typedef struct clFormatRecord

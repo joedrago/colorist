@@ -1025,15 +1025,15 @@ static clImage * interpretTokens(struct clContext * C, clToken * tokens, int dep
             pixel[2] = color.fb;
             pixel[3] = color.fa;
         }
+    }
 
-        if (rotate != 0) {
-            clImage * rotated;
-            clContextLog(C, "parse", 1, "Rotating image %d turn%s clockwise", rotate, (rotate > 1) ? "s" : "");
-            rotated = clImageRotate(C, image, rotate);
-            clImageDestroy(C, image);
-            image = rotated;
-            clContextLog(C, "parse", 1, "Final resolution after rotation: %dx%d", image->width, image->height);
-        }
+    if (rotate != 0) {
+        clImage * rotated;
+        clContextLog(C, "parse", 1, "Rotating image %d turn%s clockwise", rotate, (rotate > 1) ? "s" : "");
+        rotated = clImageRotate(C, image, rotate);
+        clImageDestroy(C, image);
+        image = rotated;
+        clContextLog(C, "parse", 1, "Final resolution after rotation: %dx%d", image->width, image->height);
     }
     return image;
 }

@@ -776,10 +776,6 @@ void clTransformRun(struct clContext * C, clTransform * transform, float * srcPi
         taskCount = pixelCount;
     }
 
-    if (taskCount > 1) {
-        clContextLog(C, "convert", 1, "Using %d threads to pixel transform.", taskCount);
-    }
-
     if (taskCount == 1) {
         // Don't bother making any new threads
         clTransformTask info;

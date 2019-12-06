@@ -21,6 +21,8 @@
 #include <math.h>
 #include <string.h>
 
+#define CLOSE_ENOUGH_TO_ZERO (0.00001f)
+
 // from cmsio1.c
 extern cmsBool _cmsReadCHAD(cmsMAT3 * Dest, cmsHPROFILE hProfile);
 
@@ -452,6 +454,31 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
         cmsXYZ2xyY(&dst, &adaptedWhiteXYZ);
         primaries->white[0] = (float)dst.x;
         primaries->white[1] = (float)dst.y;
+
+        if (primaries->red[0] < CLOSE_ENOUGH_TO_ZERO) {
+            primaries->red[0] = 0.0f;
+        }
+        if (primaries->red[1] < CLOSE_ENOUGH_TO_ZERO) {
+            primaries->red[1] = 0.0f;
+        }
+        if (primaries->green[0] < CLOSE_ENOUGH_TO_ZERO) {
+            primaries->green[0] = 0.0f;
+        }
+        if (primaries->green[1] < CLOSE_ENOUGH_TO_ZERO) {
+            primaries->green[1] = 0.0f;
+        }
+        if (primaries->blue[0] < CLOSE_ENOUGH_TO_ZERO) {
+            primaries->blue[0] = 0.0f;
+        }
+        if (primaries->blue[1] < CLOSE_ENOUGH_TO_ZERO) {
+            primaries->blue[1] = 0.0f;
+        }
+        if (primaries->white[0] < CLOSE_ENOUGH_TO_ZERO) {
+            primaries->white[0] = 0.0f;
+        }
+        if (primaries->white[1] < CLOSE_ENOUGH_TO_ZERO) {
+            primaries->white[1] = 0.0f;
+        }
     }
 
     if (curve) {

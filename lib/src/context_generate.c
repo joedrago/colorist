@@ -127,6 +127,21 @@ int clContextGenerate(clContext * C, struct cJSON * output)
             return 1;
         }
 
+        if (C->params.rotate != 0) {
+            clContextLog(C, "rotate", 0, "Rotating image clockwise %dx...", C->params.rotate);
+
+            Timer t;
+            timerStart(&t);
+
+            clImage * rotatedImage = clImageRotate(C, image, C->params.rotate);
+            if (rotatedImage) {
+                clImageDestroy(C, image);
+                image = rotatedImage;
+            }
+
+            clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+        }
+
         if (C->outputFilename) {
             clContextLogWrite(C, C->outputFilename, C->params.formatName, &writeParams);
             clImageDebugDump(C, image, C->params.rect[0], C->params.rect[1], C->params.rect[2], C->params.rect[3], 0);

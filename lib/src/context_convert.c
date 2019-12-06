@@ -62,7 +62,7 @@ int clContextConvert(clContext * C)
         params.writeParams.yuvFormat = clYUVFormatAutoChoose(C, &params.writeParams);
     }
 
-    clContextLog(C, "action", 0, "Convert: %s -> %s", C->inputFilename, C->outputFilename);
+    clContextLog(C, "action", 0, "Convert [%d max threads]: %s -> %s", C->jobs, C->inputFilename, C->outputFilename);
     timerStart(&overall);
 
     clContextLog(C, "decode", 0, "Reading: %s (%d bytes)", C->inputFilename, clFileSize(C->inputFilename));
@@ -354,23 +354,14 @@ int clContextConvert(clContext * C)
         }
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
 
-        if ((dstImage->width != compositeImage->width) || (dstImage->height != compositeImage->height)) {
-            clContextLogError(C,
-                              "Composite image dimensions don't match: image:%dx%d vs comp:%dx%d",
-                              dstImage->width,
-                              dstImage->height,
-                              compositeImage->width,
-                              compositeImage->height);
-            clImageDestroy(C, compositeImage);
-            FAIL();
-        }
-
         clContextLog(C,
                      "composite",
                      0,
-                     "Blending composite on top (%.2g gamma, %s)...",
+                     "Blending composite on top (%.2g gamma, %s, offset %d,%d)...",
                      params.compositeParams.gamma,
-                     params.compositeParams.premultiplied ? "premultiplied" : "not premultiplied");
+                     params.compositeParams.premultiplied ? "premultiplied" : "not premultiplied",
+                     params.compositeParams.offsetX,
+                     params.compositeParams.offsetY);
         timerStart(&t);
         params.compositeParams.srcTonemap = params.tonemap;
         memcpy(&params.compositeParams.srcParams, &params.tonemapParams, sizeof(clTonemapParams));
@@ -398,6 +389,19 @@ int clContextConvert(clContext * C)
 
         clImageDestroy(C, dstImage);
         dstImage = appliedImage;
+
+        clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
+    }
+
+    if (params.rotate != 0) {
+        clContextLog(C, "rotate", 0, "Rotating image clockwise %dx...", params.rotate);
+        timerStart(&t);
+
+        clImage * rotatedImage = clImageRotate(C, dstImage, params.rotate);
+        if (rotatedImage) {
+            clImageDestroy(C, dstImage);
+            dstImage = rotatedImage;
+        }
 
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
