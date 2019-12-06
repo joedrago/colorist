@@ -184,7 +184,7 @@ typedef struct Scanline
     int maxX;
 } Scanline;
 
-void updateScanlines(Scanline * scanlines, int dim, float fx0, float fy0, float fx1, float fy1)
+static void updateScanlines(Scanline * scanlines, int dim, float fx0, float fy0, float fx1, float fy1)
 {
     int x0 = (int)floorf(0.5f + (fx0 * (float)dim));
     int y0 = (int)floorf(0.5f + (fy0 * (float)dim));
