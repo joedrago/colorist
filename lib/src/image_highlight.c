@@ -12,7 +12,20 @@
 #include "colorist/profile.h"
 #include "colorist/transform.h"
 
+#include <stdlib.h>
 #include <string.h>
+
+static int compareFloats(const void * p, const void * q)
+{
+    const float x = *(const float *)p;
+    const float y = *(const float *)q;
+    if (x < y) {
+        return -1;
+    } else if (x > y) {
+        return 1;
+    }
+    return 0;
+}
 
 static float calcOverbright(float Y, float overbrightScale, float maxY)
 {
@@ -105,33 +118,33 @@ static uint8_t intensityToU8(float intensity)
     return (uint8_t)intensity;
 }
 
-clImageSRGBHighlightPixelInfo * clImageSRGBHighlightPixelInfoCreate(struct clContext * C, int pixelCount)
+clImageHDRPixelInfo * clImageHDRPixelInfoCreate(struct clContext * C, int pixelCount)
 {
-    clImageSRGBHighlightPixelInfo * pixelInfo = clAllocateStruct(clImageSRGBHighlightPixelInfo);
+    clImageHDRPixelInfo * pixelInfo = clAllocateStruct(clImageHDRPixelInfo);
     pixelInfo->pixelCount = pixelCount;
-    pixelInfo->pixels = clAllocate(sizeof(clImageSRGBHighlightPixel) * pixelCount);
-    memset(pixelInfo->pixels, 0, sizeof(clImageSRGBHighlightPixel) * pixelCount);
+    pixelInfo->pixels = clAllocate(sizeof(clImageHDRPixel) * pixelCount);
+    memset(pixelInfo->pixels, 0, sizeof(clImageHDRPixel) * pixelCount);
     return pixelInfo;
 }
 
-void clImageSRGBHighlightPixelInfoDestroy(struct clContext * C, clImageSRGBHighlightPixelInfo * pixelInfo)
+void clImageHDRPixelInfoDestroy(struct clContext * C, clImageHDRPixelInfo * pixelInfo)
 {
     clFree(pixelInfo->pixels);
     clFree(pixelInfo);
 }
 
-clImage * clImageCreateSRGBHighlight(clContext * C,
-                                     clImage * srcImage,
-                                     int srgbLuminance,
-                                     clImageSRGBHighlightStats * stats,
-                                     clImageSRGBHighlightPixelInfo * outPixelInfo)
+void clImageMeasureHDR(clContext * C,
+                       clImage * srcImage,
+                       int srgbLuminance,
+                       clImage ** outImage,
+                       clImageHDRStats * outStats,
+                       clImageHDRPixelInfo * outPixelInfo,
+                       clImageHDRPercentiles * outPercentiles)
 {
     const float minHighlight = 0.4f;
 
     clTransform * toXYZ = clTransformCreate(C, srcImage->profile, CL_XF_RGBA, NULL, CL_XF_XYZ, CL_TONEMAP_OFF);
     clTransform * fromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, srcImage->profile, CL_XF_RGB, CL_TONEMAP_OFF);
-
-    clContextLog(C, "highlight", 1, "Creating sRGB highlight (%d nits, %s)...", srgbLuminance, clTransformCMMName(C, toXYZ));
 
     clProfilePrimaries srcPrimaries;
     clProfileCurve srcCurve;
@@ -153,8 +166,8 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
     clTransform * linearToXYZ = clTransformCreate(C, linearProfile, CL_XF_RGBA, NULL, CL_XF_XYZ, CL_TONEMAP_OFF);
     clTransform * linearFromXYZ = clTransformCreate(C, NULL, CL_XF_XYZ, linearProfile, CL_XF_RGB, CL_TONEMAP_OFF);
 
-    memset(stats, 0, sizeof(clImageSRGBHighlightStats));
-    int pixelCount = stats->pixelCount = srcImage->width * srcImage->height;
+    memset(outStats, 0, sizeof(clImageHDRStats));
+    int pixelCount = outStats->pixelCount = srcImage->width * srcImage->height;
 
     clImagePrepareReadPixels(C, srcImage, CL_PIXELFORMAT_F32);
 
@@ -164,17 +177,26 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
     float * xyzPixels = clAllocate(3 * sizeof(float) * pixelCount);
     clTransformRun(C, toXYZ, srcImage->pixelsF32, xyzPixels, pixelCount);
 
-    clImageSRGBHighlightPixelInfo * pixelInfo = outPixelInfo;
-    if (!pixelInfo) {
-        pixelInfo = clImageSRGBHighlightPixelInfoCreate(C, pixelCount);
+    clImage * highlight = NULL;
+    if (outImage) {
+        clContextLog(C, "highlight", 1, "Creating sRGB highlight (%d nits, %s)...", srgbLuminance, clTransformCMMName(C, toXYZ));
+
+        highlight = clImageCreate(C, srcImage->width, srcImage->height, 8, NULL);
+        *outImage = highlight;
+
+        clImagePrepareWritePixels(C, highlight, CL_PIXELFORMAT_U16);
     }
 
-    clImage * highlight = clImageCreate(C, srcImage->width, srcImage->height, 8, NULL);
-    clImagePrepareWritePixels(C, highlight, CL_PIXELFORMAT_U16);
+    float * gamutRatiosForPercentiles = NULL;
+    float * nitsForPercentiles = NULL;
+    if (outPercentiles) {
+        gamutRatiosForPercentiles = clAllocate(sizeof(float) * pixelCount);
+        nitsForPercentiles = clAllocate(sizeof(float) * pixelCount);
+    }
+
     for (int i = 0; i < pixelCount; ++i) {
         float * srcXYZ = &xyzPixels[i * 3];
-        uint16_t * dstPixel = &highlight->pixelsU16[i * CL_CHANNELS_PER_PIXEL];
-        clImageSRGBHighlightPixel * pixelHighlightInfo = &pixelInfo->pixels[i];
+        uint16_t * dstPixel = highlight ? &highlight->pixelsU16[i * CL_CHANNELS_PER_PIXEL] : NULL;
 
         cmsCIEXYZ XYZ;
         XYZ.X = srcXYZ[0];
@@ -190,63 +212,86 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
             xyY.Y = 0.0f;
         }
 
-        pixelHighlightInfo->x = (float)xyY.x;
-        pixelHighlightInfo->y = (float)xyY.y;
-        pixelHighlightInfo->Y = (float)xyY.Y / ((float)srcLuminance * srcCurve.implicitScale);
-
         float pixelNits = (float)xyY.Y;
-        if (stats->brightestPixelNits < pixelNits) {
-            stats->brightestPixelNits = pixelNits;
-            stats->brightestPixelX = i % srcImage->width;
-            stats->brightestPixelY = i / srcImage->width;
+        if (outStats->brightestPixelNits < pixelNits) {
+            outStats->brightestPixelNits = pixelNits;
+            outStats->brightestPixelX = i % srcImage->width;
+            outStats->brightestPixelY = i / srcImage->width;
         }
 
         float maxY = clTransformCalcMaxY(C, linearFromXYZ, linearToXYZ, (float)xyY.x, (float)xyY.y) * (float)srgbLuminance;
         float overbright = calcOverbright((float)xyY.Y, overbrightScale, maxY);
         float outOfSRGB = calcOutofSRGB(C, (float)xyY.x, (float)xyY.y, &srcPrimaries);
 
-        pixelHighlightInfo->nits = pixelNits;
-        pixelHighlightInfo->maxNits = maxY;
-        pixelHighlightInfo->outOfGamut = outOfSRGB;
-
-        float baseIntensity = pixelNits / (float)srgbLuminance;
-        baseIntensity = CL_CLAMP(baseIntensity, 0.0f, 1.0f);
-        uint8_t intensity8 = intensityToU8(baseIntensity);
-
-        if ((overbright > 0.0f) && (outOfSRGB > 0.0f)) {
-            float biggerHighlight = (overbright > outOfSRGB) ? overbright : outOfSRGB;
-            float highlightIntensity = minHighlight + (biggerHighlight * (1.0f - minHighlight));
-            // Yellow
-            dstPixel[0] = intensity8;
-            dstPixel[1] = intensity8;
-            dstPixel[2] = intensityToU8(baseIntensity * (1.0f - highlightIntensity));
-            ++stats->bothPixelCount;
-        } else if (overbright > 0.0f) {
-            float highlightIntensity = minHighlight + (overbright * (1.0f - minHighlight));
-            // Magenta
-            dstPixel[0] = intensity8;
-            dstPixel[1] = intensityToU8(baseIntensity * (1.0f - highlightIntensity));
-            dstPixel[2] = intensity8;
-            ++stats->overbrightPixelCount;
-        } else if (outOfSRGB > 0.0f) {
-            float highlightIntensity = minHighlight + (outOfSRGB * (1.0f - minHighlight));
-            // Cyan
-            dstPixel[0] = intensityToU8(baseIntensity * (1.0f - highlightIntensity));
-            dstPixel[1] = intensity8;
-            dstPixel[2] = intensity8;
-            ++stats->outOfGamutPixelCount;
-        } else {
-            // Gray
-            dstPixel[0] = intensity8;
-            dstPixel[1] = intensity8;
-            dstPixel[2] = intensity8;
+        if (outPixelInfo) {
+            clImageHDRPixel * pixelHighlightInfo = &outPixelInfo->pixels[i];
+            pixelHighlightInfo->x = (float)xyY.x;
+            pixelHighlightInfo->y = (float)xyY.y;
+            pixelHighlightInfo->Y = (float)xyY.Y / ((float)srcLuminance * srcCurve.implicitScale);
+            pixelHighlightInfo->nits = pixelNits;
+            pixelHighlightInfo->maxNits = maxY;
+            pixelHighlightInfo->outOfGamut = outOfSRGB;
         }
-        dstPixel[3] = 255;
-    }
-    stats->hdrPixelCount = stats->bothPixelCount + stats->overbrightPixelCount + stats->outOfGamutPixelCount;
 
-    if (!outPixelInfo) {
-        clImageSRGBHighlightPixelInfoDestroy(C, pixelInfo);
+        if (outPercentiles) {
+            gamutRatiosForPercentiles[i] = outOfSRGB;
+            nitsForPercentiles[i] = pixelNits;
+        }
+
+        if (dstPixel) {
+            float baseIntensity = pixelNits / (float)srgbLuminance;
+            baseIntensity = CL_CLAMP(baseIntensity, 0.0f, 1.0f);
+            uint8_t intensity8 = intensityToU8(baseIntensity);
+
+            if ((overbright > 0.0f) && (outOfSRGB > 0.0f)) {
+                float biggerHighlight = (overbright > outOfSRGB) ? overbright : outOfSRGB;
+                float highlightIntensity = minHighlight + (biggerHighlight * (1.0f - minHighlight));
+                // Yellow
+                dstPixel[0] = intensity8;
+                dstPixel[1] = intensity8;
+                dstPixel[2] = intensityToU8(baseIntensity * (1.0f - highlightIntensity));
+                ++outStats->bothPixelCount;
+            } else if (overbright > 0.0f) {
+                float highlightIntensity = minHighlight + (overbright * (1.0f - minHighlight));
+                // Magenta
+                dstPixel[0] = intensity8;
+                dstPixel[1] = intensityToU8(baseIntensity * (1.0f - highlightIntensity));
+                dstPixel[2] = intensity8;
+                ++outStats->overbrightPixelCount;
+            } else if (outOfSRGB > 0.0f) {
+                float highlightIntensity = minHighlight + (outOfSRGB * (1.0f - minHighlight));
+                // Cyan
+                dstPixel[0] = intensityToU8(baseIntensity * (1.0f - highlightIntensity));
+                dstPixel[1] = intensity8;
+                dstPixel[2] = intensity8;
+                ++outStats->outOfGamutPixelCount;
+            } else {
+                // Gray
+                dstPixel[0] = intensity8;
+                dstPixel[1] = intensity8;
+                dstPixel[2] = intensity8;
+            }
+            dstPixel[3] = 255;
+        }
+    }
+    outStats->hdrPixelCount = outStats->bothPixelCount + outStats->overbrightPixelCount + outStats->outOfGamutPixelCount;
+
+    if (outPercentiles) {
+        qsort(gamutRatiosForPercentiles, pixelCount, sizeof(float), compareFloats);
+        qsort(nitsForPercentiles, pixelCount, sizeof(float), compareFloats);
+
+        for (int i = 0; i < 100; ++i) {
+            clImageHDRPercentile * percentile = &outPercentiles->percentiles[i];
+            int percentileIndex = (int)((float)i * (float)pixelCount / 100.0f);
+            percentile->outOfGamut = gamutRatiosForPercentiles[percentileIndex];
+            percentile->nits = nitsForPercentiles[percentileIndex];
+        }
+        clImageHDRPercentile * topPercentile = &outPercentiles->percentiles[100];
+        topPercentile->outOfGamut = gamutRatiosForPercentiles[pixelCount - 1];
+        topPercentile->nits = nitsForPercentiles[pixelCount - 1];
+
+        clFree(gamutRatiosForPercentiles);
+        clFree(nitsForPercentiles);
     }
 
     clTransformDestroy(C, linearToXYZ);
@@ -256,5 +301,4 @@ clImage * clImageCreateSRGBHighlight(clContext * C,
     clTransformDestroy(C, fromXYZ);
     clTransformDestroy(C, toXYZ);
     clFree(xyzPixels);
-    return highlight;
 }

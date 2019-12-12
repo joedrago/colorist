@@ -84,7 +84,7 @@ typedef struct clImageDiff
     int largestChannelDiff;
 } clImageDiff;
 
-typedef struct clImageSRGBHighlightPixel
+typedef struct clImageHDRPixel
 {
     float x;
     float y;
@@ -92,17 +92,17 @@ typedef struct clImageSRGBHighlightPixel
     float nits;
     float maxNits;
     float outOfGamut;
-} clImageSRGBHighlightPixel;
+} clImageHDRPixel;
 
-typedef struct clImageSRGBHighlightPixelInfo
+typedef struct clImageHDRPixelInfo
 {
     int pixelCount;
-    clImageSRGBHighlightPixel * pixels;
-} clImageSRGBHighlightPixelInfo;
-clImageSRGBHighlightPixelInfo * clImageSRGBHighlightPixelInfoCreate(struct clContext * C, int pixelCount);
-void clImageSRGBHighlightPixelInfoDestroy(struct clContext * C, clImageSRGBHighlightPixelInfo * pixelInfo);
+    clImageHDRPixel * pixels;
+} clImageHDRPixelInfo;
+clImageHDRPixelInfo * clImageHDRPixelInfoCreate(struct clContext * C, int pixelCount);
+void clImageHDRPixelInfoDestroy(struct clContext * C, clImageHDRPixelInfo * pixelInfo);
 
-typedef struct clImageSRGBHighlightStats
+typedef struct clImageHDRStats
 {
     int overbrightPixelCount;
     int outOfGamutPixelCount;
@@ -112,7 +112,17 @@ typedef struct clImageSRGBHighlightStats
     int brightestPixelX;
     int brightestPixelY;
     float brightestPixelNits;
-} clImageSRGBHighlightStats;
+} clImageHDRStats;
+
+typedef struct clImageHDRPercentile
+{
+    float nits;       // [0-maxNits], HDR10 maxNits is 10000
+    float outOfGamut; // [0-1]
+} clImageHDRPercentile;
+typedef struct clImageHDRPercentiles
+{
+    clImageHDRPercentile percentiles[101];
+} clImageHDRPercentiles;
 
 clImage * clImageCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
 clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns);
@@ -126,11 +136,13 @@ clImage * clImageCrop(struct clContext * C, clImage * srcImage, int x, int y, in
 clImage * clImageApplyHALD(struct clContext * C, clImage * image, clImage * hald, int haldDims);
 clImage * clImageResize(struct clContext * C, clImage * image, int width, int height, clFilter resizeFilter);
 clImage * clImageBlend(struct clContext * C, clImage * image, clImage * compositeImage, clBlendParams * blendParams);
-clImage * clImageCreateSRGBHighlight(clContext * C,
-                                     clImage * srcImage,
-                                     int srgbLuminance,
-                                     clImageSRGBHighlightStats * stats,
-                                     clImageSRGBHighlightPixelInfo * outPixelInfo);
+void clImageMeasureHDR(clContext * C,
+                       clImage * srcImage,
+                       int srgbLuminance,
+                       clImage ** outImage,
+                       clImageHDRStats * outStats,
+                       clImageHDRPixelInfo * outPixelInfo,
+                       clImageHDRPercentiles * outPercentiles);
 void clImagePrepareReadPixels(struct clContext * C, clImage * image, clPixelFormat pixelFormat);
 void clImagePrepareWritePixels(struct clContext * C, clImage * image, clPixelFormat pixelFormat);
 clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y, int * w, int * h);
