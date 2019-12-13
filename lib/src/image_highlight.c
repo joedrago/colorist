@@ -71,9 +71,6 @@ static float calcDistance(float x1, float y1, float x2, float y2)
     return sqrtf((xDist * xDist) + (yDist * yDist));
 }
 
-float HACKPOSX = 0.0f;
-float HACKPOSY = 0.0f;
-
 static float srgbSaturation(float x, float y, int whichEdge)
 {
     float x1 = x;
@@ -114,10 +111,6 @@ static float srgbSaturation(float x, float y, int whichEdge)
     float yInt = ((((x1 * y2) - (y1 * x2)) * (y3 - y4)) - ((y1 - y2) * ((x3 * y4) - (y3 * x4)))) / denominator;
     float maxDist = calcDistance(xInt, yInt, srgbPrimaries.white[0], srgbPrimaries.white[1]);
     float dist = calcDistance(x, y, srgbPrimaries.white[0], srgbPrimaries.white[1]);
-
-    HACKPOSX = xInt;
-    HACKPOSY = yInt;
-
     return dist / maxDist;
 }
 
