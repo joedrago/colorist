@@ -91,7 +91,7 @@ typedef struct clImageHDRPixel
     float Y;
     float nits;
     float maxNits;
-    float outOfGamut;
+    float saturation; // 0-1 is BT709 saturation, 1-2 is "out of gamut" saturation (normalized to that edge)
 } clImageHDRPixel;
 
 typedef struct clImageHDRPixelInfo
@@ -117,7 +117,7 @@ typedef struct clImageHDRStats
 typedef struct clImageHDRPercentile
 {
     float nits;       // [0-maxNits], HDR10 maxNits is 10000
-    float outOfGamut; // [0-1]
+    float saturation; // [0-2]. 0-1 is "in-srgb-gamut saturation", 1-2 is "how far out of gamut is it"
 } clImageHDRPercentile;
 
 #define CL_QUANTIZATION_BUCKET_COUNT 1024
@@ -125,7 +125,7 @@ typedef struct clImageHDRQuantization
 {
     clImageHDRPercentile percentiles[101];
     int pixelCountsNitsPQ[CL_QUANTIZATION_BUCKET_COUNT];     // pixels counts quantized into nits values on the PQ curve
-    int pixelCountsOutOfGamut[CL_QUANTIZATION_BUCKET_COUNT]; // pixel counts quantized from (0-1 / 1023) "out of gamut"
+    int pixelCountsSaturation[CL_QUANTIZATION_BUCKET_COUNT]; // pixel counts quantized from (0-1 / 1023), see saturation comment above
 } clImageHDRQuantization;
 
 clImage * clImageCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);

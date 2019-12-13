@@ -62,41 +62,93 @@ static void calcGamutDistances(float x, float y, const clProfilePrimaries * prim
     outDistances[2] = distFromRBEdge;
 }
 
-static float calcOutofSRGB(clContext * C, float x, float y, clProfilePrimaries * primaries)
+static const clProfilePrimaries srgbPrimaries = { { 0.64f, 0.33f }, { 0.30f, 0.60f }, { 0.15f, 0.06f }, { 0.3127f, 0.3290f } };
+
+static float calcDistance(float x1, float y1, float x2, float y2)
 {
-    COLORIST_UNUSED(C);
+    float xDist = x2 - x1;
+    float yDist = y2 - y1;
+    return sqrtf((xDist * xDist) + (yDist * yDist));
+}
 
-    static const clProfilePrimaries srgbPrimaries = { { 0.64f, 0.33f }, { 0.30f, 0.60f }, { 0.15f, 0.06f }, { 0.3127f, 0.3290f } };
+float HACKPOSX = 0.0f;
+float HACKPOSY = 0.0f;
 
+static float srgbSaturation(float x, float y, int whichEdge)
+{
+    float x1 = x;
+    float y1 = y;
+    float x2 = srgbPrimaries.white[0];
+    float y2 = srgbPrimaries.white[1];
+    float x3, y3, x4, y4;
+    switch (whichEdge) {
+        case 0: // RG
+            x3 = srgbPrimaries.red[0];
+            y3 = srgbPrimaries.red[1];
+            x4 = srgbPrimaries.green[0];
+            y4 = srgbPrimaries.green[1];
+            break;
+        case 1: // GB
+            x3 = srgbPrimaries.green[0];
+            y3 = srgbPrimaries.green[1];
+            x4 = srgbPrimaries.blue[0];
+            y4 = srgbPrimaries.blue[1];
+            break;
+        case 2: // RB
+            x3 = srgbPrimaries.red[0];
+            y3 = srgbPrimaries.red[1];
+            x4 = srgbPrimaries.blue[0];
+            y4 = srgbPrimaries.blue[1];
+            break;
+        default:
+            return 0.0f;
+    }
+
+    float denominator = ((x1 - x2) * (y3 - y4)) - ((y1 - y2) * (x3 - x4));
+    if (fabsf(denominator) < 0.00001f) {
+        // coincident/parallel lines?
+        return 0.0f;
+    }
+
+    float xInt = ((((x1 * y2) - (y1 * x2)) * (x3 - x4)) - ((x1 - x2) * ((x3 * y4) - (y3 * x4)))) / denominator;
+    float yInt = ((((x1 * y2) - (y1 * x2)) * (y3 - y4)) - ((y1 - y2) * ((x3 * y4) - (y3 * x4)))) / denominator;
+    float maxDist = calcDistance(xInt, yInt, srgbPrimaries.white[0], srgbPrimaries.white[1]);
+    float dist = calcDistance(x, y, srgbPrimaries.white[0], srgbPrimaries.white[1]);
+
+    HACKPOSX = xInt;
+    HACKPOSY = yInt;
+
+    return dist / maxDist;
+}
+
+static float calcSaturation(float x, float y, clProfilePrimaries * primaries)
+{
     float gamutDistances[3];
     float srgbDistances[3];
     float srgbMaxDist, gamutMaxDist = 0.0f, totalDist, ratio;
     int i;
 
-    if (fabsf(srgbPrimaries.green[1] - primaries->green[1]) < 0.0001f) {
-        // We're probably in sRGB, just say we're in-gamut
-        return 0;
-    }
-
     calcGamutDistances(x, y, primaries, gamutDistances);
     calcGamutDistances(x, y, &srgbPrimaries, srgbDistances);
 
-    srgbMaxDist = srgbDistances[0];
+    int whichEdge = 0;
+    srgbMaxDist = srgbDistances[whichEdge];
     for (i = 0; i < 3; ++i) {
         if (srgbMaxDist <= srgbDistances[i]) {
             srgbMaxDist = srgbDistances[i];
             gamutMaxDist = gamutDistances[i];
+            whichEdge = i;
         }
     }
 
     if (srgbMaxDist < 0.0002f) {
         // in gamut
-        return 0;
+        return srgbSaturation(x, y, whichEdge);
     }
 
     if (gamutMaxDist > -0.00001f) {
         // As far as possible, probably on the line or on a primary
-        return 1;
+        return 2.0f;
     }
 
     totalDist = srgbMaxDist - gamutMaxDist;
@@ -106,7 +158,7 @@ static float calcOutofSRGB(clContext * C, float x, float y, clProfilePrimaries *
         // close enough
         ratio = 1;
     }
-    return ratio;
+    return ratio + 1.0f;
 }
 
 static uint8_t intensityToU8(float intensity)
@@ -187,11 +239,11 @@ void clImageMeasureHDR(clContext * C,
         clImagePrepareWritePixels(C, highlight, CL_PIXELFORMAT_U16);
     }
 
-    float * gamutRatiosForPercentiles = NULL;
+    float * saturationForPercentiles = NULL;
     float * nitsForPercentiles = NULL;
     if (outQuantization) {
         memset(outQuantization, 0, sizeof(clImageHDRQuantization));
-        gamutRatiosForPercentiles = clAllocate(sizeof(float) * pixelCount);
+        saturationForPercentiles = clAllocate(sizeof(float) * pixelCount);
         nitsForPercentiles = clAllocate(sizeof(float) * pixelCount);
     }
 
@@ -208,8 +260,8 @@ void clImageMeasureHDR(clContext * C,
         if (XYZ.Y > 0) {
             cmsXYZ2xyY(&xyY, &XYZ);
         } else {
-            xyY.x = 0.3127f;
-            xyY.y = 0.3290f;
+            xyY.x = srcPrimaries.white[0];
+            xyY.y = srcPrimaries.white[1];
             xyY.Y = 0.0f;
         }
 
@@ -222,7 +274,7 @@ void clImageMeasureHDR(clContext * C,
 
         float maxY = clTransformCalcMaxY(C, linearFromXYZ, linearToXYZ, (float)xyY.x, (float)xyY.y) * (float)srgbLuminance;
         float overbright = calcOverbright((float)xyY.Y, overbrightScale, maxY);
-        float outOfSRGB = calcOutofSRGB(C, (float)xyY.x, (float)xyY.y, &srcPrimaries);
+        float saturation = calcSaturation((float)xyY.x, (float)xyY.y, &srcPrimaries);
 
         if (outPixelInfo) {
             clImageHDRPixel * pixelHighlightInfo = &outPixelInfo->pixels[i];
@@ -231,7 +283,7 @@ void clImageMeasureHDR(clContext * C,
             pixelHighlightInfo->Y = (float)xyY.Y / ((float)srcLuminance * srcCurve.implicitScale);
             pixelHighlightInfo->nits = pixelNits;
             pixelHighlightInfo->maxNits = maxY;
-            pixelHighlightInfo->outOfGamut = outOfSRGB;
+            pixelHighlightInfo->saturation = saturation;
         }
 
         if (outQuantization) {
@@ -241,15 +293,16 @@ void clImageMeasureHDR(clContext * C,
             pqBucket = CL_CLAMP(pqBucket, 0, CL_QUANTIZATION_BUCKET_COUNT - 1);
             ++outQuantization->pixelCountsNitsPQ[pqBucket];
 
-            int outOfGamutBucket = (int)clPixelMathRoundf(outOfSRGB * (float)(CL_QUANTIZATION_BUCKET_COUNT - 1));
-            outOfGamutBucket = CL_CLAMP(outOfGamutBucket, 0, CL_QUANTIZATION_BUCKET_COUNT - 1);
-            ++outQuantization->pixelCountsOutOfGamut[outOfGamutBucket];
+            int saturationBucket = (int)clPixelMathRoundf(saturation * 0.5f * (float)(CL_QUANTIZATION_BUCKET_COUNT - 1));
+            saturationBucket = CL_CLAMP(saturationBucket, 0, CL_QUANTIZATION_BUCKET_COUNT - 1);
+            ++outQuantization->pixelCountsSaturation[saturationBucket];
 
-            gamutRatiosForPercentiles[i] = outOfSRGB;
+            saturationForPercentiles[i] = saturation;
             nitsForPercentiles[i] = pixelNits;
         }
 
         if (dstPixel) {
+            float outOfSRGB = CL_CLAMP(saturation - 1.0f, 0.0f, 1.0f);
             float baseIntensity = pixelNits / (float)srgbLuminance;
             baseIntensity = CL_CLAMP(baseIntensity, 0.0f, 1.0f);
             uint8_t intensity8 = intensityToU8(baseIntensity);
@@ -288,20 +341,20 @@ void clImageMeasureHDR(clContext * C,
     outStats->hdrPixelCount = outStats->bothPixelCount + outStats->overbrightPixelCount + outStats->outOfGamutPixelCount;
 
     if (outQuantization) {
-        qsort(gamutRatiosForPercentiles, pixelCount, sizeof(float), compareFloats);
+        qsort(saturationForPercentiles, pixelCount, sizeof(float), compareFloats);
         qsort(nitsForPercentiles, pixelCount, sizeof(float), compareFloats);
 
         for (int i = 0; i < 100; ++i) {
             clImageHDRPercentile * percentile = &outQuantization->percentiles[i];
             int percentileIndex = (int)((float)i * (float)pixelCount / 100.0f);
-            percentile->outOfGamut = gamutRatiosForPercentiles[percentileIndex];
+            percentile->saturation = saturationForPercentiles[percentileIndex];
             percentile->nits = nitsForPercentiles[percentileIndex];
         }
         clImageHDRPercentile * topPercentile = &outQuantization->percentiles[100];
-        topPercentile->outOfGamut = gamutRatiosForPercentiles[pixelCount - 1];
+        topPercentile->saturation = saturationForPercentiles[pixelCount - 1];
         topPercentile->nits = nitsForPercentiles[pixelCount - 1];
 
-        clFree(gamutRatiosForPercentiles);
+        clFree(saturationForPercentiles);
         clFree(nitsForPercentiles);
     }
 
