@@ -119,10 +119,14 @@ typedef struct clImageHDRPercentile
     float nits;       // [0-maxNits], HDR10 maxNits is 10000
     float outOfGamut; // [0-1]
 } clImageHDRPercentile;
-typedef struct clImageHDRPercentiles
+
+#define CL_QUANTIZATION_BUCKET_COUNT 1024
+typedef struct clImageHDRQuantization
 {
     clImageHDRPercentile percentiles[101];
-} clImageHDRPercentiles;
+    int pixelCountsNitsPQ[CL_QUANTIZATION_BUCKET_COUNT];     // pixels counts quantized into nits values on the PQ curve
+    int pixelCountsOutOfGamut[CL_QUANTIZATION_BUCKET_COUNT]; // pixel counts quantized from (0-1 / 1023) "out of gamut"
+} clImageHDRQuantization;
 
 clImage * clImageCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
 clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns);
@@ -142,7 +146,7 @@ void clImageMeasureHDR(clContext * C,
                        clImage ** outImage,
                        clImageHDRStats * outStats,
                        clImageHDRPixelInfo * outPixelInfo,
-                       clImageHDRPercentiles * outPercentiles);
+                       clImageHDRQuantization * outQuantization);
 void clImagePrepareReadPixels(struct clContext * C, clImage * image, clPixelFormat pixelFormat);
 void clImagePrepareWritePixels(struct clContext * C, clImage * image, clPixelFormat pixelFormat);
 clBool clImageAdjustRect(struct clContext * C, clImage * image, int * x, int * y, int * w, int * h);

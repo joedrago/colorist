@@ -139,7 +139,7 @@ void clImageMeasureHDR(clContext * C,
                        clImage ** outImage,
                        clImageHDRStats * outStats,
                        clImageHDRPixelInfo * outPixelInfo,
-                       clImageHDRPercentiles * outPercentiles)
+                       clImageHDRQuantization * outQuantization)
 {
     const float minHighlight = 0.4f;
 
@@ -189,7 +189,8 @@ void clImageMeasureHDR(clContext * C,
 
     float * gamutRatiosForPercentiles = NULL;
     float * nitsForPercentiles = NULL;
-    if (outPercentiles) {
+    if (outQuantization) {
+        memset(outQuantization, 0, sizeof(clImageHDRQuantization));
         gamutRatiosForPercentiles = clAllocate(sizeof(float) * pixelCount);
         nitsForPercentiles = clAllocate(sizeof(float) * pixelCount);
     }
@@ -233,7 +234,17 @@ void clImageMeasureHDR(clContext * C,
             pixelHighlightInfo->outOfGamut = outOfSRGB;
         }
 
-        if (outPercentiles) {
+        if (outQuantization) {
+            float clampedNits = CL_CLAMP(pixelNits, 0.0f, 10000.0f);
+            int pqBucket =
+                (int)clPixelMathRoundf(clTransformOETF_PQ(clampedNits / 10000.0f) * (float)(CL_QUANTIZATION_BUCKET_COUNT - 1));
+            pqBucket = CL_CLAMP(pqBucket, 0, CL_QUANTIZATION_BUCKET_COUNT - 1);
+            ++outQuantization->pixelCountsNitsPQ[pqBucket];
+
+            int outOfGamutBucket = (int)clPixelMathRoundf(outOfSRGB * (float)(CL_QUANTIZATION_BUCKET_COUNT - 1));
+            outOfGamutBucket = CL_CLAMP(outOfGamutBucket, 0, CL_QUANTIZATION_BUCKET_COUNT - 1);
+            ++outQuantization->pixelCountsOutOfGamut[outOfGamutBucket];
+
             gamutRatiosForPercentiles[i] = outOfSRGB;
             nitsForPercentiles[i] = pixelNits;
         }
@@ -276,17 +287,17 @@ void clImageMeasureHDR(clContext * C,
     }
     outStats->hdrPixelCount = outStats->bothPixelCount + outStats->overbrightPixelCount + outStats->outOfGamutPixelCount;
 
-    if (outPercentiles) {
+    if (outQuantization) {
         qsort(gamutRatiosForPercentiles, pixelCount, sizeof(float), compareFloats);
         qsort(nitsForPercentiles, pixelCount, sizeof(float), compareFloats);
 
         for (int i = 0; i < 100; ++i) {
-            clImageHDRPercentile * percentile = &outPercentiles->percentiles[i];
+            clImageHDRPercentile * percentile = &outQuantization->percentiles[i];
             int percentileIndex = (int)((float)i * (float)pixelCount / 100.0f);
             percentile->outOfGamut = gamutRatiosForPercentiles[percentileIndex];
             percentile->nits = nitsForPercentiles[percentileIndex];
         }
-        clImageHDRPercentile * topPercentile = &outPercentiles->percentiles[100];
+        clImageHDRPercentile * topPercentile = &outQuantization->percentiles[100];
         topPercentile->outOfGamut = gamutRatiosForPercentiles[pixelCount - 1];
         topPercentile->nits = nitsForPercentiles[pixelCount - 1];
 

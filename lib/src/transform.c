@@ -56,7 +56,7 @@ static const float PQ_M2 = 78.84375;        // 2523.0 / 4096.0 * 128.0
 
 // SMPTE ST.2084: Equation 4.1
 // L = ( (max(N^(1/m2) - c1, 0)) / (c2 - c3*N^(1/m2)) )^(1/m1)
-static float PQ_EOTF(float N)
+float clTransformEOTF_PQ(float N)
 {
     float N1m2 = powf(N, 1 / PQ_M2);
     float N1m2c1 = N1m2 - PQ_C1;
@@ -68,7 +68,7 @@ static float PQ_EOTF(float N)
 
 // SMPTE ST.2084: Equation 5.2
 // N = ( (c1 + (c2 * L^m1)) / (1 + (c3 * L^m1)) )^m2
-static float PQ_OETF(float L)
+float clTransformOETF_PQ(float L)
 {
     float Lm1 = powf(L, PQ_M1);
     float c2Lm1 = PQ_C2 * Lm1;
@@ -434,9 +434,9 @@ static void colorConvert(struct clContext * C,
                     src.z = HLG_EOTF((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f, transform->ccmmHLGLuminance);
                     break;
                 case CL_XTF_PQ:
-                    src.x = PQ_EOTF((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f);
-                    src.y = PQ_EOTF((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f);
-                    src.z = PQ_EOTF((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f);
+                    src.x = clTransformEOTF_PQ((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f);
+                    src.y = clTransformEOTF_PQ((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f);
+                    src.z = clTransformEOTF_PQ((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f);
                     break;
             }
 
@@ -526,9 +526,9 @@ static void colorConvert(struct clContext * C,
                         tmp[1] = CL_CLAMP(tmp[1], 0.0f, 1.0f); // clamp
                         tmp[2] = CL_CLAMP(tmp[2], 0.0f, 1.0f); // clamp
                     }
-                    dstPixel[0] = PQ_OETF((tmp[0] >= 0.0f) ? tmp[0] : 0.0f);
-                    dstPixel[1] = PQ_OETF((tmp[1] >= 0.0f) ? tmp[1] : 0.0f);
-                    dstPixel[2] = PQ_OETF((tmp[2] >= 0.0f) ? tmp[2] : 0.0f);
+                    dstPixel[0] = clTransformOETF_PQ((tmp[0] >= 0.0f) ? tmp[0] : 0.0f);
+                    dstPixel[1] = clTransformOETF_PQ((tmp[1] >= 0.0f) ? tmp[1] : 0.0f);
+                    dstPixel[2] = clTransformOETF_PQ((tmp[2] >= 0.0f) ? tmp[2] : 0.0f);
                     break;
             }
         } else {

@@ -97,6 +97,9 @@ int clTransformCalcDefaultLuminanceFromHLG(int hlgLuminance);
 float clTransformCalcMaxY(clContext * C, clTransform * linearFromXYZ, clTransform * linearToXYZ, float x, float y);
 void clTransformDeriveXYZMatrix(struct clContext * C, struct clProfilePrimaries * primaries, gbMat3 * toXYZ);
 
+float clTransformEOTF_PQ(float N);
+float clTransformOETF_PQ(float L);
+
 // define to debug transform matrix math in colorist-test
 // #define DEBUG_MATRIX_MATH
 
