@@ -143,6 +143,7 @@ clImage * clImageBlend(struct clContext * C, clImage * image, clImage * composit
 void clImageMeasureHDR(clContext * C,
                        clImage * srcImage,
                        int srgbLuminance,
+                       float satLuminance,
                        clImage ** outImage,
                        clImageHDRStats * outStats,
                        clImageHDRPixelInfo * outPixelInfo,

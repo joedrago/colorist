@@ -181,6 +181,7 @@ void clImageHDRPixelInfoDestroy(struct clContext * C, clImageHDRPixelInfo * pixe
 void clImageMeasureHDR(clContext * C,
                        clImage * srcImage,
                        int srgbLuminance,
+                       float satLuminance,
                        clImage ** outImage,
                        clImageHDRStats * outStats,
                        clImageHDRPixelInfo * outPixelInfo,
@@ -285,13 +286,14 @@ void clImageMeasureHDR(clContext * C,
                 (int)clPixelMathRoundf(clTransformOETF_PQ(clampedNits / 10000.0f) * (float)(CL_QUANTIZATION_BUCKET_COUNT - 1));
             pqBucket = CL_CLAMP(pqBucket, 0, CL_QUANTIZATION_BUCKET_COUNT - 1);
             ++outQuantization->pixelCountsNitsPQ[pqBucket];
-
-            int saturationBucket = (int)clPixelMathRoundf(saturation * 0.5f * (float)(CL_QUANTIZATION_BUCKET_COUNT - 1));
-            saturationBucket = CL_CLAMP(saturationBucket, 0, CL_QUANTIZATION_BUCKET_COUNT - 1);
-            ++outQuantization->pixelCountsSaturation[saturationBucket];
-
-            saturationForPercentiles[i] = saturation;
             nitsForPercentiles[i] = pixelNits;
+
+            if (clampedNits >= satLuminance) {
+                int saturationBucket = (int)clPixelMathRoundf(saturation * 0.5f * (float)(CL_QUANTIZATION_BUCKET_COUNT - 1));
+                saturationBucket = CL_CLAMP(saturationBucket, 0, CL_QUANTIZATION_BUCKET_COUNT - 1);
+                ++outQuantization->pixelCountsSaturation[saturationBucket];
+                saturationForPercentiles[i] = saturation;
+            }
         }
 
         if (dstPixel) {
