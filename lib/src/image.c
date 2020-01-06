@@ -103,9 +103,13 @@ void clImagePrepareReadPixels(struct clContext * C, clImage * image, clPixelForm
                         for (int i = 0; i < image->width; ++i) {
                             float * srcPixel = &image->pixelsF32[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
                             uint8_t * dstPixel = &image->pixelsU8[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                            dstPixel[0] = (uint8_t)clPixelMathRoundUNorm(srcPixel[0], maxChannelU8);
-                            dstPixel[1] = (uint8_t)clPixelMathRoundUNorm(srcPixel[1], maxChannelU8);
-                            dstPixel[2] = (uint8_t)clPixelMathRoundUNorm(srcPixel[2], maxChannelU8);
+                            float largestChannel = 1.0f;
+                            largestChannel = CL_MAX(largestChannel, srcPixel[0]);
+                            largestChannel = CL_MAX(largestChannel, srcPixel[1]);
+                            largestChannel = CL_MAX(largestChannel, srcPixel[2]);
+                            dstPixel[0] = (uint8_t)clPixelMathRoundUNorm(srcPixel[0] / largestChannel, maxChannelU8);
+                            dstPixel[1] = (uint8_t)clPixelMathRoundUNorm(srcPixel[1] / largestChannel, maxChannelU8);
+                            dstPixel[2] = (uint8_t)clPixelMathRoundUNorm(srcPixel[2] / largestChannel, maxChannelU8);
                             dstPixel[3] = (uint8_t)clPixelMathRoundUNorm(srcPixel[3], maxChannelU8);
                         }
                     }
@@ -138,9 +142,13 @@ void clImagePrepareReadPixels(struct clContext * C, clImage * image, clPixelForm
                         for (int i = 0; i < image->width; ++i) {
                             float * srcPixel = &image->pixelsF32[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
                             uint16_t * dstPixel = &image->pixelsU16[(i + (j * image->width)) * CL_CHANNELS_PER_PIXEL];
-                            dstPixel[0] = (uint16_t)clPixelMathRoundUNorm(srcPixel[0], maxChannelU16);
-                            dstPixel[1] = (uint16_t)clPixelMathRoundUNorm(srcPixel[1], maxChannelU16);
-                            dstPixel[2] = (uint16_t)clPixelMathRoundUNorm(srcPixel[2], maxChannelU16);
+                            float largestChannel = 1.0f;
+                            largestChannel = CL_MAX(largestChannel, srcPixel[0]);
+                            largestChannel = CL_MAX(largestChannel, srcPixel[1]);
+                            largestChannel = CL_MAX(largestChannel, srcPixel[2]);
+                            dstPixel[0] = (uint16_t)clPixelMathRoundUNorm(srcPixel[0] / largestChannel, maxChannelU16);
+                            dstPixel[1] = (uint16_t)clPixelMathRoundUNorm(srcPixel[1] / largestChannel, maxChannelU16);
+                            dstPixel[2] = (uint16_t)clPixelMathRoundUNorm(srcPixel[2] / largestChannel, maxChannelU16);
                             dstPixel[3] = (uint16_t)clPixelMathRoundUNorm(srcPixel[3], maxChannelU16);
                         }
                     }
