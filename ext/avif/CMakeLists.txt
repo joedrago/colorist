@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 cmake_minimum_required(VERSION 3.5)
-project(libavif LANGUAGES C VERSION 0.5.3)
+project(libavif LANGUAGES C VERSION 0.5.5)
 
 # SOVERSION scheme: CURRENT.AGE.REVISION
 #   If there was an incompatible interface change:
@@ -11,7 +11,7 @@ project(libavif LANGUAGES C VERSION 0.5.3)
 #     Increment AGE. Set REVISION to 0
 #   If the source code was changed, but there were no interface changes:
 #     Increment REVISION.
-set(LIBRARY_VERSION "0.1.3")
+set(LIBRARY_VERSION "0.1.5")
 set(LIBRARY_SOVERSION "0")
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU")
@@ -44,6 +44,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     -Wno-documentation
     -Wno-documentation-unknown-command
     -Wno-double-promotion
+    -Wno-float-equal
     -Wno-format-nonliteral
     -Wno-language-extension-token
     -Wno-missing-noreturn
@@ -54,7 +55,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     -Wno-undef
   )
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
-  add_definitions(-std=c99) # Enforce C99 for gcc
+  add_definitions(-std=gnu99) # Enforce C99 for gcc
   MESSAGE(STATUS "libavif: Enabling warnings for GCC")
   add_definitions(-Werror -Wall -Wextra)
 elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
@@ -178,7 +179,7 @@ if(AVIF_CODEC_RAV1E)
     if(WIN32)
         set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ws2_32.lib userenv.lib)
     elseif(UNIX AND NOT APPLE)
-        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} dl) # for backtrace
+        set(AVIF_PLATFORM_LIBRARIES ${AVIF_PLATFORM_LIBRARIES} ${CMAKE_DL_LIBS}) # for backtrace
     endif()
 endif()
 
@@ -276,12 +277,22 @@ if(AVIF_BUILD_APPS)
     endif()
 endif()
 
-option(AVIF_BUILD_TESTS "Build avif tests (fuzzing)." OFF)
+option(AVIF_BUILD_TESTS "Build avif tests." OFF)
 if(AVIF_BUILD_TESTS)
-    add_executable(aviffuzz
-        tests/aviffuzz.c
+    include_directories(apps/shared)
+    add_executable(aviftest
+        apps/shared/y4m.c
+        tests/aviftest.c
+        tests/cJSON.c
+        tests/compare.c
+        tests/testcase.c
     )
-    target_link_libraries(aviffuzz avif ${AVIF_PLATFORM_LIBRARIES})
+    target_link_libraries(aviftest avif ${AVIF_PLATFORM_LIBRARIES})
+
+    add_custom_target(avif_test_all
+        COMMAND $<TARGET_FILE:aviftest> ${CMAKE_CURRENT_SOURCE_DIR}/tests/data
+        DEPENDS aviftest
+    )
 endif()
 
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)

@@ -6,6 +6,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.5] - 2020-02-13
+### Added
+- Enable still picture mode with rav1e >= 0.3.0 (cryptomilk)
+- Basic test suite (aviftest, rough draft)
+
+### Changed
+- Explicitly cast unorms to float during YUV conversion, fixing clang warning
+- Optimize SampleSizeBox parsing when sample_size>0, fixes OOM oss-fuzz issue #5192805347753984
+- Fix memory leak when using avifDecoderReset(), fixes oss-fuzz issue #5770230506979328
+- Update default rav1e version from 0.2.1 to 0.3.0
+- Remove a null check for codec->internal->image (wantehchang)
+
+## [0.5.4] - 2020-01-21
+### Changed
+- Fix monochrome inputs on avifImageCopy. Monochrome still isn't really a first-class citizen in libavif, but this should at least honor the incoming data better.
+- Updated README's Basic Decoding section reminding of avifDecoderRead's tradeoffs
+- build: avoid -ldl if not required or not supported (jbeich)
+- apps: convert ADVANCE to an expression (jbeich)
+
 ## [0.5.3] - 2019-12-03
 ### Added
 - Honor CMake's builtin `CMAKE_SKIP_INSTALL_RULES`
@@ -269,7 +288,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.5.3...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.5.5...HEAD
+[0.5.5]: https://github.com/AOMediaCodec/libavif/compare/v0.5.4...v0.5.5
+[0.5.4]: https://github.com/AOMediaCodec/libavif/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/AOMediaCodec/libavif/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/AOMediaCodec/libavif/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/AOMediaCodec/libavif/compare/v0.5.0...v0.5.1
