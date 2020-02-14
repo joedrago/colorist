@@ -193,7 +193,6 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
         case CL_YUVFORMAT_YV12:
             avifYUVFormat = AVIF_PIXEL_FORMAT_YV12;
             break;
-        case CL_YUVFORMAT_AUTO:
         case CL_YUVFORMAT_INVALID:
         default:
             clContextLogError(C, "Unable to choose AVIF YUV format");

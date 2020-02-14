@@ -141,7 +141,6 @@ typedef enum clPixelFormat
 
 typedef enum clYUVFormat
 {
-    CL_YUVFORMAT_AUTO,
     CL_YUVFORMAT_444,
     CL_YUVFORMAT_422,
     CL_YUVFORMAT_420,
@@ -152,7 +151,6 @@ typedef enum clYUVFormat
 
 clYUVFormat clYUVFormatFromString(struct clContext * C, const char * str);
 const char * clYUVFormatToString(struct clContext * C, clYUVFormat format);
-clYUVFormat clYUVFormatAutoChoose(struct clContext * C, struct clWriteParams * writeParams);
 
 typedef struct clWriteParams
 {

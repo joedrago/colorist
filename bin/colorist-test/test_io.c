@@ -72,9 +72,6 @@ static void test_images(const char * ext, int threshold, int additionalArgc, cha
 
     clImage * srcImage = clImageParseString(C, C->inputFilename, C->params.bpc, srcProfile);
 
-    C->params.writeParams.yuvFormat = clYUVFormatAutoChoose(C, &C->params.writeParams);
-    TEST_ASSERT_TRUE_MESSAGE(clContextWrite(C, srcImage, tmpFilename, NULL, &C->params.writeParams), "failed to write image");
-
     clImage * dstImage = clContextRead(C, tmpFilename, NULL, NULL);
     TEST_ASSERT_NOT_NULL_MESSAGE(dstImage, "failed to read back image");
 

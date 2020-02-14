@@ -58,9 +58,6 @@ int clContextConvert(clContext * C)
         clContextLogError(C, "Unknown output file format: %s", C->outputFilename);
         FAIL();
     }
-    if (params.writeParams.yuvFormat == CL_YUVFORMAT_AUTO) {
-        params.writeParams.yuvFormat = clYUVFormatAutoChoose(C, &params.writeParams);
-    }
 
     clContextLog(C, "action", 0, "Convert [%d max threads]: %s -> %s", C->jobs, C->inputFilename, C->outputFilename);
     timerStart(&overall);

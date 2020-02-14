@@ -32,9 +32,6 @@ int clContextGenerate(clContext * C, struct cJSON * output)
 
     clWriteParams writeParams;
     memcpy(&writeParams, &C->params.writeParams, sizeof(writeParams));
-    if (writeParams.yuvFormat == CL_YUVFORMAT_AUTO) {
-        writeParams.yuvFormat = clYUVFormatAutoChoose(C, &writeParams);
-    }
 
     Timer overall;
     timerStart(&overall);

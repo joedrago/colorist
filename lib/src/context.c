@@ -350,8 +350,6 @@ clYUVFormat clYUVFormatFromString(struct clContext * C, const char * str)
 {
     COLORIST_UNUSED(C);
 
-    if (!strcmp(str, "auto"))
-        return CL_YUVFORMAT_AUTO;
     if (!strcmp(str, "444"))
         return CL_YUVFORMAT_444;
     if (!strcmp(str, "422"))
@@ -368,8 +366,6 @@ const char * clYUVFormatToString(struct clContext * C, clYUVFormat format)
     COLORIST_UNUSED(C);
 
     switch (format) {
-        case CL_YUVFORMAT_AUTO:
-            return "auto";
         case CL_YUVFORMAT_444:
             return "444";
         case CL_YUVFORMAT_422:
@@ -383,21 +379,6 @@ const char * clYUVFormatToString(struct clContext * C, clYUVFormat format)
             break;
     }
     return "invalid";
-}
-
-clYUVFormat clYUVFormatAutoChoose(struct clContext * C, struct clWriteParams * writeParams)
-{
-    // This function is a work in progress!
-
-    COLORIST_UNUSED(C);
-
-    if ((writeParams->quality == 0) || (writeParams->quality == 100)) {
-        // Lossless gets the "best"
-        return CL_YUVFORMAT_444;
-    }
-
-    // If you're happy with lossy, let's get lossy!
-    return CL_YUVFORMAT_420;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -448,7 +429,7 @@ void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams)
 
     writeParams->quality = CL_DEFAULT_QUALITY;
     writeParams->rate = CL_DEFAULT_RATE;
-    writeParams->yuvFormat = CL_YUVFORMAT_AUTO;
+    writeParams->yuvFormat = CL_YUVFORMAT_444;
     writeParams->writeProfile = clTrue;
     writeParams->quantizerMin = -1;
     writeParams->quantizerMax = -1;
@@ -1125,7 +1106,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -q,--quality QUALITY     : Output quality for supported output formats. (default: 90)");
     clContextLog(C, NULL, 0, "    -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)");
     clContextLog(C, NULL, 0, "    -t,--tonemap TM          : Set tonemapping. auto (default), on, or off. Tune with optional comma separated vals: contrast=1.0,clip=1.0,speed=1.0,power=1.0");
-    clContextLog(C, NULL, 0, "    --yuv YUVFORMAT          : Choose yuv output format for supported formats. auto (default), 444, 422, 420, yv12");
+    clContextLog(C, NULL, 0, "    --yuv YUVFORMAT          : Choose yuv output format for supported formats. 444 (default), 422, 420, yv12");
     clContextLog(C, NULL, 0, "    --quantizer MIN,MAX      : Choose min and max quantizer values directly instead of using -q (AVIF only, 0-63 range, 0,0 is lossless)");
     clContextLog(C, NULL, 0, "    --tiling ROWS,COLS       : Enable tiling when encoding (AVIF only, 0-6 range, log2 based. Enables 2^ROWS rows and/or 2^COLS cols)");
     clContextLog(C, NULL, 0, "    --codec READ,WRITE       : Specify which internal codec to be used when decoding (AVIF only, auto,auto is default, see libavif version below for choices)");
