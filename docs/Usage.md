@@ -37,18 +37,21 @@ Output Format Options:
     -q,--quality QUALITY     : Output quality for supported output formats. (default: 90)
     -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)
     -t,--tonemap TM          : Set tonemapping. auto (default), on, or off. Tune with optional comma separated vals: contrast=1.0,clip=1.0,speed=1.0,power=1.0
-    --yuv YUVFORMAT          : Choose yuv output format for supported formats. auto (default), 444, 422, 420, yv12
+    --yuv YUVFORMAT          : Choose yuv output format for supported formats. 444 (default), 422, 420, yv12
     --quantizer MIN,MAX      : Choose min and max quantizer values directly instead of using -q (AVIF only, 0-63 range, 0,0 is lossless)
     --tiling ROWS,COLS       : Enable tiling when encoding (AVIF only, 0-6 range, log2 based. Enables 2^ROWS rows and/or 2^COLS cols)
     --codec READ,WRITE       : Specify which internal codec to be used when decoding (AVIF only, auto,auto is default, see libavif version below for choices)
+    --speed SPEED            : Specify the quality/speed tradeoff when encoding (AVIF only, [0-10] range. auto = default (let the codec decide), 0=best quality, 10=fastest)
 
 Convert Options:
     --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)
+    --rotate cwTurns         : Rotate image cwTurns clockwise
     -z,--rect,--crop x,y,w,h : Crop source image to rect (before conversion). x,y,w,h
     --composite FILENAME     : Composite FILENAME on top of input. Must be identical dimensions to input.
     --composite-gamma GAMMA  : When compositing, perform sourceover blend using this gamma (default: 2.2)
     --composite-premultiplied: When compositing, assume composite image's alpha is premultiplied (default: false)
     --composite-tonemap TM   : When compositing, determines if composite image is tonemapped before blend. auto (default), on, or off
+    --composite-offset x,y   : When compositing, offsets source image onto destination image
     --hald FILENAME          : Image containing valid Hald CLUT to be used after color conversion
     --stats                  : Enable post-conversion stats (MSE, PSNR, etc)
 
