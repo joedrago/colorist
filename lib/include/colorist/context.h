@@ -29,6 +29,7 @@ typedef enum clAction
     CL_ACTION_CALC,
     CL_ACTION_CONVERT,
     CL_ACTION_GENERATE,
+    CL_ACTION_HIGHLIGHT,
     CL_ACTION_IDENTIFY,
     CL_ACTION_MODIFY,
 
@@ -303,6 +304,7 @@ const char * clContextFindStockPrimariesPrettyName(struct clContext * C, struct 
 
 int clContextConvert(clContext * C);
 int clContextGenerate(clContext * C, struct cJSON * output); // output here only used in ACTION_CALC
+int clContextHighlight(clContext * C);
 int clContextIdentify(clContext * C, struct cJSON * output);
 int clContextModify(clContext * C);
 
