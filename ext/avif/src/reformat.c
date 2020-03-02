@@ -190,8 +190,8 @@ static avifResult avifImageYUVToRGB16Color(avifImage * image, avifReformatState 
     const float kr = state->kr;
     const float kg = state->kg;
     const float kb = state->kb;
-    const uint32_t maxUVI = (image->width > 1) ? (image->width >> state->formatInfo.chromaShiftX) - 1 : 0;
-    const uint32_t maxUVJ = (image->height > 1) ? (image->height >> state->formatInfo.chromaShiftY) - 1 : 0;
+    const uint32_t maxUVI = ((image->width + state->formatInfo.chromaShiftX) >> state->formatInfo.chromaShiftX) - 1;
+    const uint32_t maxUVJ = ((image->height + state->formatInfo.chromaShiftY) >> state->formatInfo.chromaShiftY) - 1;
 
     float maxChannel = (float)((1 << image->depth) - 1);
     uint8_t ** rgbPlanes = image->rgbPlanes;
@@ -265,8 +265,8 @@ static avifResult avifImageYUVToRGB16Mono(avifImage * image, avifReformatState *
 
             // Convert unorm to float
             const float Y = (float)unormY / maxChannel;
-            const float Cb = -0.5f;
-            const float Cr = -0.5f;
+            const float Cb = 0.0f;
+            const float Cr = 0.0f;
 
             float R = Y + (2 * (1 - kr)) * Cr;
             float B = Y + (2 * (1 - kb)) * Cb;
@@ -288,8 +288,8 @@ static avifResult avifImageYUVToRGB8Color(avifImage * image, avifReformatState *
     const float kr = state->kr;
     const float kg = state->kg;
     const float kb = state->kb;
-    const uint32_t maxUVI = (image->width > 1) ? (image->width >> state->formatInfo.chromaShiftX) - 1 : 0;
-    const uint32_t maxUVJ = (image->height > 1) ? (image->height >> state->formatInfo.chromaShiftY) - 1 : 0;
+    const uint32_t maxUVI = ((image->width + state->formatInfo.chromaShiftX) >> state->formatInfo.chromaShiftX) - 1;
+    const uint32_t maxUVJ = ((image->height + state->formatInfo.chromaShiftY) >> state->formatInfo.chromaShiftY) - 1;
 
     float maxChannel = (float)((1 << image->depth) - 1);
     uint8_t ** rgbPlanes = image->rgbPlanes;
@@ -363,8 +363,8 @@ static avifResult avifImageYUVToRGB8Mono(avifImage * image, avifReformatState * 
 
             // Convert unorm to float
             const float Y = (float)unormY / maxChannel;
-            const float Cb = -0.5f;
-            const float Cr = -0.5f;
+            const float Cb = 0.0f;
+            const float Cr = 0.0f;
 
             float R = Y + (2 * (1 - kr)) * Cr;
             float B = Y + (2 * (1 - kb)) * Cb;
@@ -383,7 +383,7 @@ static avifResult avifImageYUVToRGB8Mono(avifImage * image, avifReformatState * 
 
 avifResult avifImageYUVToRGB(avifImage * image)
 {
-    if (!image->yuvPlanes[AVIF_CHAN_Y] || !image->yuvPlanes[AVIF_CHAN_U] || !image->yuvPlanes[AVIF_CHAN_V]) {
+    if (!image->yuvPlanes[AVIF_CHAN_Y]) {
         return AVIF_RESULT_REFORMAT_FAILED;
     }
 

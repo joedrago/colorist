@@ -16,7 +16,7 @@ extern "C" {
 
 #define AVIF_VERSION_MAJOR 0
 #define AVIF_VERSION_MINOR 5
-#define AVIF_VERSION_PATCH 5
+#define AVIF_VERSION_PATCH 6
 #define AVIF_VERSION (AVIF_VERSION_MAJOR * 10000) + (AVIF_VERSION_MINOR * 100) + AVIF_VERSION_PATCH
 
 typedef int avifBool;
@@ -354,8 +354,9 @@ typedef enum avifCodecChoice
 {
     AVIF_CODEC_CHOICE_AUTO = 0,
     AVIF_CODEC_CHOICE_AOM,
-    AVIF_CODEC_CHOICE_DAV1D, // Decode only
-    AVIF_CODEC_CHOICE_RAV1E  // Encode only
+    AVIF_CODEC_CHOICE_DAV1D,   // Decode only
+    AVIF_CODEC_CHOICE_LIBGAV1, // Decode only
+    AVIF_CODEC_CHOICE_RAV1E    // Encode only
 } avifCodecChoice;
 
 typedef enum avifCodecFlags

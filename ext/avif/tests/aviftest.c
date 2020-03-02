@@ -113,7 +113,7 @@ static int generateTests(const char * dataDir)
         avifCodecChoice encodeChoices[] = { AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_CHOICE_RAV1E };
         const int encodeChoiceCount = sizeof(encodeChoices) / sizeof(encodeChoices[0]);
         for (int encodeChoiceIndex = 0; encodeChoiceIndex < encodeChoiceCount; ++encodeChoiceIndex) {
-            avifCodecChoice decodeChoices[] = { AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_CHOICE_DAV1D };
+            avifCodecChoice decodeChoices[] = { AVIF_CODEC_CHOICE_AOM, AVIF_CODEC_CHOICE_DAV1D, AVIF_CODEC_CHOICE_LIBGAV1 };
             const int decodeChoiceCount = sizeof(decodeChoices) / sizeof(decodeChoices[0]);
             for (int decodeChoiceIndex = 0; decodeChoiceIndex < decodeChoiceCount; ++decodeChoiceIndex) {
                 for (int qpIndex = 0; qpIndex < quantizerPairsCount; ++qpIndex) {
@@ -238,6 +238,12 @@ static int runTests(const char * dataDir, const char * testFilter)
     return (failedCount == 0) ? 0 : 1;
 }
 
+static void showSyntaxHelp(void) {
+  fprintf(stderr, "Syntax: aviftest [options] dataDir [testFilter]\n"
+                  "Options:\n"
+                  "    -g : Generate tests\n");
+}
+
 int main(int argc, char * argv[])
 {
     const char * dataDir = NULL;
@@ -255,6 +261,7 @@ int main(int argc, char * argv[])
             testFilter = arg;
         } else {
             fprintf(stderr, "Too many positional arguments: %s\n", arg);
+            showSyntaxHelp();
             return 1;
         }
     }
@@ -262,6 +269,7 @@ int main(int argc, char * argv[])
     // Verify all required args were set
     if (dataDir == NULL) {
         fprintf(stderr, "dataDir is required, bailing out.\n");
+        showSyntaxHelp();
         return 1;
     }
 

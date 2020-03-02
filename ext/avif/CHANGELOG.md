@@ -5,6 +5,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- libgav1 decode codec support. (wantehchang @Google)
+- Expose codec selection to avifdec/avifenc, speed to avifenc
+
+### Changed
+- AppVeyor builds now compile with dav1d (EwoutH)
+
+## [0.5.6] - 2020-02-19
+### Added
+- Added CMake Find modules for aom, dav1d, rav1e (cryptomilk)
+
+### Changed
+- use right-most and bottom-most UV pixels in images with odd-dimensions (ledyba-z)
+- avoid libaom crash when encoding >8bpc images at high speed
 
 ## [0.5.5] - 2020-02-13
 ### Added
@@ -288,7 +302,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.5.5...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.5.6...HEAD
+[0.5.6]: https://github.com/AOMediaCodec/libavif/compare/v0.5.5...v0.5.6
 [0.5.5]: https://github.com/AOMediaCodec/libavif/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/AOMediaCodec/libavif/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/AOMediaCodec/libavif/compare/v0.5.2...v0.5.3
