@@ -72,6 +72,8 @@ static void test_images(const char * ext, int threshold, int additionalArgc, cha
 
     clImage * srcImage = clImageParseString(C, C->inputFilename, C->params.bpc, srcProfile);
 
+    TEST_ASSERT_TRUE_MESSAGE(clContextWrite(C, srcImage, tmpFilename, NULL, &C->params.writeParams), "failed to write image");
+
     clImage * dstImage = clContextRead(C, tmpFilename, NULL, NULL);
     TEST_ASSERT_NOT_NULL_MESSAGE(dstImage, "failed to read back image");
 
@@ -173,6 +175,7 @@ static void test_avif(void)
     test_ext(&extInfo);
 }
 
+
 static void test_bmp(void)
 {
     struct clExtInfo extInfo = { "bmp",
@@ -247,6 +250,7 @@ static void test_webp(void)
     };
     test_ext(&extInfo);
 }
+
 
 int test_io(void)
 {
