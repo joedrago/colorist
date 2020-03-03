@@ -16,7 +16,7 @@ extern "C" {
 
 #define AVIF_VERSION_MAJOR 0
 #define AVIF_VERSION_MINOR 5
-#define AVIF_VERSION_PATCH 6
+#define AVIF_VERSION_PATCH 7
 #define AVIF_VERSION (AVIF_VERSION_MAJOR * 10000) + (AVIF_VERSION_MINOR * 100) + AVIF_VERSION_PATCH
 
 typedef int avifBool;
@@ -90,7 +90,8 @@ typedef enum avifResult
     AVIF_RESULT_ISPE_SIZE_MISMATCH,
     AVIF_RESULT_NO_CODEC_AVAILABLE,
     AVIF_RESULT_NO_IMAGES_REMAINING,
-    AVIF_RESULT_INVALID_EXIF_PAYLOAD
+    AVIF_RESULT_INVALID_EXIF_PAYLOAD,
+    AVIF_RESULT_INVALID_IMAGE_GRID
 } avifResult;
 
 const char * avifResultToString(avifResult result);
@@ -322,6 +323,7 @@ void avifImageSetMetadataXMP(avifImage * image, const uint8_t * xmp, size_t xmpS
 
 void avifImageAllocatePlanes(avifImage * image, uint32_t planes); // Ignores any pre-existing planes
 void avifImageFreePlanes(avifImage * image, uint32_t planes);     // Ignores already-freed planes
+void avifImageStealPlanes(avifImage * dstImage, avifImage * srcImage, uint32_t planes);
 
 // Optional YUV<->RGB support
 avifResult avifImageRGBToYUV(avifImage * image);
@@ -512,6 +514,8 @@ typedef struct avifEncoder
     int maxThreads;
     int minQuantizer;
     int maxQuantizer;
+    int minQuantizerAlpha;
+    int maxQuantizerAlpha;
     int tileRowsLog2;
     int tileColsLog2;
     int speed;

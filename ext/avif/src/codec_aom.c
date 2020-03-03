@@ -137,10 +137,10 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
                 avifImageFreePlanes(image, AVIF_PLANES_ALL);
             }
         }
-
         image->width = codec->internal->image->d_w;
         image->height = codec->internal->image->d_h;
         image->depth = codec->internal->image->bit_depth;
+
         image->yuvFormat = yuvFormat;
         image->yuvRange = (codec->internal->image->range == AOM_CR_STUDIO_RANGE) ? AVIF_RANGE_LIMITED : AVIF_RANGE_FULL;
 
@@ -173,10 +173,16 @@ static avifBool aomCodecGetNextImage(avifCodec * codec, avifImage * image)
     } else {
         // Alpha plane - ensure image is correct size, fill color
 
-        if ((image->width != codec->internal->image->d_w) || (image->height != codec->internal->image->d_h) ||
-            (image->depth != codec->internal->image->bit_depth)) {
-            return AVIF_FALSE;
+        if (image->width && image->height) {
+            if ((image->width != codec->internal->image->d_w) || (image->height != codec->internal->image->d_h) ||
+                (image->depth != codec->internal->image->bit_depth)) {
+                // Alpha plane doesn't match previous alpha plane decode, bail out
+                return AVIF_FALSE;
+            }
         }
+        image->width = codec->internal->image->d_w;
+        image->height = codec->internal->image->d_h;
+        image->depth = codec->internal->image->bit_depth;
 
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = codec->internal->image->planes[0];
@@ -298,12 +304,10 @@ static avifBool aomCodecEncodeImage(avifCodec * codec, avifImage * image, avifEn
     int minQuantizer = AVIF_CLAMP(encoder->minQuantizer, 0, 63);
     int maxQuantizer = AVIF_CLAMP(encoder->maxQuantizer, 0, 63);
     if (alpha) {
-        minQuantizer = AVIF_QUANTIZER_LOSSLESS;
-        maxQuantizer = AVIF_QUANTIZER_LOSSLESS;
+        minQuantizer = AVIF_CLAMP(encoder->minQuantizerAlpha, 0, 63);
+        maxQuantizer = AVIF_CLAMP(encoder->maxQuantizerAlpha, 0, 63);
     }
-    avifBool lossless = ((encoder->minQuantizer == AVIF_QUANTIZER_LOSSLESS) && (encoder->maxQuantizer == AVIF_QUANTIZER_LOSSLESS))
-                            ? AVIF_TRUE
-                            : AVIF_FALSE;
+    avifBool lossless = ((minQuantizer == AVIF_QUANTIZER_LOSSLESS) && (maxQuantizer == AVIF_QUANTIZER_LOSSLESS)) ? AVIF_TRUE : AVIF_FALSE;
     cfg.rc_min_quantizer = minQuantizer;
     cfg.rc_max_quantizer = maxQuantizer;
 
