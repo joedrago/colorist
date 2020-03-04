@@ -9,7 +9,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-// #include <string.h>
+#include <string.h>
+
+#define NEXTARG()                                                     \
+    if (((argIndex + 1) == argc) || (argv[argIndex + 1][0] == '-')) { \
+        fprintf(stderr, "%s requires an argument.", arg);             \
+        return 1;                                                     \
+    }                                                                 \
+    arg = argv[++argIndex]
 
 static void clContextSilentLog(clContext * C, const char * section, int indent, const char * format, va_list args)
 {
@@ -28,11 +35,8 @@ static void clContextSilentLogError(clContext * C, const char * format, va_list 
 
 int main(int argc, char * argv[])
 {
-    if (argc < 2) {
-        printf("colorist-benchmark [input image filename] [optional attempts]\n");
-        return 1;
-    }
-
+    const char * inputFilename = NULL;
+    const char * readCodec = NULL;
     int attempts = 1;
     if (argc > 2) {
         attempts = atoi(argv[2]);
@@ -41,15 +45,42 @@ int main(int argc, char * argv[])
         }
     }
 
+    int argIndex = 1;
+    while (argIndex < argc) {
+        const char * arg = argv[argIndex];
+
+        if (!strcmp(arg, "-c") || !strcmp(arg, "--codec")) {
+            NEXTARG();
+            readCodec = arg;
+        } else {
+            // Positional argument
+            if (!inputFilename) {
+                inputFilename = arg;
+            } else {
+                attempts = atoi(arg);
+            }
+        }
+
+        ++argIndex;
+    }
+
+    if (!inputFilename) {
+        printf("colorist-benchmark [options] [input image filename] [optional attempts]\n");
+        printf("Options:\n");
+        printf("    -c CODEC : pick which AV1 codec to use, if reading an AVIF\n");
+        return 1;
+    }
+
     clContextSystem silentSystem;
     silentSystem.alloc = clContextDefaultAlloc;
     silentSystem.free = clContextDefaultFree;
     silentSystem.log = clContextSilentLog;
     silentSystem.error = clContextSilentLogError;
 
-    const char * inputFilename = argv[1];
     clContext * C = clContextCreate(&silentSystem);
     struct clImage * image = NULL;
+
+    C->params.readCodec = readCodec;
 
     int width = 0;
     int height = 0;
