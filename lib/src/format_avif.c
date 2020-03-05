@@ -89,12 +89,9 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
         goto readCleanup;
     }
 
-    C->readExtraInfo.decodeCodecSeconds = timerElapsedSeconds(&t);
-
     avifImage * avif = decoder->image;
-    timerStart(&t);
-    avifImageYUVToRGB(avif);
-    C->readExtraInfo.decodeYUVtoRGBSeconds = timerElapsedSeconds(&t);
+
+    C->readExtraInfo.decodeCodecSeconds = timerElapsedSeconds(&t);
 
     if (overrideProfile) {
         profile = clProfileClone(C, overrideProfile);
@@ -114,42 +111,14 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
     image = clImageCreate(C, avif->width, avif->height, avif->depth, profile);
 
     timerStart(&t);
-
-    clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U16);
-
-    avifBool usesU16 = avifImageUsesU16(avif);
-    int maxChannel = (1 << image->depth) - 1;
-    if (usesU16) {
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint16_t * pixel = &image->pixelsU16[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
-                pixel[0] = *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_R][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_R])]);
-                pixel[1] = *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_G][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_G])]);
-                pixel[2] = *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_B][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_B])]);
-                if (avif->alphaPlane) {
-                    pixel[3] = *((uint16_t *)&avif->alphaPlane[(i * 2) + (j * avif->alphaRowBytes)]);
-                } else {
-                    pixel[3] = (uint16_t)maxChannel;
-                }
-            }
-        }
+    if (avifImageUsesU16(avif)) {
+        clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U16);
+        avifImageYUVToInterleavedRGBA(avif, (uint8_t *)image->pixelsU16, image->width * CL_CHANNELS_PER_PIXEL * sizeof(uint16_t));
     } else {
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint16_t * pixel = &image->pixelsU16[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
-                pixel[0] = avif->rgbPlanes[AVIF_CHAN_R][i + (j * avif->rgbRowBytes[AVIF_CHAN_R])];
-                pixel[1] = avif->rgbPlanes[AVIF_CHAN_G][i + (j * avif->rgbRowBytes[AVIF_CHAN_G])];
-                pixel[2] = avif->rgbPlanes[AVIF_CHAN_B][i + (j * avif->rgbRowBytes[AVIF_CHAN_B])];
-                if (avif->alphaPlane) {
-                    pixel[3] = avif->alphaPlane[i + (j * avif->alphaRowBytes)];
-                } else {
-                    pixel[3] = (uint8_t)maxChannel;
-                }
-            }
-        }
+        clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U8);
+        avifImageYUVToInterleavedRGBA(avif, image->pixelsU8, image->width * CL_CHANNELS_PER_PIXEL * sizeof(uint8_t));
     }
-
-    C->readExtraInfo.decodeFillSeconds = timerElapsedSeconds(&t);
+    C->readExtraInfo.decodeYUVtoRGBSeconds = timerElapsedSeconds(&t);
 
     if (decoder->imageCount > 1) {
         C->readExtraInfo.frameIndex = (int)frameIndex;
