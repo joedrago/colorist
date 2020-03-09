@@ -34,37 +34,20 @@ int main(int argc, char * argv[])
     clImage * image = clContextRead(C, inputFilename, NULL, NULL);
     if (image && (image->depth > 8)) {
         avifImage * avif = avifImageCreate(image->width, image->height, image->depth, avifYUVFormat);
-        avifImageAllocatePlanes(avif, AVIF_PLANES_RGB | AVIF_PLANES_A);
-
-        clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U16);
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint16_t * pixel = &image->pixelsU16[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
-                *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_R][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_R])]) = pixel[0];
-                *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_G][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_G])]) = pixel[1];
-                *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_B][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_B])]) = pixel[2];
-                *((uint16_t *)&avif->alphaPlane[(i * 2) + (j * avif->alphaRowBytes)]) = pixel[3];
-            }
-        }
-
-        avifImageRGBToYUV(avif);
-        avifImageYUVToRGB(avif);
 
         clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U16);
-        int maxChannel = (1 << image->depth) - 1;
-        for (int j = 0; j < image->height; ++j) {
-            for (int i = 0; i < image->width; ++i) {
-                uint16_t * pixel = &image->pixelsU16[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
-                pixel[0] = *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_R][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_R])]);
-                pixel[1] = *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_G][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_G])]);
-                pixel[2] = *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_B][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_B])]);
-                if (avif->alphaPlane) {
-                    pixel[3] = *((uint16_t *)&avif->alphaPlane[(i * 2) + (j * avif->alphaRowBytes)]);
-                } else {
-                    pixel[3] = (uint16_t)maxChannel;
-                }
-            }
-        }
+
+        avifRGBImage rgb;
+        rgb.width = image->width;
+        rgb.height = image->height;
+        rgb.depth = image->depth;
+        rgb.format = AVIF_RGB_FORMAT_RGBA;
+        rgb.pixels = (uint8_t *)image->pixelsU16;
+        rgb.rowBytes = image->width * sizeof(uint16_t) * CL_CHANNELS_PER_PIXEL;
+
+        avifImageRGBToYUV(avif, &rgb);
+        memset(rgb.pixels, 0, rgb.height * rgb.rowBytes);
+        avifImageYUVToRGB(avif, &rgb);
 
         clWriteParams writeParams;
         clWriteParamsSetDefaults(C, &writeParams);

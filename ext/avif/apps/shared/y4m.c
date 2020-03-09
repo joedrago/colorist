@@ -5,6 +5,7 @@
 
 #include "y4m.h"
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -248,7 +249,7 @@ avifBool y4mRead(avifImage * avif, const char * inputFilename)
     planeBytes[1] = avif->yuvRowBytes[1] * (avif->height >> info.chromaShiftY);
     planeBytes[2] = avif->yuvRowBytes[2] * (avif->height >> info.chromaShiftY);
     if (hasAlpha) {
-        planeBytes[3] = avif->yuvRowBytes[0] * avif->height;
+        planeBytes[3] = avif->alphaRowBytes * avif->height;
     } else {
         planeBytes[3] = 0;
     }
@@ -278,7 +279,7 @@ cleanup:
 avifBool y4mWrite(avifImage * avif, const char * outputFilename)
 {
     avifBool swapUV = AVIF_FALSE;
-    avifBool hasAlpha = (avif->alphaPlane && (avif->alphaRowBytes > 0)) ? AVIF_TRUE : AVIF_FALSE;
+    avifBool hasAlpha = (avif->alphaPlane != NULL) && (avif->alphaRowBytes > 0);
     avifBool writeAlpha = AVIF_FALSE;
     char * y4mHeaderFormat = NULL;
 
@@ -376,9 +377,13 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
         return AVIF_FALSE;
     }
 
-    fprintf(f, "YUV4MPEG2 W%d H%d F25:1 Ip A0:0 %s %s\n", avif->width, avif->height, y4mHeaderFormat, rangeString);
+    avifBool success = AVIF_TRUE;
+    if (fprintf(f, "YUV4MPEG2 W%d H%d F25:1 Ip A0:0 %s %s\nFRAME\n", avif->width, avif->height, y4mHeaderFormat, rangeString) < 0) {
+        fprintf(stderr, "Cannot write to file: %s\n", outputFilename);
+        success = AVIF_FALSE;
+        goto cleanup;
+    }
 
-    fprintf(f, "FRAME\n");
     uint8_t * planes[3];
     uint32_t planeBytes[3];
     planes[0] = avif->yuvPlanes[0];
@@ -399,13 +404,25 @@ avifBool y4mWrite(avifImage * avif, const char * outputFilename)
     }
 
     for (int i = 0; i < 3; ++i) {
-        fwrite(planes[i], 1, planeBytes[i], f);
+        if (fwrite(planes[i], 1, planeBytes[i], f) != planeBytes[i]) {
+            fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", planeBytes[i], outputFilename);
+            success = AVIF_FALSE;
+            goto cleanup;
+        }
     }
     if (writeAlpha) {
-        fwrite(avif->alphaPlane, 1, avif->alphaRowBytes * avif->height, f);
+        uint32_t alphaPlaneBytes = avif->alphaRowBytes * avif->height;
+        if (fwrite(avif->alphaPlane, 1, alphaPlaneBytes, f) != alphaPlaneBytes) {
+            fprintf(stderr, "Failed to write %" PRIu32 " bytes: %s\n", alphaPlaneBytes, outputFilename);
+            success = AVIF_FALSE;
+            goto cleanup;
+        }
     }
 
+cleanup:
     fclose(f);
-    printf("Wrote: %s\n", outputFilename);
-    return AVIF_TRUE;
+    if (success) {
+        printf("Wrote: %s\n", outputFilename);
+    }
+    return success;
 }

@@ -111,12 +111,20 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
     image = clImageCreate(C, avif->width, avif->height, avif->depth, profile);
 
     timerStart(&t);
+    avifRGBImage rgb;
+    avifRGBImageSetDefaults(&rgb, avif);
     if (avifImageUsesU16(avif)) {
         clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U16);
-        avifImageYUVToInterleavedRGBA(avif, (uint8_t *)image->pixelsU16, image->width * CL_CHANNELS_PER_PIXEL * sizeof(uint16_t));
+
+        rgb.pixels = (uint8_t *)image->pixelsU16;
+        rgb.rowBytes = image->width * sizeof(uint16_t) * CL_CHANNELS_PER_PIXEL;
+        avifImageYUVToRGB(avif, &rgb);
     } else {
         clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U8);
-        avifImageYUVToInterleavedRGBA(avif, image->pixelsU8, image->width * CL_CHANNELS_PER_PIXEL * sizeof(uint8_t));
+
+        rgb.pixels = image->pixelsU8;
+        rgb.rowBytes = image->width * sizeof(uint8_t) * CL_CHANNELS_PER_PIXEL;
+        avifImageYUVToRGB(avif, &rgb);
     }
     C->readExtraInfo.decodeYUVtoRGBSeconds = timerElapsedSeconds(&t);
 
@@ -189,28 +197,23 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
         }
     }
 
-    avifImageAllocatePlanes(avif, AVIF_PLANES_RGB | AVIF_PLANES_A);
-    avifRWData avifOutput = AVIF_DATA_EMPTY;
+    avifRGBImage rgb;
+    avifRGBImageSetDefaults(&rgb, avif);
+    if (avifImageUsesU16(avif)) {
+        clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U16);
 
-    clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U16);
+        rgb.pixels = (uint8_t *)image->pixelsU16;
+        rgb.rowBytes = image->width * sizeof(uint16_t) * CL_CHANNELS_PER_PIXEL;
+        avifImageRGBToYUV(avif, &rgb);
+    } else {
+        clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U8);
 
-    avifBool usesU16 = avifImageUsesU16(avif);
-    for (int j = 0; j < image->height; ++j) {
-        for (int i = 0; i < image->width; ++i) {
-            uint16_t * pixel = &image->pixelsU16[CL_CHANNELS_PER_PIXEL * (i + (j * image->width))];
-            if (usesU16) {
-                *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_R][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_R])]) = pixel[0];
-                *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_G][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_G])]) = pixel[1];
-                *((uint16_t *)&avif->rgbPlanes[AVIF_CHAN_B][(i * 2) + (j * avif->rgbRowBytes[AVIF_CHAN_B])]) = pixel[2];
-                *((uint16_t *)&avif->alphaPlane[(i * 2) + (j * avif->alphaRowBytes)]) = pixel[3];
-            } else {
-                avif->rgbPlanes[AVIF_CHAN_R][i + (j * avif->rgbRowBytes[AVIF_CHAN_R])] = (uint8_t)pixel[0];
-                avif->rgbPlanes[AVIF_CHAN_G][i + (j * avif->rgbRowBytes[AVIF_CHAN_G])] = (uint8_t)pixel[1];
-                avif->rgbPlanes[AVIF_CHAN_B][i + (j * avif->rgbRowBytes[AVIF_CHAN_B])] = (uint8_t)pixel[2];
-                avif->alphaPlane[i + (j * avif->alphaRowBytes)] = (uint8_t)pixel[3];
-            }
-        }
+        rgb.pixels = image->pixelsU8;
+        rgb.rowBytes = image->width * sizeof(uint8_t) * CL_CHANNELS_PER_PIXEL;
+        avifImageRGBToYUV(avif, &rgb);
     }
+
+    avifRWData avifOutput = AVIF_DATA_EMPTY;
 
     encoder = avifEncoderCreate();
     if (writeParams->codec) {

@@ -36,11 +36,6 @@ static avifBool gav1CodecOpen(avifCodec * codec, uint32_t firstSampleIndex)
     return AVIF_TRUE;
 }
 
-static avifBool gav1CodecAlphaLimitedRange(avifCodec * codec)
-{
-    return codec->decodeInput->alpha && codec->internal->gav1Image && (codec->internal->colorRange == AVIF_RANGE_LIMITED);
-}
-
 static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
 {
     const Libgav1DecoderBuffer * nextFrame = NULL;
@@ -49,8 +44,8 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
         // Feed another sample
         avifSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
         ++codec->internal->inputSampleIndex;
-        if (Libgav1DecoderEnqueueFrame(codec->internal->gav1Decoder, sample->data.data, sample->data.size, /*user_private_data=*/0) !=
-            kLibgav1StatusOk) {
+        if (Libgav1DecoderEnqueueFrame(codec->internal->gav1Decoder, sample->data.data, sample->data.size,
+                                       /*user_private_data=*/0) != kLibgav1StatusOk) {
             return AVIF_FALSE;
         }
         // Each Libgav1DecoderDequeueFrame() call invalidates the output frame
@@ -145,6 +140,7 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
         avifImageFreePlanes(image, AVIF_PLANES_A);
         image->alphaPlane = gav1Image->plane[0];
         image->alphaRowBytes = gav1Image->stride[0];
+        image->alphaRange = codec->internal->colorRange;
         image->decoderOwnsAlphaPlane = AVIF_TRUE;
     }
 
@@ -161,7 +157,6 @@ avifCodec * avifCodecCreateGav1(void)
     avifCodec * codec = (avifCodec *)avifAlloc(sizeof(avifCodec));
     memset(codec, 0, sizeof(struct avifCodec));
     codec->open = gav1CodecOpen;
-    codec->alphaLimitedRange = gav1CodecAlphaLimitedRange;
     codec->getNextImage = gav1CodecGetNextImage;
     codec->destroyInternal = gav1CodecDestroyInternal;
 

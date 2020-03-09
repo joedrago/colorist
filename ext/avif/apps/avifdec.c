@@ -16,7 +16,7 @@
     }                                                                 \
     arg = argv[++argIndex]
 
-static int syntax(void)
+static void syntax(void)
 {
     printf("Syntax: avifdec [options] input.avif output.y4m\n");
     printf("Options:\n");
@@ -24,7 +24,6 @@ static int syntax(void)
     printf("    -c,--codec C      : AV1 codec to use (choose from versions list below)\n");
     printf("\n");
     avifPrintVersions();
-    return 0;
 }
 
 int main(int argc, char * argv[])
@@ -34,7 +33,8 @@ int main(int argc, char * argv[])
     avifCodecChoice codecChoice = AVIF_CODEC_CHOICE_AUTO;
 
     if (argc < 2) {
-        return syntax();
+        syntax();
+        return 1;
     }
 
     int argIndex = 1;
@@ -42,7 +42,8 @@ int main(int argc, char * argv[])
         const char * arg = argv[argIndex];
 
         if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
-            return syntax();
+            syntax();
+            return 0;
         } else if (!strcmp(arg, "-c") || !strcmp(arg, "--codec")) {
             NEXTARG();
             codecChoice = avifCodecChoiceFromName(arg);
@@ -64,6 +65,7 @@ int main(int argc, char * argv[])
                 outputFilename = arg;
             } else {
                 fprintf(stderr, "Too many positional arguments: %s\n", arg);
+                syntax();
                 return 1;
             }
         }
@@ -72,7 +74,8 @@ int main(int argc, char * argv[])
     }
 
     if (!inputFilename || !outputFilename) {
-        return syntax();
+        syntax();
+        return 1;
     }
 
     FILE * inputFile = fopen(inputFilename, "rb");
@@ -104,6 +107,7 @@ int main(int argc, char * argv[])
 
     printf("Decoding with AV1 codec '%s', please wait...\n", avifCodecName(codecChoice, AVIF_CODEC_FLAG_CAN_DECODE));
 
+    int returnCode = 0;
     avifImage * avif = avifImageCreateEmpty();
     avifDecoder * decoder = avifDecoderCreate();
     avifResult decodeResult = avifDecoderRead(decoder, avif, (avifROData *)&raw);
@@ -111,12 +115,15 @@ int main(int argc, char * argv[])
         printf("Image decoded: %s\n", inputFilename);
         printf("Image details:\n");
         avifImageDump(avif);
-        y4mWrite(avif, outputFilename);
+        if (!y4mWrite(avif, outputFilename)) {
+            returnCode = 1;
+        }
     } else {
         printf("ERROR: Failed to decode image: %s\n", avifResultToString(decodeResult));
+        returnCode = 1;
     }
     avifRWDataFree(&raw);
     avifDecoderDestroy(decoder);
     avifImageDestroy(avif);
-    return 0;
+    return returnCode;
 }
