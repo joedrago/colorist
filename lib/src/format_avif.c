@@ -132,6 +132,45 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
         C->readExtraInfo.frameIndex = (int)frameIndex;
         C->readExtraInfo.frameCount = decoder->imageCount;
     }
+
+    if (decoder->image->transformFlags & AVIF_TRANSFORM_CLAP) {
+        avifCleanApertureBox * clap = &decoder->image->clap;
+        int * crop = C->readExtraInfo.crop;
+
+        // see ISO/IEC 14496-12:2015 12.1.4.1
+
+        int croppedW = (int)clap->widthN / (int)clap->widthD;
+        int croppedH = (int)clap->heightN / (int)clap->heightD;
+        int offX = (int)clap->horizOffN / (int)clap->horizOffD;
+        int offY = (int)clap->vertOffN / (int)clap->vertOffD;
+        int halfCroppedW = (croppedW - 1) / 2;
+        int halfCroppedH = (croppedH - 1) / 2;
+        int centerX = offX + (decoder->image->width - 1) / 2;
+        int centerY = offY + (decoder->image->height - 1) / 2;
+        int topLeftX = centerX - halfCroppedW;
+        int topLeftY = centerY - halfCroppedH;
+
+        crop[0] = topLeftX;
+        crop[1] = topLeftY;
+        crop[2] = croppedW;
+        crop[3] = croppedH;
+    }
+    if (decoder->image->transformFlags & AVIF_TRANSFORM_IROT) {
+        switch (decoder->image->irot.angle) { // in ccw rotations
+            case 1:
+                C->readExtraInfo.cwRotationsNeeded = 3;
+                break;
+            case 2:
+                C->readExtraInfo.cwRotationsNeeded = 2;
+                break;
+            case 3:
+                C->readExtraInfo.cwRotationsNeeded = 1;
+                break;
+        }
+    }
+    if (decoder->image->transformFlags & AVIF_TRANSFORM_IMIR) {
+        C->readExtraInfo.mirrorNeeded = decoder->image->imir.axis + 1;
+    }
 readCleanup:
     avifDecoderDestroy(decoder);
     if (profile) {

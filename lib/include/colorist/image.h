@@ -130,6 +130,7 @@ typedef struct clImageHDRQuantization
 
 clImage * clImageCreate(struct clContext * C, int width, int height, int depth, struct clProfile * profile);
 clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns);
+clImage * clImageMirror(struct clContext * C, clImage * image, int horizontal); // if horizontal is false, mirror vertically
 clImage * clImageConvert(struct clContext * C,
                          clImage * srcImage,
                          int depth,

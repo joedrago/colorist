@@ -500,6 +500,42 @@ clImage * clImageRotate(struct clContext * C, clImage * image, int cwTurns)
     return rotated;
 }
 
+clImage * clImageMirror(struct clContext * C, clImage * image, int horizontal)
+{
+    clImage * mirrored = clImageCreate(C, image->width, image->height, image->depth, image->profile);
+    for (clPixelFormat pixelFormat = CL_PIXELFORMAT_FIRST; pixelFormat != CL_PIXELFORMAT_COUNT; ++pixelFormat) {
+        uint8_t * srcPixels = clImagePixelPtr(C, image, pixelFormat);
+        if (!srcPixels) {
+            continue;
+        }
+        clImageAllocatePixels(C, mirrored, pixelFormat);
+        uint8_t * dstPixels = clImagePixelPtr(C, mirrored, pixelFormat);
+
+        if (horizontal) {
+            // Horizontal
+
+            for (int j = 0; j < image->height; ++j) {
+                for (int i = 0; i < image->width; ++i) {
+                    uint8_t * srcPixel = &srcPixels[CL_BYTES_PER_PIXEL(pixelFormat) * (i + (j * image->width))];
+                    uint8_t * dstPixel = &dstPixels[CL_BYTES_PER_PIXEL(pixelFormat) * ((image->width - 1 - i) + (j * image->width))];
+                    memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL(pixelFormat));
+                }
+            }
+        } else {
+            // Vertical
+
+            for (int j = 0; j < image->height; ++j) {
+                for (int i = 0; i < image->width; ++i) {
+                    uint8_t * srcPixel = &srcPixels[CL_BYTES_PER_PIXEL(pixelFormat) * (i + (j * image->width))];
+                    uint8_t * dstPixel = &dstPixels[CL_BYTES_PER_PIXEL(pixelFormat) * (i + ((image->height - 1 - j) * image->width))];
+                    memcpy(dstPixel, srcPixel, CL_BYTES_PER_PIXEL(pixelFormat));
+                }
+            }
+        }
+    }
+    return mirrored;
+}
+
 clImage * clImageConvert(struct clContext * C, clImage * srcImage, int depth, struct clProfile * dstProfile, clTonemap tonemap, clTonemapParams * tonemapParams)
 {
     Timer t;

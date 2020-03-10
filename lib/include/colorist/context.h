@@ -206,6 +206,11 @@ typedef struct clReadExtraInfo
     int frameIndex;
     int frameCount;
 
+    // transformation info
+    int cwRotationsNeeded;
+    int mirrorNeeded; // 0 == none, 1 == vertical, 2 == horizontal
+    int crop[4];      // x, y, width, height
+
     // perf stats
     double decodeCodecSeconds;    // Time spent actually in the decoder
     double decodeYUVtoRGBSeconds; // Time spent converting from YUV (0 if the format isn't YUV or the codec automatically does)
