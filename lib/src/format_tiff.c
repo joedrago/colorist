@@ -270,13 +270,13 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
             } else if (depth == 1) {
                 int shift = 7 - (image->width % 8);
                 for (int x = image->width - 1; x >= 0; --x) {
-                    uint8_t mask = 1 << (7 - shift);
+                    uint8_t mask = (uint8_t)(1 << (7 - shift));
                     uint8_t * srcPixel = &pixelRow[(x / 8) * sizeof(uint8_t)];
                     uint8_t * dstPixel = &pixelRow[x * 4 * sizeof(uint8_t)];
                     dstPixel[3] = 255;
-                    dstPixel[2] = (srcPixel[0] & mask) << shift;
-                    dstPixel[1] = (srcPixel[0] & mask) << shift;
-                    dstPixel[0] = (srcPixel[0] & mask) << shift;
+                    dstPixel[2] = (uint8_t)((srcPixel[0] & mask) << shift);
+                    dstPixel[1] = (uint8_t)((srcPixel[0] & mask) << shift);
+                    dstPixel[0] = (uint8_t)((srcPixel[0] & mask) << shift);
                     --shift;
                     if (shift < 0) {
                         shift = 7;
@@ -315,13 +315,13 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
             } else if (depth == 1) {
                 int shift = 7 - (image->width % 8);
                 for (int x = image->width - 1; x >= 0; --x) {
-                    uint8_t mask = 1 << (7 - shift);
+                    uint8_t mask = (uint8_t)(1 << (7 - shift));
                     uint8_t * srcPixel = &pixelRow[((x * 3) / 8) * sizeof(uint8_t)];
                     uint8_t * dstPixel = &pixelRow[x * 4 * sizeof(uint8_t)];
                     dstPixel[3] = 255;
-                    dstPixel[2] = (srcPixel[2] & mask) << shift;
-                    dstPixel[1] = (srcPixel[1] & mask) << shift;
-                    dstPixel[0] = (srcPixel[0] & mask) << shift;
+                    dstPixel[2] = (uint8_t)((srcPixel[2] & mask) << shift);
+                    dstPixel[1] = (uint8_t)((srcPixel[1] & mask) << shift);
+                    dstPixel[0] = (uint8_t)((srcPixel[0] & mask) << shift);
                     --shift;
                     if (shift < 0) {
                         shift = 7;
