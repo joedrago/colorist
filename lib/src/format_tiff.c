@@ -176,7 +176,7 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
     }
 
     TIFFGetField(tiff, TIFFTAG_SAMPLESPERPIXEL, &channelCount);
-    if ((channelCount != 3) && (channelCount != 4)) {
+    if ((channelCount != 1) && (channelCount != 3) && (channelCount != 4)) {
         clContextLogError(C, "unsupported channelCount(%d) from TIFF", channelCount);
         goto readCleanup;
     }
@@ -186,7 +186,7 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
         sampleFormat = SAMPLEFORMAT_UINT;
     }
     TIFFGetField(tiff, TIFFTAG_BITSPERSAMPLE, &depth);
-    if ((depth <= 0)) {
+    if (depth <= 0) {
         // TODO: convert to 16bit
         clContextLogError(C, "cannot read depth from TIFF: '%s'");
         goto readCleanup;
@@ -198,7 +198,7 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
             clContextLogError(C, "unsupported sample format (%d) with depth(%d) from TIFF", sampleFormat, depth);
             goto readCleanup;
         }
-        if ((depth != 8) && (depth != 16)) {
+        if ((depth != 1) && (depth != 8) && (depth != 16)) {
             clContextLogError(C, "unsupported uint depth(%d) from TIFF", depth);
             goto readCleanup;
         }
@@ -232,7 +232,7 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
         clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_F32);
         pixels = (uint8_t *)image->pixelsF32;
         rowBytes = image->width * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_F32);
-    } else if (depth == 8) {
+    } else if ((depth == 1) || (depth == 8)) {
         clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U8);
         pixels = image->pixelsU8;
         rowBytes = image->width * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U8);
@@ -256,7 +256,52 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
             goto readCleanup;
         }
 
-        if (channelCount == 3) {
+        if (channelCount == 1) {
+            // Expand grey in-place into RGBA, then fill A
+            if (fp32) {
+                for (int x = image->width - 1; x >= 0; --x) {
+                    float * srcPixel = (float *)&pixelRow[x * sizeof(float)];
+                    float * dstPixel = (float *)&pixelRow[x * 4 * sizeof(float)];
+                    dstPixel[3] = 1.0f;
+                    dstPixel[2] = srcPixel[0];
+                    dstPixel[1] = srcPixel[0];
+                    dstPixel[0] = srcPixel[0];
+                }
+            } else if (depth == 1) {
+                int shift = 7 - (image->width % 8);
+                for (int x = image->width - 1; x >= 0; --x) {
+                    uint8_t mask = (uint8_t)(1 << (7 - shift));
+                    uint8_t * srcPixel = &pixelRow[(x / 8) * sizeof(uint8_t)];
+                    uint8_t * dstPixel = &pixelRow[x * 4 * sizeof(uint8_t)];
+                    dstPixel[3] = 255;
+                    dstPixel[2] = (uint8_t)((srcPixel[0] & mask) << shift);
+                    dstPixel[1] = (uint8_t)((srcPixel[0] & mask) << shift);
+                    dstPixel[0] = (uint8_t)((srcPixel[0] & mask) << shift);
+                    --shift;
+                    if (shift < 0) {
+                        shift = 7;
+                    }
+                }
+            } else if (depth == 8) {
+                for (int x = image->width - 1; x >= 0; --x) {
+                    uint8_t * srcPixel = &pixelRow[x * sizeof(uint8_t)];
+                    uint8_t * dstPixel = &pixelRow[x * 4 * sizeof(uint8_t)];
+                    dstPixel[3] = 255;
+                    dstPixel[2] = srcPixel[0];
+                    dstPixel[1] = srcPixel[0];
+                    dstPixel[0] = srcPixel[0];
+                }
+            } else {
+                for (int x = image->width - 1; x >= 0; --x) {
+                    uint16_t * srcPixel = (uint16_t *)&pixelRow[x * sizeof(uint16_t)];
+                    uint16_t * dstPixel = (uint16_t *)&pixelRow[x * 4 * sizeof(uint16_t)];
+                    dstPixel[3] = 65535;
+                    dstPixel[2] = srcPixel[0];
+                    dstPixel[1] = srcPixel[0];
+                    dstPixel[0] = srcPixel[0];
+                }
+            }
+        } else if (channelCount == 3) {
             // Expand RGB in-place into RGBA, then fill A
             if (fp32) {
                 for (int x = image->width - 1; x >= 0; --x) {
@@ -266,6 +311,21 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
                     dstPixel[2] = srcPixel[2];
                     dstPixel[1] = srcPixel[1];
                     dstPixel[0] = srcPixel[0];
+                }
+            } else if (depth == 1) {
+                int shift = 7 - (image->width % 8);
+                for (int x = image->width - 1; x >= 0; --x) {
+                    uint8_t mask = (uint8_t)(1 << (7 - shift));
+                    uint8_t * srcPixel = &pixelRow[((x * 3) / 8) * sizeof(uint8_t)];
+                    uint8_t * dstPixel = &pixelRow[x * 4 * sizeof(uint8_t)];
+                    dstPixel[3] = 255;
+                    dstPixel[2] = (uint8_t)((srcPixel[2] & mask) << shift);
+                    dstPixel[1] = (uint8_t)((srcPixel[1] & mask) << shift);
+                    dstPixel[0] = (uint8_t)((srcPixel[0] & mask) << shift);
+                    --shift;
+                    if (shift < 0) {
+                        shift = 7;
+                    }
                 }
             } else if (depth == 8) {
                 for (int x = image->width - 1; x >= 0; --x) {
