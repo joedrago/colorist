@@ -33,6 +33,9 @@ static tmsize_t readCallback(tiffCallbackInfo * ci, void * ptr, tmsize_t size)
     if ((ci->offset + size) > ci->raw->size) {
         size = (tmsize_t)(ci->raw->size - ci->offset);
     }
+    if (size <= 0) {
+        return 0;
+    }
     memcpy(ptr, ci->raw->ptr + ci->offset, size);
     ci->offset += size;
     return size;
@@ -43,6 +46,9 @@ static tmsize_t writeCallback(tiffCallbackInfo * ci, void * ptr, tmsize_t size)
     if ((ci->offset + size) > ci->raw->size) {
         tmsize_t newSize = (tmsize_t)(ci->offset + size);
         clRawRealloc(ci->C, ci->raw, newSize);
+    }
+    if (size <= 0) {
+        return 0;
     }
     memcpy(ci->raw->ptr + ci->offset, ptr, size);
     ci->offset += size;
