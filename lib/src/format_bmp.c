@@ -124,7 +124,6 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
     int depth = 8;
     int packedPixelBytes = 0;
     uint32_t * packedPixels;
-    int pixelCount;
     int rowBytes;
     uint16_t * dstPixels;
     int dstRowOffset;
@@ -211,7 +210,6 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
 
     rowBytes = ((info.bV5Width * info.bV5BitCount) + 7) / 8;
     rowBytes = (rowBytes + 3) & ~3; // must be padded to 4 bytes
-    pixelCount = info.bV5Width * info.bV5Height;
     packedPixelBytes = rowBytes * info.bV5Height;
     packedPixels = clAllocate(packedPixelBytes);
     if ((fileHeader.bfOffBits + packedPixelBytes) > input->size) {
