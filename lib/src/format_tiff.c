@@ -238,6 +238,16 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
         orientation = ORIENTATION_TOPLEFT;
     }
 
+    uint8_t monochrome[2] = { 255, 0 };
+    if (depth == 1) {
+        uint16_t photometric = PHOTOMETRIC_MINISWHITE;
+        TIFFGetField(tiff, TIFFTAG_PHOTOMETRIC, &photometric);
+        if (photometric == PHOTOMETRIC_MINISBLACK) {
+            monochrome[0] = 0;
+            monochrome[1] = 255;
+        }
+    }
+
     clImageLogCreate(C, width, height, depth, profile);
     image = clImageCreate(C, width, height, depth, profile);
 
@@ -289,9 +299,9 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
                         uint8_t * srcPixel = &pixelRow[(x / 8) * sizeof(uint8_t)];
                         uint8_t * dstPixel = &pixelRow[x * 4 * sizeof(uint8_t)];
                         dstPixel[3] = 255;
-                        dstPixel[2] = (uint8_t)((srcPixel[0] & mask) << shift);
-                        dstPixel[1] = (uint8_t)((srcPixel[0] & mask) << shift);
-                        dstPixel[0] = (uint8_t)((srcPixel[0] & mask) << shift);
+                        dstPixel[2] = (srcPixel[0] & mask) ? monochrome[1] : monochrome[0];
+                        dstPixel[1] = (srcPixel[0] & mask) ? monochrome[1] : monochrome[0];
+                        dstPixel[0] = (srcPixel[0] & mask) ? monochrome[1] : monochrome[0];
                         --shift;
                         if (shift < 0) {
                             shift = 7;
@@ -334,9 +344,9 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
                         uint8_t * srcPixel = &pixelRow[((x * 3) / 8) * sizeof(uint8_t)];
                         uint8_t * dstPixel = &pixelRow[x * 4 * sizeof(uint8_t)];
                         dstPixel[3] = 255;
-                        dstPixel[2] = (uint8_t)((srcPixel[2] & mask) << shift);
-                        dstPixel[1] = (uint8_t)((srcPixel[1] & mask) << shift);
-                        dstPixel[0] = (uint8_t)((srcPixel[0] & mask) << shift);
+                        dstPixel[2] = (srcPixel[2] & mask) ? monochrome[1] : monochrome[0];
+                        dstPixel[1] = (srcPixel[1] & mask) ? monochrome[1] : monochrome[0];
+                        dstPixel[0] = (srcPixel[0] & mask) ? monochrome[1] : monochrome[0];
                         --shift;
                         if (shift < 0) {
                             shift = 7;
