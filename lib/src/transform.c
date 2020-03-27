@@ -443,7 +443,9 @@ static void colorConvert(struct clContext * C,
             gb_mat3_mul_vec3((gbVec3 *)XYZ, &transform->ccmmSrcToXYZ, src);
         } else {
             // Use LCMS
-            cmsDoTransform(transform->lcmsSrcToXYZ, srcPixel, XYZ, 1);
+            if (transform->lcmsSrcToXYZ) {
+                cmsDoTransform(transform->lcmsSrcToXYZ, srcPixel, XYZ, 1);
+            }
         }
 
         // if tonemapping is necessary, luminance scale MUST be enabled
@@ -533,7 +535,9 @@ static void colorConvert(struct clContext * C,
             }
         } else {
             // LittleCMS
-            cmsDoTransform(transform->lcmsXYZToDst, XYZ, dstPixel, 1);
+            if (transform->lcmsXYZToDst) {
+                cmsDoTransform(transform->lcmsXYZToDst, XYZ, dstPixel, 1);
+            }
             if (transform->dstProfile) {                 // don't clamp XYZ
                 dstPixel[0] = CL_MAX(dstPixel[0], 0.0f); // clamp (allow overranging)
                 dstPixel[1] = CL_MAX(dstPixel[1], 0.0f); // clamp (allow overranging)
