@@ -388,14 +388,6 @@ void clTransformPrepare(struct clContext * C, struct clTransform * transform)
                                                             INTENT_ABSOLUTE_COLORIMETRIC,
                                                             cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
 
-            transform->lcmsCombined = cmsCreateTransformTHR(C->lcms,
-                                                            srcProfileHandle,
-                                                            srcFormat,
-                                                            dstProfileHandle,
-                                                            dstFormat,
-                                                            INTENT_ABSOLUTE_COLORIMETRIC,
-                                                            cmsFLAGS_COPY_ALPHA | cmsFLAGS_NOOPTIMIZE);
-
             transform->lcmsReady = clTrue;
         }
     }
@@ -672,7 +664,6 @@ clTransform * clTransformCreate(struct clContext * C,
     transform->lcmsXYZProfile = NULL;
     transform->lcmsSrcToXYZ = NULL;
     transform->lcmsXYZToDst = NULL;
-    transform->lcmsCombined = NULL;
     transform->lcmsReady = clFalse;
     return transform;
 }
@@ -684,9 +675,6 @@ void clTransformDestroy(struct clContext * C, clTransform * transform)
     }
     if (transform->lcmsXYZToDst) {
         cmsDeleteTransform(transform->lcmsXYZToDst);
-    }
-    if (transform->lcmsCombined) {
-        cmsDeleteTransform(transform->lcmsCombined);
     }
     if (transform->lcmsXYZProfile) {
         cmsCloseProfile(transform->lcmsXYZProfile);
