@@ -125,6 +125,9 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
     int packedPixelBytes = 0;
     uint32_t * packedPixels;
     int pixelCount;
+    int rowBytes;
+    uint16_t * dstPixels;
+    int dstRowOffset;
 
     Timer t;
     timerStart(&t);
@@ -140,7 +143,7 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
         goto readCleanup;
     }
 
-    memcpy(&fileHeader, input->ptr + 2, sizeof(fileHeader));
+    memcpy(&fileHeader, input->ptr + sizeof(magic), sizeof(fileHeader));
     if (fileHeader.bfSize != input->size) {
         clContextLogError(C, "Invalid BMP total size in file header");
         goto readCleanup;
@@ -152,13 +155,8 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
         clContextLogError(C, "Invalid BMP info header size");
         goto readCleanup;
     }
-    memcpy(&info, input->ptr + 2 + sizeof(fileHeader), info.bV5Size); // read the whole header
+    memcpy(&info, input->ptr + sizeof(magic) + sizeof(fileHeader), info.bV5Size); // read the whole header
     // TODO: Make decisions based on the size? (autodetect V4 or previous)
-
-    if (info.bV5BitCount != 32) {
-        clContextLogError(C, "Colorist currently only supports 32bit BMPs [%d detected]", info.bV5BitCount);
-        goto readCleanup;
-    }
 
     if (overrideProfile) {
         profile = clProfileClone(C, overrideProfile);
@@ -206,12 +204,15 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
 
     if (info.bV5Height < 0) {
         info.bV5Height *= -1;
+        dstRowOffset = info.bV5Width;
     } else {
-        clContextLogError(C, "Colorist currently only supports top-down BMPs, image will appear upside down!");
+        dstRowOffset = -info.bV5Width;
     }
 
+    rowBytes = ((info.bV5Width * info.bV5BitCount) + 7) / 8;
+    rowBytes = (rowBytes + 3) & ~3; // must be padded to 4 bytes
     pixelCount = info.bV5Width * info.bV5Height;
-    packedPixelBytes = sizeof(uint32_t) * pixelCount;
+    packedPixelBytes = rowBytes * info.bV5Height;
     packedPixels = clAllocate(packedPixelBytes);
     if ((fileHeader.bfOffBits + packedPixelBytes) > input->size) {
         clContextLogError(C, "Truncated BMP (not enough pixel data)");
@@ -225,17 +226,179 @@ struct clImage * clFormatReadBMP(struct clContext * C, const char * formatName, 
     image = clImageCreate(C, info.bV5Width, info.bV5Height, depth, profile);
     clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U16);
 
+    if (dstRowOffset > 0) {
+        dstPixels = image->pixelsU16;
+    } else {
+        dstPixels = image->pixelsU16 + (4 * info.bV5Width * (info.bV5Height - 1));
+    }
+
     timerStart(&t);
 
-    for (int i = 0; i < pixelCount; ++i) {
-        uint16_t * dstPixel = &image->pixelsU16[i * 4];
-        dstPixel[0] = (uint16_t)((packedPixels[i] & info.bV5RedMask) >> rShift);
-        dstPixel[1] = (uint16_t)((packedPixels[i] & info.bV5GreenMask) >> gShift);
-        dstPixel[2] = (uint16_t)((packedPixels[i] & info.bV5BlueMask) >> bShift);
-        if (aDepth > 0)
-            dstPixel[3] = (uint16_t)((packedPixels[i] & info.bV5AlphaMask) >> aShift);
-        else
-            dstPixel[3] = (uint16_t)((1 << depth) - 1);
+    typedef struct ColorTableEntry
+    {
+        uint8_t b;
+        uint8_t g;
+        uint8_t r;
+        uint8_t x;
+    } ColorTableEntry;
+
+    switch (info.bV5BitCount) {
+        case 2: {
+            ColorTableEntry * colorTable = (ColorTableEntry *)(input->ptr + sizeof(magic) + sizeof(fileHeader) + info.bV5Size);
+            uint16_t * dstRow = dstPixels;
+            for (int y = 0; y < info.bV5Height; ++y) {
+                uint16_t * dstPixel = dstRow;
+                uint8_t * srcPixel = ((uint8_t *)packedPixels) + (y * rowBytes);
+                for (int x = 0; x < info.bV5Width;) {
+                    uint32_t colorIdx = (srcPixel[0] & 0xC0) >> 6;
+                    dstPixel[0] = (uint16_t)colorTable[colorIdx].r;
+                    dstPixel[1] = (uint16_t)colorTable[colorIdx].g;
+                    dstPixel[2] = (uint16_t)colorTable[colorIdx].b;
+                    dstPixel[3] = 255;
+                    dstPixel += 4;
+                    x += 1;
+                    if (x >= info.bV5Width) {
+                        break;
+                    }
+
+                    colorIdx = (srcPixel[0] & 0x30) >> 4;
+                    dstPixel[0] = (uint16_t)colorTable[colorIdx].r;
+                    dstPixel[1] = (uint16_t)colorTable[colorIdx].g;
+                    dstPixel[2] = (uint16_t)colorTable[colorIdx].b;
+                    dstPixel[3] = 255;
+                    dstPixel += 4;
+                    x += 1;
+                    if (x >= info.bV5Width) {
+                        break;
+                    }
+
+                    colorIdx = (srcPixel[0] & 0x0C) >> 2;
+                    dstPixel[0] = (uint16_t)colorTable[colorIdx].r;
+                    dstPixel[1] = (uint16_t)colorTable[colorIdx].g;
+                    dstPixel[2] = (uint16_t)colorTable[colorIdx].b;
+                    dstPixel[3] = 255;
+                    dstPixel += 4;
+                    x += 1;
+                    if (x >= info.bV5Width) {
+                        break;
+                    }
+
+                    colorIdx = srcPixel[0] & 0x03;
+                    dstPixel[0] = (uint16_t)colorTable[colorIdx].r;
+                    dstPixel[1] = (uint16_t)colorTable[colorIdx].g;
+                    dstPixel[2] = (uint16_t)colorTable[colorIdx].b;
+                    dstPixel[3] = 255;
+                    dstPixel += 4;
+                    x += 1;
+                    if (x >= info.bV5Width) {
+                        break;
+                    }
+
+                    srcPixel += 1;
+                }
+                dstRow += dstRowOffset;
+            }
+            break;
+        }
+
+        case 4: {
+            ColorTableEntry * colorTable = (ColorTableEntry *)(input->ptr + sizeof(magic) + sizeof(fileHeader) + info.bV5Size);
+            uint16_t * dstRow = dstPixels;
+            for (int y = 0; y < info.bV5Height; ++y) {
+                uint16_t * dstPixel = dstRow;
+                uint8_t * srcPixel = ((uint8_t *)packedPixels) + (y * rowBytes);
+                for (int x = 0; x < info.bV5Width;) {
+                    uint32_t colorIdx = (srcPixel[0] & 0xF0) >> 4;
+                    dstPixel[0] = (uint16_t)colorTable[colorIdx].r;
+                    dstPixel[1] = (uint16_t)colorTable[colorIdx].g;
+                    dstPixel[2] = (uint16_t)colorTable[colorIdx].b;
+                    dstPixel[3] = 255;
+                    dstPixel += 4;
+                    x += 1;
+                    if (x >= info.bV5Width) {
+                        break;
+                    }
+
+                    colorIdx = srcPixel[0] & 0x0F;
+                    dstPixel[0] = (uint16_t)colorTable[colorIdx].r;
+                    dstPixel[1] = (uint16_t)colorTable[colorIdx].g;
+                    dstPixel[2] = (uint16_t)colorTable[colorIdx].b;
+                    dstPixel[3] = 255;
+                    dstPixel += 4;
+                    x += 1;
+                    if (x >= info.bV5Width) {
+                        break;
+                    }
+
+                    srcPixel += 1;
+                }
+                dstRow += 4 * dstRowOffset;
+            }
+            break;
+        }
+
+        case 8: {
+            ColorTableEntry * colorTable = (ColorTableEntry *)(input->ptr + sizeof(magic) + sizeof(fileHeader) + info.bV5Size);
+            uint16_t * dstRow = dstPixels;
+            for (int y = 0; y < info.bV5Height; ++y) {
+                uint16_t * dstPixel = dstRow;
+                uint8_t * srcPixel = ((uint8_t *)packedPixels) + (y * rowBytes);
+                for (int x = 0; x < info.bV5Width; ++x) {
+                    uint32_t colorIdx = srcPixel[0];
+                    dstPixel[0] = (uint16_t)colorTable[colorIdx].r;
+                    dstPixel[1] = (uint16_t)colorTable[colorIdx].g;
+                    dstPixel[2] = (uint16_t)colorTable[colorIdx].b;
+                    dstPixel[3] = 255;
+                    dstPixel += 4;
+                    srcPixel += 1;
+                }
+                dstRow += 4 * dstRowOffset;
+            }
+            break;
+        }
+
+        case 24: {
+            uint16_t * dstRow = dstPixels;
+            for (int y = 0; y < info.bV5Height; ++y) {
+                uint16_t * dstPixel = dstRow;
+                uint8_t * srcPixel = ((uint8_t *)packedPixels) + (y * rowBytes);
+                for (int x = 0; x < info.bV5Width; ++x) {
+                    dstPixel[0] = (uint16_t)srcPixel[2];
+                    dstPixel[1] = (uint16_t)srcPixel[1];
+                    dstPixel[2] = (uint16_t)srcPixel[0];
+                    dstPixel[3] = (uint16_t)((1 << depth) - 1);
+                    dstPixel += 4;
+                    srcPixel += 3;
+                }
+                dstRow += 4 * dstRowOffset;
+            }
+            break;
+        }
+
+        case 32: {
+            uint16_t * dstRow = dstPixels;
+            for (int y = 0; y < info.bV5Height; ++y) {
+                uint16_t * dstPixel = dstRow;
+                uint32_t * srcPixel = packedPixels + (y * info.bV5Width);
+                for (int x = 0; x < info.bV5Width; ++x) {
+                    dstPixel[0] = (uint16_t)((srcPixel[0] & info.bV5RedMask) >> rShift);
+                    dstPixel[1] = (uint16_t)((srcPixel[0] & info.bV5GreenMask) >> gShift);
+                    dstPixel[2] = (uint16_t)((srcPixel[0] & info.bV5BlueMask) >> bShift);
+                    if (aDepth > 0)
+                        dstPixel[3] = (uint16_t)((srcPixel[0] & info.bV5AlphaMask) >> aShift);
+                    else
+                        dstPixel[3] = (uint16_t)((1 << depth) - 1);
+                    dstPixel += 4;
+                    srcPixel += 1;
+                }
+                dstRow += 4 * dstRowOffset;
+            }
+            break;
+        }
+
+        default:
+            clContextLogError(C, "Unsupported bit depth [%d detected]", info.bV5BitCount);
+            goto readCleanup;
     }
 
     C->readExtraInfo.decodeFillSeconds = timerElapsedSeconds(&t);
