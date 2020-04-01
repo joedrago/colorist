@@ -16,7 +16,7 @@ extern "C" {
 
 #define AVIF_VERSION_MAJOR 0
 #define AVIF_VERSION_MINOR 6
-#define AVIF_VERSION_PATCH 0
+#define AVIF_VERSION_PATCH 3
 #define AVIF_VERSION (AVIF_VERSION_MAJOR * 10000) + (AVIF_VERSION_MINOR * 100) + AVIF_VERSION_PATCH
 
 typedef int avifBool;
@@ -467,6 +467,10 @@ typedef struct avifReformatState
     uint32_t rgbOffsetBytesA;
 
     avifPixelFormatInfo formatInfo;
+
+    // LUTs for going from YUV limited/full unorm -> full range RGB FP32
+    float unormFloatTableY[1 << 12];
+    float unormFloatTableUV[1 << 12];
 } avifReformatState;
 avifBool avifPrepareReformatState(avifImage * image, avifRGBImage * rgb, avifReformatState * state);
 
@@ -502,7 +506,7 @@ typedef struct avifIOStats
     size_t alphaOBUSize;
 } avifIOStats;
 
-struct avifData;
+struct avifDecoderData;
 
 typedef enum avifDecoderSource
 {
@@ -579,7 +583,7 @@ typedef struct avifDecoder
     avifIOStats ioStats;
 
     // Internals used by the decoder
-    struct avifData * data;
+    struct avifDecoderData * data;
 } avifDecoder;
 
 avifDecoder * avifDecoderCreate(void);
@@ -616,6 +620,8 @@ uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex);
 // ---------------------------------------------------------------------------
 // avifEncoder
 
+struct avifEncoderData;
+
 // Notes:
 // * If avifEncoderWrite() returns AVIF_RESULT_OK, output must be freed with avifRWDataFree()
 // * If (maxThreads < 2), multithreading is disabled
@@ -643,6 +649,9 @@ typedef struct avifEncoder
 
     // stats from the most recent write
     avifIOStats ioStats;
+
+    // Internals used by the encoder
+    struct avifEncoderData * data;
 } avifEncoder;
 
 avifEncoder * avifEncoderCreate(void);

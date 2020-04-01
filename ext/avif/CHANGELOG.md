@@ -6,6 +6,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Fix clang warning (switch clamp to min)
+
+## [0.6.3] - 2020-03-30
+### Changed
+- Avoid throwing away const unnecessarily in `avifROStreamReadString()`
+- Re-enable a bunch of clang warnings
+- Set dav1dSettings.frame_size_limit to avoid OOM (wantehchang)
+- Refactor write.c to use a similar Data/Item design as read.c
+- YUV to RGB optimizations
+
+## [0.6.2] - 2020-03-11
+### Changed
+- Fix 16bpc PNG output
+- Compile fixes to avoid -Wclobbered in PNG code
+- GitHub automatic deployment from AppVeyor (EwoutH)
+
+## [0.6.1] - 2020-03-11
+### Added
+- PNG support for avifenc/avifdec
+
+### Changed
+- Fixed Clang10 build warning
+- Fix SOVERSION in cmake (cryptomilk)
+- Minor tweaks to avifBool usage (wantehchang)
+
 ## [0.6.0] - 2020-03-09
 ### Added
 - `avifRGBImage` structure and associated routines (BREAKING CHANGE)
@@ -327,7 +353,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.6.3...HEAD
+[0.6.3]: https://github.com/AOMediaCodec/libavif/compare/v0.6.2...v0.6.3
+[0.6.2]: https://github.com/AOMediaCodec/libavif/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/AOMediaCodec/libavif/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/AOMediaCodec/libavif/compare/v0.5.7...v0.6.0
 [0.5.7]: https://github.com/AOMediaCodec/libavif/compare/v0.5.6...v0.5.7
 [0.5.6]: https://github.com/AOMediaCodec/libavif/compare/v0.5.5...v0.5.6
