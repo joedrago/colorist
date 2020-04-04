@@ -237,8 +237,9 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
     clBool isYUV = clFalse;
     clProfileYUVCoefficients yuv;
     clProfileYUVCoefficientsSetDefaults(C, &yuv);
-    if ((opjImage->color_space == OPJ_CLRSPC_SYCC) || ((opjImage->color_space == OPJ_CLRSPC_UNSPECIFIED) &&
-                                                       (opjImage->numcomps >= 3) && ((chromaShiftX > 0) || (chromaShiftY > 0)))) {
+    if ((opjImage->color_space == OPJ_CLRSPC_SYCC) ||
+        (((opjImage->color_space == OPJ_CLRSPC_UNSPECIFIED) || (opjImage->color_space == OPJ_CLRSPC_UNKNOWN)) &&
+         (opjImage->numcomps >= 3) && ((chromaShiftX > 0) || (chromaShiftY > 0)))) {
         isYUV = clTrue;
         clProfileQueryYUVCoefficients(C, profile, &yuv);
     }
