@@ -29,7 +29,6 @@ struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName,
 
     clImage * image = NULL;
     clProfile * profile = NULL;
-    uint8_t * readPixels = NULL;
 
     Timer t;
     timerStart(&t);
@@ -65,27 +64,27 @@ struct clImage * clFormatReadWebP(struct clContext * C, const char * formatName,
     }
 
     int width, height;
-    readPixels = WebPDecodeRGBA(frameInfo.bitstream.bytes, frameInfo.bitstream.size, &width, &height);
-    if (!readPixels) {
+    if (!WebPGetInfo(frameInfo.bitstream.bytes, frameInfo.bitstream.size, &width, &height)) {
+        clContextLogError(C, "Failed to decode WebP");
+        goto readCleanup;
+    }
+
+    clImageLogCreate(C, width, height, 8, profile);
+    image = clImageCreate(C, width, height, 8, profile);
+    clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U8);
+    if (!WebPDecodeRGBAInto(frameInfo.bitstream.bytes,
+                            frameInfo.bitstream.size,
+                            image->pixelsU8,
+                            image->width * image->height * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U8),
+                            image->width * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U8))) {
         clContextLogError(C, "Failed to decode WebP");
         goto readCleanup;
     }
 
     C->readExtraInfo.decodeCodecSeconds = timerElapsedSeconds(&t);
 
-    clImageLogCreate(C, width, height, 8, profile);
-    image = clImageCreate(C, width, height, 8, profile);
-    clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U8);
-
-    timerStart(&t);
-    memcpy(image->pixelsU8, readPixels, image->width * image->height * CL_BYTES_PER_PIXEL(CL_PIXELFORMAT_U8));
-    C->readExtraInfo.decodeFillSeconds = timerElapsedSeconds(&t);
-
 readCleanup:
     WebPDataClear(&frameInfo.bitstream);
-    if (readPixels) {
-        WebPFree(readPixels);
-    }
     if (mux) {
         WebPMuxDelete(mux);
     }
