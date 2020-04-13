@@ -306,10 +306,7 @@ clBool clContextGetStockPrimaries(struct clContext * C, const char * name, struc
 clBool clContextGetRawStockPrimaries(struct clContext * C, const char * name, float outPrimaries[8]);
 const char * clContextFindStockPrimariesPrettyName(struct clContext * C, struct clProfilePrimaries * primaries); // returns NULL if not found
 
-int clContextConvert(clContext * C);
-int clContextGenerate(clContext * C, struct cJSON * output); // output here only used in ACTION_CALC
-int clContextIdentify(clContext * C, struct cJSON * output);
-int clContextModify(clContext * C);
+int clContextRun(clContext * C, struct cJSON * jsonOutput);
 
 #define TIMING_FORMAT "--> %.3f sec"
 #define OVERALL_TIMING_FORMAT "==> %.3f sec"

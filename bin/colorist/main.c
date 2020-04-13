@@ -85,29 +85,7 @@ int main(int argc, char * argv[])
         goto cleanup;
     }
 
-    switch (C->action) {
-        case CL_ACTION_CALC:
-            ret = clContextGenerate(C, jsonOutput);
-            break;
-        case CL_ACTION_CONVERT:
-            ret = clContextConvert(C);
-            break;
-        case CL_ACTION_GENERATE:
-            ret = clContextGenerate(C, NULL);
-            break;
-        case CL_ACTION_IDENTIFY:
-            ret = clContextIdentify(C, jsonOutput);
-            break;
-        case CL_ACTION_MODIFY:
-            ret = clContextModify(C);
-            break;
-        case CL_ACTION_ERROR:
-        case CL_ACTION_NONE:
-        default:
-            clContextLogError(C, "Unimplemented action: %s", clActionToString(C, C->action));
-            break;
-    }
-
+    ret = clContextRun(C, jsonOutput);
 cleanup:
 
     if (jsonOutput) {

@@ -171,7 +171,7 @@ static void dumpPixel(struct clContext * C,
         cJSON_AddNumberToObject(t, "y", xyY.y);
         cJSON_AddNumberToObject(t, "Y", xyY.Y / maxLuminance);
 
-        cJSON_AddNumberToObject(jsonPixel, "nits", xyY.Y * maxLuminance);
+        cJSON_AddNumberToObject(jsonPixel, "nits", xyY.Y);
 
         cJSON_AddItemToArray(jsonPixels, jsonPixel);
     } else if (pixelInfo) {
