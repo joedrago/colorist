@@ -28,6 +28,9 @@ struct avifCodecInternal
 
 static void dav1dCodecDestroyInternal(avifCodec * codec)
 {
+    if (codec->internal->dav1dData.sz) {
+        dav1d_data_unref(&codec->internal->dav1dData);
+    }
     if (codec->internal->hasPicture) {
         dav1d_picture_unref(&codec->internal->dav1dPicture);
     }
@@ -41,8 +44,6 @@ static void dav1dCodecDestroyInternal(avifCodec * codec)
 static avifBool dav1dFeedData(avifCodec * codec)
 {
     if (!codec->internal->dav1dData.sz) {
-        dav1d_data_unref(&codec->internal->dav1dData);
-
         if (codec->internal->inputSampleIndex < codec->decodeInput->samples.count) {
             avifSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
             ++codec->internal->inputSampleIndex;
@@ -149,7 +150,7 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
             nclx.colourPrimaries = (uint16_t)dav1dImage->seq_hdr->pri;
             nclx.transferCharacteristics = (uint16_t)dav1dImage->seq_hdr->trc;
             nclx.matrixCoefficients = (uint16_t)dav1dImage->seq_hdr->mtrx;
-            nclx.fullRangeFlag = (uint8_t)image->yuvRange;
+            nclx.fullRangeFlag = (image->yuvRange == AVIF_RANGE_LIMITED) ? AVIF_NCLX_LIMITED_RANGE : AVIF_NCLX_FULL_RANGE;
             avifImageSetProfileNCLX(image, &nclx);
         }
 

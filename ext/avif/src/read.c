@@ -217,11 +217,11 @@ static void avifSampleTableDestroy(avifSampleTable * sampleTable)
     avifFree(sampleTable);
 }
 
-static uint32_t avifSampleTableGetImageDelta(avifSampleTable * sampleTable, int imageIndex)
+static uint32_t avifSampleTableGetImageDelta(const avifSampleTable * sampleTable, int imageIndex)
 {
     int maxSampleIndex = 0;
     for (uint32_t i = 0; i < sampleTable->timeToSamples.count; ++i) {
-        avifSampleTableTimeToSample * timeToSample = &sampleTable->timeToSamples.timeToSample[i];
+        const avifSampleTableTimeToSample * timeToSample = &sampleTable->timeToSamples.timeToSample[i];
         maxSampleIndex += timeToSample->sampleCount;
         if ((imageIndex < maxSampleIndex) || (i == (sampleTable->timeToSamples.count - 1))) {
             return timeToSample->sampleDelta;
@@ -232,7 +232,7 @@ static uint32_t avifSampleTableGetImageDelta(avifSampleTable * sampleTable, int 
     return 1;
 }
 
-static avifBool avifSampleTableHasFormat(avifSampleTable * sampleTable, const char * format)
+static avifBool avifSampleTableHasFormat(const avifSampleTable * sampleTable, const char * format)
 {
     for (uint32_t i = 0; i < sampleTable->sampleDescriptions.count; ++i) {
         if (!memcmp(sampleTable->sampleDescriptions.description[i].format, format, 4)) {
@@ -242,7 +242,7 @@ static avifBool avifSampleTableHasFormat(avifSampleTable * sampleTable, const ch
     return AVIF_FALSE;
 }
 
-static uint32_t avifCodecConfigurationBoxGetDepth(avifCodecConfigurationBox * av1C)
+static uint32_t avifCodecConfigurationBoxGetDepth(const avifCodecConfigurationBox * av1C)
 {
     if (av1C->twelveBit) {
         return 12;
@@ -252,10 +252,10 @@ static uint32_t avifCodecConfigurationBoxGetDepth(avifCodecConfigurationBox * av
     return 8;
 }
 
-static uint32_t avifSampleTableGetDepth(avifSampleTable * sampleTable)
+static uint32_t avifSampleTableGetDepth(const avifSampleTable * sampleTable)
 {
     for (uint32_t i = 0; i < sampleTable->sampleDescriptions.count; ++i) {
-        avifSampleDescription * description = &sampleTable->sampleDescriptions.description[i];
+        const avifSampleDescription * description = &sampleTable->sampleDescriptions.description[i];
         if (!memcmp(description->format, "av01", 4) && description->av1CPresent) {
             return avifCodecConfigurationBoxGetDepth(&description->av1C);
         }
@@ -379,7 +379,7 @@ typedef struct avifDecoderData
     avifImageGrid colorGrid;
     avifImageGrid alphaGrid;
     avifDecoderSource source;
-    avifSampleTable * sourceSampleTable; // NULL unless (source == AVIF_DECODER_SOURCE_TRACKS), owned by an avifTrack
+    const avifSampleTable * sourceSampleTable; // NULL unless (source == AVIF_DECODER_SOURCE_TRACKS), owned by an avifTrack
     uint32_t primaryItemID;
     uint32_t metaBoxID; // Ever-incrementing ID for tracking which 'meta' box contains an idat, and which idat an iloc might refer to
 } avifDecoderData;
@@ -649,7 +649,6 @@ static avifBool avifDecoderDataFillImageGrid(avifDecoderData * data,
                 }
 
                 // UV
-                widthToCopy >>= formatInfo.chromaShiftX;
                 heightToCopy >>= formatInfo.chromaShiftY;
                 size_t uvColOffset = yaColOffset >> formatInfo.chromaShiftX;
                 size_t uvRowOffset = yaRowOffset >> formatInfo.chromaShiftY;
@@ -2115,7 +2114,7 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             decoder->data->colorTileCount = 1;
         }
 
-        if ((data->alphaGrid.rows > 0) && (data->alphaGrid.columns > 0)) {
+        if ((data->alphaGrid.rows > 0) && (data->alphaGrid.columns > 0) && alphaOBUItem) {
             if (!avifDecoderDataGenerateImageGridTiles(data, &data->alphaGrid, alphaOBUItem, AVIF_FALSE)) {
                 return AVIF_RESULT_INVALID_IMAGE_GRID;
             }
@@ -2280,20 +2279,46 @@ avifResult avifDecoderNextImage(avifDecoder * decoder)
     if (decoder->data->sourceSampleTable) {
         // Decoding from a track! Provide timing information.
 
-        decoder->imageTiming.timescale = decoder->timescale;
-        decoder->imageTiming.ptsInTimescales = 0;
-        for (int imageIndex = 0; imageIndex < decoder->imageIndex; ++imageIndex) {
-            decoder->imageTiming.ptsInTimescales += avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, imageIndex);
+        avifResult timingResult = avifDecoderNthImageTiming(decoder, decoder->imageIndex, &decoder->imageTiming);
+        if (timingResult != AVIF_RESULT_OK) {
+            return timingResult;
         }
-        decoder->imageTiming.durationInTimescales = avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, decoder->imageIndex);
+    }
+    return AVIF_RESULT_OK;
+}
 
-        if (decoder->imageTiming.timescale > 0) {
-            decoder->imageTiming.pts = (double)decoder->imageTiming.ptsInTimescales / (double)decoder->imageTiming.timescale;
-            decoder->imageTiming.duration = (double)decoder->imageTiming.durationInTimescales / (double)decoder->imageTiming.timescale;
-        } else {
-            decoder->imageTiming.pts = 0.0;
-            decoder->imageTiming.duration = 0.0;
-        }
+avifResult avifDecoderNthImageTiming(avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming)
+{
+    if (!decoder->data) {
+        // Nothing has been parsed yet
+        return AVIF_RESULT_NO_CONTENT;
+    }
+
+    if ((int)frameIndex >= decoder->imageCount) {
+        // Impossible index
+        return AVIF_RESULT_NO_IMAGES_REMAINING;
+    }
+
+    if (!decoder->data->sourceSampleTable) {
+        // There isn't any real timing associated with this decode, so
+        // just hand back the defaults chosen in avifDecoderReset().
+        memcpy(outTiming, &decoder->imageTiming, sizeof(avifImageTiming));
+        return AVIF_RESULT_OK;
+    }
+
+    outTiming->timescale = decoder->timescale;
+    outTiming->ptsInTimescales = 0;
+    for (int imageIndex = 0; imageIndex < (int)frameIndex; ++imageIndex) {
+        outTiming->ptsInTimescales += avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, imageIndex);
+    }
+    outTiming->durationInTimescales = avifSampleTableGetImageDelta(decoder->data->sourceSampleTable, frameIndex);
+
+    if (outTiming->timescale > 0) {
+        outTiming->pts = (double)outTiming->ptsInTimescales / (double)outTiming->timescale;
+        outTiming->duration = (double)outTiming->durationInTimescales / (double)outTiming->timescale;
+    } else {
+        outTiming->pts = 0.0;
+        outTiming->duration = 0.0;
     }
     return AVIF_RESULT_OK;
 }
@@ -2361,9 +2386,6 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifROData 
     result = avifDecoderNextImage(decoder);
     if (result != AVIF_RESULT_OK) {
         return result;
-    }
-    if (!decoder->image) {
-        return AVIF_RESULT_NO_IMAGES_REMAINING;
     }
     avifImageCopy(image, decoder->image);
     return AVIF_RESULT_OK;

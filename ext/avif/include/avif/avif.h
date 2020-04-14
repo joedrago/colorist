@@ -544,7 +544,7 @@ typedef struct avifDecoder
     // Set this via avifDecoderSetSource().
     avifDecoderSource requestedSource;
 
-    // The current decoded image, owned by the decoder. Can be NULL if the decoder hasn't run or has run
+    // The current decoded image, owned by the decoder. Is invalid if the decoder hasn't run or has run
     // out of images. The YUV and A contents of this image are likely owned by the decoder, so be
     // sure to copy any data inside of this image before advancing to the next image or reusing the
     // decoder. It is legal to call avifImageYUVToRGB() on this in between calls to avifDecoderNextImage(),
@@ -598,13 +598,18 @@ avifResult avifDecoderRead(avifDecoder * decoder, avifImage * image, avifROData 
 //
 // Usage / function call order is:
 // * avifDecoderCreate()
-// * avifDecoderSetSource() - optional
+// * avifDecoderSetSource() - optional, the default (AVIF_DECODER_SOURCE_AUTO) is usually sufficient
 // * avifDecoderParse()
 // * avifDecoderNextImage() - in a loop, using decoder->image after each successful call
 // * avifDecoderDestroy()
 //
 // You can use avifDecoderReset() any time after a successful call to avifDecoderParse()
-// to reset the internal decoder back to before the first frame.
+// to reset the internal decoder back to before the first frame. Calling either
+// avifDecoderSetSource() or avifDecoderParse() will automatically Reset the decoder.
+//
+// avifDecoderSetSource() allows you not only to choose whether to parse tracks or
+// items in a file containing both, but switch between sources without having to
+// Parse again. Normally AVIF_DECODER_SOURCE_AUTO is enough for the common path.
 avifResult avifDecoderSetSource(avifDecoder * decoder, avifDecoderSource source);
 avifResult avifDecoderParse(avifDecoder * decoder, avifROData * input);
 avifResult avifDecoderNextImage(avifDecoder * decoder);
@@ -616,6 +621,9 @@ avifResult avifDecoderReset(avifDecoder * decoder);
 // "nearest" keyframe means the keyframe prior to this frame index (returns frameIndex if it is a keyframe)
 avifBool avifDecoderIsKeyframe(avifDecoder * decoder, uint32_t frameIndex);
 uint32_t avifDecoderNearestKeyframe(avifDecoder * decoder, uint32_t frameIndex);
+
+// Timing helper - This does not change the current image or invoke the codec (safe to call repeatedly)
+avifResult avifDecoderNthImageTiming(avifDecoder * decoder, uint32_t frameIndex, avifImageTiming * outTiming);
 
 // ---------------------------------------------------------------------------
 // avifEncoder
