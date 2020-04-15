@@ -5,11 +5,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.6.4] - 2020-04-14
 ### Added
 - Added `avifDecoderNthImageTiming()` for querying frame timing without needing to decode the frame
+- Added some comments explaining `avifDecoderSetSource()`
 
 ### Changed
 - Fix clang warning (switch clamp to min)
+- Fix a few clang analyzer issues
+- Avoid incorrect YUV range cast
+- Call dav1d_data_unref in dav1dCodecDestroyInternal (wantehchang)
+- Declare some avifSampleTable * pointers as const (wantehchang)
+- Update to cJSON v1.7.13 (wantehchang)
+- Minor code cleanup
 
 ## [0.6.3] - 2020-03-30
 ### Changed
@@ -355,7 +364,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.6.3...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.6.4...HEAD
+[0.6.4]: https://github.com/AOMediaCodec/libavif/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/AOMediaCodec/libavif/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/AOMediaCodec/libavif/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/AOMediaCodec/libavif/compare/v0.6.0...v0.6.1
