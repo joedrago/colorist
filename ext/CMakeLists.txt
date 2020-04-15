@@ -80,81 +80,86 @@ add_library(unity
 set(COLORIST_EXT_INCLUDES)
 set(COLORIST_EXT_LIBS)
 
-if(COLORIST_USE_LIBJPEG_TURBO)
-    add_subdirectory(libjpeg-turbo EXCLUDE_FROM_ALL)
-    set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/libjpeg-turbo" "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo")
-    set(COLORIST_EXT_LIBS ${COLORIST_EXT_LIBS} turbojpeg-static)
-else()
-    set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/jpeg")
-    set(COLORIST_EXT_LIBS ${COLORIST_EXT_LIBS} jpeg)
-    include_directories(jpeg)
-    add_library(jpeg
-        jpeg/cdjpeg.c
-        jpeg/jaricom.c
-        jpeg/jcapimin.c
-        jpeg/jcapistd.c
-        jpeg/jcarith.c
-        jpeg/jccoefct.c
-        jpeg/jccolor.c
-        jpeg/jcdctmgr.c
-        jpeg/jchuff.c
-        jpeg/jcinit.c
-        jpeg/jcmainct.c
-        jpeg/jcmarker.c
-        jpeg/jcmaster.c
-        jpeg/jcomapi.c
-        jpeg/jcparam.c
-        jpeg/jcprepct.c
-        jpeg/jcsample.c
-        jpeg/jctrans.c
-        jpeg/jdapimin.c
-        jpeg/jdapistd.c
-        jpeg/jdarith.c
-        jpeg/jdatadst.c
-        jpeg/jdatasrc.c
-        jpeg/jdcoefct.c
-        jpeg/jdcolor.c
-        jpeg/jddctmgr.c
-        jpeg/jdhuff.c
-        jpeg/jdinput.c
-        jpeg/jdmainct.c
-        jpeg/jdmarker.c
-        jpeg/jdmaster.c
-        jpeg/jdmerge.c
-        jpeg/jdpostct.c
-        jpeg/jdsample.c
-        jpeg/jdtrans.c
-        jpeg/jerror.c
-        jpeg/jfdctflt.c
-        jpeg/jfdctfst.c
-        jpeg/jfdctint.c
-        jpeg/jidctflt.c
-        jpeg/jidctfst.c
-        jpeg/jidctint.c
-        jpeg/jmemmgr.c
-        jpeg/jmemnobs.c
-        jpeg/jquant1.c
-        jpeg/jquant2.c
-        jpeg/jutils.c
-        jpeg/rdbmp.c
-        jpeg/rdcolmap.c
-        jpeg/rdgif.c
-        jpeg/rdppm.c
-        jpeg/rdrle.c
-        jpeg/rdswitch.c
-        jpeg/rdtarga.c
-        jpeg/transupp.c
-        jpeg/wrbmp.c
-        jpeg/wrgif.c
-        jpeg/wrjpgcom.c
-        jpeg/wrppm.c
-        jpeg/wrrle.c
-        jpeg/wrtarga.c
-    )
-endif()
-
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 add_subdirectory(avif)
+
+if(JPEG_INCLUDE_DIR AND JPEG_LIBRARY)
+    set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} ${JPEG_INCLUDE_DIR})
+    set(COLORIST_EXT_LIBS ${COLORIST_EXT_LIBS} ${JPEG_LIBRARY})
+else()
+    if(COLORIST_USE_LIBJPEG_TURBO)
+        add_subdirectory(libjpeg-turbo EXCLUDE_FROM_ALL)
+        set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/libjpeg-turbo" "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo")
+        set(COLORIST_EXT_LIBS ${COLORIST_EXT_LIBS} turbojpeg-static)
+    else()
+        set(COLORIST_EXT_INCLUDES ${COLORIST_EXT_INCLUDES} "${CMAKE_CURRENT_SOURCE_DIR}/jpeg")
+        set(COLORIST_EXT_LIBS ${COLORIST_EXT_LIBS} jpeg)
+        include_directories(jpeg)
+        add_library(jpeg
+            jpeg/cdjpeg.c
+            jpeg/jaricom.c
+            jpeg/jcapimin.c
+            jpeg/jcapistd.c
+            jpeg/jcarith.c
+            jpeg/jccoefct.c
+            jpeg/jccolor.c
+            jpeg/jcdctmgr.c
+            jpeg/jchuff.c
+            jpeg/jcinit.c
+            jpeg/jcmainct.c
+            jpeg/jcmarker.c
+            jpeg/jcmaster.c
+            jpeg/jcomapi.c
+            jpeg/jcparam.c
+            jpeg/jcprepct.c
+            jpeg/jcsample.c
+            jpeg/jctrans.c
+            jpeg/jdapimin.c
+            jpeg/jdapistd.c
+            jpeg/jdarith.c
+            jpeg/jdatadst.c
+            jpeg/jdatasrc.c
+            jpeg/jdcoefct.c
+            jpeg/jdcolor.c
+            jpeg/jddctmgr.c
+            jpeg/jdhuff.c
+            jpeg/jdinput.c
+            jpeg/jdmainct.c
+            jpeg/jdmarker.c
+            jpeg/jdmaster.c
+            jpeg/jdmerge.c
+            jpeg/jdpostct.c
+            jpeg/jdsample.c
+            jpeg/jdtrans.c
+            jpeg/jerror.c
+            jpeg/jfdctflt.c
+            jpeg/jfdctfst.c
+            jpeg/jfdctint.c
+            jpeg/jidctflt.c
+            jpeg/jidctfst.c
+            jpeg/jidctint.c
+            jpeg/jmemmgr.c
+            jpeg/jmemnobs.c
+            jpeg/jquant1.c
+            jpeg/jquant2.c
+            jpeg/jutils.c
+            jpeg/rdbmp.c
+            jpeg/rdcolmap.c
+            jpeg/rdgif.c
+            jpeg/rdppm.c
+            jpeg/rdrle.c
+            jpeg/rdswitch.c
+            jpeg/rdtarga.c
+            jpeg/transupp.c
+            jpeg/wrbmp.c
+            jpeg/wrgif.c
+            jpeg/wrjpgcom.c
+            jpeg/wrppm.c
+            jpeg/wrrle.c
+            jpeg/wrtarga.c
+        )
+    endif()
+endif()
 
 set(COLORIST_EXT_INCLUDES
     ${COLORIST_EXT_INCLUDES}

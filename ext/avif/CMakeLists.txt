@@ -36,7 +36,7 @@ option(AVIF_LOCAL_RAV1E "Build the rav1e codec by providing your own copy of the
 
 # ---------------------------------------------------------------------------------------
 # This insanity is for people embedding libavif or making fully static or Windows builds.
-# Any proper unix environment should ignore this entire block.
+# Any proper unix environment should ignore these entire following blocks.
 option(AVIF_LOCAL_ZLIBPNG "Build zlib and libpng by providing your own copy inside the ext subdir." OFF)
 if(AVIF_LOCAL_ZLIBPNG)
     add_subdirectory(ext/zlib)
@@ -58,6 +58,12 @@ if(AVIF_LOCAL_ZLIBPNG)
 
     set(ZLIB_LIBRARY zlibstatic)
 endif()
+option(AVIF_LOCAL_JPEG "Build jpeg by providing your own copy inside the ext subdir." OFF)
+if(AVIF_LOCAL_JPEG)
+    add_subdirectory(ext/libjpeg)
+    set(JPEG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/libjpeg" PARENT_SCOPE)
+    set(JPEG_LIBRARY jpeg PARENT_SCOPE)
+endif()
 # ---------------------------------------------------------------------------------------
 
 # Enable all warnings
@@ -75,6 +81,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     -Wno-documentation-unknown-command
     -Wno-double-promotion
     -Wno-float-equal
+    -Wno-missing-noreturn
     -Wno-padded
     -Wno-sign-conversion
   )
@@ -296,10 +303,12 @@ option(AVIF_BUILD_APPS "Build avif apps." OFF)
 if(AVIF_BUILD_APPS)
     find_package(ZLIB REQUIRED)
     find_package(PNG REQUIRED)
+    find_package(JPEG REQUIRED)
 
     add_executable(avifenc
         apps/avifenc.c
 
+        apps/shared/avifjpeg.c
         apps/shared/avifpng.c
         apps/shared/avifutil.c
         apps/shared/y4m.c
@@ -307,11 +316,12 @@ if(AVIF_BUILD_APPS)
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avifenc PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES} ${ZLIB_LIBRARY} ${PNG_LIBRARY})
-    target_include_directories(avifenc PRIVATE apps/shared ${PNG_PNG_INCLUDE_DIR})
+    target_link_libraries(avifenc avif ${AVIF_PLATFORM_LIBRARIES} ${ZLIB_LIBRARY} ${PNG_LIBRARY} ${JPEG_LIBRARY})
+    target_include_directories(avifenc PRIVATE apps/shared ${ZLIB_INCLUDE_DIR} ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR})
     add_executable(avifdec
         apps/avifdec.c
 
+        apps/shared/avifjpeg.c
         apps/shared/avifpng.c
         apps/shared/avifutil.c
         apps/shared/y4m.c
@@ -319,8 +329,19 @@ if(AVIF_BUILD_APPS)
     if(AVIF_LOCAL_LIBGAV1)
         set_target_properties(avifdec PROPERTIES LINKER_LANGUAGE "CXX")
     endif()
-    target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES} ${ZLIB_LIBRARY} ${PNG_LIBRARY})
-    target_include_directories(avifdec PRIVATE apps/shared ${PNG_PNG_INCLUDE_DIR})
+    target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES} ${ZLIB_LIBRARY} ${PNG_LIBRARY} ${JPEG_LIBRARY})
+    target_include_directories(avifdec PRIVATE apps/shared ${ZLIB_INCLUDE_DIR} ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR})
+
+    add_executable(avifdump
+        apps/avifdump.c
+
+        apps/shared/avifutil.c
+    )
+    if(AVIF_LOCAL_LIBGAV1)
+        set_target_properties(avifdump PROPERTIES LINKER_LANGUAGE "CXX")
+    endif()
+    target_link_libraries(avifdump avif ${AVIF_PLATFORM_LIBRARIES})
+    target_include_directories(avifdump PRIVATE apps/shared)
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(TARGETS avifenc avifdec
@@ -421,6 +442,9 @@ if(WIN32)
         avif_exclude_safe(example)
         avif_exclude_safe(genfiles)
         avif_exclude_safe(minigzip)
+    endif()
+    if(AVIF_LOCAL_JPEG)
+        avif_set_folder_safe(jpeg "ext/libjpeg")
     endif()
 endif()
 

@@ -1,23 +1,14 @@
-// ---------------------------------------------------------------------------
-//                         Copyright Joe Drago 2018.
-//         Distributed under the Boost Software License, Version 1.0.
-//            (See accompanying file LICENSE_1_0.txt or copy at
-//                  http://www.boost.org/LICENSE_1_0.txt)
-// ---------------------------------------------------------------------------
+// Copyright 2020 Joe Drago. All rights reserved.
+// SPDX-License-Identifier: BSD-2-Clause
 
-#include "colorist/image.h"
-
-#include "colorist/context.h"
-#include "colorist/profile.h"
-#include "colorist/raw.h"
-
-#include "lcms2.h"
-
-#include "jpeglib.h"
+#include "avifjpeg.h"
 
 #include <setjmp.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "jpeglib.h"
 
 struct my_error_mgr
 {
@@ -33,159 +24,136 @@ static void my_error_exit(j_common_ptr cinfo)
 }
 
 static void setup_read_icc_profile(j_decompress_ptr cinfo);
-static boolean read_icc_profile(struct clContext * C, j_decompress_ptr cinfo, JOCTET ** icc_data_ptr, unsigned int * icc_data_len);
+static boolean read_icc_profile(j_decompress_ptr cinfo, JOCTET ** icc_data_ptr, unsigned int * icc_data_len);
 static void write_icc_profile(j_compress_ptr cinfo, const JOCTET * icc_data_ptr, unsigned int icc_data_len);
 
-struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
-clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
-
-struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
+avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, int requestedDepth)
 {
-    COLORIST_UNUSED(formatName);
+    avifBool ret = AVIF_FALSE;
+    FILE * f = NULL;
+    uint8_t * iccData = NULL;
 
-    clImage * image = NULL;
+    avifRGBImage rgb;
+    memset(&rgb, 0, sizeof(avifRGBImage));
 
     struct my_error_mgr jerr;
     struct jpeg_decompress_struct cinfo;
     cinfo.err = jpeg_std_error(&jerr.pub);
     jerr.pub.error_exit = my_error_exit;
     if (setjmp(jerr.setjmp_buffer)) {
-        if (image) {
-            clImageDestroy(C, image);
-        }
-        jpeg_destroy_decompress(&cinfo);
-        return 0;
+        return AVIF_FALSE;
     }
 
-    Timer t;
-    timerStart(&t);
-
     jpeg_create_decompress(&cinfo);
+
+    f = fopen(inputFilename, "rb");
+    if (!f) {
+        fprintf(stderr, "Can't open JPEG file for read: %s\n", inputFilename);
+        goto cleanup;
+    }
+
     setup_read_icc_profile(&cinfo);
-    jpeg_mem_src(&cinfo, input->ptr, (unsigned long)input->size);
+    jpeg_stdio_src(&cinfo, f);
     jpeg_read_header(&cinfo, TRUE);
     jpeg_start_decompress(&cinfo);
 
     int row_stride = cinfo.output_width * cinfo.output_components;
     JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr)&cinfo, JPOOL_IMAGE, row_stride, 1);
 
-    clProfile * profile = NULL;
-    if (overrideProfile) {
-        profile = clProfileClone(C, overrideProfile);
-    } else {
-        uint8_t * iccData = NULL;
-        unsigned int iccDataLen;
-        if (read_icc_profile(C, &cinfo, &iccData, &iccDataLen)) {
-            profile = clProfileParse(C, iccData, iccDataLen, NULL);
-            if (!profile) {
-                clContextLogError(C, "ERROR: can't parse JPEG embedded ICC profile");
-                jpeg_destroy_decompress(&cinfo);
-                return NULL;
-            }
-            clFree(iccData);
-        }
+    unsigned int iccDataLen;
+    if (read_icc_profile(&cinfo, &iccData, &iccDataLen)) {
+        avifImageSetProfileICC(avif, iccData, (size_t)iccDataLen);
     }
 
-    clImageLogCreate(C, cinfo.output_width, cinfo.output_height, 8, profile);
-    image = clImageCreate(C, cinfo.output_width, cinfo.output_height, 8, profile);
-    clImagePrepareWritePixels(C, image, CL_PIXELFORMAT_U8);
-
-    if (profile) {
-        clProfileDestroy(C, profile);
-    }
+    avif->width = cinfo.output_width;
+    avif->height = cinfo.output_height;
+    avif->yuvFormat = requestedFormat;
+    avif->depth = requestedDepth ? requestedDepth : 8;
+    avifRGBImageSetDefaults(&rgb, avif);
+    rgb.format = AVIF_RGB_FORMAT_RGB;
+    rgb.depth = 8;
+    avifRGBImageAllocatePixels(&rgb);
 
     int row = 0;
     while (cinfo.output_scanline < cinfo.output_height) {
         jpeg_read_scanlines(&cinfo, buffer, 1);
-        uint8_t * pixelRow = &image->pixelsU8[row * image->width * CL_CHANNELS_PER_PIXEL];
-        for (unsigned int i = 0; i < cinfo.output_width; ++i) {
-            uint8_t * dst = &pixelRow[i * CL_CHANNELS_PER_PIXEL];
-            uint8_t * src = &buffer[0][i * 3];
-            dst[0] = src[0];
-            dst[1] = src[1];
-            dst[2] = src[2];
-            dst[3] = 255;
-        }
+        uint8_t * pixelRow = &rgb.pixels[row * rgb.rowBytes];
+        memcpy(pixelRow, buffer[0], rgb.rowBytes);
         ++row;
     }
+    avifImageRGBToYUV(avif, &rgb);
 
     jpeg_finish_decompress(&cinfo);
+    ret = AVIF_TRUE;
+cleanup:
     jpeg_destroy_decompress(&cinfo);
-
-    C->readExtraInfo.decodeCodecSeconds = timerElapsedSeconds(&t);
-    return image;
+    if (f) {
+        fclose(f);
+    }
+    free(iccData);
+    avifRGBImageFreePixels(&rgb);
+    return ret;
 }
 
-clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams)
+avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQuality)
 {
-    COLORIST_UNUSED(formatName);
+    avifBool ret = AVIF_FALSE;
+    FILE * f = NULL;
+
+    (void)avif;
+    (void)outputFilename;
+
+    avifRGBImage rgb;
+    avifRGBImageSetDefaults(&rgb, avif);
+    rgb.format = AVIF_RGB_FORMAT_RGB;
+    rgb.depth = 8;
+    avifRGBImageAllocatePixels(&rgb);
+    avifImageYUVToRGB(avif, &rgb);
 
     struct jpeg_compress_struct cinfo;
     struct jpeg_error_mgr jerr;
-
     JSAMPROW row_pointer[1];
-    int row_stride;
-    unsigned char * outbuffer = NULL;
-    size_t outsize = 0;
-
-    clRaw rawProfile = CL_RAW_EMPTY;
-    if (!clProfilePack(C, image->profile, &rawProfile)) {
-        return clFalse;
-    }
-
     cinfo.err = jpeg_std_error(&jerr);
     jpeg_create_compress(&cinfo);
-    jpeg_mem_dest(&cinfo, &outbuffer, &outsize);
 
-    clImagePrepareReadPixels(C, image, CL_PIXELFORMAT_U8);
-
-    int pixelCount = image->width * image->height;
-    uint8_t * jpegPixels = clAllocate(3 * pixelCount);
-    for (int i = 0; i < pixelCount; ++i) {
-        uint8_t * imagePixel = &image->pixelsU8[i * CL_CHANNELS_PER_PIXEL];
-        uint8_t * jpegPixel = &jpegPixels[i * 3];
-        jpegPixel[0] = imagePixel[0];
-        jpegPixel[1] = imagePixel[1];
-        jpegPixel[2] = imagePixel[2];
+    f = fopen(outputFilename, "wb");
+    if (!f) {
+        fprintf(stderr, "Can't open PNG file for write: %s\n", outputFilename);
+        goto cleanup;
     }
 
-    cinfo.image_width = image->width;
-    cinfo.image_height = image->height;
+    jpeg_stdio_dest(&cinfo, f);
+    cinfo.image_width = avif->width;
+    cinfo.image_height = avif->height;
     cinfo.input_components = 3;
     cinfo.in_color_space = JCS_RGB;
     jpeg_set_defaults(&cinfo);
-    jpeg_set_quality(&cinfo, writeParams->quality, TRUE);
+    jpeg_set_quality(&cinfo, jpegQuality, TRUE);
     jpeg_start_compress(&cinfo, TRUE);
 
-    if (writeParams->writeProfile) {
-        write_icc_profile(&cinfo, rawProfile.ptr, (unsigned int)rawProfile.size);
+    if (avif->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
+        write_icc_profile(&cinfo, avif->icc.data, (unsigned int)avif->icc.size);
     }
 
-    row_stride = image->width * 3;
     while (cinfo.next_scanline < cinfo.image_height) {
-        row_pointer[0] = &jpegPixels[cinfo.next_scanline * row_stride];
+        row_pointer[0] = &rgb.pixels[cinfo.next_scanline * rgb.rowBytes];
         (void)jpeg_write_scanlines(&cinfo, row_pointer, 1);
     }
 
     jpeg_finish_compress(&cinfo);
-
-    if (outbuffer && outsize) {
-        clRawSet(C, output, outbuffer, outsize);
-    } else {
-        clContextLogError(C, "ERROR: JPG compression failed");
-        clRawFree(C, output);
+    ret = AVIF_TRUE;
+cleanup:
+    if (f) {
+        fclose(f);
     }
-    free(outbuffer);
-
     jpeg_destroy_compress(&cinfo);
-    clFree(jpegPixels);
-    clRawFree(C, &rawProfile);
-    return (output->size > 0) ? clTrue : clFalse;
+    avifRGBImageFreePixels(&rgb);
+    return ret;
 }
 
 // ----------------------------------------------------------------------------
 // Taken from http://www.littlecms.com/1/iccjpeg.c
-// Minor adaptations for compilation / formattingv
+// Minor adaptations for compilation / formatting
 
 /*
  * iccprofile.c
@@ -326,7 +294,7 @@ static boolean marker_is_icc(jpeg_saved_marker_ptr marker)
  * return FALSE.  You might want to issue an error message instead.
  */
 
-static boolean read_icc_profile(struct clContext * C, j_decompress_ptr cinfo, JOCTET ** icc_data_ptr, unsigned int * icc_data_len)
+static boolean read_icc_profile(j_decompress_ptr cinfo, JOCTET ** icc_data_ptr, unsigned int * icc_data_len)
 {
     jpeg_saved_marker_ptr marker;
     int num_markers = 0;
@@ -385,7 +353,7 @@ static boolean read_icc_profile(struct clContext * C, j_decompress_ptr cinfo, JO
         return FALSE; /* found only empty markers? */
 
     /* Allocate space for assembled data */
-    icc_data = (JOCTET *)clAllocate(total_length * sizeof(JOCTET));
+    icc_data = (JOCTET *)malloc(total_length * sizeof(JOCTET));
     if (icc_data == NULL)
         return FALSE; /* oops, out of memory */
 
