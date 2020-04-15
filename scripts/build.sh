@@ -35,7 +35,6 @@ cd ext/avif/ext
 $SHELL ./aom.cmd
 $SHELL ./dav1d.cmd
 $SHELL ./rav1e.cmd
-$SHELL ./zlibpng.cmd
 cd ../../..
 mkdir build
 cd build

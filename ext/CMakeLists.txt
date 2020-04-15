@@ -154,7 +154,6 @@ else()
 endif()
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-set(AVIF_LOCAL_ZLIBPNG ON CACHE BOOL "" FORCE)
 add_subdirectory(avif)
 
 set(COLORIST_EXT_INCLUDES
