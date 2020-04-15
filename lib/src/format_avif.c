@@ -220,7 +220,21 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
 
     if (writeParams->writeProfile) {
         avifNclxColorProfile nclx;
-        if (clProfileToNclx(C, image->profile, &nclx)) {
+        if (writeParams->nclx[0] && writeParams->nclx[1] && writeParams->nclx[2]) {
+            nclx.colourPrimaries = (uint16_t)writeParams->nclx[0];
+            nclx.transferCharacteristics = (uint16_t)writeParams->nclx[1];
+            nclx.matrixCoefficients = (uint16_t)writeParams->nclx[2];
+            nclx.fullRangeFlag = AVIF_NCLX_FULL_RANGE;
+            clContextLog(C,
+                         "avif",
+                         1,
+                         "Forcing colr box (nclx): C: %d / T: %d / M: %d / F: 0x%x",
+                         nclx.colourPrimaries,
+                         nclx.transferCharacteristics,
+                         nclx.matrixCoefficients,
+                         nclx.fullRangeFlag);
+            avifImageSetProfileNCLX(avif, &nclx);
+        } else if (clProfileToNclx(C, image->profile, &nclx)) {
             clContextLog(C,
                          "avif",
                          1,
@@ -387,7 +401,7 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
                          "avif",
                          1,
                          "WARNING: Unsupported colr (nclx) transfer_characteristics %d, using gamma:%1.1f, lum:%d",
-                         nclx->colourPrimaries,
+                         nclx->transferCharacteristics,
                          curve.gamma,
                          maxLuminance);
             break;

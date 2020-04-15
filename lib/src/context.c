@@ -437,6 +437,9 @@ void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams)
     writeParams->tileColsLog2 = 0;
     writeParams->speed = -1;
     writeParams->codec = NULL;
+    writeParams->nclx[0] = 0;
+    writeParams->nclx[1] = 0;
+    writeParams->nclx[2] = 0;
 }
 
 static void clContextSetDefaultArgs(clContext * C)
@@ -632,6 +635,32 @@ static clBool parseRect(clContext * C, int rect[4], const char * arg)
     while (index < 4) {
         rect[index] = defaultRect[index];
         ++index;
+    }
+    clFree(buffer);
+    return clTrue;
+}
+
+static clBool parseNCLX(clContext * C, int nclx[3], const char * arg)
+{
+    char * buffer = clContextStrdup(C, arg);
+
+    int index = 0;
+    for (char * token = strtok(buffer, ","); token != NULL; token = strtok(NULL, ",")) {
+        if (index >= 3) {
+            clContextLogError(C, "Too many values for NCLX: (expecting: PRI,TF,MTX)");
+            return clFalse;
+        }
+        nclx[index] = atoi(token);
+        if (nclx[index] <= 0) {
+            clContextLogError(C, "Invalid value for NCLX (must be >0): %d", nclx[index]);
+            return clFalse;
+        }
+        // TODO: explicitly whitelist each index based on AVIF_NCLX_* constants?
+        ++index;
+    }
+    if (index != 3) {
+        clContextLogError(C, "Not enough values for NCLX: (expecting: PRI,TF,MTX)");
+        return clFalse;
     }
     clFree(buffer);
     return clTrue;
@@ -933,6 +962,10 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 }
                 C->params.writeParams.tileRowsLog2 = CL_CLAMP(C->params.writeParams.tileRowsLog2, 0, 6);
                 C->params.writeParams.tileColsLog2 = CL_CLAMP(C->params.writeParams.tileColsLog2, 0, 6);
+            } else if (!strcmp(arg, "--nclx")) {
+                NEXTARG();
+                if (!parseNCLX(C, C->params.writeParams.nclx, arg))
+                    return clFalse;
             } else if (!strcmp(arg, "--codec")) {
                 NEXTARG();
                 char tmpBuffer[64];
@@ -1111,6 +1144,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    --tiling ROWS,COLS       : Enable tiling when encoding (AVIF only, 0-6 range, log2 based. Enables 2^ROWS rows and/or 2^COLS cols)");
     clContextLog(C, NULL, 0, "    --codec READ,WRITE       : Specify which internal codec to be used when decoding (AVIF only, auto,auto is default, see libavif version below for choices)");
     clContextLog(C, NULL, 0, "    --speed SPEED            : Specify the quality/speed tradeoff when encoding (AVIF only, [0-10] range. auto = default (let the codec decide), 0=best quality, 10=fastest)");
+    clContextLog(C, NULL, 0, "    --nclx PRI,TF,MTX        : Force the output NCLX color profile to specific values (AVIF only, does not affect conversion, only the color profile signaling)");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Convert Options:");
     clContextLog(C, NULL, 0, "    --resize w,h,filter      : Resize dst image to WxH. Use optional filter (auto (default), box, triangle, cubic, catmullrom, mitchell, nearest)");

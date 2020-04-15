@@ -165,6 +165,7 @@ typedef struct clWriteParams
     int speed;             // AVIF only. [-1,10] range. -1 is "let the codec choose a default".
                            //            0 is best quality, 10 is fastest encoding speed
     const char * codec;    // AVIF only. Specify a codec to write with (NULL == auto)
+    int nclx[3];           // AVIF only. Force NCLX output profile, using these values. (0/0/0 == ignore)
 } clWriteParams;
 void clWriteParamsSetDefaults(struct clContext * C, clWriteParams * writeParams);
 
