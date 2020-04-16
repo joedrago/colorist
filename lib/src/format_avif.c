@@ -224,7 +224,7 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
             nclx.colourPrimaries = (uint16_t)writeParams->nclx[0];
             nclx.transferCharacteristics = (uint16_t)writeParams->nclx[1];
             nclx.matrixCoefficients = (uint16_t)writeParams->nclx[2];
-            nclx.fullRangeFlag = AVIF_NCLX_FULL_RANGE;
+            nclx.range = AVIF_RANGE_FULL;
             clContextLog(C,
                          "avif",
                          1,
@@ -232,7 +232,7 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
                          nclx.colourPrimaries,
                          nclx.transferCharacteristics,
                          nclx.matrixCoefficients,
-                         nclx.fullRangeFlag);
+                         nclx.range);
             avifImageSetProfileNCLX(avif, &nclx);
         } else if (clProfileToNclx(C, image->profile, &nclx)) {
             clContextLog(C,
@@ -242,7 +242,7 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
                          nclx.colourPrimaries,
                          nclx.transferCharacteristics,
                          nclx.matrixCoefficients,
-                         nclx.fullRangeFlag);
+                         nclx.range);
             avifImageSetProfileNCLX(avif, &nclx);
         } else {
             clContextLog(C, "avif", 1, "Writing colr box (icc): %u bytes", (uint32_t)rawProfile.size);
@@ -513,7 +513,7 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
     nclx->colourPrimaries = (uint16_t)foundNclxPrimaries;
     nclx->transferCharacteristics = (uint16_t)transferCharacteristics;
     nclx->matrixCoefficients = (uint16_t)matrixCoefficients;
-    nclx->fullRangeFlag = AVIF_NCLX_FULL_RANGE;
+    nclx->range = AVIF_RANGE_FULL;
     return clTrue;
 }
 
