@@ -34,9 +34,12 @@ typedef struct StockPrimaries
 } StockPrimaries;
 
 static StockPrimaries stockPrimaries[] = {
+    { "bt601-625", "BT.601-625", { { 0.640f, 0.330f }, { 0.29f, 0.60f }, { 0.15f, 0.060f }, { 0.3127f, 0.3290f } } },
+    { "bt601-525", "BT.601-525", { { 0.630f, 0.340f }, { 0.310f, 0.595f }, { 0.155f, 0.070f }, { 0.3127f, 0.3290f } } },
     { "bt709", "BT.709", { { 0.64f, 0.33f }, { 0.30f, 0.60f }, { 0.15f, 0.06f }, { 0.3127f, 0.3290f } } },
     { "bt2020", "BT.2020", { { 0.708f, 0.292f }, { 0.170f, 0.797f }, { 0.131f, 0.046f }, { 0.3127f, 0.3290f } } },
     { "p3", "P3", { { 0.68f, 0.32f }, { 0.265f, 0.690f }, { 0.150f, 0.060f }, { 0.3127f, 0.3290f } } },
+    { "aces", "ACES", { { 0.7347f, 0.2653f }, { 0.0f, 1.0f }, { 0.0001f, -0.077f }, { 0.32168f, 0.33767f } } },
     { "xyz", "XYZ", { { 1.0f, 0.0f }, { 0.0f, 1.0f }, { 0.0f, 0.0f }, { 0.3333f, 0.3333f } } }
 };
 static const unsigned int stockPrimariesCount = sizeof(stockPrimaries) / sizeof(stockPrimaries[0]);

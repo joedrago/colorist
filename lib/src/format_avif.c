@@ -472,6 +472,12 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
         case AVIF_NCLX_COLOUR_PRIMARIES_BT709:
             matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT709;
             break;
+        case AVIF_NCLX_COLOUR_PRIMARIES_BT601_7_625:
+            matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT601_7_625;
+            break;
+        case AVIF_NCLX_COLOUR_PRIMARIES_BT601_7_525:
+            matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT601_7_525;
+            break;
         case AVIF_NCLX_COLOUR_PRIMARIES_BT2020:
             matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL;
             break;
