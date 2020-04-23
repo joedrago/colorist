@@ -379,20 +379,20 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
     primaries.white[1] = prim[7];
 
     switch (nclx->transferCharacteristics) {
-        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_HLG:
+        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_HLG:
             curve.type = CL_PCT_HLG;
             curve.gamma = 1.0f;
             break;
-        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_PQ:
+        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_SMPTE2084:
             curve.type = CL_PCT_PQ;
             curve.gamma = 1.0f;
             maxLuminance = 10000;
             break;
-        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_GAMMA22:
+        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT470M:
             curve.type = CL_PCT_GAMMA;
             curve.gamma = 2.2f;
             break;
-        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_GAMMA28:
+        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT470BG:
             curve.type = CL_PCT_GAMMA;
             curve.gamma = 2.8f;
             break;
@@ -472,11 +472,11 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
         case AVIF_NCLX_COLOUR_PRIMARIES_BT709:
             matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT709;
             break;
-        case AVIF_NCLX_COLOUR_PRIMARIES_BT601_7_625:
-            matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT601_7_625;
+        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT470BG:
+            matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT470BG;
             break;
-        case AVIF_NCLX_COLOUR_PRIMARIES_BT601_7_525:
-            matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT601_7_525;
+        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT601:
+            matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT601;
             break;
         case AVIF_NCLX_COLOUR_PRIMARIES_BT2020:
             matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL;
@@ -489,7 +489,7 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
     const char * transferCharacteristicsName = NULL;
     avifNclxTransferCharacteristics transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_UNKNOWN;
     if ((curve.type == CL_PCT_PQ) && (luminance == 10000)) {
-        transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_PQ;
+        transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_SMPTE2084;
         transferCharacteristicsName = "PQ";
     } else {
         if (luminance != CL_LUMINANCE_UNSPECIFIED) {
@@ -498,14 +498,14 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
         }
 
         if (curve.type == CL_PCT_HLG) {
-            transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT2100_HLG;
+            transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_HLG;
             transferCharacteristicsName = "HLG";
         } else if (curve.type == CL_PCT_GAMMA) {
             if (fabsf(curve.gamma - 2.2f) < 0.001f) {
-                transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_GAMMA22;
+                transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT470M;
                 transferCharacteristicsName = "2.2g";
             } else if (fabsf(curve.gamma - 2.8f) < 0.001f) {
-                transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_GAMMA28;
+                transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT470BG;
                 transferCharacteristicsName = "2.8g";
             }
         }
