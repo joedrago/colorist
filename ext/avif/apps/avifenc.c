@@ -21,7 +21,7 @@
 
 static void syntax(void)
 {
-    printf("Syntax: avifenc [options] input.[jpg|png|y4m] output.avif\n");
+    printf("Syntax: avifenc [options] input.[jpg|jpeg|png|y4m] output.avif\n");
     printf("Options:\n");
     printf("    -h,--help                         : Show syntax help\n");
     printf("    -j,--jobs J                       : Number of jobs (worker threads, default: 1)\n");
@@ -31,7 +31,7 @@ static void syntax(void)
     printf("                                        P = enum avifNclxColourPrimaries\n");
     printf("                                        T = enum avifNclxTransferCharacteristics\n");
     printf("                                        M = enum avifNclxMatrixCoefficients\n");
-    printf("    -r,--range RANGE                  : YUV range [limited, full]. (JPEG/PNG only; For y4m, range is retained)\n");
+    printf("    -r,--range RANGE                  : YUV range [limited or l, full or f]. (JPEG/PNG only, default: full; For y4m, range is retained)\n");
     printf("    --min Q                           : Set min quantizer for color (%d-%d, where %d is lossless)\n",
            AVIF_QUANTIZER_BEST_QUALITY,
            AVIF_QUANTIZER_WORST_QUALITY,
@@ -334,12 +334,13 @@ int main(int argc, char * argv[])
         avifImageSetProfileNCLX(avif, &nclx);
     }
 
-    const char * fileExt = strrchr(inputFilename, '.');
-    if (!fileExt) {
+    avifAppFileFormat inputFormat = avifGuessFileFormat(inputFilename);
+    if (inputFormat == AVIF_APP_FILE_FORMAT_UNKNOWN) {
         fprintf(stderr, "Cannot determine input file extension: %s\n", inputFilename);
-        return 1;
+        returnCode = 1;
+        goto cleanup;
     }
-    if (!strcmp(fileExt, ".y4m")) {
+    if (inputFormat == AVIF_APP_FILE_FORMAT_Y4M) {
         if (requestedRangeSet) {
             fprintf(stderr, "WARNING: Ignoring range (-r) value when encoding from y4m content.\n");
         }
@@ -352,19 +353,20 @@ int main(int argc, char * argv[])
             nclx.range = avif->yuvRange;
             avifImageSetProfileNCLX(avif, &nclx);
         }
-    } else if (!strcmp(fileExt, ".jpg") || !strcmp(fileExt, ".jpeg")) {
+    } else if (inputFormat == AVIF_APP_FILE_FORMAT_JPEG) {
         if (!avifJPEGRead(avif, inputFilename, requestedFormat, requestedDepth)) {
             returnCode = 1;
             goto cleanup;
         }
-    } else if (!strcmp(fileExt, ".png")) {
+    } else if (inputFormat == AVIF_APP_FILE_FORMAT_PNG) {
         if (!avifPNGRead(avif, inputFilename, requestedFormat, requestedDepth)) {
             returnCode = 1;
             goto cleanup;
         }
     } else {
-        fprintf(stderr, "Unrecognized file extension: %s\n", fileExt + 1);
-        return 1;
+        fprintf(stderr, "Unrecognized file extension: %s\n", inputFilename);
+        returnCode = 1;
+        goto cleanup;
     }
     printf("Successfully loaded: %s\n", inputFilename);
 
@@ -434,7 +436,7 @@ int main(int argc, char * argv[])
         fprintf(stderr, "Failed to write %zu bytes: %s\n", raw.size, outputFilename);
         returnCode = 1;
     } else {
-        printf("Wrote: %s\n", outputFilename);
+        printf("Wrote AVIF: %s\n", outputFilename);
     }
     fclose(f);
 
