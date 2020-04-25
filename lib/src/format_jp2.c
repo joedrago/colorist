@@ -85,44 +85,6 @@ static OPJ_BOOL seekCallback(OPJ_OFF_T p_nb_bytes, void * p_user_data)
     return OPJ_TRUE;
 }
 
-static int limitedToFullY(int depth, int v)
-{
-    switch (depth) {
-        case 8:
-            v = ((v - 16) * 255) / (235 - 16);
-            v = CL_CLAMP(v, 0, 255);
-            return v;
-        case 10:
-            v = ((v - 64) * 1023) / (940 - 64);
-            v = CL_CLAMP(v, 0, 1023);
-            return v;
-        case 12:
-            v = ((v - 256) * 4095) / (3760 - 256);
-            v = CL_CLAMP(v, 0, 4095);
-            return v;
-    }
-    return v;
-}
-
-static int limitedToFullUV(int depth, int v)
-{
-    switch (depth) {
-        case 8:
-            v = ((v - 16) * 255) / (240 - 16);
-            v = CL_CLAMP(v, 0, 255);
-            return v;
-        case 10:
-            v = ((v - 64) * 1023) / (960 - 64);
-            v = CL_CLAMP(v, 0, 1023);
-            return v;
-        case 12:
-            v = ((v - 256) * 4095) / (3840 - 256);
-            v = CL_CLAMP(v, 0, 4095);
-            return v;
-    }
-    return v;
-}
-
 struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input)
 {
     COLORIST_UNUSED(formatName);
@@ -211,33 +173,6 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
         profile = clProfileParse(C, opjImage->icc_profile_buf, opjImage->icc_profile_len, NULL);
     }
 
-    int chromaShiftX = 0;
-    int chromaShiftY = 0;
-
-    dstDepth = 8;
-    for (i = 0; i < (int)opjImage->numcomps; ++i) {
-        // Find biggest component
-        dstDepth = (dstDepth > (int)opjImage->comps[i].prec) ? dstDepth : (int)opjImage->comps[i].prec;
-
-        // Check for subsampling
-        if (opjImage->comps[i].dx == 2) {
-            chromaShiftX = 1;
-        }
-        if (opjImage->comps[i].dy == 2) {
-            chromaShiftY = 1;
-        }
-    }
-    if ((dstDepth < 8) || (dstDepth > 16)) {
-        int srcDepth = dstDepth;
-        dstDepth = CL_CLAMP(dstDepth, 8, 16); // round to nearest Colorist-supported depth
-        clContextLog(C, "JP2", 1, "Clamping %d-bit source to %d bits", srcDepth, dstDepth);
-    }
-    for (i = 0; i < (int)opjImage->numcomps; ++i) {
-        // Calculate scales for incoming components
-        channelFactor[i] = 1 << (dstDepth - opjImage->comps[i].prec);
-    }
-    maxChannel = (1 << dstDepth) - 1;
-
     if (opjImage->color_space != OPJ_CLRSPC_SYCC && opjImage->numcomps == 3 && opjImage->comps[0].dx == opjImage->comps[0].dy &&
         opjImage->comps[1].dx != 1) {
         opjImage->color_space = OPJ_CLRSPC_SYCC;
@@ -252,6 +187,22 @@ struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, 
     } else if (opjImage->color_space == OPJ_CLRSPC_EYCC) {
         color_esycc_to_rgb(opjImage);
     }
+
+    dstDepth = 8;
+    for (i = 0; i < (int)opjImage->numcomps; ++i) {
+        // Find biggest component
+        dstDepth = (dstDepth > (int)opjImage->comps[i].prec) ? dstDepth : (int)opjImage->comps[i].prec;
+    }
+    if ((dstDepth < 8) || (dstDepth > 16)) {
+        int srcDepth = dstDepth;
+        dstDepth = CL_CLAMP(dstDepth, 8, 16); // round to nearest Colorist-supported depth
+        clContextLog(C, "JP2", 1, "Clamping %d-bit source to %d bits", srcDepth, dstDepth);
+    }
+    for (i = 0; i < (int)opjImage->numcomps; ++i) {
+        // Calculate scales for incoming components
+        channelFactor[i] = 1 << (dstDepth - opjImage->comps[i].prec);
+    }
+    maxChannel = (1 << dstDepth) - 1;
 
     clImageLogCreate(C, opjImage->x1, opjImage->y1, dstDepth, profile);
     image = clImageCreate(C, opjImage->x1, opjImage->y1, dstDepth, profile);
