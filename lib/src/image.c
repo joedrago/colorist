@@ -127,7 +127,7 @@ void clImagePrepareReadPixels(struct clContext * C, clImage * image, clPixelForm
                     }
                 } else {
                     // U8 White
-                    memset(image->pixelsU8, 0xff, image->width * image->height * sizeof(uint8_t));
+                    memset(image->pixelsU8, 0xff, image->width * image->height * CL_CHANNELS_PER_PIXEL * sizeof(uint8_t));
                 }
             }
             break;
@@ -166,7 +166,7 @@ void clImagePrepareReadPixels(struct clContext * C, clImage * image, clPixelForm
                     }
                 } else {
                     // U16 White
-                    memset(image->pixelsU16, 0xff, image->width * image->height * sizeof(uint16_t));
+                    memset(image->pixelsU16, 0xff, image->width * image->height * CL_CHANNELS_PER_PIXEL * sizeof(uint16_t));
                 }
             }
             break;
