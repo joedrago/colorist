@@ -125,7 +125,7 @@ struct clImage * clFormatReadJXR(struct clContext * C, const char * formatName, 
 
         clProfileCurve curve;
         curve.type = CL_PCT_GAMMA;
-        curve.gamma = 2.2f;
+        curve.gamma = 1.0f;
 
         profile = clProfileCreate(C, &primaries, &curve, 80, NULL);
     }
