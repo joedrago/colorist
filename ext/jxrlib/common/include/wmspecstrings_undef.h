@@ -2,16 +2,16 @@
 //
 // Copyright © Microsoft Corp.
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
-// 
+//
 // • Redistributions of source code must retain the above copyright notice,
 //   this list of conditions and the following disclaimer.
 // • Redistributions in binary form must reproduce the above copyright notice,
 //   this list of conditions and the following disclaimer in the documentation
 //   and/or other materials provided with the distribution.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -27,14 +27,14 @@
 //*@@@---@@@@******************************************************************
 
 
-#undef __$adt_add_prop
-#undef __$adt_prop
-#undef __$adt_remove_prop
-#undef __$adt_transfer_prop
-#undef __$adt_type_props
-#undef __$nonvolatile
-#undef __$possibly_notnulltermiated
-#undef __$volatile
+#undef __DOLLAR_adt_add_prop
+#undef __DOLLAR_adt_prop
+#undef __DOLLAR_adt_remove_prop
+#undef __DOLLAR_adt_transfer_prop
+#undef __DOLLAR_adt_type_props
+#undef __DOLLAR_nonvolatile
+#undef __DOLLAR_possibly_notnulltermiated
+#undef __DOLLAR_volatile
 #undef __allocator
 #undef __analysis_assert
 #undef __analysis_assume

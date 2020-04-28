@@ -2,16 +2,16 @@
 //
 // Copyright © Microsoft Corp.
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
-// 
+//
 // • Redistributions of source code must retain the above copyright notice,
 //   this list of conditions and the following disclaimer.
 // • Redistributions in binary form must reproduce the above copyright notice,
 //   this list of conditions and the following disclaimer in the documentation
 //   and/or other materials provided with the distribution.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -37,7 +37,7 @@
 #if _MSC_VER
 #pragma once
 #endif
-#include <wmsal.h>  
+#include <wmsal.h>
 
 #ifndef __SAL_H_FULL_VER
 #define __SAL_H_FULL_VER 140050727
@@ -45,7 +45,7 @@
 
 #ifdef  __cplusplus
 extern "C" {
-#endif 
+#endif
 
 /* version specific fixes to bring sal.h upto date */
 #if __SAL_H_FULL_VER <= 140050727
@@ -60,7 +60,7 @@ extern "C" {
 #define __inner_assume_bound_dec          __inline __nothrow void __AssumeBoundInt(__post __inner_bound int i) {i;}
 #define __inner_assume_bound(i)           __AssumeBoundInt(i);
 #define __inner_allocator                 __declspec("SAL_allocator")
-#else 
+#else
 #define __inexpressible_readableTo(size)
 #define __inexpressible_writableTo(size)
 #define __inner_bound
@@ -157,31 +157,31 @@ extern "C" {
 *************************************************************************/
 
 #if (_MSC_VER >= 1000) && !defined(__midl) && defined(_PREFAST_)
-#define __file_parser(typ)                  __declspec("SAL_file_parser(function, " #typ ")")    
+#define __file_parser(typ)                  __declspec("SAL_file_parser(function, " #typ ")")
 #define __file_parser_class(typ)            __declspec("SAL_file_parser(class, " #typ ")")
 #define __file_parser_library(typ)          extern int __declspec("SAL_file_parser(library, " #typ ")") __iSALFileParserLibrary##typ;
 #define __source_code_content(typ)          extern int __declspec("SAL_source_code_content(" #typ ")") __iSAL_Source_Code_Content##typ;
 #define __class_code_content(typ)           __declspec("SAL_class_code_content(" #typ ")")
 #define __analysis_assert(e)                __assume(e)
-#define __analysis_hint(hint)               __declspec("SAL_analysisHint(" #hint ")")   
+#define __analysis_hint(hint)               __declspec("SAL_analysisHint(" #hint ")")
 /* Internal defintions */
 #define __inner_data_source(src_raw)        __declspec("SAL_untrusted_data_source(" src_raw ")")
 #define __inner_this_data_source(src_raw)   __declspec("SAL_untrusted_data_source_this(" src_raw ")")
-#define __inner_out_validated(typ_raw)      __declspec("SAL_post") __declspec("SAL_validated(" typ_raw ")") 
-#define __inner_this_out_validated(typ_raw) __declspec("SAL_validated_this(" typ_raw ")") 
+#define __inner_out_validated(typ_raw)      __declspec("SAL_post") __declspec("SAL_validated(" typ_raw ")")
+#define __inner_this_out_validated(typ_raw) __declspec("SAL_validated_this(" typ_raw ")")
 #define __inner_assume_validated_dec        __inline __nothrow void __AssumeValidated(__inner_out_validated("BY_DESIGN") const void *p) {p;}
 #define __inner_assume_validated(p)         __AssumeValidated(p)
 #define __inner_transfer(formal)            __declspec("SAL_transfer_adt_property_from(" SPECSTRINGIZE(formal) ")")
 #define __inner_encoded                     __declspec("SAL_encoded")
 
-#define __$adt_prop(adt,prop)               __declspec("SAL_adt("#adt","#prop")")
-#define __$adt_add_prop(adt,prop)           __declspec("SAL_add_adt_property("#adt","#prop")")
-#define __$adt_remove_prop(adt,prop)        __declspec("SAL_remove_adt_property("#adt","#prop")")
-#define __$adt_transfer_prop(arg)           __declspec("SAL_transfer_adt_property_from("#arg")")
-#define __$adt_type_props(typ)              __declspec("SAL_post_type("#typ")")
-#define __$volatile                         __declspec("SAL_volatile")
-#define __$nonvolatile                      __declspec("SAL_nonvolatile")
-#define __$possibly_notnulltermiated        __declspec("SAL_RequiresZeroTermination(sometimes)")
+#define __DOLLAR_adt_prop(adt,prop)               __declspec("SAL_adt("#adt","#prop")")
+#define __DOLLAR_adt_add_prop(adt,prop)           __declspec("SAL_add_adt_property("#adt","#prop")")
+#define __DOLLAR_adt_remove_prop(adt,prop)        __declspec("SAL_remove_adt_property("#adt","#prop")")
+#define __DOLLAR_adt_transfer_prop(arg)           __declspec("SAL_transfer_adt_property_from("#arg")")
+#define __DOLLAR_adt_type_props(typ)              __declspec("SAL_post_type("#typ")")
+#define __DOLLAR_volatile                         __declspec("SAL_volatile")
+#define __DOLLAR_nonvolatile                      __declspec("SAL_nonvolatile")
+#define __DOLLAR_possibly_notnulltermiated        __declspec("SAL_RequiresZeroTermination(sometimes)")
 #else
 #define __file_parser(typ)
 #define __file_parser_class(typ)
@@ -199,14 +199,14 @@ extern "C" {
 #define __inner_assume_validated(p)
 #define __inner_transfer(formal)
 #define __inner_encoded
-#define __$adt_prop(adt,prop)   
-#define __$adt_add_prop(adt,prop)   
-#define __$adt_remove_prop(adt,prop)   
-#define __$adt_transfer_prop(arg)   
-#define __$adt_type_props(typ)   
-#define __$volatile 
-#define __$nonvolatile 
-#define __$possibly_notnulltermiated 
+#define __DOLLAR_adt_prop(adt,prop)
+#define __DOLLAR_adt_add_prop(adt,prop)
+#define __DOLLAR_adt_remove_prop(adt,prop)
+#define __DOLLAR_adt_transfer_prop(arg)
+#define __DOLLAR_adt_type_props(typ)
+#define __DOLLAR_volatile
+#define __DOLLAR_nonvolatile
+#define __DOLLAR_possibly_notnulltermiated
 #endif // #if (_MSC_VER >= 1000) && !defined(__midl) && defined(_PREFAST_)
 
 #define __field_ecount(size)                __notnull __elem_writableTo(size)
@@ -225,13 +225,13 @@ extern "C" {
 #define __field_bcount_part_opt(size,init)  __maybenull __byte_writableTo(size) __byte_readableTo(init)
 #define __field_xcount_part_opt(size,init)  __maybenull __inexpressible_writableTo(size) __inexpressible_readableTo(init)
 
-#define __field_ecount_full(size)           __field_ecount_part(size,size)  
-#define __field_bcount_full(size)           __field_bcount_part(size,size)  
-#define __field_xcount_full(size)           __field_xcount_part(size,size)      
+#define __field_ecount_full(size)           __field_ecount_part(size,size)
+#define __field_bcount_full(size)           __field_bcount_part(size,size)
+#define __field_xcount_full(size)           __field_xcount_part(size,size)
 
-#define __field_ecount_full_opt(size)       __field_ecount_part_opt(size,size)  
-#define __field_bcount_full_opt(size)       __field_bcount_part_opt(size,size)  
-#define __field_xcount_full_opt(size)       __field_xcount_part_opt(size,size)      
+#define __field_ecount_full_opt(size)       __field_ecount_part_opt(size,size)
+#define __field_bcount_full_opt(size)       __field_bcount_part_opt(size,size)
+#define __field_xcount_full_opt(size)       __field_xcount_part_opt(size,size)
 
 #define __struct_bcount(size)               __field_bcount(size)
 #define __struct_xcount(size)               __field_xcount(size)
@@ -269,32 +269,32 @@ extern "C" {
 #define __this_out_validated(typ_sym)       __inner_this_out_validated(#typ_sym)
 #define __transfer(formal)                  __post __inner_transfer(formal)
 #define __rpc_entry                         __inner_control_entrypoint(RPC)
-#define __kernel_entry                      __inner_control_entrypoint(UserToKernel)   
+#define __kernel_entry                      __inner_control_entrypoint(UserToKernel)
 #define __gdi_entry                         __inner_control_entrypoint(GDI)
 #define __encoded_pointer                   __inner_encoded
 #define __encoded_array                     __inner_encoded
 #define __field_encoded_pointer             __inner_encoded
 #define __field_encoded_array               __inner_encoded
-#define __type_has_adt_prop(adt,prop)       __$adt_prop(adt,prop)
-#define __out_has_adt_prop(adt,prop)        __post __$adt_add_prop(adt,prop)
-#define __out_not_has_adt_prop(adt,prop)    __post __$adt_remove_prop(adt,prop)
-#define __out_transfer_adt_prop(arg)        __post __$adt_transfer_prop(arg)
-#define __out_has_type_adt_props(typ)       __post __$adt_type_props(typ)
+#define __type_has_adt_prop(adt,prop)       __DOLLAR_adt_prop(adt,prop)
+#define __out_has_adt_prop(adt,prop)        __post __DOLLAR_adt_add_prop(adt,prop)
+#define __out_not_has_adt_prop(adt,prop)    __post __DOLLAR_adt_remove_prop(adt,prop)
+#define __out_transfer_adt_prop(arg)        __post __DOLLAR_adt_transfer_prop(arg)
+#define __out_has_type_adt_props(typ)       __post __DOLLAR_adt_type_props(typ)
 
 /* useful PFD related macros */
-#define __possibly_notnulltermiated         __post __$possibly_notnulltermiated
+#define __possibly_notnulltermiated         __post __DOLLAR_possibly_notnulltermiated
 
 #if defined(_WINDOWS_)
 /* Windows Internal */
-#define __volatile                          __$volatile
-#define __nonvolatile                       __$nonvolatile
+#define __volatile                          __DOLLAR_volatile
+#define __nonvolatile                       __DOLLAR_nonvolatile
 #define __deref_volatile                    __deref __volatile
 #define __deref_nonvolatile                 __deref __nonvolatile
 #endif
 
 /* declare stub functions for macros */
-__inner_assume_validated_dec 
-__inner_assume_bound_dec 
+__inner_assume_validated_dec
+__inner_assume_bound_dec
 
 #define __assume_validated(p) __inner_assume_validated(p)
 #define __assume_bound(i) __inner_assume_bound(i)
@@ -305,7 +305,7 @@ __inner_assume_bound_dec
 #ifdef _PREFIX_
 /**************************************************************************
 * Defintion of __pfx_assume and __pfx_assert. Thse should be the only
-* defintions of these functions.  
+* defintions of these functions.
 ***************************************************************************/
 #if __cplusplus
 extern "C" void __pfx_assert(bool, const char *);
@@ -324,8 +324,8 @@ void __pfx_assume(int, const char *);
 #endif /* ifdef _PREFIX_ */
 
 /**************************************************************************
-* This include should always be the last thing in this file. 
-* Must avoid redfinitions of macros to workaround rc.exe issues. 
+* This include should always be the last thing in this file.
+* Must avoid redfinitions of macros to workaround rc.exe issues.
 ***************************************************************************/
 #if !(defined(RC_INVOKED) || defined(SORTPP_PASS))
 #include <wmspecstrings_strict.h>
