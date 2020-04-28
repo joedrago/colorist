@@ -3,16 +3,16 @@
 *
 * Copyright © Microsoft Corp.
 * All rights reserved.
-* 
+*
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
-* 
+*
 * • Redistributions of source code must retain the above copyright notice,
 *   this list of conditions and the following disclaimer.
 * • Redistributions in binary form must reproduce the above copyright notice,
 *   this list of conditions and the following disclaimer in the documentation
 *   and/or other materials provided with the distribution.
-* 
+*
 * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -34,7 +34,7 @@
 *
 ****/
 
-/* 
+/*
  -------------------------------------------------------------------------------
  Introduction
 
@@ -225,7 +225,7 @@
  -------------------------------------------------------------------------------
  Advanced Annotation Examples
 
- __success(return == TRUE) LWSTDAPI_(BOOL) 
+ __success(return == TRUE) LWSTDAPI_(BOOL)
  PathCanonicalizeA(__out_ecount(MAX_PATH) LPSTR pszBuf, LPCSTR pszPath) :
      pszBuf is only guaranteed to be NULL-terminated when TRUE is returned.
 
@@ -267,7 +267,7 @@ defect detection tools. When the regular compiler is running, they are defined i
 nothing, and do not affect the compiled code.
 */
 
-#if !defined(__midl) && defined(_PREFAST_) 
+#if !defined(__midl) && defined(_PREFAST_)
 
     /*
      In the primitive __declspec("SAL_*") annotations "SAL" stands for Standard
@@ -282,7 +282,7 @@ nothing, and do not affect the compiled code.
      __null p
      __notnull p
      __maybenull p
-    
+
      Annotates a pointer p. States that pointer p is null. Commonly used
      in the negated form __notnull or the possibly null form __maybenull.
     */
@@ -295,7 +295,7 @@ nothing, and do not affect the compiled code.
      __readonly l
      __notreadonly l
      __mabyereadonly l
-    
+
      Annotates a location l. States that location l is not modified after
      this point.  If the annotation is placed on the precondition state of
      a function, the restriction only applies until the postcondition state
@@ -312,7 +312,7 @@ nothing, and do not affect the compiled code.
      __valid v
      __notvalid v
      __maybevalid v
-    
+
      Annotates any value v. States that the value satisfies all properties of
      valid values of its type. For example, for a string buffer, valid means
      that the buffer pointer is either NULL or points to a NULL-terminated string.
@@ -324,7 +324,7 @@ nothing, and do not affect the compiled code.
 
     /*
      __readableTo(extent) p
-    
+
      Annotates a buffer pointer p.  If the buffer can be read, extent describes
      how much of the buffer is readable. For a reader of the buffer, this is
      an explicit permission to read up to that amount, rather than a restriction to
@@ -334,24 +334,24 @@ nothing, and do not affect the compiled code.
     #define __readableTo(extent)    __declspec("SAL_readableTo("SPECSTRINGIZE(extent)")")
 
     /*
-    
+
      __elem_readableTo(size)
-    
+
      Annotates a buffer pointer p as being readable to size elements.
     */
 
     #define __elem_readableTo(size)   __declspec("SAL_readableTo(elementCount("SPECSTRINGIZE(size)"))")
-    
+
     /*
      __byte_readableTo(size)
-    
+
      Annotates a buffer pointer p as being readable to size bytes.
     */
     #define __byte_readableTo(size)   __declspec("SAL_readableTo(byteCount("SPECSTRINGIZE(size)"))")
-    
+
     /*
      __writableTo(extent) p
-    
+
      Annotates a buffer pointer p. If the buffer can be modified, extent
      describes how much of the buffer is writable (usually the allocation
      size). For a writer of the buffer, this is an explicit permission to
@@ -361,45 +361,45 @@ nothing, and do not affect the compiled code.
 
     /*
      __elem_writableTo(size)
-    
+
      Annotates a buffer pointer p as being writable to size elements.
     */
     #define __elem_writableTo(size)   __declspec("SAL_writableTo(elementCount("SPECSTRINGIZE(size)"))")
-    
+
     /*
      __byte_writableTo(size)
-    
+
      Annotates a buffer pointer p as being writable to size bytes.
     */
     #define __byte_writableTo(size)   __declspec("SAL_writableTo(byteCount("SPECSTRINGIZE(size)"))")
 
     /*
      __deref p
-    
+
      Annotates a pointer p. The next annotation applies one dereference down
      in the type. If readableTo(p, size) then the next annotation applies to
      all elements *(p+i) for which i satisfies the size. If p is a pointer
      to a struct, the next annotation applies to all fields of the struct.
     */
     #define __deref                 __declspec("SAL_deref")
-    
+
     /*
      __pre __next_annotation
-    
+
      The next annotation applies in the precondition state
     */
     #define __pre                   __declspec("SAL_pre")
-    
+
     /*
      __post __next_annotation
-    
+
      The next annotation applies in the postcondition state
     */
     #define __post                  __declspec("SAL_post")
-    
+
     /*
      __precond(<expr>)
-    
+
      When <expr> is true, the next annotation applies in the precondition state
      (currently not enabled)
     */
@@ -407,7 +407,7 @@ nothing, and do not affect the compiled code.
 
     /*
      __postcond(<expr>)
-    
+
      When <expr> is true, the next annotation applies in the postcondition state
      (currently not enabled)
     */
@@ -415,27 +415,27 @@ nothing, and do not affect the compiled code.
 
     /*
      __exceptthat
-    
+
      Given a set of annotations Q containing __exceptthat maybeP, the effect of
      the except clause is to erase any P or notP annotations (explicit or
      implied) within Q at the same level of dereferencing that the except
      clause appears, and to replace it with maybeP.
-    
+
       Example 1: __valid __exceptthat __maybenull on a pointer p means that the
                  pointer may be null, and is otherwise valid, thus overriding
                  the implicit notnull annotation implied by __valid on
                  pointers.
-    
+
       Example 2: __valid __deref __exceptthat __maybenull on an int **p means
                  that p is not null (implied by valid), but the elements
-                 pointed to by p could be null, and are otherwise valid. 
+                 pointed to by p could be null, and are otherwise valid.
     */
     #define __exceptthat                __declspec("SAL_except")
     #define __execeptthat               __exceptthat
- 
+
     /*
      _refparam
-    
+
      Added to all out parameter macros to indicate that they are all reference
      parameters.
     */
@@ -443,16 +443,16 @@ nothing, and do not affect the compiled code.
 
     /*
      __inner_*
-    
+
      Helper macros that directly correspond to certain high-level annotations.
-    
+
     */
 
     /*
      Macros to classify the entrypoints and indicate their category.
-    
+
      Pre-defined control point categories include: RPC, LPC, DeviceDriver, UserToKernel, ISAPI, COM.
-    
+
     */
     #define __inner_control_entrypoint(category) __declspec("SAL_entrypoint(controlEntry, "SPECSTRINGIZE(category)")")
 
@@ -507,7 +507,7 @@ nothing, and do not affect the compiled code.
     #define __inner_data_entrypoint(category)
 #endif /* #if !defined(__midl) && defined(_PREFAST_) */
 
-/* 
+/*
 -------------------------------------------------------------------------------
 Buffer Annotation Definitions
 
@@ -563,19 +563,19 @@ buffer, use the table in the buffer annotations section.
 #define __inout_ecount_z(size)                                  __inout_ecount(size) __pre __nullterminated __post __nullterminated
 #define __inout_bcount_z(size)                                  __inout_bcount(size) __pre __nullterminated __post __nullterminated
 #define __inout_nz                                              __inout
-#define __inout_ecount_nz(size)                                 __inout_ecount(size) 
-#define __inout_bcount_nz(size)                                 __inout_bcount(size) 
+#define __inout_ecount_nz(size)                                 __inout_ecount(size)
+#define __inout_bcount_nz(size)                                 __inout_bcount(size)
 #define __ecount_opt(size)                                      __ecount(size)                              __exceptthat __maybenull
 #define __bcount_opt(size)                                      __bcount(size)                              __exceptthat __maybenull
 #define __in_opt                                                __in_win                                        __exceptthat __maybenull
 #define __in_ecount_opt(size)                                   __in_ecount(size)                           __exceptthat __maybenull
 #define __in_bcount_opt(size)                                   __in_bcount(size)                           __exceptthat __maybenull
-#define __in_z_opt                                              __in_opt __pre __nullterminated 
-#define __in_ecount_z_opt(size)                                 __in_ecount_opt(size) __pre __nullterminated 
+#define __in_z_opt                                              __in_opt __pre __nullterminated
+#define __in_ecount_z_opt(size)                                 __in_ecount_opt(size) __pre __nullterminated
 #define __in_bcount_z_opt(size)                                 __in_bcount_opt(size) __pre __nullterminated
-#define __in_nz_opt                                             __in_opt                                     
-#define __in_ecount_nz_opt(size)                                __in_ecount_opt(size)                         
-#define __in_bcount_nz_opt(size)                                __in_bcount_opt(size)                         
+#define __in_nz_opt                                             __in_opt
+#define __in_ecount_nz_opt(size)                                __in_ecount_opt(size)
+#define __in_bcount_nz_opt(size)                                __in_bcount_opt(size)
 #define __out_opt                                               __out_win                                       __exceptthat __maybenull
 #define __out_ecount_opt(size)                                  __out_ecount(size)                          __exceptthat __maybenull
 #define __out_bcount_opt(size)                                  __out_bcount(size)                          __exceptthat __maybenull
@@ -589,8 +589,8 @@ buffer, use the table in the buffer annotations section.
 #define __out_bcount_part_z_opt(size,length)                    __out_bcount_part_opt(size,length) __post __nullterminated
 #define __out_ecount_full_z_opt(size)                           __out_ecount_full_opt(size) __post __nullterminated
 #define __out_bcount_full_z_opt(size)                           __out_bcount_full_opt(size) __post __nullterminated
-#define __out_ecount_nz_opt(size)                               __out_ecount_opt(size) __post __nullterminated                       
-#define __out_bcount_nz_opt(size)                               __out_bcount_opt(size) __post __nullterminated                        
+#define __out_ecount_nz_opt(size)                               __out_ecount_opt(size) __post __nullterminated
+#define __out_bcount_nz_opt(size)                               __out_bcount_opt(size) __post __nullterminated
 #define __inout_opt                                             __inout                                     __exceptthat __maybenull
 #define __inout_ecount_opt(size)                                __inout_ecount(size)                        __exceptthat __maybenull
 #define __inout_bcount_opt(size)                                __inout_bcount(size)                        __exceptthat __maybenull
@@ -601,7 +601,7 @@ buffer, use the table in the buffer annotations section.
 #define __inout_z_opt                                           __inout_opt __pre __nullterminated __post __nullterminated
 #define __inout_ecount_z_opt(size)                              __inout_ecount_opt(size) __pre __nullterminated __post __nullterminated
 #define __inout_ecount_z_opt(size)                              __inout_ecount_opt(size) __pre __nullterminated __post __nullterminated
-#define __inout_bcount_z_opt(size)                              __inout_bcount_opt(size) 
+#define __inout_bcount_z_opt(size)                              __inout_bcount_opt(size)
 #define __inout_nz_opt                                          __inout_opt
 #define __inout_ecount_nz_opt(size)                             __inout_ecount_opt(size)
 #define __inout_bcount_nz_opt(size)                             __inout_bcount_opt(size)
@@ -615,11 +615,11 @@ buffer, use the table in the buffer annotations section.
 #define __deref_out_ecount_full(size)                           __deref_out_ecount_part(size,size)
 #define __deref_out_bcount_full(size)                           __deref_out_bcount_part(size,size)
 #define __deref_out_z                                           __post __deref __valid __refparam __post __deref __nullterminated
-#define __deref_out_ecount_z(size)                              __deref_out_ecount(size) __post __deref __nullterminated  
-#define __deref_out_bcount_z(size)                              __deref_out_ecount(size) __post __deref __nullterminated  
+#define __deref_out_ecount_z(size)                              __deref_out_ecount(size) __post __deref __nullterminated
+#define __deref_out_bcount_z(size)                              __deref_out_ecount(size) __post __deref __nullterminated
 #define __deref_out_nz                                          __deref_out
-#define __deref_out_ecount_nz(size)                             __deref_out_ecount(size)   
-#define __deref_out_bcount_nz(size)                             __deref_out_ecount(size)   
+#define __deref_out_ecount_nz(size)                             __deref_out_ecount(size)
+#define __deref_out_bcount_nz(size)                             __deref_out_ecount(size)
 #define __deref_inout                                           __notnull __elem_readableTo(1) __pre __deref __valid __post __deref __valid __refparam
 #define __deref_inout_z                                         __deref_inout __pre __deref __nullterminated __post __deref __nullterminated
 #define __deref_inout_ecount(size)                              __deref_inout __pre __deref __elem_writableTo(size) __post __deref __elem_writableTo(size)
@@ -629,11 +629,11 @@ buffer, use the table in the buffer annotations section.
 #define __deref_inout_ecount_full(size)                         __deref_inout_ecount_part(size,size)
 #define __deref_inout_bcount_full(size)                         __deref_inout_bcount_part(size,size)
 #define __deref_inout_z                                         __deref_inout __pre __deref __nullterminated __post __deref __nullterminated
-#define __deref_inout_ecount_z(size)                            __deref_inout_ecount(size) __pre __deref __nullterminated __post __deref __nullterminated   
-#define __deref_inout_bcount_z(size)                            __deref_inout_ecount(size) __pre __deref __nullterminated __post __deref __nullterminated  
+#define __deref_inout_ecount_z(size)                            __deref_inout_ecount(size) __pre __deref __nullterminated __post __deref __nullterminated
+#define __deref_inout_bcount_z(size)                            __deref_inout_ecount(size) __pre __deref __nullterminated __post __deref __nullterminated
 #define __deref_inout_nz                                        __deref_inout
-#define __deref_inout_ecount_nz(size)                           __deref_inout_ecount(size)   
-#define __deref_inout_bcount_nz(size)                           __deref_inout_ecount(size)   
+#define __deref_inout_ecount_nz(size)                           __deref_inout_ecount(size)
+#define __deref_inout_bcount_nz(size)                           __deref_inout_ecount(size)
 #define __deref_ecount_opt(size)                                __deref_ecount(size)                        __post __deref __exceptthat __maybenull
 #define __deref_bcount_opt(size)                                __deref_bcount(size)                        __post __deref __exceptthat __maybenull
 #define __deref_out_opt                                         __deref_out                                 __post __deref __exceptthat __maybenull
@@ -659,7 +659,7 @@ buffer, use the table in the buffer annotations section.
 #define __deref_inout_z_opt                                     __deref_inout_opt __pre __deref __nullterminated __post __deref __nullterminated
 #define __deref_inout_ecount_z_opt(size)                        __deref_inout_ecount_opt(size) __pre __deref __nullterminated __post __deref __nullterminated
 #define __deref_inout_bcount_z_opt(size)                        __deref_inout_bcount_opt(size) __pre __deref __nullterminated __post __deref __nullterminated
-#define __deref_inout_nz_opt                                    __deref_inout_opt 
+#define __deref_inout_nz_opt                                    __deref_inout_opt
 #define __deref_inout_ecount_nz_opt(size)                       __deref_inout_ecount_opt(size)
 #define __deref_inout_bcount_nz_opt(size)                       __deref_inout_bcount_opt(size)
 #define __deref_opt_ecount(size)                                __deref_ecount(size)                        __exceptthat __maybenull
@@ -698,8 +698,8 @@ buffer, use the table in the buffer annotations section.
 #define __deref_opt_out_ecount_z_opt(size)                      __deref_opt_out_ecount_opt(size) __post __deref __nullterminated
 #define __deref_opt_out_bcount_z_opt(size)                      __deref_opt_out_bcount_opt(size) __post __deref __nullterminated
 #define __deref_opt_out_nz_opt                                  __deref_opt_out_opt
-#define __deref_opt_out_ecount_nz_opt(size)                     __deref_opt_out_ecount_opt(size)    
-#define __deref_opt_out_bcount_nz_opt(size)                     __deref_opt_out_bcount_opt(size)    
+#define __deref_opt_out_ecount_nz_opt(size)                     __deref_opt_out_ecount_opt(size)
+#define __deref_opt_out_bcount_nz_opt(size)                     __deref_opt_out_bcount_opt(size)
 #define __deref_opt_inout_opt                                   __deref_inout_opt                           __exceptthat __maybenull
 #define __deref_opt_inout_ecount_opt(size)                      __deref_inout_ecount_opt(size)              __exceptthat __maybenull
 #define __deref_opt_inout_bcount_opt(size)                      __deref_inout_bcount_opt(size)              __exceptthat __maybenull
@@ -707,12 +707,12 @@ buffer, use the table in the buffer annotations section.
 #define __deref_opt_inout_bcount_part_opt(size,length)          __deref_inout_bcount_part_opt(size,length)  __exceptthat __maybenull
 #define __deref_opt_inout_ecount_full_opt(size)                 __deref_inout_ecount_full_opt(size)         __exceptthat __maybenull
 #define __deref_opt_inout_bcount_full_opt(size)                 __deref_inout_bcount_full_opt(size)         __exceptthat __maybenull
-#define __deref_opt_inout_z_opt                                 __deref_opt_inout_opt  __pre __deref __nullterminated __post __deref __nullterminated             
+#define __deref_opt_inout_z_opt                                 __deref_opt_inout_opt  __pre __deref __nullterminated __post __deref __nullterminated
 #define __deref_opt_inout_ecount_z_opt(size)                    __deref_opt_inout_ecount_opt(size)  __pre __deref __nullterminated __post __deref __nullterminated
 #define __deref_opt_inout_bcount_z_opt(size)                    __deref_opt_inout_bcount_opt(size)  __pre __deref __nullterminated __post __deref __nullterminated
-#define __deref_opt_inout_nz_opt                                __deref_opt_inout_opt               
-#define __deref_opt_inout_ecount_nz_opt(size)                   __deref_opt_inout_ecount_opt(size)  
-#define __deref_opt_inout_bcount_nz_opt(size)                   __deref_opt_inout_bcount_opt(size)  
+#define __deref_opt_inout_nz_opt                                __deref_opt_inout_opt
+#define __deref_opt_inout_ecount_nz_opt(size)                   __deref_opt_inout_ecount_opt(size)
+#define __deref_opt_inout_bcount_nz_opt(size)                   __deref_opt_inout_bcount_opt(size)
 
 /*
 -------------------------------------------------------------------------------
@@ -746,7 +746,7 @@ of each annotation, see the advanced annotations section.
 #ifdef _PREFAST_
 #define __analysis_assume(expr) __assume(expr)
 #else
-#define __analysis_assume(expr) 
+#define __analysis_assume(expr)
 #endif
 #endif
 

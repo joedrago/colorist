@@ -18,29 +18,29 @@
 #define LARGEST_JXR_OUTPUT_SIZE (200 * 1024 * 1024)
 
 // Y, U, V, YHP, UHP, VHP
-int DPK_QPS_420[11][6] = { // for 8 bit only
+static int DPK_QPS_420[11][6] = { // for 8 bit only
     { 66, 65, 70, 72, 72, 77 }, { 59, 58, 63, 64, 63, 68 }, { 52, 51, 57, 56, 56, 61 }, { 48, 48, 54, 51, 50, 55 },
     { 43, 44, 48, 46, 46, 49 }, { 37, 37, 42, 38, 38, 43 }, { 26, 28, 31, 27, 28, 31 }, { 16, 17, 22, 16, 17, 21 },
     { 10, 11, 13, 10, 10, 13 }, { 5, 5, 6, 5, 5, 6 },       { 2, 2, 3, 2, 2, 2 }
 };
 
-int DPK_QPS_8[12][6] = { { 67, 79, 86, 72, 90, 98 }, { 59, 74, 80, 64, 83, 89 }, { 53, 68, 75, 57, 76, 83 },
-                         { 49, 64, 71, 53, 70, 77 }, { 45, 60, 67, 48, 67, 74 }, { 40, 56, 62, 42, 59, 66 },
-                         { 33, 49, 55, 35, 51, 58 }, { 27, 44, 49, 28, 45, 50 }, { 20, 36, 42, 20, 38, 44 },
-                         { 13, 27, 34, 13, 28, 34 }, { 7, 17, 21, 8, 17, 21 }, // Photoshop 100%
-                         { 2, 5, 6, 2, 5, 6 } };
+static int DPK_QPS_8[12][6] = { { 67, 79, 86, 72, 90, 98 }, { 59, 74, 80, 64, 83, 89 }, { 53, 68, 75, 57, 76, 83 },
+                                { 49, 64, 71, 53, 70, 77 }, { 45, 60, 67, 48, 67, 74 }, { 40, 56, 62, 42, 59, 66 },
+                                { 33, 49, 55, 35, 51, 58 }, { 27, 44, 49, 28, 45, 50 }, { 20, 36, 42, 20, 38, 44 },
+                                { 13, 27, 34, 13, 28, 34 }, { 7, 17, 21, 8, 17, 21 }, // Photoshop 100%
+                                { 2, 5, 6, 2, 5, 6 } };
 
-int DPK_QPS_16[11][6] = { { 197, 203, 210, 202, 207, 213 },
-                          { 174, 188, 193, 180, 189, 196 },
-                          { 152, 167, 173, 156, 169, 174 },
-                          { 135, 152, 157, 137, 153, 158 },
-                          { 119, 137, 141, 119, 138, 142 },
-                          { 102, 120, 125, 100, 120, 124 },
-                          { 82, 98, 104, 79, 98, 103 },
-                          { 60, 76, 81, 58, 76, 81 },
-                          { 39, 52, 58, 36, 52, 58 },
-                          { 16, 27, 33, 14, 27, 33 },
-                          { 5, 8, 9, 4, 7, 8 } };
+static int DPK_QPS_16[11][6] = { { 197, 203, 210, 202, 207, 213 },
+                                 { 174, 188, 193, 180, 189, 196 },
+                                 { 152, 167, 173, 156, 169, 174 },
+                                 { 135, 152, 157, 137, 153, 158 },
+                                 { 119, 137, 141, 119, 138, 142 },
+                                 { 102, 120, 125, 100, 120, 124 },
+                                 { 82, 98, 104, 79, 98, 103 },
+                                 { 60, 76, 81, 58, 76, 81 },
+                                 { 39, 52, 58, 36, 52, 58 },
+                                 { 16, 27, 33, 14, 27, 33 },
+                                 { 5, 8, 9, 4, 7, 8 } };
 
 struct clImage * clFormatReadJXR(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteJXR(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
@@ -262,7 +262,7 @@ clBool clFormatWriteJXR(struct clContext * C, struct clImage * image, const char
         clContextLogError(C, "Can't create JXR codec factory");
         goto cleanup;
     }
-    if (Failed(err = pCodecFactory->CreateCodec(&IID_PKImageWmpEncode, &pEncoder))) {
+    if (Failed(err = pCodecFactory->CreateCodec(&IID_PKImageWmpEncode, (void **)&pEncoder))) {
         clContextLogError(C, "Can't create JXR codec");
         goto cleanup;
     }
