@@ -2,16 +2,16 @@
 //
 // Copyright © Microsoft Corp.
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
-// 
+//
 // • Redistributions of source code must retain the above copyright notice,
 //   this list of conditions and the following disclaimer.
 // • Redistributions in binary form must reproduce the above copyright notice,
 //   this list of conditions and the following disclaimer in the documentation
 //   and/or other materials provided with the distribution.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -142,7 +142,7 @@ U8 readQPIndex(BitIOInfo * pIO, U32 cBits)
 }
 
 Void getTilePos(CWMImageStrCodec* pSC, size_t mbX, size_t mbY)
-{   
+{
     if(mbX == 0){ // left image boundary
         pSC->cTileColumn = 0;
     }
@@ -288,7 +288,7 @@ ERR CreateWS_File(struct WMPStream** ppWS, const char* szFilename, const char* s
     FailIf(NULL == pWS->state.file.pFile, WMP_errFileIO);
 #endif
 
-Cleanup:    
+Cleanup:
     return err;
 }
 
@@ -363,6 +363,7 @@ ERR CreateWS_Memory(struct WMPStream** ppWS, void* pv, size_t cb)
     pWS->state.buf.pbBuf = pv;
     pWS->state.buf.cbBuf = cb;
     pWS->state.buf.cbCur = 0;
+    pWS->state.buf.cbLast = 0;
 
     pWS->Close = CloseWS_Memory;
     pWS->EOS = EOSWS_Memory;
@@ -373,7 +374,7 @@ ERR CreateWS_Memory(struct WMPStream** ppWS, void* pv, size_t cb)
     pWS->SetPos = SetPosWS_Memory;
     pWS->GetPos = GetPosWS_Memory;
 
-Cleanup:    
+Cleanup:
     return err;
 }
 
@@ -382,8 +383,8 @@ ERR CloseWS_Memory(struct WMPStream** ppWS)
     ERR err = WMP_errSuccess;
 
     Call(WMPFree((void**)ppWS));
-    
-Cleanup:    
+
+Cleanup:
     return err;
 }
 
@@ -422,6 +423,9 @@ ERR WriteWS_Memory(struct WMPStream* pWS, const void* pv, size_t cb)
 
     memcpy(pWS->state.buf.pbBuf + pWS->state.buf.cbCur, pv, cb);
     pWS->state.buf.cbCur += cb;
+    if(pWS->state.buf.cbLast < pWS->state.buf.cbCur) {
+        pWS->state.buf.cbLast = pWS->state.buf.cbCur;
+    }
 
 Cleanup:
     return err;
@@ -478,7 +482,7 @@ ERR CreateWS_List(struct WMPStream** ppWS)
 
     //printf ("create buffer %d: %x\n", pWS->state.buf.cbBufCount, pWS->state.buf.pbBuf);
 
-Cleanup:    
+Cleanup:
     return err;
 }
 
@@ -498,8 +502,8 @@ ERR CloseWS_List(struct WMPStream** ppWS)
         }
     }
     Call(WMPFree((void**)ppWS));
-    
-Cleanup:    
+
+Cleanup:
     return err;
 }
 
@@ -708,7 +712,7 @@ U32 load4BE(void* pv)
 #endif // _BIG__ENDIAN_
 
 //================================================================
-// Bit I/O functions 
+// Bit I/O functions
 //================================================================
 Int allocateBitIOInfo(CWMImageStrCodec* pSC)
 {
@@ -839,7 +843,7 @@ Void freeTileInfo(CWMImageStrCodec * pSC)
 Int allocateQuantizer(CWMIQuantizer * pQuantizer[MAX_CHANNELS], size_t cChannel, size_t cQP)
 {
     size_t iCh;
-    
+
     if(cQP > 16 || cChannel > MAX_CHANNELS)
         return ICERR_ERROR;
     pQuantizer[0] = (CWMIQuantizer *)malloc(cQP * sizeof(CWMIQuantizer) * cChannel);
@@ -862,7 +866,7 @@ Void formatQuantizer(CWMIQuantizer * pQuantizer[MAX_CHANNELS], U8 cChMode, size_
                      Bool bScaledArith)
 {
     size_t iCh;
-    
+
     for(iCh = 0; iCh < cCh; iCh ++){
         if(iCh > 0)
             if(cChMode == 0) // uniform
@@ -1078,7 +1082,7 @@ ERR attachISRead(BitIOInfo* pIO, struct WMPStream* pWS, CWMImageStrCodec* pSC)
     pIO->offRef += PACKETLENGTH * 2;
 
     pIO->uiAccumulator = load4BE(pIO->pbStart);
-    
+
     pIO->cBitsUsed = 0;
     pIO->iMask = ~(PACKETLENGTH * 2);
     pIO->iMask &= ~1;
@@ -1239,7 +1243,7 @@ void OutputPerfTimerReport(CWMImageStrCodec *pState)
     printf("***************************************************************************\n");
     printf("* Perf Report\n");
     printf("***************************************************************************\n\n");
-    
+
     fltMegaPixels = (float)pState->WMII.cWidth * pState->WMII.cHeight / 1000000;
     printf("Image Width = %d, Height = %d, total MegaPixels = %.1f MP\n",
         (int) pState->WMII.cWidth, (int) pState->WMII.cHeight, fltMegaPixels);

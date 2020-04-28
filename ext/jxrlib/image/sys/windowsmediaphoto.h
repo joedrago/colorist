@@ -2,16 +2,16 @@
 //
 // Copyright © Microsoft Corp.
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
-// 
+//
 // • Redistributions of source code must retain the above copyright notice,
 //   this list of conditions and the following disclaimer.
 // • Redistributions in binary form must reproduce the above copyright notice,
 //   this list of conditions and the following disclaimer in the documentation
 //   and/or other materials provided with the distribution.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -70,30 +70,30 @@ typedef void* CTXSTRCODEC;
 
     //#define REENTRANT_MODE 1
 
-    This compiler flag is related to the capability of banded decode 
-    (decoding only one MB row of the source JPEG XR image at a time). 
-	
-    With REENTRANT_MODE defined, the decoder decodes one MB row on each call to 
+    This compiler flag is related to the capability of banded decode
+    (decoding only one MB row of the source JPEG XR image at a time).
+
+    With REENTRANT_MODE defined, the decoder decodes one MB row on each call to
     ImageStrDecDecode().
-    
-    The decoder acts as if it can only write to the single MBRow whose pointer was passed to it. 
-    This acts as a proof of concept that the API would work if you passed it a small buffer 
-    on each call to ImageStrDecDecode(). 
-	
-    The REENTRANT_MODE flag only works when the output image is in Orientations 0, 1 
+
+    The decoder acts as if it can only write to the single MBRow whose pointer was passed to it.
+    This acts as a proof of concept that the API would work if you passed it a small buffer
+    on each call to ImageStrDecDecode().
+
+    The REENTRANT_MODE flag only works when the output image is in Orientations 0, 1
     (vertically	flipped) or 2 (horizontally flipped).
 
     With REENTRANT_MODE defined, the function PKImageDecode_Copy_WMP()
     decodes only as far as the pRect parameter indicates. The width of the rectangle must be the width
-    of the image, but on each call, this function will decode the image up to the end of the MB Row 
-    which contains the i-th pixel row, where i = pRect->Y. 
+    of the image, but on each call, this function will decode the image up to the end of the MB Row
+    which contains the i-th pixel row, where i = pRect->Y.
 
     A target use of this version would be to have PKImageDecode_Copy_WMP() called in a loop, once for
-    each MB row. On each call, pRect would specify a 1-MB-Row-tall rectangle that is the width of the 
+    each MB row. On each call, pRect would specify a 1-MB-Row-tall rectangle that is the width of the
     image. The decoder state is preserved until the Decoder finishes decoding the image.
 
     If, at a certain point, a request is made for a rectangle _above_ the last row decoded, then the
-    decoder instance is terminated and re-initiated, and decoding re-starts, going from the beginning 
+    decoder instance is terminated and re-initiated, and decoding re-starts, going from the beginning
     of the image to the end of the current rectangle.
 
     ***
@@ -141,11 +141,11 @@ typedef enum BITSTREAMFORMAT {
 } BITSTREAMFORMAT;
 
 typedef enum COLORFORMAT {
-    Y_ONLY  = 0, 
+    Y_ONLY  = 0,
 	YUV_420 = 1,
 	YUV_422 = 2,
 	YUV_444 = 3,
-	CMYK    = 4, 
+	CMYK    = 4,
 	//CMYKDIRECT = 5,
 	NCOMPONENT = 6,
 
@@ -294,6 +294,7 @@ struct WMPStream
             size_t cbBuf;
             size_t cbCur;
             size_t cbBufCount;
+            size_t cbLast;
         } buf;
 
         void* pvObj;
@@ -304,7 +305,7 @@ struct WMPStream
     ERR (*Close)(struct WMPStream** pme);
 
     Bool (*EOS)(struct WMPStream* me);
-    
+
     ERR (*Read)(struct WMPStream* me, void* pv, size_t cb);
     ERR (*Write)(struct WMPStream* me, const void* pv, size_t cb);
     //ERR (*GetLine)(struct WMPStream* me, void* pv, size_t cb);
@@ -370,12 +371,12 @@ typedef struct tagCWMIStrCodecParam {
     U8 uiDefaultQPIndexVHP;
     U8 uiDefaultQPIndexAlpha;
 
-    COLORFORMAT cfColorFormat; 
+    COLORFORMAT cfColorFormat;
     BITDEPTH bdBitDepth;
     OVERLAP olOverlap;
     BITSTREAMFORMAT bfBitstreamFormat;
     size_t cChannel; // number of color channels including alpha
-    U8 uAlphaMode; // 0:no alpha 1: alpha only else: something + alpha 
+    U8 uAlphaMode; // 0:no alpha 1: alpha only else: something + alpha
     SUBBAND sbSubband;  // which subbands to keep
     U8  uiTrimFlexBits;
 
@@ -395,13 +396,13 @@ typedef struct tagCWMIStrCodecParam {
     Bool bBlackWhite;
 
     Bool bUseHardTileBoundaries; //default is soft tile boundaries
- 
+
     Bool bProgressiveMode; //default is sequential mode
 
     Bool bYUVData; //default is cfColorFormat data
 
     Bool bUnscaledArith; //force unscaled arithmetic
-   
+
     // Perf measurement
     Bool fMeasurePerf;
 } CWMIStrCodecParam;
@@ -455,7 +456,7 @@ EXTERN_C Int ImageStrDecDecode(
     const CWMImageBufferInfo* pBI
 #ifdef REENTRANT_MODE
     , size_t *pcDecodedLines
-#endif    
+#endif
     );
 
 EXTERN_C Int ImageStrDecTerm(
@@ -477,7 +478,7 @@ typedef struct tagCWMTranscodingParam {
 
     BITSTREAMFORMAT bfBitstreamFormat; // desired bitstream format
 //    COLORFORMAT cfColorFormat; // desired color format
-    U8 uAlphaMode; // 0:no alpha 1: alpha only else: something + alpha 
+    U8 uAlphaMode; // 0:no alpha 1: alpha only else: something + alpha
     SUBBAND sbSubband;  // which subbands to keep
     ORIENTATION oOrientation; // flip / right angle rotation
     Bool bIgnoreOverlap;
