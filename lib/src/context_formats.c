@@ -28,6 +28,9 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
 struct clImage * clFormatReadJP2(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWriteJP2(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
+struct clImage * clFormatReadJXR(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
+clBool clFormatWriteJXR(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
+
 struct clImage * clFormatReadPNG(struct clContext * C, const char * formatName, struct clProfile * overrideProfile, struct clRaw * input);
 clBool clFormatWritePNG(struct clContext * C, struct clImage * image, const char * formatName, struct clRaw * output, struct clWriteParams * writeParams);
 
@@ -173,6 +176,28 @@ void clContextRegisterBuiltinFormats(struct clContext * C)
         format.detectFunc = detectFormatSignature;
         format.readFunc = clFormatReadJP2;
         format.writeFunc = clFormatWriteJP2;
+        clContextRegisterFormat(C, &format);
+    }
+
+    // JXR
+    {
+        // static const unsigned char j2kSig[4] = { 0xFF, 0x4F, 0xFF, 0x51 };
+
+        clFormat format;
+        memset(&format, 0, sizeof(format));
+        format.name = "jxr";
+        format.description = "JPEG-XR (JXR)";
+        format.mimeType = "image/jxr";
+        format.extensions[0] = "jxr";
+        // format.signatures[0] = j2kSig;
+        // format.signatureLengths[0] = sizeof(j2kSig);
+        format.depth = CL_FORMAT_DEPTH_8_TO_16;
+        format.usesQuality = clTrue;
+        format.usesRate = clFalse;
+        format.usesYUVFormat = clFalse;
+        format.detectFunc = detectFormatSignature;
+        format.readFunc = clFormatReadJXR;
+        format.writeFunc = clFormatWriteJXR;
         clContextRegisterFormat(C, &format);
     }
 

@@ -66,6 +66,8 @@ set(WEBP_BUILD_VWEBP OFF CACHE BOOL "")
 set(WEBP_BUILD_WEBPINFO OFF CACHE BOOL "")
 add_subdirectory(libwebp EXCLUDE_FROM_ALL)
 
+add_subdirectory(jxrlib)
+
 include_directories(md5)
 add_library(md5
     md5/md5.c
@@ -175,6 +177,9 @@ set(COLORIST_EXT_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/src/lib/openjp2"
     "${CMAKE_CURRENT_SOURCE_DIR}/openjpeg/thirdparty/include"
     "${OPENJPEG_BINARY_DIR}/src/lib/openjp2"
+    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/common/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/image/sys"
+    "${CMAKE_CURRENT_SOURCE_DIR}/jxrlib/jxrgluelib"
     "${CMAKE_CURRENT_SOURCE_DIR}/md5"
     "${CMAKE_CURRENT_SOURCE_DIR}/unity/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/libwebp/imageio"
@@ -187,6 +192,7 @@ set(COLORIST_EXT_LIBS
     avif
     cjson
     png
+    jxrlib
     lcms2
     openjp2
     md5
@@ -221,6 +227,7 @@ set_folder_safe(cjson "ext")
 set_folder_safe(gb "ext")
 set_folder_safe(genHeader "ext")
 set_folder_safe(jpeg "ext")
+set_folder_safe(jxrlib "ext")
 set_folder_safe(md5 "ext")
 set_folder_safe(lcms2 "ext")
 set_folder_safe(openjp2 "ext/openjpeg")
