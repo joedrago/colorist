@@ -62,6 +62,7 @@ set(COLORIST_LIB_SRCS
     src/format_bmp.c
     src/format_jp2.c
     src/format_jpg.c
+    src/format_jxr.c
     src/format_png.c
     src/format_tiff.c
     src/format_webp.c
