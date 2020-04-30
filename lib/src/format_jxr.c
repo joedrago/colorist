@@ -162,6 +162,7 @@ struct clImage * clFormatReadJXR(struct clContext * C, const char * formatName, 
 
     rect.Width = pDecoder->uWidth;
     rect.Height = pDecoder->uHeight;
+    clImageLogCreate(C, rect.Width, rect.Height, depth, profile);
     image = clImageCreate(C, pDecoder->uWidth, pDecoder->uHeight, depth, profile);
 
     if (!memcmp(&guidPixFormat, &GUID_PKPixelFormat128bppRGBAFloat, sizeof(guidPixFormat))) {
@@ -343,9 +344,11 @@ clBool clFormatWriteJXR(struct clContext * C, struct clImage * image, const char
         clContextLogError(C, "Can't set image size");
         goto cleanup;
     }
-    if (Failed(err = pEncoder->SetColorContext(pEncoder, rawProfile.ptr, (U32)rawProfile.size))) {
-        clContextLogError(C, "Can't set image ICC profile");
-        goto cleanup;
+    if (writeParams->writeProfile) {
+        if (Failed(err = pEncoder->SetColorContext(pEncoder, rawProfile.ptr, (U32)rawProfile.size))) {
+            clContextLogError(C, "Can't set image ICC profile");
+            goto cleanup;
+        }
     }
 
     if (image->depth > 8) {
