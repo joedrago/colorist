@@ -51,6 +51,8 @@ clAction clActionFromString(struct clContext * C, const char * str)
 {
     COLORIST_UNUSED(C);
 
+    if (!strcmp(str, "highlight"))
+        return CL_ACTION_HIGHLIGHT;
     if (!strcmp(str, "identify"))
         return CL_ACTION_IDENTIFY;
     if (!strcmp(str, "id"))
@@ -75,6 +77,8 @@ const char * clActionToString(struct clContext * C, clAction action)
     switch (action) {
         case CL_ACTION_NONE:
             return "--";
+        case CL_ACTION_HIGHLIGHT:
+            return "highlight";
         case CL_ACTION_IDENTIFY:
             return "identify";
         case CL_ACTION_GENERATE:
@@ -995,7 +999,7 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
             if (C->action == CL_ACTION_NONE) {
                 C->action = clActionFromString(C, arg);
                 if (C->action == CL_ACTION_ERROR) {
-                    clContextLogError(C, "unknown action '%s', expecting convert, identify, or generate", arg);
+                    clContextLogError(C, "unknown action '%s', expecting convert, identify, generate, or highlight", arg);
                 }
             } else if (filenames[0] == NULL) {
                 filenames[0] = arg;
@@ -1070,6 +1074,19 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
             }
             break;
 
+        case CL_ACTION_HIGHLIGHT:
+            C->inputFilename = filenames[0];
+            if (!C->inputFilename) {
+                clContextLogError(C, "highlight requires an input filename.");
+                return clFalse;
+            }
+            C->outputFilename = filenames[1];
+            if (!C->outputFilename) {
+                clContextLogError(C, "highlight requires an output filename.");
+                return clFalse;
+            }
+            break;
+
         case CL_ACTION_ERROR:
             return clFalse;
 
@@ -1102,12 +1119,13 @@ void clContextPrintSyntax(clContext * C)
         strcat(formatLine, record->format.name);
     }
 
-    clContextLog(C, NULL, 0, "Syntax: colorist convert  [input]        [output]       [OPTIONS]");
-    clContextLog(C, NULL, 0, "        colorist identify [input]                       [OPTIONS]");
-    clContextLog(C, NULL, 0, "        colorist generate                [output.icc]   [OPTIONS]");
-    clContextLog(C, NULL, 0, "        colorist generate [image string] [output image] [OPTIONS]");
-    clContextLog(C, NULL, 0, "        colorist modify   [input.icc]    [output.icc]   [OPTIONS]");
-    clContextLog(C, NULL, 0, "        colorist calc     [image string]                [OPTIONS]");
+    clContextLog(C, NULL, 0, "Syntax: colorist convert   [input]        [output]       [OPTIONS]");
+    clContextLog(C, NULL, 0, "        colorist identify  [input]                       [OPTIONS]");
+    clContextLog(C, NULL, 0, "        colorist generate                 [output.icc]   [OPTIONS]");
+    clContextLog(C, NULL, 0, "        colorist generate  [image string] [output image] [OPTIONS]");
+    clContextLog(C, NULL, 0, "        colorist modify    [input.icc]    [output.icc]   [OPTIONS]");
+    clContextLog(C, NULL, 0, "        colorist highlight [input]        [output]       [OPTIONS]");
+    clContextLog(C, NULL, 0, "        colorist calc      [image string]                [OPTIONS]");
     clContextLog(C, NULL, 0, "");
     clContextLog(C, NULL, 0, "Basic Options:");
     clContextLog(C, NULL, 0, "    -h,--help                : Display this help");

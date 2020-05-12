@@ -95,6 +95,9 @@ int main(int argc, char * argv[])
         case CL_ACTION_GENERATE:
             ret = clContextGenerate(C, NULL);
             break;
+        case CL_ACTION_HIGHLIGHT:
+            ret = clContextHighlight(C);
+            break;
         case CL_ACTION_IDENTIFY:
             ret = clContextIdentify(C, jsonOutput);
             break;
