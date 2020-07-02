@@ -6,6 +6,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+* Monochrome (YUV400) support **
+  * All encoding/decoding and internal memory savings are done/functional
+  * libaom has a bug in chroma_check() which crashes when encoding monochrome, to be fixed in a future (>v2.0.0) version
+  * rav1e didn't implement CS400 until rav1e v0.4.0
+  * libavif safely falls back to YUV420 when these earlier codec versions are detected
+* Image sequence encoding support
+  * Required medium-sized refactors in the codec layers
+  * Image sequences (tracks) now fully support all metadata properly (Exif/XMP/transforms)
+  * avifenc can now encode a series of same-sized images with a consistent framerate, or each with their own custom duration
+* Bilinear upsampling support
+* avifenc: Add --ignore-icc, which avoids embedding the ICC profile found in the source image
+* avifdec: Add --info, which attempts to decode all frames and display their basic info (merge of avifdump)
+* Added `contrib` dir for any unofficially supported code contributions (e.g. gdk-pixbuf)
+
+### Changed
+* CICP Refactor (breaking change!)
+  * Remove most references to "NCLX", as it is mostly an implementation detail, and the values are really from MPEG-CICP
+  * Eliminate avifProfileFormat: having an ICC profile is not mutually exclusive with signaling CICP
+  * CICP is now always available in an avifImage, set to unspecified by default
+  * Added --cicp as an alias for --nclx (semi-deprecated)
+  * Setting CICP via avifenc no longer overrides ICC profiles, they co-exist
+  * Simplified avifenc argument parsing / warnings logic
+  * avifenc/avifdec/avifdump now all display CICP when dumping AVIF information
+  * nclx colr box contents are guaranteed to override AV1 bitstream CICP (as MIAF standard specifies)
+  * Added comments explaining various decisions and citing standards
+  * Removed ICC inspection code regarding chroma-derived mtxCoeffs; this was overdesigned. Now just honor the assoc. colorPrimaries enum
+  * Reworked all examples in the README to reflect the new state of things, and clean out some cruft
+  * Harvest CICP from AV1 bitstream as a fallback in avifDecoderParse() if nclx box is absent
+* All data other than actual pixel data should be available and valid after a call to avifDecoderParse()
+* Refactor avifDecoder internal structures to properly handle meta boxes in trak boxes (see avifMeta)
+* Update libaom.cmd to point at the v2.0.0 tag
+* Update dav1d.cmd to point at the 0.7.1 tag
+* Re-enable cpu-used=7+ in codec_aom when libaom major version > 1
+* Memory allocation failures now cause libavif to abort the process (rather than undefined behavior)
+* Fix to maintain alpha range when decoding an image grid with alpha
+* Improvements to avifyuv to show drift when yuv and rgb depths differ
+* Remove any references to (incorrect) "av01" brand (wantehchang)
+* Set up libaom to use reduced_still_picture_header (wantehchang)
+* Use libaom cpu_used 6 in "good quality" usage mode (wantehchang)
+
+## [0.7.3] - 2020-05-04
+### Added
+- avifenc: Lossless (--lossless, -l) mode, which sets new defaults and warns when anything would cause the AVIF to not be lossless
+
+### Changed
+- Minor cleanup for -Wclobbered warnings
+- Minor fixes to README and code (fallout from enum rework)
+- Protect against oversized (out of bounds) samples in avif sample tables
+- Optimization: avoid AV1 sample copying when feeding data to dav1d
+
 ## [0.7.2] - 2020-04-24
 ### Added
 - Recognize extensions with capital letters / capslock
@@ -396,7 +447,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.7.3...HEAD
+[0.7.3]: https://github.com/AOMediaCodec/libavif/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/AOMediaCodec/libavif/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/AOMediaCodec/libavif/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/AOMediaCodec/libavif/compare/v0.6.4...v0.7.0

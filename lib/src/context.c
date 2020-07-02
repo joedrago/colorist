@@ -359,8 +359,8 @@ clYUVFormat clYUVFormatFromString(struct clContext * C, const char * str)
         return CL_YUVFORMAT_422;
     if (!strcmp(str, "420"))
         return CL_YUVFORMAT_420;
-    if (!strcmp(str, "yv12"))
-        return CL_YUVFORMAT_YV12;
+    if (!strcmp(str, "400"))
+        return CL_YUVFORMAT_400;
     return CL_YUVFORMAT_INVALID;
 }
 
@@ -375,8 +375,8 @@ const char * clYUVFormatToString(struct clContext * C, clYUVFormat format)
             return "422";
         case CL_YUVFORMAT_420:
             return "420";
-        case CL_YUVFORMAT_YV12:
-            return "yv12";
+        case CL_YUVFORMAT_400:
+            return "400";
         case CL_YUVFORMAT_INVALID:
         default:
             break;
@@ -1142,7 +1142,7 @@ void clContextPrintSyntax(clContext * C)
     clContextLog(C, NULL, 0, "    -q,--quality QUALITY     : Output quality for supported output formats. (default: 90)");
     clContextLog(C, NULL, 0, "    -r,--rate RATE           : Output rate for for supported output formats. If 0, codec uses -q value above instead. (default: 0)");
     clContextLog(C, NULL, 0, "    -t,--tonemap TM          : Set tonemapping. auto (default), on, or off. Tune with optional comma separated vals: contrast=1.0,clip=1.0,speed=1.0,power=1.0");
-    clContextLog(C, NULL, 0, "    --yuv YUVFORMAT          : Choose yuv output format for supported formats. 444 (default), 422, 420, yv12");
+    clContextLog(C, NULL, 0, "    --yuv YUVFORMAT          : Choose yuv output format for supported formats. 444 (default), 422, 420, 400");
     clContextLog(C, NULL, 0, "    --quantizer MIN,MAX      : Choose min and max quantizer values directly instead of using -q (AVIF only, 0-63 range, 0,0 is lossless)");
     clContextLog(C, NULL, 0, "    --tiling ROWS,COLS       : Enable tiling when encoding (AVIF only, 0-6 range, log2 based. Enables 2^ROWS rows and/or 2^COLS cols)");
     clContextLog(C, NULL, 0, "    --codec READ,WRITE       : Specify which internal codec to be used when decoding (AVIF only, auto,auto is default, see libavif version below for choices)");

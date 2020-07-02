@@ -15,8 +15,8 @@
 
 #include <string.h>
 
-static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * nclx);
-static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, avifNclxColorProfile * nclx);
+static clProfile * nclxToclProfile(struct clContext * C, avifImage * avif);
+static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, avifImage * avif);
 static void logAvifImage(struct clContext * C, avifImage * avif, avifIOStats * ioStats);
 
 clBool clFormatDetectAVIF(struct clContext * C, struct clFormat * format, struct clRaw * input);
@@ -95,14 +95,14 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
 
     if (overrideProfile) {
         profile = clProfileClone(C, overrideProfile);
-    } else if (avif->profileFormat == AVIF_PROFILE_FORMAT_NCLX) {
-        profile = nclxToclProfile(C, &avif->nclx);
-    } else if (avif->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
+    } else if (avif->icc.data && avif->icc.size) {
         profile = clProfileParse(C, avif->icc.data, avif->icc.size, NULL);
         if (!profile) {
             clContextLogError(C, "Failed parse ICC profile chunk");
             goto readCleanup;
         }
+    } else {
+        profile = nclxToclProfile(C, avif);
     }
 
     logAvifImage(C, avif, &decoder->ioStats);
@@ -206,8 +206,8 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
         case CL_YUVFORMAT_420:
             avifYUVFormat = AVIF_PIXEL_FORMAT_YUV420;
             break;
-        case CL_YUVFORMAT_YV12:
-            avifYUVFormat = AVIF_PIXEL_FORMAT_YV12;
+        case CL_YUVFORMAT_400:
+            avifYUVFormat = AVIF_PIXEL_FORMAT_YUV400;
             break;
         case CL_YUVFORMAT_INVALID:
         default:
@@ -219,31 +219,28 @@ clBool clFormatWriteAVIF(struct clContext * C, struct clImage * image, const cha
     avif = avifImageCreate(image->width, image->height, image->depth, avifYUVFormat);
 
     if (writeParams->writeProfile) {
-        avifNclxColorProfile nclx;
         if (writeParams->nclx[0] && writeParams->nclx[1] && writeParams->nclx[2]) {
-            nclx.colourPrimaries = (uint16_t)writeParams->nclx[0];
-            nclx.transferCharacteristics = (uint16_t)writeParams->nclx[1];
-            nclx.matrixCoefficients = (uint16_t)writeParams->nclx[2];
-            nclx.range = AVIF_RANGE_FULL;
+            avif->colorPrimaries = (uint16_t)writeParams->nclx[0];
+            avif->transferCharacteristics = (uint16_t)writeParams->nclx[1];
+            avif->matrixCoefficients = (uint16_t)writeParams->nclx[2];
+            avif->yuvRange = AVIF_RANGE_FULL;
             clContextLog(C,
                          "avif",
                          1,
                          "Forcing colr box (nclx): C: %d / T: %d / M: %d / F: 0x%x",
-                         nclx.colourPrimaries,
-                         nclx.transferCharacteristics,
-                         nclx.matrixCoefficients,
-                         nclx.range);
-            avifImageSetProfileNCLX(avif, &nclx);
-        } else if (clProfileToNclx(C, image->profile, &nclx)) {
+                         avif->colorPrimaries,
+                         avif->transferCharacteristics,
+                         avif->matrixCoefficients,
+                         avif->yuvRange);
+        } else if (clProfileToNclx(C, image->profile, avif)) {
             clContextLog(C,
                          "avif",
                          1,
                          "Writing colr box (nclx): C: %d / T: %d / M: %d / F: 0x%x",
-                         nclx.colourPrimaries,
-                         nclx.transferCharacteristics,
-                         nclx.matrixCoefficients,
-                         nclx.range);
-            avifImageSetProfileNCLX(avif, &nclx);
+                         avif->colorPrimaries,
+                         avif->transferCharacteristics,
+                         avif->matrixCoefficients,
+                         avif->yuvRange);
         } else {
             clContextLog(C, "avif", 1, "Writing colr box (icc): %u bytes", (uint32_t)rawProfile.size);
             avifImageSetProfileICC(avif, rawProfile.ptr, rawProfile.size);
@@ -352,10 +349,8 @@ writeCleanup:
     return writeResult;
 }
 
-static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * nclx)
+static clProfile * nclxToclProfile(struct clContext * C, avifImage * avif)
 {
-    COLORIST_UNUSED(nclx);
-
     clProfilePrimaries primaries;
     clProfileCurve curve;
     int maxLuminance;
@@ -368,7 +363,7 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
     maxLuminance = CL_LUMINANCE_UNSPECIFIED;
 
     float prim[8];
-    avifNclxColourPrimariesGetValues(nclx->colourPrimaries, prim);
+    avifColorPrimariesGetValues(avif->colorPrimaries, prim);
     primaries.red[0] = prim[0];
     primaries.red[1] = prim[1];
     primaries.green[0] = prim[2];
@@ -378,21 +373,21 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
     primaries.white[0] = prim[6];
     primaries.white[1] = prim[7];
 
-    switch (nclx->transferCharacteristics) {
-        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_HLG:
+    switch (avif->transferCharacteristics) {
+        case AVIF_TRANSFER_CHARACTERISTICS_HLG:
             curve.type = CL_PCT_HLG;
             curve.gamma = 1.0f;
             break;
-        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_SMPTE2084:
+        case AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084:
             curve.type = CL_PCT_PQ;
             curve.gamma = 1.0f;
             maxLuminance = 10000;
             break;
-        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT470M:
+        case AVIF_TRANSFER_CHARACTERISTICS_BT470M:
             curve.type = CL_PCT_GAMMA;
             curve.gamma = 2.2f;
             break;
-        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT470BG:
+        case AVIF_TRANSFER_CHARACTERISTICS_BT470BG:
             curve.type = CL_PCT_GAMMA;
             curve.gamma = 2.8f;
             break;
@@ -401,7 +396,7 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
                          "avif",
                          1,
                          "WARNING: Unsupported colr (nclx) transfer_characteristics %d, using gamma:%1.1f, lum:%d",
-                         nclx->transferCharacteristics,
+                         avif->transferCharacteristics,
                          curve.gamma,
                          maxLuminance);
             break;
@@ -443,7 +438,7 @@ static clProfile * nclxToclProfile(struct clContext * C, avifNclxColorProfile * 
     return profile;
 }
 
-static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, avifNclxColorProfile * nclx)
+static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, avifImage * avif)
 {
     clProfilePrimaries primaries;
     clProfileCurve curve;
@@ -462,34 +457,34 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
     floatPrimaries[5] = primaries.blue[1];
     floatPrimaries[6] = primaries.white[0];
     floatPrimaries[7] = primaries.white[1];
-    avifNclxColourPrimaries foundNclxPrimaries = avifNclxColourPrimariesFind(floatPrimaries, &primariesName);
-    if (foundNclxPrimaries == AVIF_NCLX_COLOUR_PRIMARIES_UNKNOWN) {
+    avifColorPrimaries foundColorPrimaries = avifColorPrimariesFind(floatPrimaries, &primariesName);
+    if (foundColorPrimaries == AVIF_COLOR_PRIMARIES_UNKNOWN) {
         return clFalse;
     }
 
-    avifNclxMatrixCoefficients matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_UNSPECIFIED;
-    switch (foundNclxPrimaries) {
-        case AVIF_NCLX_COLOUR_PRIMARIES_BT709:
-            matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT709;
+    avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
+    switch (foundColorPrimaries) {
+        case AVIF_COLOR_PRIMARIES_BT709:
+            matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
             break;
-        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT470BG:
-            matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT470BG;
+        case AVIF_COLOR_PRIMARIES_BT470BG:
+            matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT470BG;
             break;
-        case AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT601:
-            matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT601;
+        case AVIF_COLOR_PRIMARIES_BT601:
+            matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
             break;
-        case AVIF_NCLX_COLOUR_PRIMARIES_BT2020:
-            matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_BT2020_NCL;
+        case AVIF_COLOR_PRIMARIES_BT2020:
+            matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT2020_NCL;
             break;
         default:
-            matrixCoefficients = AVIF_NCLX_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL;
+            matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL;
             break;
     }
 
     const char * transferCharacteristicsName = NULL;
-    avifNclxTransferCharacteristics transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_UNKNOWN;
+    avifTransferCharacteristics transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN;
     if ((curve.type == CL_PCT_PQ) && (luminance == 10000)) {
-        transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_SMPTE2084;
+        transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084;
         transferCharacteristicsName = "PQ";
     } else {
         if (luminance != CL_LUMINANCE_UNSPECIFIED) {
@@ -498,28 +493,28 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
         }
 
         if (curve.type == CL_PCT_HLG) {
-            transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_HLG;
+            transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_HLG;
             transferCharacteristicsName = "HLG";
         } else if (curve.type == CL_PCT_GAMMA) {
             if (fabsf(curve.gamma - 2.2f) < 0.001f) {
-                transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT470M;
+                transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_BT470M;
                 transferCharacteristicsName = "2.2g";
             } else if (fabsf(curve.gamma - 2.8f) < 0.001f) {
-                transferCharacteristics = AVIF_NCLX_TRANSFER_CHARACTERISTICS_BT470BG;
+                transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_BT470BG;
                 transferCharacteristicsName = "2.8g";
             }
         }
     }
 
-    if (transferCharacteristics == AVIF_NCLX_TRANSFER_CHARACTERISTICS_UNKNOWN) {
+    if (transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN) {
         return clFalse;
     }
 
     clContextLog(C, "avif", 1, "%s %s color profile detected; switching to nclx colr box.", primariesName, transferCharacteristicsName);
-    nclx->colourPrimaries = (uint16_t)foundNclxPrimaries;
-    nclx->transferCharacteristics = (uint16_t)transferCharacteristics;
-    nclx->matrixCoefficients = (uint16_t)matrixCoefficients;
-    nclx->range = AVIF_RANGE_FULL;
+    avif->colorPrimaries = (uint16_t)foundColorPrimaries;
+    avif->transferCharacteristics = (uint16_t)transferCharacteristics;
+    avif->matrixCoefficients = (uint16_t)matrixCoefficients;
+    avif->yuvRange = AVIF_RANGE_FULL;
     return clTrue;
 }
 
@@ -537,8 +532,8 @@ static void logAvifImage(struct clContext * C, avifImage * avif, avifIOStats * i
         case AVIF_PIXEL_FORMAT_YUV420:
             yuvFormat = CL_YUVFORMAT_420;
             break;
-        case AVIF_PIXEL_FORMAT_YV12:
-            yuvFormat = CL_YUVFORMAT_YV12;
+        case AVIF_PIXEL_FORMAT_YUV400:
+            yuvFormat = CL_YUVFORMAT_400;
             break;
         case AVIF_PIXEL_FORMAT_NONE:
         default:

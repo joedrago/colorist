@@ -9,8 +9,7 @@
 
 // #define DEBUG_TEST_IMAGES 1
 
-#define TEST_IMAGE_STRING \
-    "256x256,#ff0000,#00ff00,#0000ff,#ffff00,#ff00ff,#00ffff,#000000,#ffffff,#990000,#009900,#000099,#999900,#990099,#009999,#000000,#999999"
+#define TEST_IMAGE_STRING "256x256,#ff0000.128.#00ff00,#00ff00.128.#0000ff"
 
 struct clExtInfo
 {
@@ -139,7 +138,7 @@ static void test_ext(struct clExtInfo * extInfo)
                             }
 
                             int threshold = extInfo->threshold;
-                            if ((threshold > 0) && !strcmp(*quality, "100")) {
+                            if ((threshold > 0) && !strcmp(*quality, "100") && !strcmp(*yuv, "444")) {
                                 threshold = 1; // rein in the threshold on lossless
                             }
 
@@ -165,7 +164,7 @@ static void test_ext(struct clExtInfo * extInfo)
 static void test_avif(void)
 {
     struct clExtInfo extInfo = { "avif",
-                                 6,
+                                 10,
                                  { "8", "10", NULL },
                                  { "100", "90", NULL },
                                  { "bt709", "bt2020", NULL },

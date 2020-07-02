@@ -12,11 +12,6 @@
 
 #include "iccjpeg.h"
 
-// This warning triggers false postives way too often in here.
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic ignored "-Wclobbered"
-#endif
-
 struct my_error_mgr
 {
     struct jpeg_error_mgr pub;
@@ -30,30 +25,43 @@ static void my_error_exit(j_common_ptr cinfo)
     longjmp(myerr->setjmp_buffer, 1);
 }
 
-avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, int requestedDepth)
+// Note on setjmp() and volatile variables:
+//
+// K & R, The C Programming Language 2nd Ed, p. 254 says:
+//   ... Accessible objects have the values they had when longjmp was called,
+//   except that non-volatile automatic variables in the function calling setjmp
+//   become undefined if they were changed after the setjmp call.
+//
+// Therefore, 'iccData' is declared as volatile. 'rgb' should be declared as
+// volatile, but doing so would be inconvenient (try it) and since it is a
+// struct, the compiler is unlikely to put it in a register. 'ret' does not need
+// to be declared as volatile because it is not modified between setjmp and
+// longjmp. But GCC's -Wclobbered warning may have trouble figuring that out, so
+// we preemptively declare it as volatile.
+
+avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFormat requestedFormat, uint32_t requestedDepth)
 {
-    avifBool ret = AVIF_FALSE;
-    FILE * f = NULL;
-    uint8_t * iccData = NULL;
+    volatile avifBool ret = AVIF_FALSE;
+    uint8_t * volatile iccData = NULL;
 
     avifRGBImage rgb;
     memset(&rgb, 0, sizeof(avifRGBImage));
+
+    FILE * f = fopen(inputFilename, "rb");
+    if (!f) {
+        fprintf(stderr, "Can't open JPEG file for read: %s\n", inputFilename);
+        goto cleanup;
+    }
 
     struct my_error_mgr jerr;
     struct jpeg_decompress_struct cinfo;
     cinfo.err = jpeg_std_error(&jerr.pub);
     jerr.pub.error_exit = my_error_exit;
     if (setjmp(jerr.setjmp_buffer)) {
-        return AVIF_FALSE;
+        goto cleanup;
     }
 
     jpeg_create_decompress(&cinfo);
-
-    f = fopen(inputFilename, "rb");
-    if (!f) {
-        fprintf(stderr, "Can't open JPEG file for read: %s\n", inputFilename);
-        goto cleanup;
-    }
 
     setup_read_icc_profile(&cinfo);
     jpeg_stdio_src(&cinfo, f);
@@ -63,13 +71,11 @@ avifBool avifJPEGRead(avifImage * avif, const char * inputFilename, avifPixelFor
     int row_stride = cinfo.output_width * cinfo.output_components;
     JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr)&cinfo, JPOOL_IMAGE, row_stride, 1);
 
+    uint8_t * iccDataTmp;
     unsigned int iccDataLen;
-    if (read_icc_profile(&cinfo, &iccData, &iccDataLen)) {
-        if (avif->profileFormat == AVIF_PROFILE_FORMAT_NONE) {
-            avifImageSetProfileICC(avif, iccData, (size_t)iccDataLen);
-        } else {
-            fprintf(stderr, "WARNING: JPEG contains ICC profile which is being overridden with --nclx\n");
-        }
+    if (read_icc_profile(&cinfo, &iccDataTmp, &iccDataLen)) {
+        iccData = iccDataTmp;
+        avifImageSetProfileICC(avif, iccDataTmp, (size_t)iccDataLen);
     }
 
     avif->width = cinfo.output_width;
@@ -102,7 +108,7 @@ cleanup:
     return ret;
 }
 
-avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQuality)
+avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQuality, avifChromaUpsampling chromaUpsampling)
 {
     avifBool ret = AVIF_FALSE;
     FILE * f = NULL;
@@ -113,6 +119,7 @@ avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQu
     avifRGBImage rgb;
     avifRGBImageSetDefaults(&rgb, avif);
     rgb.format = AVIF_RGB_FORMAT_RGB;
+    rgb.chromaUpsampling = chromaUpsampling;
     rgb.depth = 8;
     avifRGBImageAllocatePixels(&rgb);
     avifImageYUVToRGB(avif, &rgb);
@@ -138,7 +145,7 @@ avifBool avifJPEGWrite(avifImage * avif, const char * outputFilename, int jpegQu
     jpeg_set_quality(&cinfo, jpegQuality, TRUE);
     jpeg_start_compress(&cinfo, TRUE);
 
-    if (avif->profileFormat == AVIF_PROFILE_FORMAT_ICC) {
+    if (avif->icc.data && (avif->icc.size > 0)) {
         write_icc_profile(&cinfo, avif->icc.data, (unsigned int)avif->icc.size);
     }
 

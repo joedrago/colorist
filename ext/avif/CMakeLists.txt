@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.5)
 # and find_package()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
-project(libavif LANGUAGES C CXX VERSION 0.7.2)
+project(libavif LANGUAGES C CXX VERSION 0.7.3)
 
 # SOVERSION scheme: MAJOR.MINOR.PATCH
 #   If there was an incompatible interface change:
@@ -18,7 +18,7 @@ project(libavif LANGUAGES C CXX VERSION 0.7.2)
 #     Increment PATCH.
 set(LIBRARY_VERSION_MAJOR 4)
 set(LIBRARY_VERSION_MINOR 0)
-set(LIBRARY_VERSION_PATCH 0)
+set(LIBRARY_VERSION_PATCH 1)
 set(LIBRARY_VERSION "${LIBRARY_VERSION_MAJOR}.${LIBRARY_VERSION_MINOR}.${LIBRARY_VERSION_PATCH}")
 set(LIBRARY_SOVERSION ${LIBRARY_VERSION_MAJOR})
 
@@ -118,6 +118,7 @@ set(AVIF_SRCS
     src/avif.c
     src/colr.c
     src/mem.c
+    src/obu.c
     src/rawdata.c
     src/read.c
     src/reformat.c
@@ -208,12 +209,9 @@ if(AVIF_CODEC_RAV1E)
     )
 
     if(AVIF_LOCAL_RAV1E)
-        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/target/release/rav1e.lib")
+        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/target/release/${CMAKE_STATIC_LIBRARY_PREFIX}rav1e${CMAKE_STATIC_LIBRARY_SUFFIX}")
         if(NOT EXISTS "${LIB_FILENAME}")
-            set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/rav1e/target/release/librav1e.a")
-            if(NOT EXISTS "${LIB_FILENAME}")
-                message(FATAL_ERROR "libavif: compiled rav1e library is missing (in ext/rav1e/target/release), bailing out")
-            endif()
+            message(FATAL_ERROR "libavif: compiled rav1e library is missing (in ext/rav1e/target/release), bailing out")
         endif()
 
         set(AVIF_CODEC_INCLUDES ${AVIF_CODEC_INCLUDES}
@@ -244,11 +242,7 @@ if(AVIF_CODEC_AOM)
         src/codec_aom.c
     )
     if(AVIF_LOCAL_AOM)
-        if(WIN32)
-            set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/aom.lib")
-        else()
-            set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/libaom.a")
-        endif()
+        set(LIB_FILENAME "${CMAKE_CURRENT_SOURCE_DIR}/ext/aom/build.libavif/${CMAKE_STATIC_LIBRARY_PREFIX}aom${CMAKE_STATIC_LIBRARY_SUFFIX}")
         if(NOT EXISTS "${LIB_FILENAME}")
             message(FATAL_ERROR "libavif: ${LIB_FILENAME} is missing, bailing out")
         endif()
@@ -338,17 +332,6 @@ if(AVIF_BUILD_APPS)
     endif()
     target_link_libraries(avifdec avif ${AVIF_PLATFORM_LIBRARIES} ${ZLIB_LIBRARY} ${PNG_LIBRARY} ${JPEG_LIBRARY})
     target_include_directories(avifdec PRIVATE apps/shared ${ZLIB_INCLUDE_DIR} ${PNG_PNG_INCLUDE_DIR} ${JPEG_INCLUDE_DIR})
-
-    add_executable(avifdump
-        apps/avifdump.c
-
-        apps/shared/avifutil.c
-    )
-    if(AVIF_LOCAL_LIBGAV1)
-        set_target_properties(avifdump PROPERTIES LINKER_LANGUAGE "CXX")
-    endif()
-    target_link_libraries(avifdump avif ${AVIF_PLATFORM_LIBRARIES})
-    target_include_directories(avifdump PRIVATE apps/shared)
 
     if(NOT SKIP_INSTALL_APPS AND NOT SKIP_INSTALL_ALL)
         install(TARGETS avifenc avifdec
@@ -455,4 +438,4 @@ if(WIN32)
     endif()
 endif()
 
-# ---------------------------------------------------------------------------------------
+add_subdirectory(contrib)

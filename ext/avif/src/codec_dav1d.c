@@ -26,6 +26,13 @@ struct avifCodecInternal
     uint32_t inputSampleIndex;
 };
 
+static void avifDav1dFreeCallback(const uint8_t * buf, void * cookie)
+{
+    // This data is owned by the decoder; nothing to free here
+    (void)buf;
+    (void)cookie;
+}
+
 static void dav1dCodecDestroyInternal(avifCodec * codec)
 {
     if (codec->internal->dav1dData.sz) {
@@ -45,12 +52,12 @@ static avifBool dav1dFeedData(avifCodec * codec)
 {
     if (!codec->internal->dav1dData.sz) {
         if (codec->internal->inputSampleIndex < codec->decodeInput->samples.count) {
-            avifSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
+            avifDecodeSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
             ++codec->internal->inputSampleIndex;
 
-            // OPTIMIZE: Carefully switch this to use dav1d_data_wrap or dav1d_data_wrap_user_data
-            uint8_t * dav1dDataPtr = dav1d_data_create(&codec->internal->dav1dData, sample->data.size);
-            memcpy(dav1dDataPtr, sample->data.data, sample->data.size);
+            if (dav1d_data_wrap(&codec->internal->dav1dData, sample->data.data, sample->data.size, avifDav1dFreeCallback, NULL) != 0) {
+                return AVIF_FALSE;
+            }
         } else {
             // No more data
             return AVIF_FALSE;
@@ -119,6 +126,8 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         avifPixelFormat yuvFormat = AVIF_PIXEL_FORMAT_NONE;
         switch (dav1dImage->p.layout) {
             case DAV1D_PIXEL_LAYOUT_I400:
+                yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
+                break;
             case DAV1D_PIXEL_LAYOUT_I420:
                 yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
                 break;
@@ -144,25 +153,20 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         image->yuvFormat = yuvFormat;
         image->yuvRange = codec->internal->colorRange;
 
-        if (image->profileFormat == AVIF_PROFILE_FORMAT_NONE) {
-            // If the AVIF container doesn't provide a color profile, allow the AV1 OBU to provide one as a fallback
-            avifNclxColorProfile nclx;
-            nclx.colourPrimaries = (avifNclxColourPrimaries)dav1dImage->seq_hdr->pri;
-            nclx.transferCharacteristics = (avifNclxTransferCharacteristics)dav1dImage->seq_hdr->trc;
-            nclx.matrixCoefficients = (avifNclxMatrixCoefficients)dav1dImage->seq_hdr->mtrx;
-            nclx.range = image->yuvRange;
-            avifImageSetProfileNCLX(image, &nclx);
-        }
+        image->colorPrimaries = (avifColorPrimaries)dav1dImage->seq_hdr->pri;
+        image->transferCharacteristics = (avifTransferCharacteristics)dav1dImage->seq_hdr->trc;
+        image->matrixCoefficients = (avifMatrixCoefficients)dav1dImage->seq_hdr->mtrx;
 
         avifPixelFormatInfo formatInfo;
         avifGetPixelFormatInfo(yuvFormat, &formatInfo);
 
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
-        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+        int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
+        for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
             image->yuvPlanes[yuvPlane] = dav1dImage->data[yuvPlane];
             image->yuvRowBytes[yuvPlane] = (uint32_t)dav1dImage->stride[(yuvPlane == AVIF_CHAN_Y) ? 0 : 1];
         }
-        image->decoderOwnsYUVPlanes = AVIF_TRUE;
+        image->imageOwnsYUVPlanes = AVIF_FALSE;
     } else {
         // Alpha plane - ensure image is correct size, fill color
 
@@ -181,7 +185,7 @@ static avifBool dav1dCodecGetNextImage(avifCodec * codec, avifImage * image)
         image->alphaPlane = dav1dImage->data[0];
         image->alphaRowBytes = (uint32_t)dav1dImage->stride[0];
         image->alphaRange = codec->internal->colorRange;
-        image->decoderOwnsAlphaPlane = AVIF_TRUE;
+        image->imageOwnsAlphaPlane = AVIF_FALSE;
     }
     return AVIF_TRUE;
 }

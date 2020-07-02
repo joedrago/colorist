@@ -42,7 +42,7 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
     // Check if there are more samples to feed
     if (codec->internal->inputSampleIndex < codec->decodeInput->samples.count) {
         // Feed another sample
-        avifSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
+        avifDecodeSample * sample = &codec->decodeInput->samples.sample[codec->internal->inputSampleIndex];
         ++codec->internal->inputSampleIndex;
         if (Libgav1DecoderEnqueueFrame(codec->internal->gav1Decoder,
                                        sample->data.data,
@@ -80,6 +80,8 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
         avifPixelFormat yuvFormat = AVIF_PIXEL_FORMAT_NONE;
         switch (gav1Image->image_format) {
             case kLibgav1ImageFormatMonochrome400:
+                yuvFormat = AVIF_PIXEL_FORMAT_YUV400;
+                break;
             case kLibgav1ImageFormatYuv420:
                 yuvFormat = AVIF_PIXEL_FORMAT_YUV420;
                 break;
@@ -106,26 +108,21 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
         image->yuvFormat = yuvFormat;
         image->yuvRange = codec->internal->colorRange;
 
-        if (image->profileFormat == AVIF_PROFILE_FORMAT_NONE) {
-            // If the AVIF container doesn't provide a color profile, allow the AV1 OBU to provide one as a fallback
-            avifNclxColorProfile nclx;
-            nclx.colourPrimaries = (avifNclxColourPrimaries)gav1Image->color_primary;
-            nclx.transferCharacteristics = (avifNclxTransferCharacteristics)gav1Image->transfer_characteristics;
-            nclx.matrixCoefficients = (avifNclxMatrixCoefficients)gav1Image->matrix_coefficients;
-            nclx.range = image->yuvRange;
-            avifImageSetProfileNCLX(image, &nclx);
-        }
+        image->colorPrimaries = (avifColorPrimaries)gav1Image->color_primary;
+        image->transferCharacteristics = (avifTransferCharacteristics)gav1Image->transfer_characteristics;
+        image->matrixCoefficients = (avifMatrixCoefficients)gav1Image->matrix_coefficients;
 
         avifPixelFormatInfo formatInfo;
         avifGetPixelFormatInfo(yuvFormat, &formatInfo);
 
         // Steal the pointers from the decoder's image directly
         avifImageFreePlanes(image, AVIF_PLANES_YUV);
-        for (int yuvPlane = 0; yuvPlane < 3; ++yuvPlane) {
+        int yuvPlaneCount = (yuvFormat == AVIF_PIXEL_FORMAT_YUV400) ? 1 : 3;
+        for (int yuvPlane = 0; yuvPlane < yuvPlaneCount; ++yuvPlane) {
             image->yuvPlanes[yuvPlane] = gav1Image->plane[yuvPlane];
             image->yuvRowBytes[yuvPlane] = gav1Image->stride[yuvPlane];
         }
-        image->decoderOwnsYUVPlanes = AVIF_TRUE;
+        image->imageOwnsYUVPlanes = AVIF_FALSE;
     } else {
         // Alpha plane - ensure image is correct size, fill color
 
@@ -144,7 +141,7 @@ static avifBool gav1CodecGetNextImage(avifCodec * codec, avifImage * image)
         image->alphaPlane = gav1Image->plane[0];
         image->alphaRowBytes = gav1Image->stride[0];
         image->alphaRange = codec->internal->colorRange;
-        image->decoderOwnsAlphaPlane = AVIF_TRUE;
+        image->imageOwnsAlphaPlane = AVIF_FALSE;
     }
 
     return AVIF_TRUE;

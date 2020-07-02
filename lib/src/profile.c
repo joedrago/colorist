@@ -111,7 +111,7 @@ clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, size_t icc
         clFree(profile);
         return NULL;
     }
-    if (description) {
+    if (description && description[0]) {
         profile->description = clContextStrdup(C, description);
     } else {
         char * embeddedDescription = clProfileGetMLU(C, profile, "desc", "en", "US");
