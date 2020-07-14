@@ -334,8 +334,6 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
 
     // Various observations and limits
     const avifBool hasColor = (uPlane && vPlane && (image->yuvFormat != AVIF_PIXEL_FORMAT_YUV400));
-    const uint32_t uvIMax = ((image->width + state->formatInfo.chromaShiftX) >> state->formatInfo.chromaShiftX) - 1;
-    const uint32_t uvJMax = ((image->height + state->formatInfo.chromaShiftY) >> state->formatInfo.chromaShiftY) - 1;
     const uint16_t yuvMaxChannel = (uint16_t)((1 << image->depth) - 1);
     const float rgbMaxChannel = (float)((1 << rgb->depth) - 1);
 
@@ -394,30 +392,30 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                     // *   *   *   *
                     //
                     // When converting from YUV420 to RGB, for any given "high-resolution" RGB
-                    // coordinate (1,2,3,4,*) in a 2x2 grid, there are up to four "low-resolution"
-                    // UV samples (A,B,C,D) that are "nearest" to the pixel. For RGB pixel #1, A is
-                    // the closest UV sample, B and C are "adjacent" to it on the row and column,
-                    // and D is the diagonal. For RGB pixel 3, C is the closest UV sample, A and D
-                    // are adjacent, and B is the diagonal. Sometimes the adjacent pixel on the same
-                    // row is to the left or right, and sometimes the adjacent pixel on the same
-                    // column is up or down. For any edge or corner, there might only be only one
-                    // or two samples nearby, so they'll be duplicated.
+                    // coordinate (1,2,3,4,*), there are up to four "low-resolution" UV samples
+                    // (A,B,C,D) that are "nearest" to the pixel. For RGB pixel #1, A is the closest
+                    // UV sample, B and C are "adjacent" to it on the same row and column, and D is
+                    // the diagonal. For RGB pixel 3, C is the closest UV sample, A and D are
+                    // adjacent, and B is the diagonal. Sometimes the adjacent pixel on the same row
+                    // is to the left or right, and sometimes the adjacent pixel on the same column
+                    // is up or down. For any edge or corner, there might only be only one or two
+                    // samples nearby, so they'll be duplicated.
                     //
                     // The following code attempts to find all four nearest UV samples and put them
                     // in the following unormU and unormV grid as follows:
                     //
                     // unorm[0][0] = closest         ( weights: bilinear: 9/16, nearest: 1 )
-                    // unorm[1][0] = adjacent row    ( weights: bilinear: 3/16, nearest: 0 )
-                    // unorm[0][1] = adjacent col    ( weights: bilinear: 3/16, nearest: 0 )
+                    // unorm[1][0] = adjacent col    ( weights: bilinear: 3/16, nearest: 0 )
+                    // unorm[0][1] = adjacent row    ( weights: bilinear: 3/16, nearest: 0 )
                     // unorm[1][1] = diagonal        ( weights: bilinear: 1/16, nearest: 0 )
                     //
                     // It then weights them according to the requested upsampling set in avifRGBImage.
 
                     uint16_t unormU[2][2], unormV[2][2];
 
-                    // How many bytes to add to a pointer index to get to the adjacent (lesser) sample in a given direction
+                    // How many bytes to add to a uint8_t pointer index to get to the adjacent (lesser) sample in a given direction
                     int uAdjCol, vAdjCol, uAdjRow, vAdjRow;
-                    if ((uvI == 0) || (uvI == uvIMax)) {
+                    if ((i == 0) || ((i == (image->width - 1)) && ((i % 2) != 0))) {
                         uAdjCol = 0;
                         vAdjCol = 0;
                     } else {
@@ -433,7 +431,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                     // For YUV422, uvJ will always be a fresh value (always corresponds to j), so
                     // we'll simply duplicate the sample as if we were on the top or bottom row and
                     // it'll behave as plain old linear (1D) upsampling, which is all we want.
-                    if ((uvJ == 0) || (uvJ == uvJMax) || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422)) {
+                    if ((j == 0) || ((j == (image->height - 1)) && ((j % 2) != 0)) || (image->yuvFormat == AVIF_PIXEL_FORMAT_YUV422)) {
                         uAdjRow = 0;
                         vAdjRow = 0;
                     } else {
@@ -454,7 +452,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                         unormU[0][1] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjRow];
                         unormV[0][1] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjRow];
                         unormU[1][1] = uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + uAdjRow];
-                        unormV[1][1] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + vAdjRow];
+                        unormV[1][1] = vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol + vAdjRow];
                     } else {
                         unormU[0][0] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes)]);
                         unormV[0][0] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes)]);
@@ -463,7 +461,7 @@ static avifResult avifImageYUVAnyToRGBAnySlow(const avifImage * image, avifRGBIm
                         unormU[0][1] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjRow]);
                         unormV[0][1] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjRow]);
                         unormU[1][1] = *((const uint16_t *)&uPlane[(uvJ * uRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + uAdjRow]);
-                        unormV[1][1] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + uAdjCol + vAdjRow]);
+                        unormV[1][1] = *((const uint16_t *)&vPlane[(uvJ * vRowBytes) + (uvI * yuvChannelBytes) + vAdjCol + vAdjRow]);
 
                         // clamp incoming data to protect against bad LUT lookups
                         for (int bJ = 0; bJ < 2; ++bJ) {

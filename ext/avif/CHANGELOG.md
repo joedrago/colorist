@@ -6,12 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2020-07-14
+
 ### Added
 * Monochrome (YUV400) support **
   * All encoding/decoding and internal memory savings are done/functional
   * libaom has a bug in chroma_check() which crashes when encoding monochrome, to be fixed in a future (>v2.0.0) version
   * rav1e didn't implement CS400 until rav1e v0.4.0
   * libavif safely falls back to YUV420 when these earlier codec versions are detected
+    * NOTE: If you want to do heavy monochrome testing, wait for newer versions to libaom/rav1e!
 * Image sequence encoding support
   * Required medium-sized refactors in the codec layers
   * Image sequences (tracks) now fully support all metadata properly (Exif/XMP/transforms)
@@ -19,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Bilinear upsampling support
 * avifenc: Add --ignore-icc, which avoids embedding the ICC profile found in the source image
 * avifdec: Add --info, which attempts to decode all frames and display their basic info (merge of avifdump)
+* avifenc: add --tilerowslog2 and --tilecolslog2 (wantehchang)
 * Added `contrib` dir for any unofficially supported code contributions (e.g. gdk-pixbuf)
 
 ### Changed
@@ -46,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Remove any references to (incorrect) "av01" brand (wantehchang)
 * Set up libaom to use reduced_still_picture_header (wantehchang)
 * Use libaom cpu_used 6 in "good quality" usage mode (wantehchang)
+* Update avifBitsReadUleb128 with latest dav1d code (wantehchang)
+* Set encoder chroma sample position (wantehchang)
 
 ## [0.7.3] - 2020-05-04
 ### Added
@@ -447,7 +453,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constants `AVIF_VERSION`, `AVIF_VERSION_MAJOR`, `AVIF_VERSION_MINOR`, `AVIF_VERSION_PATCH`
 - `avifVersion()` function
 
-[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/libavif/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/AOMediaCodec/libavif/compare/v0.7.3...v0.8.0
 [0.7.3]: https://github.com/AOMediaCodec/libavif/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/AOMediaCodec/libavif/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/AOMediaCodec/libavif/compare/v0.7.0...v0.7.1

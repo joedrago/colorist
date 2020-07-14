@@ -403,8 +403,8 @@ AVIF_ARRAY_DECLARE(avifTileArray, avifTile, tile);
 typedef struct avifMeta
 {
     // Items (from HEIF) are the generic storage for any data that does not require timed processing
-    // (single image color planes, alpha planes, EXIF, XMP, etc). Each item a unique integer ID >1,
-    // and are defined by a series of child boxes in a meta box:
+    // (single image color planes, alpha planes, EXIF, XMP, etc). Each item has a unique integer ID >1,
+    // and is defined by a series of child boxes in a meta box:
     //  * iloc - location:     byte offset to item data, item size in bytes
     //  * iinf - information:  type of item (color planes, alpha plane, EXIF, XMP)
     //  * ipco - properties:   dimensions, aspect ratio, image transformations, references to other items
@@ -425,10 +425,10 @@ typedef struct avifMeta
     avifDecoderItemDataArray idats;
 
     // Ever-incrementing ID for uniquely identifying which 'meta' box contains an idat (when
-    // multiple meta boxes exist as BMFF siblings) Each time avifParseMetaBox() is called on an
+    // multiple meta boxes exist as BMFF siblings). Each time avifParseMetaBox() is called on an
     // avifMeta struct, this value is incremented. Any time an additional meta box is detected at
     // the same "level" (root level, trak level, etc), this ID helps distinguish which meta box's
-    // "idat" are which, as items implicitly reference idat boxes that exist in the same meta
+    // "idat" is which, as items implicitly reference idat boxes that exist in the same meta
     // box.
     uint32_t idatID;
 
@@ -2310,6 +2310,18 @@ avifResult avifDecoderReset(avifDecoder * decoder)
             decoder->image->height = 0;
         }
         decoder->alphaPresent = (alphaOBUItem != NULL);
+    }
+
+    // Sanity check tiles
+    for (uint32_t tileIndex = 0; tileIndex < data->tiles.count; ++tileIndex) {
+        avifTile * tile = &data->tiles.tile[tileIndex];
+        for (uint32_t sampleIndex = 0; sampleIndex < tile->input->samples.count; ++sampleIndex) {
+            avifDecodeSample * sample = &tile->input->samples.sample[sampleIndex];
+            if (!sample->data.data || !sample->data.size) {
+                // Every sample must have some data
+                return AVIF_RESULT_BMFF_PARSE_FAILED;
+            }
+        }
     }
 
     const avifProperty * colrProp = avifPropertyArrayFind(colorProperties, "colr");
