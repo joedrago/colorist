@@ -363,7 +363,7 @@ struct clImage * clFormatReadTIFF(struct clContext * C, const char * formatName,
                     }
                 } else {
                     for (int x = image->width - 1; x >= 0; --x) {
-                        uint16_t * srcPixel = (uint16_t *)&pixelRow[x * 1 * sizeof(uint16_t)];
+                        uint16_t * srcPixel = (uint16_t *)&pixelRow[x * 3 * sizeof(uint16_t)];
                         uint16_t * dstPixel = (uint16_t *)&pixelRow[x * 4 * sizeof(uint16_t)];
                         dstPixel[3] = 65535;
                         dstPixel[2] = srcPixel[2];
