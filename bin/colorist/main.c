@@ -98,6 +98,9 @@ int main(int argc, char * argv[])
         case CL_ACTION_IDENTIFY:
             ret = clContextIdentify(C, jsonOutput);
             break;
+        case CL_ACTION_HIGHLIGHT:
+            ret = clContextHighlight(C);
+            break;
         case CL_ACTION_MODIFY:
             ret = clContextModify(C);
             break;
