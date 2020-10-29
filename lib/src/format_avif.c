@@ -68,7 +68,8 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
     }
     clContextLog(C, "avif", 1, "AV1 codec (decode): %s", codecName);
 
-    avifResult decodeResult = avifDecoderParse(decoder, &raw);
+    avifDecoderSetIOMemory(decoder, raw.data, raw.size);
+    avifResult decodeResult = avifDecoderParse(decoder);
     if (decodeResult != AVIF_RESULT_OK) {
         clContextLogError(C, "Failed to parse AVIF (%s)", avifResultToString(decodeResult));
         goto readCleanup;
