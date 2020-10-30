@@ -392,7 +392,21 @@ static clProfile * nclxToclProfile(struct clContext * C, avifImage * avif)
             curve.type = CL_PCT_GAMMA;
             curve.gamma = 2.8f;
             break;
-        default:
+
+        case AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN:
+        case AVIF_TRANSFER_CHARACTERISTICS_BT709:
+        case AVIF_TRANSFER_CHARACTERISTICS_UNSPECIFIED:
+        case AVIF_TRANSFER_CHARACTERISTICS_BT601:
+        case AVIF_TRANSFER_CHARACTERISTICS_SMPTE240:
+        case AVIF_TRANSFER_CHARACTERISTICS_LINEAR:
+        case AVIF_TRANSFER_CHARACTERISTICS_LOG100:
+        case AVIF_TRANSFER_CHARACTERISTICS_LOG100_SQRT10:
+        case AVIF_TRANSFER_CHARACTERISTICS_IEC61966:
+        case AVIF_TRANSFER_CHARACTERISTICS_BT1361:
+        case AVIF_TRANSFER_CHARACTERISTICS_SRGB:
+        case AVIF_TRANSFER_CHARACTERISTICS_BT2020_10BIT:
+        case AVIF_TRANSFER_CHARACTERISTICS_BT2020_12BIT:
+        case AVIF_TRANSFER_CHARACTERISTICS_SMPTE428:
             clContextLog(C,
                          "avif",
                          1,
@@ -471,13 +485,22 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
         case AVIF_COLOR_PRIMARIES_BT470BG:
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT470BG;
             break;
+        case AVIF_COLOR_PRIMARIES_UNSPECIFIED:
         case AVIF_COLOR_PRIMARIES_BT601:
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
             break;
         case AVIF_COLOR_PRIMARIES_BT2020:
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT2020_NCL;
             break;
-        default:
+
+        case AVIF_COLOR_PRIMARIES_UNKNOWN:
+        case AVIF_COLOR_PRIMARIES_BT470M:
+        case AVIF_COLOR_PRIMARIES_SMPTE240:
+        case AVIF_COLOR_PRIMARIES_GENERIC_FILM:
+        case AVIF_COLOR_PRIMARIES_XYZ:
+        case AVIF_COLOR_PRIMARIES_SMPTE431:
+        case AVIF_COLOR_PRIMARIES_SMPTE432:
+        case AVIF_COLOR_PRIMARIES_EBU3213:
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_CHROMA_DERIVED_NCL;
             break;
     }

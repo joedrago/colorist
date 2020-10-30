@@ -126,7 +126,7 @@ clBool clFormatWriteJPG(struct clContext * C, struct clImage * image, const char
     JSAMPROW row_pointer[1];
     int row_stride;
     unsigned char * outbuffer = NULL;
-    size_t outsize = 0;
+    unsigned long outsize = 0;
 
     clRaw rawProfile = CL_RAW_EMPTY;
     if (!clProfilePack(C, image->profile, &rawProfile)) {
