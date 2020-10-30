@@ -8,7 +8,7 @@ I am also the author of those tools (and `libavif`), and they're actually what y
 
 You can get it here:
 
-https://github.com/AOMediaCodec/libavif
+[https://github.com/AOMediaCodec/libavif](https://github.com/AOMediaCodec/libavif)
 
 Or if you don't mind a slightly out-of-date version, you can get it on macOS similarly to `colorist`:
 
