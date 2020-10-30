@@ -1,3 +1,23 @@
+# AVIF Enthusiasts - Please Read --
+
+If you're here because you're excited to make AVIFs and you've heard `colorist` can do it:
+
+**Please use `avifenc` and `avifdec` instead.**
+
+I am also the author of those tools (and `libavif`), and they're actually what you want. `colorist` is about hijacking ICC profiles to pack HDR images where they don't belong, and analyzing HDR. `avifenc` is a full-featured AVIF-standard-compliant AVIF generator. Please use it! 
+
+You can get it here:
+
+https://github.com/AOMediaCodec/libavif
+
+Or if you don't mind a slightly out-of-date version, you can get it on macOS similarly to `colorist`:
+
+`brew install joedrago/repo/avifenc`
+
+(That is an unofficial install, but I try to keep it *reasonably* up-to-date.)
+
+Finally [here is a more detailed explanation](https://github.com/joedrago/colorist/issues/26#issuecomment-672261215) of why I'm recommending this.
+
 # Installation
 
 ### macOS
