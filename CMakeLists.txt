@@ -85,6 +85,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     -Wno-switch-enum
     -Wno-undef
   )
+  # The detection of cross compilation by -Wpoison-system-directories has false positives on macOS because
+  # --sysroot is implicitly added. Turn the warning off.
+  check_c_compiler_flag(-Wpoison-system-directories HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
+  if(HAVE_POISON_SYSTEM_DIRECTORIES_WARNING)
+      add_definitions(-Wno-poison-system-directories)
+  endif()
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=c99) # Enforce C99 for gcc
   MESSAGE(STATUS "Enabling warnings (for colorist lib/bin) for GCC")
