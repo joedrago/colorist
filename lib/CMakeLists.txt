@@ -41,10 +41,12 @@ set(COLORIST_LIB_INCLUDES
     include/colorist/embedded.h
     ${CMAKE_CURRENT_BINARY_DIR}/pqCurveBinary.h
     ${CMAKE_CURRENT_BINARY_DIR}/hlgCurveBinary.h
+    ${CMAKE_CURRENT_BINARY_DIR}/srgbCurveBinary.h
 )
 
 generate_headers(raw/pqCurve.bin)
 generate_headers(raw/hlgCurve.bin)
+generate_headers(raw/srgbCurve.bin)
 
 set(COLORIST_LIB_SRCS
     src/context.c

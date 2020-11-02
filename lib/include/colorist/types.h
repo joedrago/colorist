@@ -14,9 +14,6 @@
 // for uint*_t
 #include <stdint.h>
 
-// Gamma for sRGB (sRGB is not exactly 2.2, but is closest)
-#define COLORIST_SRGB_GAMMA 2.2f
-
 int clFileSize(const char * filename);
 
 #define COLORIST_WARNING(MSG)                       \

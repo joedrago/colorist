@@ -787,6 +787,9 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 } else if (!strcmp(arg, "pq")) {
                     C->params.curveType = CL_PCT_PQ;
                     C->params.gamma = 1.0f;
+                } else if (!strcmp(arg, "srgb")) {
+                    C->params.curveType = CL_PCT_SRGB;
+                    C->params.gamma = 1.0f;
                 } else if (arg[0] == 's') {
                     C->params.curveType = CL_PCT_GAMMA;
                     C->params.gamma = -1.0f; // Use source gamma

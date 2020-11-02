@@ -34,6 +34,7 @@ typedef enum clTransformTransferFunction
 {
     CL_XTF_NONE = 0,
     CL_XTF_GAMMA,
+    CL_XTF_SRGB,
     CL_XTF_HLG,
     CL_XTF_PQ
 } clTransformTransferFunction;

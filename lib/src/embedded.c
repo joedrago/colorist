@@ -2,3 +2,4 @@
 
 #include "hlgCurveBinary.h"
 #include "pqCurveBinary.h"
+#include "srgbCurveBinary.h"
