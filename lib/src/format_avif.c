@@ -392,6 +392,10 @@ static clProfile * nclxToclProfile(struct clContext * C, avifImage * avif)
             curve.type = CL_PCT_GAMMA;
             curve.gamma = 2.8f;
             break;
+        case AVIF_TRANSFER_CHARACTERISTICS_SRGB:
+            curve.type = CL_PCT_SRGB;
+            curve.gamma = 1.0f;
+            break;
 
         case AVIF_TRANSFER_CHARACTERISTICS_UNKNOWN:
         case AVIF_TRANSFER_CHARACTERISTICS_BT709:
@@ -403,7 +407,6 @@ static clProfile * nclxToclProfile(struct clContext * C, avifImage * avif)
         case AVIF_TRANSFER_CHARACTERISTICS_LOG100_SQRT10:
         case AVIF_TRANSFER_CHARACTERISTICS_IEC61966:
         case AVIF_TRANSFER_CHARACTERISTICS_BT1361:
-        case AVIF_TRANSFER_CHARACTERISTICS_SRGB:
         case AVIF_TRANSFER_CHARACTERISTICS_BT2020_10BIT:
         case AVIF_TRANSFER_CHARACTERISTICS_BT2020_12BIT:
         case AVIF_TRANSFER_CHARACTERISTICS_SMPTE428:
@@ -418,10 +421,10 @@ static clProfile * nclxToclProfile(struct clContext * C, avifImage * avif)
     }
 
     char gammaString[64];
-    if (curve.type == CL_PCT_PQ) {
-        gammaString[0] = 0;
-    } else {
+    if ((curve.type == CL_PCT_GAMMA) || (curve.type == CL_PCT_COMPLEX)) {
         sprintf(gammaString, "(%.2g)", curve.gamma);
+    } else {
+        gammaString[0] = 0;
     }
 
     char maxLumString[64];
@@ -480,11 +483,7 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
     avifMatrixCoefficients matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_UNSPECIFIED;
     switch (foundColorPrimaries) {
         case AVIF_COLOR_PRIMARIES_BT709:
-            matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
-            break;
         case AVIF_COLOR_PRIMARIES_BT470BG:
-            matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT470BG;
-            break;
         case AVIF_COLOR_PRIMARIES_UNSPECIFIED:
         case AVIF_COLOR_PRIMARIES_BT601:
             matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT601;
@@ -519,6 +518,9 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
         if (curve.type == CL_PCT_HLG) {
             transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_HLG;
             transferCharacteristicsName = "HLG";
+        } else if (curve.type == CL_PCT_SRGB) {
+            transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+            transferCharacteristicsName = "SRGB";
         } else if (curve.type == CL_PCT_GAMMA) {
             if (fabsf(curve.gamma - 2.2f) < 0.001f) {
                 transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_BT470M;

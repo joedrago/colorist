@@ -70,6 +70,8 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
             clContextLog(C, "profile", 1 + extraIndent, "Curve: HLG");
         } else if (curve.type == CL_PCT_PQ) {
             clContextLog(C, "profile", 1 + extraIndent, "Curve: PQ");
+        } else if (curve.type == CL_PCT_SRGB) {
+            clContextLog(C, "profile", 1 + extraIndent, "Curve: SRGB");
         } else {
             clContextLog(C,
                          "profile",

@@ -16,4 +16,8 @@ extern unsigned char hlgCurveBinaryData[];
 extern unsigned int pqCurveBinarySize;
 extern unsigned char pqCurveBinaryData[];
 
+// srgbCurveBinary.h
+extern unsigned int srgbCurveBinarySize;
+extern unsigned char srgbCurveBinaryData[];
+
 #endif

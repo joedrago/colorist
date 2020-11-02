@@ -37,6 +37,8 @@ const char * clProfileCurveTypeToString(struct clContext * C, clProfileCurveType
             return "HLG";
         case CL_PCT_PQ:
             return "PQ";
+        case CL_PCT_SRGB:
+            return "SRGB";
         case CL_PCT_COMPLEX:
             return "Complex";
         case CL_PCT_UNKNOWN:
@@ -57,6 +59,8 @@ const char * clProfileCurveTypeToLowercaseString(struct clContext * C, clProfile
             return "hlg";
         case CL_PCT_PQ:
             return "pq";
+        case CL_PCT_SRGB:
+            return "srgb";
         case CL_PCT_COMPLEX:
             return "complex";
         case CL_PCT_UNKNOWN:
@@ -81,8 +85,8 @@ clProfile * clProfileCreateStock(struct clContext * C, clProfileStock stock)
             primaries.blue[1] = 0.06f;
             primaries.white[0] = 0.3127f;
             primaries.white[1] = 0.3290f;
-            curve.type = CL_PCT_GAMMA;
-            curve.gamma = COLORIST_SRGB_GAMMA;
+            curve.type = CL_PCT_SRGB;
+            curve.gamma = 1.0f;
             break;
     }
 
@@ -145,7 +149,7 @@ clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, size_t icc
             profile->ccmm = clTrue;
         } else if (clProfileQuery(C, profile, &primaries, &curve, &luminance)) {
             // TODO: Be way more restrictive here
-            if ((curve.type == CL_PCT_GAMMA) || (curve.type == CL_PCT_HLG) || (curve.type == CL_PCT_PQ)) {
+            if ((curve.type == CL_PCT_GAMMA) || (curve.type == CL_PCT_HLG) || (curve.type == CL_PCT_PQ) || (curve.type == CL_PCT_SRGB)) {
                 profile->ccmm = clTrue;
             }
         }
@@ -175,7 +179,7 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
     dstWhitePoint.y = primaries->white[1];
     dstWhitePoint.Y = 1.0f;
 
-    if ((curve->type == CL_PCT_HLG) || (curve->type == CL_PCT_PQ)) {
+    if ((curve->type == CL_PCT_HLG) || (curve->type == CL_PCT_PQ) || (curve->type == CL_PCT_SRGB)) {
         curvesPtr = NULL;
     } else {
         curves[0] = cmsBuildGamma(C->lcms, curve->gamma);
@@ -199,6 +203,10 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
         cmsLinkTag(profile->handle, cmsSigBlueTRCTag, cmsSigRedTRCTag);
     } else if (curve->type == CL_PCT_PQ) {
         cmsWriteRawTag(profile->handle, cmsSigRedTRCTag, pqCurveBinaryData, pqCurveBinarySize);
+        cmsLinkTag(profile->handle, cmsSigGreenTRCTag, cmsSigRedTRCTag);
+        cmsLinkTag(profile->handle, cmsSigBlueTRCTag, cmsSigRedTRCTag);
+    } else if (curve->type == CL_PCT_SRGB) {
+        cmsWriteRawTag(profile->handle, cmsSigRedTRCTag, srgbCurveBinaryData, srgbCurveBinarySize);
         cmsLinkTag(profile->handle, cmsSigGreenTRCTag, cmsSigRedTRCTag);
         cmsLinkTag(profile->handle, cmsSigBlueTRCTag, cmsSigRedTRCTag);
     }
@@ -488,6 +496,9 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
             curve->gamma = 1.0f;
         } else if (curveSignature == CL_PCT_HLG) {
             curve->type = CL_PCT_HLG;
+            curve->gamma = 1.0f;
+        } else if (curveSignature == CL_PCT_SRGB) {
+            curve->type = CL_PCT_SRGB;
             curve->gamma = 1.0f;
         } else {
             cmsToneCurve * toneCurve = (cmsToneCurve *)cmsReadTag(profile->handle, cmsSigRedTRCTag);
@@ -820,6 +831,8 @@ void clProfileDescribe(struct clContext * C, clProfile * profile, char * outDesc
             strcpy(curveString, "HLG");
         } else if (curve.type == CL_PCT_PQ) {
             strcpy(curveString, "PQ");
+        } else if (curve.type == CL_PCT_SRGB) {
+            strcpy(curveString, "SRGB");
         } else if (curve.type == CL_PCT_GAMMA) {
             sprintf(curveString, "%gg", curve.gamma);
         } else {
@@ -863,6 +876,8 @@ char * clGenerateDescription(struct clContext * C, clProfilePrimaries * primarie
         strcpy(curveString, "HLG");
     } else if (curve->type == CL_PCT_PQ) {
         strcpy(curveString, "PQ");
+    } else if (curve->type == CL_PCT_SRGB) {
+        strcpy(curveString, "SRGB");
     } else if (curve->gamma == 1.0f) {
         strcpy(curveString, "Linear");
     } else {

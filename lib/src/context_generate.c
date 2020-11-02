@@ -75,9 +75,10 @@ int clContextGenerate(clContext * C, struct cJSON * output)
         clProfileCurve curve;
         curve.type = C->params.curveType;
         if (C->params.gamma <= 0.0f) {
-            clContextLog(C, action, 1, "No gamma specified (-g). Using default sRGB gamma.");
-            curve.gamma = COLORIST_SRGB_GAMMA;
-        } else {
+            clContextLog(C, action, 1, "No gamma specified (-g). Using default sRGB.");
+            curve.type = CL_PCT_SRGB;
+            curve.gamma = 1.0f;
+        } else if (curve.type == CL_PCT_GAMMA) {
             curve.gamma = C->params.gamma;
         }
 

@@ -33,6 +33,9 @@ static struct CurveSignature sentinelHLGCurve_ = {
 static struct CurveSignature sentinelPQCurve_ = {
     { 0x40, 0xb8, 0xbe, 0x41, 0x32, 0xd9, 0x58, 0x33, 0x1c, 0xaa, 0xc1, 0x20, 0x4c, 0x72, 0xdc, 0xae }
 }; // pqCurve.bin
+static struct CurveSignature sentinelSRGBCurve_ = {
+    { 0x84, 0x1c, 0x15, 0x83, 0x44, 0x34, 0x06, 0x7e, 0x6a, 0x13, 0xf2, 0x50, 0xdf, 0xc4, 0x29, 0x20 }
+}; // srgbCurve.bin
 
 clBool clProfileHasPQSignature(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries)
 {
@@ -50,14 +53,16 @@ clBool clProfileHasPQSignature(struct clContext * C, clProfile * profile, clProf
 
 clProfileCurveType clProfileCurveSignature(struct clContext * C, clProfile * profile)
 {
-    if (cmsReadRawTag(profile->handle, cmsSigRedTRCTag, NULL, 0) == (int)pqCurveBinarySize) {
+    cmsInt32Number redTRCTagSize = cmsReadRawTag(profile->handle, cmsSigRedTRCTag, NULL, 0);
+    if ((redTRCTagSize == (int)pqCurveBinarySize) || (redTRCTagSize == (int)hlgCurveBinarySize) ||
+        (redTRCTagSize == (int)srgbCurveBinarySize)) {
         struct CurveSignature curveSignature;
-        uint8_t * rawCurve = clAllocate(pqCurveBinarySize);
-        cmsReadRawTag(profile->handle, cmsSigRedTRCTag, rawCurve, pqCurveBinarySize);
+        uint8_t * rawCurve = clAllocate(redTRCTagSize);
+        cmsReadRawTag(profile->handle, cmsSigRedTRCTag, rawCurve, redTRCTagSize);
 
         MD5_CTX ctx;
         MD5_Init(&ctx);
-        MD5_Update(&ctx, rawCurve, (unsigned long)pqCurveBinarySize);
+        MD5_Update(&ctx, rawCurve, (unsigned long)redTRCTagSize);
         MD5_Final(curveSignature.signature, &ctx);
 
         clFree(rawCurve);
@@ -67,6 +72,9 @@ clProfileCurveType clProfileCurveSignature(struct clContext * C, clProfile * pro
         }
         if (!memcmp(&sentinelPQCurve_, &curveSignature, sizeof(struct CurveSignature))) {
             return CL_PCT_PQ;
+        }
+        if (!memcmp(&sentinelSRGBCurve_, &curveSignature, sizeof(struct CurveSignature))) {
+            return CL_PCT_SRGB;
         }
     }
     return CL_PCT_UNKNOWN;

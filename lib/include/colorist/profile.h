@@ -36,6 +36,7 @@ typedef enum clProfileCurveType
     CL_PCT_GAMMA,
     CL_PCT_HLG,
     CL_PCT_PQ,
+    CL_PCT_SRGB,
     CL_PCT_COMPLEX
 } clProfileCurveType;
 const char * clProfileCurveTypeToString(struct clContext * C, clProfileCurveType curveType);

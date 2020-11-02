@@ -196,6 +196,9 @@ static clBool derivePrimariesAndXTF(struct clContext * C,
             } else if (curve.type == CL_PCT_PQ) {
                 *outXTF = CL_XTF_PQ;
                 *outGamma = 0.0f;
+            } else if (curve.type == CL_PCT_SRGB) {
+                *outXTF = CL_XTF_SRGB;
+                *outGamma = 0.0f;
             } else {
                 *outXTF = CL_XTF_GAMMA;
                 *outGamma = curve.gamma;
@@ -420,6 +423,11 @@ static void colorConvert(struct clContext * C,
                     src.y = powf((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f, transform->ccmmSrcGamma);
                     src.z = powf((srcPixel[2] >= 0.0f) ? srcPixel[2] : 0.0f, transform->ccmmSrcGamma);
                     break;
+                case CL_XTF_SRGB:
+                    src.x = (srcPixel[0] <= 0.04045f) ? (srcPixel[0] / 12.92f) : (powf((srcPixel[0] + 0.055f) / 1.055f, 2.4f));
+                    src.y = (srcPixel[1] <= 0.04045f) ? (srcPixel[1] / 12.92f) : (powf((srcPixel[1] + 0.055f) / 1.055f, 2.4f));
+                    src.z = (srcPixel[2] <= 0.04045f) ? (srcPixel[2] / 12.92f) : (powf((srcPixel[2] + 0.055f) / 1.055f, 2.4f));
+                    break;
                 case CL_XTF_HLG:
                     src.x = HLG_EOTF((srcPixel[0] >= 0.0f) ? srcPixel[0] : 0.0f, transform->ccmmHLGLuminance);
                     src.y = HLG_EOTF((srcPixel[1] >= 0.0f) ? srcPixel[1] : 0.0f, transform->ccmmHLGLuminance);
@@ -490,6 +498,17 @@ static void colorConvert(struct clContext * C,
                         dstPixel[1] = CL_MAX(dstPixel[1], 0.0f); // clamp (allow overranging)
                         dstPixel[2] = CL_MAX(dstPixel[2], 0.0f); // clamp (allow overranging)
                     }
+                    break;
+                case CL_XTF_SRGB:
+                    gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->ccmmXYZToDst, src);
+                    if (transform->dstProfile) {       // don't clamp XYZ
+                        tmp[0] = CL_MAX(tmp[0], 0.0f); // clamp (allow overranging)
+                        tmp[1] = CL_MAX(tmp[1], 0.0f); // clamp (allow overranging)
+                        tmp[2] = CL_MAX(tmp[2], 0.0f); // clamp (allow overranging)
+                    }
+                    dstPixel[0] = (tmp[0] <= 0.0031308) ? (tmp[0] * 12.92f) : ((powf(tmp[0], 1.0f / 2.4f) * 1.055f) - 0.055f);
+                    dstPixel[1] = (tmp[1] <= 0.0031308) ? (tmp[1] * 12.92f) : ((powf(tmp[1], 1.0f / 2.4f) * 1.055f) - 0.055f);
+                    dstPixel[2] = (tmp[2] <= 0.0031308) ? (tmp[2] * 12.92f) : ((powf(tmp[2], 1.0f / 2.4f) * 1.055f) - 0.055f);
                     break;
                 case CL_XTF_GAMMA:
                     gb_mat3_mul_vec3((gbVec3 *)tmp, &transform->ccmmXYZToDst, src);
