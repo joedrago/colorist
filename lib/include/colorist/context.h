@@ -210,7 +210,7 @@ typedef struct clReadExtraInfo
 
     // transformation info
     int cwRotationsNeeded;
-    int mirrorNeeded; // 0 == none, 1 == vertical, 2 == horizontal
+    int mirrorNeeded; // 0 == none, 1 == mirror on vertical axis (horizontal flip), 2 == mirror on horizontal axis (vertical flip)
     int crop[4];      // x, y, width, height
 
     // perf stats
