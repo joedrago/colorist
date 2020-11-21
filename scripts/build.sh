@@ -31,7 +31,7 @@ cd ..
 COLORIST_ROOT=`pwd`
 echo Colorist Root: $COLORIST_ROOT
 
-cd ext/avif/ext
+cd ext/libavif/ext
 $SHELL ./aom.cmd
 $SHELL ./dav1d.cmd
 $SHELL ./rav1e.cmd
