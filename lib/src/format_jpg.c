@@ -64,6 +64,7 @@ struct clImage * clFormatReadJPG(struct clContext * C, const char * formatName, 
     setup_read_icc_profile(&cinfo);
     jpeg_mem_src(&cinfo, input->ptr, (unsigned long)input->size);
     jpeg_read_header(&cinfo, TRUE);
+    cinfo.out_color_space = JCS_RGB;
     jpeg_start_decompress(&cinfo);
 
     int row_stride = cinfo.output_width * cinfo.output_components;
