@@ -63,6 +63,7 @@ On a fresh Ubuntu 19.10 install, this appears to setup a proper build for colori
     # Clone and build colorist
     git clone https://github.com/joedrago/colorist.git
     cd colorist
+    git submodule update --init --recursive
     bash ./scripts/build.sh
 ```
 
