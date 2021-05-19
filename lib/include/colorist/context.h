@@ -23,6 +23,8 @@ struct clProfilePrimaries;
 struct clRaw;
 struct cJSON;
 
+#define CL_DIAGNOSTIC_ERROR_SIZE 256
+
 typedef enum clAction
 {
     CL_ACTION_NONE = 0,
@@ -212,6 +214,8 @@ typedef struct clReadExtraInfo
     int cwRotationsNeeded;
     int mirrorNeeded; // 0 == none, 1 == mirror on vertical axis (horizontal flip), 2 == mirror on horizontal axis (vertical flip)
     int crop[4];      // x, y, width, height
+
+    char diagnosticError[CL_DIAGNOSTIC_ERROR_SIZE]; // populated from libavif failures, occasionally
 
     // perf stats
     double decodeCodecSeconds;    // Time spent actually in the decoder

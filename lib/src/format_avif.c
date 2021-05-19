@@ -71,7 +71,11 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
     avifDecoderSetIOMemory(decoder, raw.data, raw.size);
     avifResult decodeResult = avifDecoderParse(decoder);
     if (decodeResult != AVIF_RESULT_OK) {
-        clContextLogError(C, "Failed to parse AVIF (%s)", avifResultToString(decodeResult));
+        clContextLogError(C, "Failed to parse AVIF (%s) %s", avifResultToString(decodeResult), decoder->diag.error);
+        if (decoder->diag.error) {
+            strncpy(C->readExtraInfo.diagnosticError, decoder->diag.error, CL_DIAGNOSTIC_ERROR_SIZE);
+            C->readExtraInfo.diagnosticError[CL_DIAGNOSTIC_ERROR_SIZE - 1] = 0;
+        }
         goto readCleanup;
     }
 
@@ -86,7 +90,11 @@ struct clImage * clFormatReadAVIF(struct clContext * C, const char * formatName,
     }
     avifResult frameResult = avifDecoderNthImage(decoder, frameIndex);
     if (frameResult != AVIF_RESULT_OK) {
-        clContextLogError(C, "Failed to get AVIF frame %d (%s)", frameIndex, avifResultToString(frameResult));
+        clContextLogError(C, "Failed to get AVIF frame %d (%s) %s", frameIndex, avifResultToString(frameResult), decoder->diag.error);
+        if (decoder->diag.error) {
+            strncpy(C->readExtraInfo.diagnosticError, decoder->diag.error, CL_DIAGNOSTIC_ERROR_SIZE);
+            C->readExtraInfo.diagnosticError[CL_DIAGNOSTIC_ERROR_SIZE - 1] = 0;
+        }
         goto readCleanup;
     }
 
