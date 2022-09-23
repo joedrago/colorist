@@ -314,6 +314,10 @@ clProfile * clProfileRead(struct clContext * C, const char * filename)
     return profile;
 }
 
+// This function takes a profile signaling the PQ curve @ 10000 nits, and returns a new color profile containing:
+// * No lumi tag (removed)
+// * A cicp tag in the ICC profile signaling the passed-in cicp
+// * A LUT in the set of *TRC curve tags which tonemap the source PQ data
 clProfile * clProfileCreateCICPFallback(struct clContext * C,
                                         clProfile * srcProfile,
                                         uint8_t cicp[4],
@@ -336,14 +340,17 @@ clProfile * clProfileCreateCICPFallback(struct clContext * C,
     clProfilePrimaries bt709Primaries;
     clContextGetStockPrimaries(C, "bt709", &bt709Primaries);
 
+    // The tonemap curve is being stored in the EOTF, so when this LUT is applied, the result must be linear (gamma=1.0).
     clProfileCurve dstCurve;
-    dstCurve.type = CL_PCT_SRGB;
+    dstCurve.type = CL_PCT_GAMMA;
+    dstCurve.gamma = 1.0f;
 
     clProfile * srcTransformProfile = clProfileCreate(C, &bt709Primaries, &srcCurve, srcLuminance, NULL);
     clProfile * dstTransformProfile = clProfileCreate(C, &bt709Primaries, &dstCurve, fallbackLuminance, NULL);
     clTransform * transform = clTransformCreate(C, srcTransformProfile, CL_XF_RGB, dstTransformProfile, CL_XF_RGB, CL_TONEMAP_ON);
     memcpy(&transform->tonemapParams, tonemapParams, sizeof(clTonemapParams));
 
+    // 256 points in the curve is sufficient (color management systems will interpolate)
     uint16_t lut[256];
     for (int i = 0; i < 256; ++i) {
         float src[3];
@@ -351,21 +358,18 @@ clProfile * clProfileCreateCICPFallback(struct clContext * C,
         src[0] = src[1] = src[2] = (float)i / 255.0f;
         clTransformRun(C, transform, src, dst, 1);
         float out = CL_CLAMP(dst[0], 0.0f, 1.0f);
-        out = (out <= 0.04045f) ? (out / 12.92f) : (powf((out + 0.055f) / 1.055f, 2.4f)); // Apply SRGB EOTF as the output of this will be intepreted as SRGB
         lut[i] = (uint16_t)(out * 65535.0f);
     }
-
     clProfileCurve fallbackCurve;
     fallbackCurve.type = CL_PCT_LUT;
     fallbackCurve.lut = lut;
     fallbackCurve.lutCount = 256;
 
+    // Create the output profile (owned by the caller, similar to all other clProfileCreate*() calls
     clProfile * dstProfile = clProfileCreate(C, &primaries, &fallbackCurve, CL_LUMINANCE_UNSPECIFIED, NULL);
-    clProfileSetCICP(C, dstProfile, cicp);
 
-    // cmsWriteRawTag(profile->handle, cmsSigRedTRCTag, hlgCurveBinaryData, hlgCurveBinarySize);
-    // cmsLinkTag(profile->handle, cmsSigGreenTRCTag, cmsSigRedTRCTag);
-    // cmsLinkTag(profile->handle, cmsSigBlueTRCTag, cmsSigRedTRCTag);
+    // Pack the passed-in CICP which signals the real PQ curve (to be used instead of the *TRC tags if supported)
+    clProfileSetCICP(C, dstProfile, cicp);
 
     clTransformDestroy(C, transform);
     clProfileDestroy(C, srcTransformProfile);
