@@ -21,6 +21,8 @@
 #include <math.h>
 #include <string.h>
 
+#define clCICPTag 0x63696370 // 'cicp'
+
 #define CLOSE_ENOUGH_TO_ZERO (0.00001f)
 
 // from cmsio1.c
@@ -41,6 +43,8 @@ const char * clProfileCurveTypeToString(struct clContext * C, clProfileCurveType
             return "SRGB";
         case CL_PCT_COMPLEX:
             return "Complex";
+        case CL_PCT_LUT:
+            return "LUT";
         case CL_PCT_UNKNOWN:
         default:
             break;
@@ -63,6 +67,8 @@ const char * clProfileCurveTypeToLowercaseString(struct clContext * C, clProfile
             return "srgb";
         case CL_PCT_COMPLEX:
             return "complex";
+        case CL_PCT_LUT:
+            return "lut";
         case CL_PCT_UNKNOWN:
         default:
             break;
@@ -127,6 +133,16 @@ clProfile * clProfileParse(struct clContext * C, const uint8_t * icc, size_t icc
         }
     }
 
+    // Harvest CICP, if present
+    cmsUInt32Number cicpSize = cmsReadRawTag(profile->handle, clCICPTag, NULL, 0);
+    if (cicpSize == 12) { // A2B0 tag is present. Allow it to override primaries and tone curves.
+        uint8_t cicpTagContents[12];
+        cmsReadRawTag(profile->handle, clCICPTag, cicpTagContents, 12);
+        if (!memcmp(cicpTagContents, "cicp\0\0\0\0", 8)) {
+            memcpy(profile->cicp, cicpTagContents + 8, 4);
+        }
+    }
+
     // Save copy of packed data to keep a byte-for-byte payload unless the profile is modified
     clRawSet(C, &profile->raw, icc, iccLen);
 
@@ -181,6 +197,14 @@ clProfile * clProfileCreate(struct clContext * C, clProfilePrimaries * primaries
 
     if ((curve->type == CL_PCT_HLG) || (curve->type == CL_PCT_PQ) || (curve->type == CL_PCT_SRGB)) {
         curvesPtr = NULL;
+    } else if (curve->type == CL_PCT_LUT) {
+        if (!curve->lut || !curve->lutCount) {
+            return NULL;
+        }
+        curves[0] = cmsBuildTabulatedToneCurve16(C->lcms, curve->lutCount, curve->lut);
+        curves[1] = curves[0];
+        curves[2] = curves[0];
+        curvesPtr = curves;
     } else {
         curves[0] = cmsBuildGamma(C->lcms, curve->gamma);
         curves[1] = curves[0];
@@ -288,6 +312,65 @@ clProfile * clProfileRead(struct clContext * C, const char * filename)
     }
     clRawFree(C, &rawProfile);
     return profile;
+}
+
+clProfile * clProfileCreateCICPFallback(struct clContext * C,
+                                        clProfile * srcProfile,
+                                        uint8_t cicp[4],
+                                        struct clTonemapParams * tonemapParams,
+                                        int fallbackLuminance)
+{
+    clProfilePrimaries primaries;
+    clProfileCurve srcCurve;
+    int srcLuminance = 0;
+    if (!clProfileQuery(C, srcProfile, &primaries, &srcCurve, &srcLuminance)) {
+        return NULL;
+    }
+
+    if ((srcCurve.type != CL_PCT_PQ) || (srcLuminance != 10000)) {
+        clContextLogError(C, "clProfileCreateCICPFallback: Only PQ is supported as a source curve");
+        return NULL;
+    }
+
+    // Which primaries we use don't matter as we're just trying to get a tonemapped curve out
+    clProfilePrimaries bt709Primaries;
+    clContextGetStockPrimaries(C, "bt709", &bt709Primaries);
+
+    clProfileCurve dstCurve;
+    dstCurve.type = CL_PCT_SRGB;
+
+    clProfile * srcTransformProfile = clProfileCreate(C, &bt709Primaries, &srcCurve, srcLuminance, NULL);
+    clProfile * dstTransformProfile = clProfileCreate(C, &bt709Primaries, &dstCurve, fallbackLuminance, NULL);
+    clTransform * transform = clTransformCreate(C, srcTransformProfile, CL_XF_RGB, dstTransformProfile, CL_XF_RGB, CL_TONEMAP_ON);
+    memcpy(&transform->tonemapParams, tonemapParams, sizeof(clTonemapParams));
+
+    uint16_t lut[256];
+    for (int i = 0; i < 256; ++i) {
+        float src[3];
+        float dst[3];
+        src[0] = src[1] = src[2] = (float)i / 255.0f;
+        clTransformRun(C, transform, src, dst, 1);
+        float out = CL_CLAMP(dst[0], 0.0f, 1.0f);
+        out = (out <= 0.04045f) ? (out / 12.92f) : (powf((out + 0.055f) / 1.055f, 2.4f)); // Apply SRGB EOTF as the output of this will be intepreted as SRGB
+        lut[i] = (uint16_t)(out * 65535.0f);
+    }
+
+    clProfileCurve fallbackCurve;
+    fallbackCurve.type = CL_PCT_LUT;
+    fallbackCurve.lut = lut;
+    fallbackCurve.lutCount = 256;
+
+    clProfile * dstProfile = clProfileCreate(C, &primaries, &fallbackCurve, CL_LUMINANCE_UNSPECIFIED, NULL);
+    clProfileSetCICP(C, dstProfile, cicp);
+
+    // cmsWriteRawTag(profile->handle, cmsSigRedTRCTag, hlgCurveBinaryData, hlgCurveBinarySize);
+    // cmsLinkTag(profile->handle, cmsSigGreenTRCTag, cmsSigRedTRCTag);
+    // cmsLinkTag(profile->handle, cmsSigBlueTRCTag, cmsSigRedTRCTag);
+
+    clTransformDestroy(C, transform);
+    clProfileDestroy(C, srcTransformProfile);
+    clProfileDestroy(C, dstTransformProfile);
+    return dstProfile;
 }
 
 clBool clProfileWrite(struct clContext * C, clProfile * profile, const char * filename)
@@ -691,6 +774,17 @@ cleanup:
     cmsFreeToneCurve(gammaCurve);
     clProfileReload(C, profile); // Rebuild raw and signature
     return clTrue;
+}
+
+clBool clProfileSetCICP(struct clContext * C, clProfile * profile, uint8_t cicp[4])
+{
+    clBool ret;
+    uint8_t cicpTagContents[12];
+    memcpy(cicpTagContents, "cicp\0\0\0\0", 8);
+    memcpy(cicpTagContents + 8, cicp, 4);
+    ret = cmsWriteRawTag(profile->handle, clCICPTag, cicpTagContents, 12);
+    clProfileReload(C, profile); // Rebuild raw and signature
+    return ret;
 }
 
 clBool clProfileSetLuminance(struct clContext * C, clProfile * profile, int luminance)

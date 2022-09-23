@@ -232,9 +232,11 @@ clBool clFormatExists(struct clContext * C, const char * formatName)
 // ------------------------------------------------------------------------------------------------
 // clTonemap
 
-clBool clTonemapFromString(struct clContext * C, const char * str, clTonemap * outTonemap, clTonemapParams * outParams)
+clBool clTonemapFromString(struct clContext * C, const char * str, clTonemap * outTonemap, clTonemapParams * outParams, int * outTonemapFallback)
 {
     char * buffer = clContextStrdup(C, str);
+
+    *outTonemapFallback = 0;
 
     for (char * token = strtok(buffer, ","); token != NULL; token = strtok(NULL, ",")) {
         char * equals = strchr(token, '=');
@@ -279,6 +281,8 @@ clBool clTonemapFromString(struct clContext * C, const char * str, clTonemap * o
                 outParams->speed = value;
             } else if (!strcmp(token, "power")) {
                 outParams->power = value;
+            } else if (!strcmp(token, "fallback")) {
+                *outTonemapFallback = (int)value;
             }
         }
     }
@@ -423,6 +427,7 @@ void clConversionParamsSetDefaults(clContext * C, clConversionParams * params)
     params->stripTags = NULL;
     params->stats = clFalse;
     params->tonemap = CL_TONEMAP_AUTO;
+    params->tonemapFallback = 0;
     params->readCodec = NULL;
     clTonemapParamsSetDefaults(C, &params->tonemapParams);
     params->compositeFilename = NULL;
@@ -844,7 +849,7 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                 C->params.stats = clTrue;
             } else if (!strcmp(arg, "-t") || !strcmp(arg, "--tonemap")) {
                 NEXTARG();
-                if (!clTonemapFromString(C, arg, &C->params.tonemap, &C->params.tonemapParams)) {
+                if (!clTonemapFromString(C, arg, &C->params.tonemap, &C->params.tonemapParams, &C->params.tonemapFallback)) {
                     return clFalse;
                 }
             } else if (!strcmp(arg, "--composite")) {
@@ -858,8 +863,9 @@ clBool clContextParseArgs(clContext * C, int argc, const char * argv[])
                     return clFalse;
                 }
             } else if (!strcmp(arg, "--composite-tonemap")) {
+                clBool ignoredBool;
                 NEXTARG();
-                if (!clTonemapFromString(C, arg, &C->params.compositeParams.cmpTonemap, &C->params.compositeParams.cmpParams)) {
+                if (!clTonemapFromString(C, arg, &C->params.compositeParams.cmpTonemap, &C->params.compositeParams.cmpParams, &ignoredBool)) {
                     return clFalse;
                 }
             } else if (!strcmp(arg, "--composite-offset")) {

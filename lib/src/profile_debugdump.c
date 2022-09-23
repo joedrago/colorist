@@ -86,6 +86,16 @@ void clProfileDebugDump(struct clContext * C, clProfile * profile, clBool dumpTa
         }
         clContextLog(C, "profile", 1 + extraIndent, "CCMM friendly: %s", profile->ccmm ? "true" : "false");
 
+        if (memcmp(profile->cicp, "\0\0\0\0", 4) != 0) {
+            clContextLog(C,
+                         "profile",
+                         1 + extraIndent,
+                         "CICP: %u/%u/%u/%u",
+                         profile->cicp[0],
+                         profile->cicp[1],
+                         profile->cicp[2],
+                         profile->cicp[3]);
+        }
         uint8_t * s = profile->signature;
         clContextLog(C,
                      "profile",

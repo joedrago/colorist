@@ -403,6 +403,64 @@ int clContextConvert(clContext * C)
         clContextLog(C, "timing", -1, TIMING_FORMAT, timerElapsedSeconds(&t));
     }
 
+    if (params.tonemapFallback) {
+        uint8_t cicp[4];
+        clContextLog(C, "tonemap", 0, "Generating tonemap fallback...");
+        // clBool attemptFallback = clTrue;
+        if (memcmp(dstProfile->cicp, "\0\0\0\0", 4) != 0) {
+            memcpy(cicp, dstProfile->cicp, 4);
+        } else {
+            clContextLog(C, "tonemap", 1, "No pre-existing CICP found in destination profile, detecting...");
+
+            const char * primariesName;
+            const char * transferCharacteristicsName;
+            clBool discoveredCICP = clProfileDiscoverCICP(C, dstProfile, cicp, &primariesName, &transferCharacteristicsName);
+            if (discoveredCICP) {
+                // Hack: Force MC to Identity, it only makes sense as something else in AVIF
+                cicp[2] = 0;
+
+                clContextLog(C,
+                             "tonemap",
+                             2,
+                             "%s %s color profile detected; CICP %u/%u/%u/%u",
+                             primariesName,
+                             transferCharacteristicsName,
+                             cicp[0],
+                             cicp[1],
+                             cicp[2],
+                             cicp[3]);
+                clProfileSetCICP(C, dstProfile, cicp);
+            } else {
+                clContextLogError(C, "Failed to discover CICP in destination, can't generate fallback profile, bailing out");
+                goto convertCleanup;
+            }
+        }
+
+        if ((cicp[0] != 9) && (cicp[0] != 12)) {
+            clContextLogError(C, "Only P3 and BT2020 are supported CP, can't generate fallback profile, bailing out");
+            goto convertCleanup;
+        }
+        if (cicp[1] != 16) {
+            clContextLogError(C, "Only PQ is supported TC, can't generate fallback profile, bailing out");
+            goto convertCleanup;
+        }
+        if (cicp[2] != 0) {
+            clContextLogError(C, "Only identity MC is supported, can't generate fallback profile, bailing out");
+            goto convertCleanup;
+        }
+        if (cicp[3] != 1) {
+            clContextLogError(C, "Only full range is supported, can't generate fallback profile, bailing out");
+            goto convertCleanup;
+        }
+
+        clProfile * fallbackProfile = clProfileCreateCICPFallback(C, dstProfile, cicp, &params.tonemapParams, params.tonemapFallback);
+        if (!fallbackProfile) {
+            goto convertCleanup;
+        }
+        clProfileDestroy(C, dstImage->profile);
+        dstImage->profile = fallbackProfile;
+    }
+
     timerStart(&t);
     clContextLogWrite(C, C->outputFilename, params.formatName, &params.writeParams);
     if (!clContextWrite(C, dstImage, C->outputFilename, params.formatName, &params.writeParams)) {

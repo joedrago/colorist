@@ -111,7 +111,7 @@ typedef struct clTonemapParams
 } clTonemapParams;
 void clTonemapParamsSetDefaults(struct clContext * C, clTonemapParams * params);
 
-clBool clTonemapFromString(struct clContext * C, const char * str, clTonemap * outTonemap, clTonemapParams * outParams);
+clBool clTonemapFromString(struct clContext * C, const char * str, clTonemap * outTonemap, clTonemapParams * outParams, int * outTonemapFallback);
 
 // Filter enumeration and comments taken directly from stb_image_resize
 // (with minor tweaks like DEFAULT -> AUTO, addition of NEAREST)
@@ -245,6 +245,7 @@ typedef struct clConversionParams
     clBool stats;                   // --stats
     clTonemap tonemap;              // -t
     clTonemapParams tonemapParams;  // -t
+    int tonemapFallback;            // -t
     clWriteParams writeParams;      // -n, -q, -r, --yuv
     const char * readCodec;         // AVIF only. Specify a codec to read with (NULL == auto)
     int rect[4];                    // -z

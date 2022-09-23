@@ -464,7 +464,11 @@ static clProfile * nclxToclProfile(struct clContext * C, avifImage * avif)
     return profile;
 }
 
-static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, avifImage * avif)
+clBool clProfileDiscoverCICP(struct clContext * C,
+                             struct clProfile * profile,
+                             uint8_t * outCICP,
+                             const char ** outPrimariesName,
+                             const char ** outTransferCharacteristicsName)
 {
     clProfilePrimaries primaries;
     clProfileCurve curve;
@@ -544,10 +548,29 @@ static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, 
         return clFalse;
     }
 
+    outCICP[0] = (uint8_t)foundColorPrimaries;
+    outCICP[1] = (uint8_t)transferCharacteristics;
+    outCICP[2] = (uint8_t)matrixCoefficients;
+    outCICP[3] = 1; // Always Full Range?
+    *outPrimariesName = primariesName;
+    *outTransferCharacteristicsName = transferCharacteristicsName;
+    return clTrue;
+}
+
+static clBool clProfileToNclx(struct clContext * C, struct clProfile * profile, avifImage * avif)
+{
+    uint8_t cicp[4];
+    const char * primariesName = NULL;
+    const char * transferCharacteristicsName = NULL;
+    clBool discoveredCICP = clProfileDiscoverCICP(C, profile, cicp, &primariesName, &transferCharacteristicsName);
+    if (!discoveredCICP) {
+        return clFalse;
+    }
+
     clContextLog(C, "avif", 1, "%s %s color profile detected; switching to nclx colr box.", primariesName, transferCharacteristicsName);
-    avif->colorPrimaries = (uint16_t)foundColorPrimaries;
-    avif->transferCharacteristics = (uint16_t)transferCharacteristics;
-    avif->matrixCoefficients = (uint16_t)matrixCoefficients;
+    avif->colorPrimaries = (uint16_t)cicp[0];
+    avif->transferCharacteristics = (uint16_t)cicp[1];
+    avif->matrixCoefficients = (uint16_t)cicp[2];
     avif->yuvRange = AVIF_RANGE_FULL;
     return clTrue;
 }
