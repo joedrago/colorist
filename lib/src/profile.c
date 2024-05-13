@@ -490,6 +490,7 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
     }
 
     if (curve) {
+        // WARNING: Please see my warning about non-standard code at the top of profile_curves.c
         clProfileCurveType curveSignature = clProfileCurveSignature(C, profile);
         if (clProfileHasPQSignature(C, profile, NULL) || (curveSignature == CL_PCT_PQ)) {
             curve->type = CL_PCT_PQ;

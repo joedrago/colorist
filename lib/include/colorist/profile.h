@@ -82,7 +82,7 @@ clBool clProfileQuery(struct clContext * C, clProfile * profile, clProfilePrimar
 void clProfileDescribe(struct clContext * C, clProfile * profile, char * outDescription, size_t outDescriptionSize);
 void clProfileQueryYUVCoefficients(struct clContext * C, clProfile * profile, clProfileYUVCoefficients * yuv);
 clBool clProfileHasPQSignature(struct clContext * C, clProfile * profile, clProfilePrimaries * primaries);
-clProfileCurveType clProfileCurveSignature(struct clContext * C, clProfile * profile);
+clProfileCurveType clProfileCurveSignature(struct clContext * C, clProfile * profile); // WARNING: Please see my warning about non-standard code at the top of profile_curves.c
 char * clProfileGetMLU(struct clContext * C, clProfile * profile, const char tag[5], const char languageCode[3], const char countryCode[3]);
 clBool clProfileSetMLU(struct clContext * C,
                        clProfile * profile,

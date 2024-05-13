@@ -15,6 +15,23 @@
 
 #include <string.h>
 
+
+// WARNING WARNING WARNING: *Everything* in this file is NON-STANDARD and
+// should NOT be used as an example of how to detect or read or write PQ or
+// HLG - they were intended to help roundtrip these types of curves in a
+// format (ICC profiles) that are/were intolerant to them at the time I was
+// implementing colorist as an R&D tool for HDR data. If you implement
+// anything remotely similar to the contents of this file, you will not find
+// compatibility anywhere other than with libcolorist-derived tools, which
+// nobody uses.
+//
+// Please signal PQ and HLG using CICP (h.273) instead. A longer explanation
+// can be found here:
+//
+// https://github.com/libvips/libvips/issues/3912#issuecomment-2108338388
+
+
+
 struct CurveSignature
 {
     uint8_t signature[16];
